@@ -54,6 +54,7 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
 
   const h = node.uHeight * U_WORLD
   const y = rackHardwareCenterY(node.slotIndex, node.uHeight)
+  const healthColor = node.healthStatus === 'critical' ? '#ef4444' : node.healthStatus === 'degraded' ? '#eab308' : '#22c55e'
 
   return (
     <group position={[0, y, 0.1]}>
@@ -68,6 +69,19 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
         />
         <Edges color={isSelected ? '#ffffff' : '#f7fafc'} threshold={20} lineWidth={isSelected ? 2 : 1} />
       </mesh>
+
+      <mesh position={[0.4, 0, 0.445]}>
+         <sphereGeometry args={[0.02, 16, 16]} />
+         <meshStandardMaterial color={healthColor} emissive={healthColor} emissiveIntensity={0.8} />
+      </mesh>
+
+      {node.isImmutable && (
+        <group position={[0, h/2 + 0.04, 0.45]}>
+          <Text fontSize={0.06} color="#60a5fa" outlineColor="#1e3a8a" outlineWidth={0.01}>🛡️</Text>
+          <pointLight color="#60a5fa" distance={0.5} intensity={0.5} />
+        </group>
+      )}
+
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
       </Text>
@@ -169,14 +183,16 @@ function Floor() {
 }
 
 function World() {
-  const { nodes, selectedNodeId, setSelectedNode } = useInfraStore()
-  const racks = useMemo(() => nodes.filter(n => n.type === 'rack'), [nodes])
+  const { nodes, selectedNodeId, setSelectedNode, totalRoomBTU, currentSiteId } = useInfraStore()
+  const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
+  const hardwareNodes = useMemo(() => nodes.filter(n => n.type !== 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
+  const isHot = totalRoomBTU > 50000
 
   return (
     <>
-      <color attach="background" args={['#e8eef2']} />
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[10, 10, 5]} intensity={1} />
+      <color attach="background" args={isHot ? ['#3a1a1a'] : ['#e8eef2']} />
+      <ambientLight intensity={0.8} color={isHot ? '#ff8c00' : '#ffffff'} />
+      <directionalLight position={[10, 10, 5]} intensity={1} color={isHot ? '#ffb347' : '#ffffff'} />
       <gridHelper args={[30, 30, '#48afbb', '#b9c5cf']} />
       <OrbitControls makeDefault />
 

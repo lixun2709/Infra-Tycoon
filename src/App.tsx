@@ -1,13 +1,55 @@
 import { Inspector } from './components/ui/Inspector'
+import { Dashboard } from './components/ui/Dashboard'
+import { NetworkManager } from './components/ui/NetworkManager'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
+
+function EmergencyToasts() {
+  const alerts = useInfraStore(s => s.alerts)
+  const [activeAlert, setActiveAlert] = useState<typeof alerts[0] | null>(null)
+
+  useEffect(() => {
+    const popups = alerts.filter(a => a.severity === 'critical' || a.severity === 'warning')
+    if (popups.length === 0) return
+
+    const latest = popups[0]
+    if (Date.now() - latest.timestamp < 6000) {
+      setActiveAlert(latest)
+      const timer = setTimeout(() => {
+        setActiveAlert(null)
+      }, 6000)
+      return () => clearTimeout(timer)
+    }
+  }, [alerts])
+
+  if (!activeAlert) return null
+
+  const isCritical = activeAlert.severity === 'critical'
+
+  return (
+    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
+      <div className={`bg-[#1f0909]/95 border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : 'border-amber-500 ring-amber-900/30'}`}>
+        <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : '⚠️'}</div>
+        <div className="flex-1">
+          <h2 className={`text-sm font-black tracking-widest uppercase mb-1 drop-shadow-sm ${isCritical ? 'text-red-500' : 'text-amber-500'}`}>
+            {isCritical ? 'Critical Failure' : 'Action Denied'}
+          </h2>
+          <p className={`font-semibold text-sm leading-snug ${isCritical ? 'text-red-100' : 'text-amber-100'}`}>
+            {activeAlert.message}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
   const nodes = useInfraStore(s => s.nodes)
-  const racks = useMemo(() => nodes.filter(n => n.type === 'rack'), [nodes])
+  const currentSiteId = useInfraStore(s => s.currentSiteId)
+  const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
 
   const placeCatalogHardware = useInfraStore((s) => s.placeCatalogHardware)
   const totalPowerKW = useInfraStore((s) => s.totalPowerKW)
@@ -16,6 +58,17 @@ function App() {
   const selectedNodeId = useInfraStore((s) => s.selectedNodeId)
   const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
   const placementMode = useInfraStore((s) => s.placementMode)
+  const processAutoBackups = useInfraStore((s) => s.processAutoBackups)
+  const sites = useInfraStore(s => s.sites)
+  const setCurrentSiteId = useInfraStore(s => s.setCurrentSiteId)
+  const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      processAutoBackups()
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [processAutoBackups])
 
   const handleAddRack = () => {
     setPlacementMode(true, '42U Rack')
@@ -32,24 +85,54 @@ function App() {
   }
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-screen w-screen overflow-hidden bg-slate-900 font-sans text-slate-200">
+      <header className="absolute top-4 left-[520px] z-20 pointer-events-none">
+        <div className="pointer-events-auto bg-[#0a1536]/90 border border-slate-700/80 rounded-lg p-1 backdrop-blur-md flex items-center gap-1 shadow-xl">
+          {sites.map(site => (
+            <button
+              key={site.id}
+              onClick={() => setCurrentSiteId(site.id)}
+              className={`px-4 py-1.5 rounded text-xs font-bold transition-all flex items-center gap-2 ${currentSiteId === site.id ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+            >
+              {site.isDisaster && <span className="text-base animate-pulse">🔥</span>}
+              {site.name}
+            </button>
+          ))}
+        </div>
+      </header>
+
       <div className="fixed inset-0 z-0 cursor-crosshair">
         <Scene />
       </div>
 
-      <aside className="pointer-events-auto fixed left-0 top-0 z-10 flex h-full w-72 flex-col gap-5 border-r border-[#48afbb]/35 bg-[#070f52] p-5 text-white shadow-[4px_0_24px_rgba(7,15,82,0.35)]">
+      <aside className="pointer-events-auto fixed left-0 top-0 z-30 flex h-full w-72 flex-col gap-5 border-r border-[#48afbb]/35 bg-[#070f52] p-5 text-white shadow-[4px_0_24px_rgba(7,15,82,0.35)]">
         <div className="border-b border-white/10 pb-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#48afbb]">
             Data center
           </p>
           <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#fcfdfd]">
-            Infra-Tycoon
+            Infra-Tycoon <span className="text-teal-400">3D</span>
           </h1>
           <p className="mt-1 text-xs leading-relaxed text-[#a8bfd0]">
-            Infrastructure layout and floor planning
+            Global Infrastructure Simulator
           </p>
         </div>
         <div>
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#48afbb]">
+            Data Center Management
+          </p>
+          <div className="flex flex-col gap-2 mb-6">
+            <button
+              onClick={() => setNetworkManagerOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-md border border-purple-500/50 bg-purple-900/30 text-purple-100 hover:bg-purple-800/40 hover:border-purple-400 transition-colors shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-[#a855f7]">🌐</span> Global Network
+              </span>
+              <span className="text-purple-400 text-xs">Configure</span>
+            </button>
+          </div>
+
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#48afbb]">
             Rack
           </p>
@@ -89,10 +172,27 @@ function App() {
             >
               Add Rubrik Node (2U)
             </button>
+            <button
+              type="button"
+              onClick={() => tryPlace('CRAC_UNIT_4U')}
+              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52]"
+            >
+              Add CRAC Unit (4U)
+            </button>
+            <button
+              type="button"
+              onClick={() => tryPlace('LOAD_BALANCER_1U')}
+              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52] shadow-[0_0_10px_rgba(221,107,32,0.3)] border-[#dd6b20]/40"
+            >
+              Add Load Balancer (1U)
+            </button>
           </div>
         </div>
       </aside>
 
+      <EmergencyToasts />
+      <Dashboard />
+      <NetworkManager />
       <Inspector />
 
       <div
@@ -132,6 +232,12 @@ function App() {
       {placementMode && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-teal-900/90 text-teal-100 px-6 py-3 rounded-full border border-teal-500 shadow-2xl backdrop-blur-md font-medium text-sm animate-bounce">
           Hover over the grid to position your rack, then click to place.
+        </div>
+      )}
+
+      {totalRoomBTU > 50000 && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-red-900/90 text-red-100 px-6 py-3 rounded-full border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] backdrop-blur-md font-bold text-sm animate-pulse flex items-center gap-2">
+          <span className="text-xl">⚠️</span> HIGH TEMPERATURE WARNING: Add Cooling!
         </div>
       )}
 

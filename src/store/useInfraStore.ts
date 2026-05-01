@@ -1,6 +1,6 @@
 import { Vector3 } from 'three'
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import {
   HARDWARE_CATALOG,
   type HardwareCatalogKey,
@@ -9,8 +9,24 @@ import {
 import { findFirstEmptySlot } from '../physics/snapping'
 import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine'
 
-export type InfraNodeType = 'rack' | string
+export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer'
 export type RackStatus = 'online' | 'power_overload'
+export type HealthStatus = 'healthy' | 'degraded' | 'critical'
+export type AlertSeverity = 'info' | 'warning' | 'critical'
+export type BackupStatus = 'protected' | 'unprotected' | 'backing_up'
+
+export type InfraAlert = {
+  id: string
+  timestamp: number
+  severity: AlertSeverity
+  message: string
+}
+
+export type Site = {
+  id: string
+  name: string
+  isDisaster: boolean
+}
 
 export type HardwarePort = {
   id: string
@@ -22,6 +38,7 @@ export type HardwarePort = {
 export type InfraNode = {
   id: string
   type: InfraNodeType
+  siteId: string
   position: Vector3
   name: string
   uHeight: number
@@ -33,6 +50,11 @@ export type InfraNode = {
   maxPowerKW?: number
   currentPowerKW?: number
   status?: RackStatus
+  healthStatus?: HealthStatus
+  backupStatus?: BackupStatus
+  totalStorageTB?: number
+  usedStorageTB?: number
+  isImmutable?: boolean
   ports: HardwarePort[]
   assetTag?: string
   serialNumber?: string
@@ -57,13 +79,29 @@ type InfraState = {
   selectedNodeId: string | null
   cableMode: boolean
   connectingPort: { nodeId: string; portId: string } | null
+  mousePosition: Vector3 | null
+  sites: Site[]
+  currentSiteId: string
   placementMode: boolean
   pendingRackType: string | null
+  alerts: InfraAlert[]
+  isNetworkManagerOpen: boolean
+  setNetworkManagerOpen: (open: boolean) => void
+  setCurrentSiteId: (siteId: string) => void
+  setMousePosition: (pos: Vector3 | null) => void
+  initiateFailover: () => void
+  pushAlert: (severity: AlertSeverity, message: string) => void
+  simulateRandomFailure: () => void
+  simulateDataCorruption: () => void
+  triggerSiteDisaster: () => void
+  processAutoBackups: () => void
   setPlacementMode: (mode: boolean, type?: string | null) => void
   addNode: (node: InfraNode) => void
   placeCatalogHardware: (key: HardwareCatalogKey, targetRackId: string) => boolean
   setSelectedNode: (id: string | null) => void
   handlePortClick: (nodeId: string, portId: string) => void
+  addReplicationLink: (sourceId: string, targetId: string) => void
+  removeConnection: (id: string) => void
   removeNode: (id: string) => void
   updateNode: (id: string, updates: Partial<InfraNode>) => void
 }
@@ -73,6 +111,8 @@ const catalogDisplayName: Record<HardwareCatalogKey, string> = {
   NETAPP_STORAGE_2U: 'NetApp Shelf (2U)',
   RUBRIK_BACKUP_2U: 'Rubrik Node (2U)',
   SWITCH_1U: 'Switch (1U)',
+  CRAC_UNIT_4U: 'CRAC Unit (4U)',
+  LOAD_BALANCER_1U: 'Load Balancer (1U)',
 }
 
 function createPortsForCatalog(nodeId: string, key: HardwareCatalogKey): HardwarePort[] {
@@ -98,20 +138,103 @@ export const useInfraStore = create<InfraState>()(
       selectedNodeId: null,
       cableMode: false,
       connectingPort: null,
+      mousePosition: null,
+      sites: [
+        { id: 'site-1', name: 'Primary-DC', isDisaster: false },
+        { id: 'site-2', name: 'DR-Site', isDisaster: false }
+      ],
+      currentSiteId: 'site-1',
       placementMode: false,
       pendingRackType: null,
+      alerts: [],
+      isNetworkManagerOpen: false,
+
+      setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
+      setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
+      setMousePosition: (pos) => set({ mousePosition: pos }),
+
+      pushAlert: (severity, message) => {
+        set((state) => ({
+          alerts: [{ id: crypto.randomUUID(), timestamp: Date.now(), severity, message }, ...state.alerts].slice(0, 50)
+        }))
+      },
+
+      simulateRandomFailure: () => {
+        const { nodes, pushAlert, updateNode } = get()
+        const hardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
+        if (hardware.length === 0) {
+           pushAlert('info', 'No hardware available to simulate failure.')
+           return
+        }
+        
+        const target = hardware[Math.floor(Math.random() * hardware.length)]
+        updateNode(target.id, { healthStatus: 'critical' })
+        pushAlert('critical', `Hardware Failure: ${target.name} (${target.id.slice(0,6)}) has entered a critical state!`)
+      },
+
+      simulateDataCorruption: () => {
+        const { nodes, pushAlert, updateNode } = get()
+        const storages = nodes.filter(n => (n.type === 'storage' || n.type === 'backup' || n.type === 'compute') && (n.totalStorageTB ?? 0) > 0)
+        if (storages.length === 0) return
+
+        const target = storages[Math.floor(Math.random() * storages.length)]
+        if (target.isImmutable) {
+          pushAlert('info', `SECURITY BLOCK: Ransomware attempt on ${target.name} thwarted by Immutable Snapshots!`)
+        } else {
+          updateNode(target.id, { healthStatus: 'critical', usedStorageTB: 0, backupStatus: 'unprotected' })
+          pushAlert('critical', `RANSOMWARE ATTACK: ${target.name} (${target.id.slice(0,6)}) data wiped! Storage lost.`)
+        }
+      },
+
+      triggerSiteDisaster: () => {
+        const { nodes, currentSiteId, sites, pushAlert, updateNode } = get()
+        set({ sites: sites.map(s => s.id === currentSiteId ? { ...s, isDisaster: true } : s) })
+        
+        let count = 0
+        nodes.forEach(n => {
+          if (n.siteId === currentSiteId && n.type !== 'rack' && n.type !== 'cooling' && n.backupStatus !== 'protected') {
+            updateNode(n.id, { healthStatus: 'critical' })
+            count++
+          }
+        })
+        pushAlert('critical', `SITE DISASTER: Datacenter failure simulation! ${count} unprotected systems offline in ${currentSiteId}. Protected systems survived.`)
+      },
+
+      initiateFailover: () => {
+        const { sites, pushAlert } = get()
+        const healthySite = sites.find(s => !s.isDisaster)
+        if (healthySite) {
+          set({ currentSiteId: healthySite.id })
+          pushAlert('info', `FAILOVER COMPLETED: Traffic routed to ${healthySite.name}.`)
+        } else {
+          pushAlert('critical', 'FAILOVER FAILED: No healthy sites available!')
+        }
+      },
+
+      processAutoBackups: () => {
+        const { nodes, pushAlert, updateNode } = get()
+        let backedUpCount = 0
+        nodes.forEach(n => {
+          if ((n.type === 'compute' || n.type === 'storage' || n.type === 'backup') && n.backupStatus === 'unprotected') {
+            updateNode(n.id, { backupStatus: 'protected' })
+            backedUpCount++
+          }
+        })
+        if (backedUpCount > 0) {
+          pushAlert('info', `Backup Cycle Complete: ${backedUpCount} nodes secured and moved to protected state.`)
+        }
+      },
 
       setPlacementMode: (mode, type = null) => set({ placementMode: mode, pendingRackType: type }),
 
       addNode: (node) => {
         const assetTag = node.assetTag || `ACC-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`
         const normalizedNode = node.catalogKey != null
-          ? { ...node, assetTag, ports: createPortsForCatalog(node.id, node.catalogKey) }
-          : { ...node, assetTag }
+          ? { ...node, siteId: node.siteId || get().currentSiteId, assetTag, ports: createPortsForCatalog(node.id, node.catalogKey) }
+          : { ...node, siteId: node.siteId || get().currentSiteId, assetTag }
 
         set((state) => ({ nodes: [...state.nodes, normalizedNode] }))
         
-        // Always calculate power explicitly when adding node
         if (normalizedNode.type === 'rack') {
           calculateRackPower(normalizedNode.id)
         } else if (normalizedNode.parentRackId) {
@@ -141,21 +264,32 @@ export const useInfraStore = create<InfraState>()(
           id: crypto.randomUUID(),
           type: spec.type,
           name: catalogDisplayName[key],
+          siteId: targetRack.siteId,
           position: new Vector3(targetRack.position.x, targetRack.position.y, targetRack.position.z),
           uHeight: spec.uHeight,
           wattage: spec.wattage,
-          btuOutput: spec.wattage * 3.41,
+          btuOutput: spec.btuOutput !== undefined ? spec.btuOutput : spec.wattage * 3.41,
+          totalStorageTB: spec.storageTB,
+          usedStorageTB: spec.storageTB > 0 ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : 0,
+          isImmutable: key === 'RUBRIK_BACKUP_2U',
+          backupStatus: 'unprotected',
           parentRackId: placement.rackId,
           slotIndex: placement.slotIndex,
           catalogKey: key,
           ports: [],
+          healthStatus: 'healthy',
         }
 
         get().addNode(node)
         return true
       },
 
-      setSelectedNode: (id) => set({ selectedNodeId: id, cableMode: false, connectingPort: null }),
+      setSelectedNode: (id) => set((state) => {
+        if (state.cableMode && id !== null) {
+           return { selectedNodeId: id }
+        }
+        return { selectedNodeId: id, cableMode: false, connectingPort: null }
+      }),
 
       handlePortClick: (nodeId, portId) => {
         const { cableMode, connectingPort } = get()
@@ -174,8 +308,8 @@ export const useInfraStore = create<InfraState>()(
             startPortId: connectingPort!.portId,
             endNodeId: nodeId,
             endPortId: portId,
-            bandwidthGbps: Math.floor(Math.random() * 100) + 10, // 10 to 110 Gbps
-            latencyMs: Math.random() > 0.7 ? Math.floor(Math.random() * 40) + 11 : Math.floor(Math.random() * 9) + 1, // 30% chance of >10ms latency
+            bandwidthGbps: Math.floor(Math.random() * 100) + 10,
+            latencyMs: Math.random() > 0.7 ? Math.floor(Math.random() * 40) + 11 : Math.floor(Math.random() * 9) + 1,
           }
 
           set((state) => ({
@@ -185,6 +319,49 @@ export const useInfraStore = create<InfraState>()(
           }))
         }
       },
+
+      addReplicationLink: (sourceId, targetId) => {
+        const { nodes, connections, pushAlert } = get()
+        const source = nodes.find(n => n.id === sourceId)
+        const target = nodes.find(n => n.id === targetId)
+
+        if (!source || !target) {
+          pushAlert('warning', 'Invalid source or target node.')
+          return
+        }
+
+        if (source.catalogKey !== target.catalogKey) {
+          pushAlert('critical', 'Replication Failed: Incompatible hardware types! Can only replicate between identical systems (e.g., Rubrik to Rubrik).')
+          return
+        }
+
+        // Find available ports
+        const usedStartPorts = new Set(connections.map(c => c.startPortId).concat(connections.map(c => c.endPortId)))
+        const sourcePort = source.ports.find(p => !usedStartPorts.has(p.id))
+        const targetPort = target.ports.find(p => !usedStartPorts.has(p.id))
+
+        if (!sourcePort || !targetPort) {
+          pushAlert('warning', 'Replication Failed: Insufficient free ports on source or target node.')
+          return
+        }
+
+        const newConnection: Connection = {
+          id: crypto.randomUUID(),
+          startNodeId: source.id,
+          startPortId: sourcePort.id,
+          endNodeId: target.id,
+          endPortId: targetPort.id,
+          bandwidthGbps: 10,
+          latencyMs: 35, // Typical WAN latency
+        }
+
+        set((state) => ({ connections: [...state.connections, newConnection] }))
+        pushAlert('info', `Replication Link established between ${source.name} and ${target.name}.`)
+      },
+
+      removeConnection: (id) => set(state => ({
+        connections: state.connections.filter(c => c.id !== id)
+      })),
 
       removeNode: (id) => {
         const nodeToRemove = get().nodes.find(n => n.id === id)
@@ -218,7 +395,6 @@ export const useInfraStore = create<InfraState>()(
           nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates } : n)
         }))
         
-        // Recalculate if updating rack parameters (like max power) or moving node
         const node = get().nodes.find(n => n.id === id)
         if (node) {
            if (node.type === 'rack') calculateRackPower(id)
@@ -229,6 +405,33 @@ export const useInfraStore = create<InfraState>()(
     }),
     {
       name: 'infra-tycoon-storage',
+      storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          let needsUpdate = false;
+          const migratedNodes = state.nodes.map(n => {
+            if (!n.siteId) {
+              needsUpdate = true;
+              return { ...n, siteId: 'site-1' }
+            }
+            return n;
+          });
+          
+          if (needsUpdate) {
+            useInfraStore.setState({ nodes: migratedNodes });
+          }
+
+          if (!state.sites || state.sites.length === 0) {
+             useInfraStore.setState({
+               sites: [
+                  { id: 'site-1', name: 'Primary-DC', isDisaster: false },
+                  { id: 'site-2', name: 'DR-Site', isDisaster: false }
+               ],
+               currentSiteId: 'site-1'
+             });
+          }
+        }
+      }
     }
   )
 )
