@@ -1,44 +1,39 @@
-import { Vector3 } from 'three'
 import { Inspector } from './components/ui/Inspector'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
+import { useState, useMemo } from 'react'
+import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function App() {
-  const addNode = useInfraStore((s) => s.addNode)
+  const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
+  const nodes = useInfraStore(s => s.nodes)
+  const racks = useMemo(() => nodes.filter(n => n.type === 'rack'), [nodes])
+
   const placeCatalogHardware = useInfraStore((s) => s.placeCatalogHardware)
   const totalPowerKW = useInfraStore((s) => s.totalPowerKW)
   const totalRoomBTU = useInfraStore((s) => s.totalRoomBTU)
   const overloadedRackCount = useInfraStore((s) => s.overloadedRackCount)
   const selectedNodeId = useInfraStore((s) => s.selectedNodeId)
+  const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
+  const placementMode = useInfraStore((s) => s.placementMode)
 
   const handleAddRack = () => {
-    addNode({
-      id: crypto.randomUUID(),
-      type: 'rack',
-      position: new Vector3(0, 0, 0),
-      name: '42U Rack',
-      uHeight: 42,
-      wattage: 0,
-      btuOutput: 0,
-      maxPowerKW: 5.0,
-      currentPowerKW: 0,
-      status: 'online',
-      ports: [],
-    })
+    setPlacementMode(true, '42U Rack')
   }
 
-  const tryPlace = (key: Parameters<typeof placeCatalogHardware>[0]) => {
-    const ok = placeCatalogHardware(key)
-    if (!ok) {
-      window.alert(
-        'No free slot found. Add a 42U rack first, or free space on an existing rack.',
-      )
-    }
+  const tryPlace = (key: HardwareCatalogKey) => {
+    setHardwareToAdd(key)
+  }
+
+  const handleConfirmPlacement = (rackId: string) => {
+    if (!hardwareToAdd) return
+    placeCatalogHardware(hardwareToAdd, rackId)
+    setHardwareToAdd(null)
   }
 
   return (
     <div className="relative h-full w-full">
-      <div className="fixed inset-0 z-0">
+      <div className="fixed inset-0 z-0 cursor-crosshair">
         <Scene />
       </div>
 
@@ -61,9 +56,10 @@ function App() {
           <button
             type="button"
             onClick={handleAddRack}
-            className="w-full rounded-md border border-[#48afbb]/50 bg-[#199277] px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#1faa8c] hover:border-[#5ec9b8] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52]"
+            disabled={placementMode}
+            className={`w-full rounded-md border px-3 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52] ${placementMode ? 'bg-slate-700 border-slate-600 text-slate-400' : 'border-[#48afbb]/50 bg-[#199277] text-white hover:bg-[#1faa8c] hover:border-[#5ec9b8]'}`}
           >
-            Add 42U Rack
+            {placementMode ? 'Placing Rack...' : 'Add 42U Rack'}
           </button>
         </div>
 
@@ -100,7 +96,7 @@ function App() {
       <Inspector />
 
       <div
-        className={`pointer-events-none fixed top-4 z-20 w-[260px] rounded-lg border border-[#48afbb]/25 bg-white/70 p-4 text-[#070f52] shadow-lg backdrop-blur-sm ${
+        className={`pointer-events-none fixed top-4 z-20 w-[260px] rounded-lg border border-[#48afbb]/25 bg-white/70 p-4 text-[#070f52] shadow-lg backdrop-blur-sm transition-all ${
           selectedNodeId ? 'right-[21.5rem]' : 'right-4'
         }`}
       >
@@ -132,6 +128,44 @@ function App() {
           </div>
         </div>
       </div>
+      
+      {placementMode && (
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-teal-900/90 text-teal-100 px-6 py-3 rounded-full border border-teal-500 shadow-2xl backdrop-blur-md font-medium text-sm animate-bounce">
+          Hover over the grid to position your rack, then click to place.
+        </div>
+      )}
+
+      {hardwareToAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#070f52]/80 backdrop-blur-sm">
+          <div className="bg-[#0a1536] border border-[#48afbb]/50 p-6 rounded-lg shadow-2xl max-w-md w-full">
+            <h2 className="text-xl font-bold text-white mb-4">Select Target Rack</h2>
+            {racks.length === 0 ? (
+              <p className="text-slate-400 text-sm mb-4">You need to place a rack first.</p>
+            ) : (
+              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto mb-4 pr-2">
+                {racks.map(rack => (
+                  <button 
+                    key={rack.id}
+                    onClick={() => handleConfirmPlacement(rack.id)}
+                    className="p-3 text-left bg-slate-800/80 hover:bg-teal-900/60 border border-slate-700 hover:border-teal-500 rounded text-white transition-colors flex justify-between items-center"
+                  >
+                    <span className="font-semibold">{rack.name}</span>
+                    <span className="text-xs text-slate-400">ID: {rack.id.slice(0,6)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button 
+                onClick={() => setHardwareToAdd(null)}
+                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
