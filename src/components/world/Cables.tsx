@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Line } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useInfraStore, type Connection } from '../../store/useInfraStore'
+import { CLOUD_GATEWAY_POS } from './Scene'
 
 const RACK_HEIGHT = 2.1
 const U_WORLD = RACK_HEIGHT / 42
@@ -21,18 +22,37 @@ function getPortWorldPosition(node: any, nodes: any[]) {
     )
 }
 
-function AnimatedCable({ conn, points, isWan, isVirtual }: { conn?: Connection, points: THREE.Vector3[], isWan?: boolean, isVirtual?: boolean }) {
+const WAN_GATEWAY_POS = new THREE.Vector3(0, 10, -15)
+
+function getWanCurve(portPos: THREE.Vector3, isIncoming: boolean) {
+    const backOfRack = new THREE.Vector3(portPos.x, portPos.y + 0.5, portPos.z - 1)
+    const ceiling = new THREE.Vector3(portPos.x * 0.5, 9, -5)
+    
+    const pts = [portPos, backOfRack, ceiling, WAN_GATEWAY_POS]
+    if (isIncoming) pts.reverse()
+    
+    return new THREE.CatmullRomCurve3(pts)
+}
+
+function AnimatedCable({ conn, points, isWan, isVirtual, isCloud, isQuarantined, isMigration }: { conn?: Connection, points: THREE.Vector3[], isWan?: boolean, isVirtual?: boolean, isCloud?: boolean, isQuarantined?: boolean, isMigration?: boolean }) {
     const lineRef = useRef<any>(null)
     
     let color = '#2dd4bf'
     if (conn && conn.latencyMs > 10) color = '#f59e0b'
     if (isWan) color = '#a855f7' // Purple for WAN
     if (isVirtual) color = '#ed8936' // Orange for VIP
+    if (isCloud) color = '#38bdf8' // Sky blue for Cloud
+    if (isQuarantined) color = '#ef4444' // Bright red for quarantined
+    if (isMigration) color = '#ffffff' // White for vMotion
 
-    const speed = isVirtual ? 0.05 : (conn && conn.bandwidthGbps > 50 ? 0.05 : 0.02)
+    const networkLoad = useInfraStore(s => s.networkLoad)
+    const baseSpeed = isMigration ? 0.15 : isVirtual ? 0.05 : (conn && conn.bandwidthGbps > 50 ? 0.05 : 0.02)
+    // Map latency inversely to speed (lower latency = faster animation)
+    const latencyMultiplier = conn ? Math.max(0.1, Math.min(2.0, 30 / conn.latencyMs)) : 1
+    const speed = baseSpeed * latencyMultiplier * (networkLoad * 5)
 
     useFrame(() => {
-        if (lineRef.current && lineRef.current.material) {
+        if (lineRef.current && lineRef.current.material && !isQuarantined) {
             lineRef.current.material.dashOffset -= speed
         }
     })
@@ -42,11 +62,11 @@ function AnimatedCable({ conn, points, isWan, isVirtual }: { conn?: Connection, 
             ref={lineRef}
             points={points}
             color={color}
-            lineWidth={isWan ? 3 : (isVirtual ? 2 : (conn && conn.latencyMs > 10 ? 2.5 : 1.5))}
+            lineWidth={isMigration ? 3 : isCloud ? 2.5 : isWan ? 3 : (isVirtual ? 2 : (conn && conn.latencyMs > 10 ? 2.5 : 1.5))}
             transparent
-            opacity={isVirtual ? 0.8 : 0.8}
+            opacity={isMigration ? 0.95 : isVirtual ? 0.8 : 0.8}
             dashed
-            dashSize={0.2}
+            dashSize={isMigration ? 0.1 : 0.2}
             dashScale={1}
             gapSize={0.1}
         />
@@ -63,12 +83,6 @@ function GhostCable() {
 
     const isWan = startNode.siteId !== currentSiteId
     let startPos = getPortWorldPosition(startNode, nodes)
-
-    if (isWan) {
-        // Drop straight down from the sky
-        startPos = new THREE.Vector3(mousePosition.x, 15, mousePosition.z)
-    }
-
     const endPos = new THREE.Vector3(mousePosition.x, mousePosition.y, mousePosition.z)
 
     if (!isWan && startPos.distanceTo(endPos) < 0.01) {
@@ -77,14 +91,15 @@ function GhostCable() {
 
     let curve
     if (isWan) {
-        curve = new THREE.LineCurve3(startPos, endPos)
+        // Ghost cable is coming from the remote site to the local mouse position
+        curve = getWanCurve(endPos, true)
     } else {
         const midPoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5)
         midPoint.y -= Math.min(0.5, startPos.distanceTo(endPos) * 0.2)
         curve = new THREE.CatmullRomCurve3([startPos, midPoint, endPos])
     }
     
-    const points = curve.getPoints(isWan ? 2 : 24)
+    const points = curve.getPoints(isWan ? 24 : 24)
 
     return <AnimatedCable points={points} isWan={isWan} />
 }
@@ -109,7 +124,7 @@ function PointerTracker() {
 }
 
 export function Cables() {
-    const { connections, nodes, currentSiteId } = useInfraStore()
+    const { connections, nodes, currentSiteId, cloudLinks } = useInfraStore()
 
     return (
         <group>
@@ -125,34 +140,30 @@ export function Cables() {
                 if (startNode.siteId !== currentSiteId && endNode.siteId !== currentSiteId) return null
 
                 const isWan = startNode.siteId !== endNode.siteId
-                let startPos, endPos
+                let curve
                 
                 if (isWan) {
-                    const visibleNode = startNode.siteId === currentSiteId ? startNode : endNode
-                    startPos = getPortWorldPosition(visibleNode, nodes)
-                    // Map to vertical coordinate directly above the local rack at Y=15
-                    endPos = new THREE.Vector3(startPos.x, 15, startPos.z)
+                    const isStartLocal = startNode.siteId === currentSiteId
+                    const localNode = isStartLocal ? startNode : endNode
+                    const portPos = getPortWorldPosition(localNode, nodes)
+                    
+                    curve = getWanCurve(portPos, !isStartLocal)
                 } else {
-                    startPos = getPortWorldPosition(startNode, nodes)
-                    endPos = getPortWorldPosition(endNode, nodes)
-                }
+                    const startPos = getPortWorldPosition(startNode, nodes)
+                    const endPos = getPortWorldPosition(endNode, nodes)
 
-                if (!isWan && startPos.distanceTo(endPos) < 0.01) {
-                    endPos.x += 0.01
-                }
+                    if (startPos.distanceTo(endPos) < 0.01) {
+                        endPos.x += 0.01
+                    }
 
-                let curve
-                if (isWan) {
-                    curve = new THREE.LineCurve3(startPos, endPos)
-                } else {
                     const midPoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5)
                     midPoint.y -= Math.min(0.5, startPos.distanceTo(endPos) * 0.2)
                     curve = new THREE.CatmullRomCurve3([startPos, midPoint, endPos])
                 }
                 
-                const points = curve.getPoints(isWan ? 2 : 24)
+                const points = curve.getPoints(24)
 
-                return <AnimatedCable key={conn.id} conn={conn} points={points} isWan={isWan} />
+                return <AnimatedCable key={conn.id} conn={conn} points={points} isWan={isWan} isQuarantined={startNode.isInfected || endNode.isInfected} />
             })}
 
             {nodes.filter(n => n.type === 'load_balancer' && n.siteId === currentSiteId && n.healthStatus !== 'critical').map(lb => {
@@ -177,6 +188,37 @@ export function Cables() {
 
                     return <AnimatedCable key={`lb-${lb.id}-${comp.id}`} points={points} isVirtual />
                 })
+            })}
+
+            {/* Cloud Tiering Links */}
+            {cloudLinks.map(cl => {
+                const node = nodes.find(n => n.id === cl.nodeId)
+                if (!node || node.siteId !== currentSiteId) return null
+                
+                const portPos = getPortWorldPosition(node, nodes)
+                const midUp = new THREE.Vector3(portPos.x + 3, portPos.y + 4, portPos.z)
+                const approach = new THREE.Vector3(CLOUD_GATEWAY_POS.x - 2, CLOUD_GATEWAY_POS.y + 1, CLOUD_GATEWAY_POS.z)
+                
+                const curve = new THREE.CatmullRomCurve3([portPos, midUp, approach, CLOUD_GATEWAY_POS])
+                const pts = curve.getPoints(32)
+
+                return <AnimatedCable key={`cloud-${cl.id}`} points={pts} isCloud />
+            })}
+
+            {/* AI Migration Cables */}
+            {nodes.filter(n => n.activeMigration && n.siteId === currentSiteId).map(sourceNode => {
+                const targetNode = nodes.find(n => n.id === sourceNode.activeMigration!.targetNodeId)
+                if (!targetNode) return null
+                
+                const srcPos = getPortWorldPosition(sourceNode, nodes)
+                const tgtPos = getPortWorldPosition(targetNode, nodes)
+                const midPoint = new THREE.Vector3().addVectors(srcPos, tgtPos).multiplyScalar(0.5)
+                midPoint.y += 1.2
+                
+                const curve = new THREE.CatmullRomCurve3([srcPos, midPoint, tgtPos])
+                const pts = curve.getPoints(20)
+
+                return <AnimatedCable key={`migration-${sourceNode.id}`} points={pts} isMigration />
             })}
 
             <GhostCable />

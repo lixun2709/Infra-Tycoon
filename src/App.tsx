@@ -45,6 +45,23 @@ function EmergencyToasts() {
   )
 }
 
+function RansomwareVignette() {
+  const nodes = useInfraStore(s => s.nodes)
+  const hasInfection = nodes.some(n => n.isInfected)
+
+  if (!hasInfection) return null
+
+  return (
+    <div 
+      className="fixed inset-0 z-[90] pointer-events-none animate-pulse"
+      style={{
+        background: 'radial-gradient(ellipse at center, transparent 50%, rgba(168, 28, 88, 0.25) 80%, rgba(120, 0, 60, 0.5) 100%)',
+        mixBlendMode: 'screen',
+      }}
+    />
+  )
+}
+
 function App() {
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
   const nodes = useInfraStore(s => s.nodes)
@@ -191,6 +208,7 @@ function App() {
       </aside>
 
       <EmergencyToasts />
+      <RansomwareVignette />
       <Dashboard />
       <NetworkManager />
       <Inspector />

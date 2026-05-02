@@ -20,6 +20,8 @@ export type InfraAlert = {
   timestamp: number
   severity: AlertSeverity
   message: string
+  isAcknowledged: boolean
+  nodeId?: string
 }
 
 export type Site = {
@@ -55,9 +57,22 @@ export type InfraNode = {
   totalStorageTB?: number
   usedStorageTB?: number
   isImmutable?: boolean
+  clusterRole?: 'active' | 'standby'
+  cloudTieredTB?: number
+  isInfected?: boolean
+  entropyLevel?: number
+  failureProbability?: number
+  predictedLifeRemaining?: number
+  activeMigration?: { targetNodeId: string; progress: number } | null
   ports: HardwarePort[]
   assetTag?: string
   serialNumber?: string
+}
+
+export interface CloudLink {
+  id: string
+  nodeId: string
+  tieredTB: number
 }
 
 export interface Connection {
@@ -67,12 +82,15 @@ export interface Connection {
   endNodeId: string
   endPortId: string
   bandwidthGbps: number
+  throughputGbps: number
   latencyMs: number
 }
 
 type InfraState = {
   nodes: InfraNode[]
   connections: Connection[]
+  cloudLinks: CloudLink[]
+  cloudEgressGB: number
   totalPowerKW: number
   totalRoomBTU: number
   overloadedRackCount: number
@@ -86,21 +104,29 @@ type InfraState = {
   pendingRackType: string | null
   alerts: InfraAlert[]
   isNetworkManagerOpen: boolean
+  networkLoad: number
+  setNetworkLoad: (load: number) => void
   setNetworkManagerOpen: (open: boolean) => void
   setCurrentSiteId: (siteId: string) => void
   setMousePosition: (pos: Vector3 | null) => void
   initiateFailover: () => void
-  pushAlert: (severity: AlertSeverity, message: string) => void
+  pushAlert: (severity: AlertSeverity, message: string, nodeId?: string) => void
+  acknowledgeAlert: (id: string) => void
+  acknowledgeAllAlerts: () => void
   simulateRandomFailure: () => void
   simulateDataCorruption: () => void
   triggerSiteDisaster: () => void
   processAutoBackups: () => void
+  processCloudTiering: () => void
+  performMassRollback: () => void
+  processAIPredictions: () => void
+  simulateStressTest: () => void
   setPlacementMode: (mode: boolean, type?: string | null) => void
   addNode: (node: InfraNode) => void
   placeCatalogHardware: (key: HardwareCatalogKey, targetRackId: string) => boolean
   setSelectedNode: (id: string | null) => void
   handlePortClick: (nodeId: string, portId: string) => void
-  addReplicationLink: (sourceId: string, targetId: string) => void
+  addReplicationLink: (sourceId: string, sourcePortId: string, targetId: string, targetPortId: string) => void
   removeConnection: (id: string) => void
   removeNode: (id: string) => void
   updateNode: (id: string, updates: Partial<InfraNode>) => void
@@ -132,6 +158,8 @@ export const useInfraStore = create<InfraState>()(
     (set, get) => ({
       nodes: [],
       connections: [],
+      cloudLinks: [],
+      cloudEgressGB: 0,
       totalPowerKW: 0,
       totalRoomBTU: 0,
       overloadedRackCount: 0,
@@ -148,14 +176,28 @@ export const useInfraStore = create<InfraState>()(
       pendingRackType: null,
       alerts: [],
       isNetworkManagerOpen: false,
+      networkLoad: 0.1,
 
+      setNetworkLoad: (load) => set({ networkLoad: load }),
       setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
       setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
       setMousePosition: (pos) => set({ mousePosition: pos }),
 
-      pushAlert: (severity, message) => {
+      pushAlert: (severity, message, nodeId) => {
         set((state) => ({
-          alerts: [{ id: crypto.randomUUID(), timestamp: Date.now(), severity, message }, ...state.alerts].slice(0, 50)
+          alerts: [{ id: crypto.randomUUID(), timestamp: Date.now(), severity, message, isAcknowledged: false, nodeId }, ...state.alerts].slice(0, 100)
+        }))
+      },
+
+      acknowledgeAlert: (id) => {
+        set((state) => ({
+          alerts: state.alerts.map(a => a.id === id ? { ...a, isAcknowledged: true } : a)
+        }))
+      },
+
+      acknowledgeAllAlerts: () => {
+        set((state) => ({
+          alerts: state.alerts.map(a => ({ ...a, isAcknowledged: true }))
         }))
       },
 
@@ -169,7 +211,7 @@ export const useInfraStore = create<InfraState>()(
         
         const target = hardware[Math.floor(Math.random() * hardware.length)]
         updateNode(target.id, { healthStatus: 'critical' })
-        pushAlert('critical', `Hardware Failure: ${target.name} (${target.id.slice(0,6)}) has entered a critical state!`)
+        pushAlert('critical', `Hardware Failure: ${target.name} (${target.id.slice(0,6)}) has entered a critical state!`, target.id)
       },
 
       simulateDataCorruption: () => {
@@ -177,12 +219,31 @@ export const useInfraStore = create<InfraState>()(
         const storages = nodes.filter(n => (n.type === 'storage' || n.type === 'backup' || n.type === 'compute') && (n.totalStorageTB ?? 0) > 0)
         if (storages.length === 0) return
 
-        const target = storages[Math.floor(Math.random() * storages.length)]
-        if (target.isImmutable) {
-          pushAlert('info', `SECURITY BLOCK: Ransomware attempt on ${target.name} thwarted by Immutable Snapshots!`)
-        } else {
-          updateNode(target.id, { healthStatus: 'critical', usedStorageTB: 0, backupStatus: 'unprotected' })
-          pushAlert('critical', `RANSOMWARE ATTACK: ${target.name} (${target.id.slice(0,6)}) data wiped! Storage lost.`)
+        // Select multiple targets for a siege
+        const shuffled = [...storages].sort(() => Math.random() - 0.5)
+        const targets = shuffled.slice(0, Math.min(shuffled.length, Math.max(1, Math.floor(shuffled.length * 0.6))))
+        let blocked = 0
+        let infected = 0
+
+        targets.forEach(target => {
+          if (target.isImmutable) {
+            blocked++
+            pushAlert('info', `🛡️ THREAT BLOCKED: Ransomware attempt on ${target.name} thwarted by Immutable Snapshots!`, target.id)
+          } else {
+            infected++
+            updateNode(target.id, { 
+              isInfected: true, 
+              entropyLevel: 100, 
+              healthStatus: 'critical', 
+              usedStorageTB: 0, 
+              backupStatus: 'unprotected' 
+            })
+            pushAlert('critical', `🦠 RANSOMWARE: ${target.name} encrypted! Entropy 100%. Data lost.`, target.id)
+          }
+        })
+
+        if (infected > 0) {
+          pushAlert('critical', `🔴 RANSOMWARE SIEGE: ${infected} node(s) encrypted, ${blocked} blocked by immutable snapshots.`)
         }
       },
 
@@ -223,6 +284,127 @@ export const useInfraStore = create<InfraState>()(
         if (backedUpCount > 0) {
           pushAlert('info', `Backup Cycle Complete: ${backedUpCount} nodes secured and moved to protected state.`)
         }
+      },
+
+      processCloudTiering: () => {
+        const { nodes, cloudLinks, pushAlert } = get()
+        const newLinks: CloudLink[] = []
+        nodes.forEach(n => {
+          if ((n.type === 'storage' || n.type === 'backup') && (n.totalStorageTB ?? 0) > 0) {
+            const usedPercent = ((n.usedStorageTB ?? 0) / n.totalStorageTB!) * 100
+            const alreadyLinked = cloudLinks.some(cl => cl.nodeId === n.id)
+            if (usedPercent >= 90 && !alreadyLinked) {
+              const overflow = (n.usedStorageTB ?? 0) - (n.totalStorageTB! * 0.9)
+              newLinks.push({ id: crypto.randomUUID(), nodeId: n.id, tieredTB: overflow })
+              pushAlert('info', `CLOUD TIERING: ${n.name} at ${usedPercent.toFixed(0)}% capacity. ${overflow.toFixed(1)} TB auto-tiered to Cloud Object Storage.`, n.id)
+            }
+          }
+        })
+        if (newLinks.length > 0) {
+          set(state => ({ cloudLinks: [...state.cloudLinks, ...newLinks] }))
+        }
+      },
+
+      performMassRollback: () => {
+        const { nodes, pushAlert } = get()
+        const infectedNodes = nodes.filter(n => n.isInfected)
+        if (infectedNodes.length === 0) {
+          pushAlert('info', 'No infected nodes found. Systems are clean.')
+          return
+        }
+
+        set(state => ({
+          nodes: state.nodes.map(n => {
+            if (!n.isInfected) return n
+            const spec = n.catalogKey ? HARDWARE_CATALOG[n.catalogKey] : null
+            return {
+              ...n,
+              isInfected: false,
+              entropyLevel: 0,
+              healthStatus: 'healthy' as HealthStatus,
+              usedStorageTB: spec ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : (n.totalStorageTB ?? 0) * 0.5,
+              backupStatus: 'protected' as BackupStatus,
+            }
+          })
+        }))
+        pushAlert('info', `🟢 MASS ROLLBACK COMPLETE: ${infectedNodes.length} node(s) restored from last clean snapshot.`)
+      },
+
+      processAIPredictions: () => {
+        const { nodes, connections, networkLoad, pushAlert, totalRoomBTU } = get()
+        const hardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling' && n.healthStatus !== 'critical' && !n.isInfected)
+        
+        const updatedNodes = nodes.map(n => {
+          if (n.type === 'rack' || n.type === 'cooling') return n
+          if (n.healthStatus === 'critical' || n.isInfected) return n
+
+          // Calculate stress factors
+          const connThroughput = connections
+            .filter(c => c.startNodeId === n.id || c.endNodeId === n.id)
+            .reduce((sum, c) => sum + (c.throughputGbps / c.bandwidthGbps), 0)
+          
+          const thermalStress = Math.min(1, totalRoomBTU / 80000)
+          const loadStress = networkLoad
+          const storageStress = (n.totalStorageTB ?? 0) > 0 ? ((n.usedStorageTB ?? 0) / n.totalStorageTB!) : 0
+          
+          // Weighted failure probability
+          let prob = (n.failureProbability ?? 0)
+          const stressDelta = (thermalStress * 0.3 + loadStress * 0.3 + connThroughput * 0.2 + storageStress * 0.2) * 0.02
+          prob = Math.min(1, Math.max(0, prob + stressDelta - 0.005)) // natural decay of 0.005
+          
+          const lifeHours = prob > 0.1 ? Math.max(1, Math.round((1 - prob) * 720)) : 720
+
+          return { ...n, failureProbability: prob, predictedLifeRemaining: lifeHours }
+        })
+
+        // Check for proactive migrations
+        updatedNodes.forEach(n => {
+          if ((n.failureProbability ?? 0) > 0.8 && !n.activeMigration && n.type === 'compute') {
+            // Find healthiest compute in same site
+            const candidates = updatedNodes.filter(c => 
+              c.id !== n.id && c.type === 'compute' && c.siteId === n.siteId && 
+              (c.failureProbability ?? 0) < 0.3 && c.healthStatus !== 'critical' && !c.isInfected
+            )
+            if (candidates.length > 0) {
+              const target = candidates.sort((a, b) => (a.failureProbability ?? 0) - (b.failureProbability ?? 0))[0]
+              const idx = updatedNodes.findIndex(x => x.id === n.id)
+              if (idx >= 0) {
+                updatedNodes[idx] = { ...updatedNodes[idx], activeMigration: { targetNodeId: target.id, progress: 0 } }
+              }
+              pushAlert('warning', `🧠 AI PREDICTION: ${n.name} failure probability ${((n.failureProbability ?? 0) * 100).toFixed(0)}%. Initiating predictive migration to ${target.name}.`, n.id)
+            }
+          }
+          
+          // Progress existing migrations
+          if (n.activeMigration) {
+            const idx = updatedNodes.findIndex(x => x.id === n.id)
+            if (idx >= 0) {
+              const newProgress = (n.activeMigration.progress ?? 0) + 20
+              if (newProgress >= 100) {
+                updatedNodes[idx] = { ...updatedNodes[idx], activeMigration: null, failureProbability: Math.max(0, (n.failureProbability ?? 0) - 0.3) }
+                pushAlert('info', `✅ MIGRATION COMPLETE: Workloads from ${n.name} safely migrated.`, n.id)
+              } else {
+                updatedNodes[idx] = { ...updatedNodes[idx], activeMigration: { ...n.activeMigration, progress: newProgress } }
+              }
+            }
+          }
+        })
+
+        set({ nodes: updatedNodes })
+      },
+
+      simulateStressTest: () => {
+        const { nodes, pushAlert } = get()
+        const hardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling' && n.healthStatus !== 'critical')
+        if (hardware.length === 0) {
+          pushAlert('info', 'No hardware available for stress test.')
+          return
+        }
+        const target = hardware[Math.floor(Math.random() * hardware.length)]
+        set(state => ({
+          nodes: state.nodes.map(n => n.id === target.id ? { ...n, failureProbability: 0.75 + Math.random() * 0.2 } : n)
+        }))
+        pushAlert('warning', `🔬 STRESS TEST: Artificially elevated failure probability on ${target.name} to trigger AI intervention.`, target.id)
       },
 
       setPlacementMode: (mode, type = null) => set({ placementMode: mode, pendingRackType: type }),
@@ -272,6 +454,7 @@ export const useInfraStore = create<InfraState>()(
           totalStorageTB: spec.storageTB,
           usedStorageTB: spec.storageTB > 0 ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : 0,
           isImmutable: key === 'RUBRIK_BACKUP_2U',
+          clusterRole: 'active',
           backupStatus: 'unprotected',
           parentRackId: placement.rackId,
           slotIndex: placement.slotIndex,
@@ -309,6 +492,7 @@ export const useInfraStore = create<InfraState>()(
             endNodeId: nodeId,
             endPortId: portId,
             bandwidthGbps: Math.floor(Math.random() * 100) + 10,
+            throughputGbps: 0,
             latencyMs: Math.random() > 0.7 ? Math.floor(Math.random() * 40) + 11 : Math.floor(Math.random() * 9) + 1,
           }
 
@@ -320,13 +504,13 @@ export const useInfraStore = create<InfraState>()(
         }
       },
 
-      addReplicationLink: (sourceId, targetId) => {
+      addReplicationLink: (sourceId, sourcePortId, targetId, targetPortId) => {
         const { nodes, connections, pushAlert } = get()
         const source = nodes.find(n => n.id === sourceId)
         const target = nodes.find(n => n.id === targetId)
 
-        if (!source || !target) {
-          pushAlert('warning', 'Invalid source or target node.')
+        if (!source || !target || !sourcePortId || !targetPortId) {
+          pushAlert('warning', 'Invalid source or target node/port.')
           return
         }
 
@@ -335,25 +519,25 @@ export const useInfraStore = create<InfraState>()(
           return
         }
 
-        // Find available ports
-        const usedStartPorts = new Set(connections.map(c => c.startPortId).concat(connections.map(c => c.endPortId)))
-        const sourcePort = source.ports.find(p => !usedStartPorts.has(p.id))
-        const targetPort = target.ports.find(p => !usedStartPorts.has(p.id))
-
-        if (!sourcePort || !targetPort) {
-          pushAlert('warning', 'Replication Failed: Insufficient free ports on source or target node.')
+        const usedPorts = new Set(connections.map(c => c.startPortId).concat(connections.map(c => c.endPortId)))
+        if (usedPorts.has(sourcePortId) || usedPorts.has(targetPortId)) {
+          pushAlert('warning', 'Replication Failed: One or both of the selected ports are already physically connected to another device.')
           return
         }
 
         const newConnection: Connection = {
           id: crypto.randomUUID(),
           startNodeId: source.id,
-          startPortId: sourcePort.id,
+          startPortId: sourcePortId,
           endNodeId: target.id,
-          endPortId: targetPort.id,
+          endPortId: targetPortId,
           bandwidthGbps: 10,
+          throughputGbps: 0,
           latencyMs: 35, // Typical WAN latency
         }
+
+        // Set DR node as standby
+        get().updateNode(target.id, { clusterRole: 'standby' })
 
         set((state) => ({ connections: [...state.connections, newConnection] }))
         pushAlert('info', `Replication Link established between ${source.name} and ${target.name}.`)
@@ -395,10 +579,29 @@ export const useInfraStore = create<InfraState>()(
           nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates } : n)
         }))
         
-        const node = get().nodes.find(n => n.id === id)
+        const state = get()
+        const node = state.nodes.find(n => n.id === id)
         if (node) {
            if (node.type === 'rack') calculateRackPower(id)
            else if (node.parentRackId) calculateRackPower(node.parentRackId)
+           
+           // Auto-Failover Logic
+           if (updates.healthStatus === 'critical') {
+             const replConn = state.connections.find(c => c.startNodeId === id || c.endNodeId === id)
+             if (replConn) {
+               const partnerId = replConn.startNodeId === id ? replConn.endNodeId : replConn.startNodeId
+               const partner = state.nodes.find(n => n.id === partnerId)
+               // Simple check if it's a replication link (same catalog type)
+               if (partner && partner.catalogKey === node.catalogKey && partner.clusterRole !== 'active' && partner.healthStatus !== 'critical') {
+                 // Prevent infinite loop by bypassing updateNode for partner, or just using updateNode carefully
+                 // Actually, calling updateNode again is safe since updates.healthStatus is not 'critical'
+                 set((s) => ({
+                   nodes: s.nodes.map(n => n.id === partner.id ? { ...n, clusterRole: 'active' } : n)
+                 }))
+                 state.pushAlert('critical', `AUTO-FAILOVER INITIATED: ${node.name} failed. Traffic automatically routed to DR partner ${partner.name}.`, partner.id)
+               }
+             }
+           }
         }
         recalculateRoomStats()
       },

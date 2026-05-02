@@ -18,7 +18,7 @@ export function calculateRackPower(rackId: string) {
   const status = currentPowerKW > maxPowerKW ? 'power_overload' : 'online'
 
   if (rack.status !== 'power_overload' && status === 'power_overload') {
-     useInfraStore.getState().pushAlert('critical', `Rack ${rack.name || rack.id.slice(0,6)} is experiencing a POWER OVERLOAD! (${currentPowerKW.toFixed(1)}kW)`)
+     useInfraStore.getState().pushAlert('critical', `Rack ${rack.name || rack.id.slice(0,6)} is experiencing a POWER OVERLOAD! (${currentPowerKW.toFixed(1)}kW)`, rackId)
   }
 
   useInfraStore.setState((state) => ({

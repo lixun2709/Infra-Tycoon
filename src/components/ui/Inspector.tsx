@@ -2,9 +2,10 @@ import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 export function Inspector() {
-  const { nodes, connections, selectedNodeId, cableMode, connectingPort, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites } = useInfraStore()
+  const { nodes, connections, selectedNodeId, cableMode, connectingPort, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const nodeSite = sites.find(s => s.id === selectedNode?.siteId)
+  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'performance'>('details')
 
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
 
@@ -56,6 +57,29 @@ export function Inspector() {
         )}
       </div>
 
+      <div className="flex border-b border-slate-700/50 mb-4">
+        <button 
+          onClick={() => setActiveTab('details')}
+          className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeTab === 'details' ? 'text-white border-b-2 border-teal-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          Details
+        </button>
+        <button 
+          onClick={() => setActiveTab('performance')}
+          className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeTab === 'performance' ? 'text-white border-b-2 border-purple-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          Performance
+        </button>
+        <button 
+          onClick={() => setActiveTab('alerts')}
+          className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeTab === 'alerts' ? 'text-white border-b-2 border-red-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          Alerts
+        </button>
+      </div>
+
+      {activeTab === 'details' ? (
+        <>
       <div className="space-y-4 mb-6 bg-slate-800/50 p-4 rounded-lg">
         <div>
           <p className="text-slate-400 text-[10px] uppercase tracking-widest">Specifications</p>
@@ -188,6 +212,72 @@ export function Inspector() {
           </p>
         </div>
       )}
+      </>
+      ) : activeTab === 'alerts' ? (
+        <div className="space-y-3">
+          {(() => {
+            const nodeAlerts = alerts.filter(a => a.nodeId === selectedNode.id)
+            if (nodeAlerts.length === 0) {
+              return <p className="text-xs text-slate-500 italic text-center py-4">No alerts for this hardware.</p>
+            }
+            return nodeAlerts.map(alert => (
+              <div key={alert.id} className={`flex gap-3 items-start p-3 bg-slate-800/50 rounded-lg border ${alert.severity === 'critical' ? 'border-red-900/50' : 'border-slate-700'} ${alert.isAcknowledged ? 'opacity-60' : ''}`}>
+                <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 shadow-sm ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse shadow-red-500/50' : alert.severity === 'warning' ? 'bg-amber-400 shadow-amber-400/50' : 'bg-blue-400 shadow-blue-400/50'}`} />
+                <div className="flex-1 min-w-0">
+                  <p className={`text-xs leading-snug ${alert.severity === 'critical' ? 'text-red-200' : alert.severity === 'warning' ? 'text-amber-200' : 'text-slate-300'}`}>
+                    {alert.message}
+                  </p>
+                  <p className="text-[9px] text-slate-500 mt-2 flex justify-between">
+                    <span>{new Date(alert.timestamp).toLocaleTimeString()}</span>
+                    {alert.isAcknowledged && <span className="text-teal-500 font-bold uppercase">Acknowledged</span>}
+                  </p>
+                </div>
+              </div>
+            ))
+          })()}
+        </div>
+      ) : activeTab === 'performance' ? (
+        <div className="space-y-4">
+          {(() => {
+            const activeConns = connections.filter(c => c.startNodeId === selectedNode.id || c.endNodeId === selectedNode.id)
+            if (activeConns.length === 0) {
+              return <p className="text-xs text-slate-500 italic text-center py-4">No active connections to monitor.</p>
+            }
+            return activeConns.map(conn => {
+              const utilPercent = Math.min(100, (conn.throughputGbps / conn.bandwidthGbps) * 100)
+              const remoteId = conn.startNodeId === selectedNode.id ? conn.endNodeId : conn.startNodeId
+              const remoteNode = nodes.find(n => n.id === remoteId)
+              const isWan = remoteNode?.siteId !== selectedNode.siteId
+              return (
+                <div key={conn.id} className="bg-slate-800/50 p-4 rounded-lg border border-slate-700/50">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs text-slate-300 font-semibold truncate">{remoteNode?.name || 'Unknown Node'}</span>
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${isWan ? 'bg-purple-900/40 text-purple-400 border border-purple-500/30' : 'bg-slate-700 text-slate-300'}`}>
+                      {isWan ? 'WAN' : 'LAN'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-between text-[10px] mb-1">
+                    <span className="text-slate-400">Throughput</span>
+                    <span className="font-mono text-teal-400">{conn.throughputGbps.toFixed(1)} / {conn.bandwidthGbps} Gbps</span>
+                  </div>
+                  <div className="w-full bg-slate-900 rounded-sm h-2 overflow-hidden mb-3">
+                    <div 
+                      className={`h-full transition-all duration-300 ease-in-out ${utilPercent > 80 ? 'bg-red-500' : utilPercent > 50 ? 'bg-amber-400' : 'bg-teal-500'}`} 
+                      style={{ width: `${utilPercent}%` }} 
+                    />
+                  </div>
+
+                  <div className="flex justify-between text-[10px]">
+                    <span className="text-slate-400">Latency</span>
+                    <span className={`font-mono ${conn.latencyMs > 20 ? 'text-amber-400' : 'text-green-400'}`}>{conn.latencyMs} ms</span>
+                  </div>
+                </div>
+              )
+            })
+          })()}
+        </div>
+      ) : null}
     </div>
 
     {showDecommissionConfirm && (

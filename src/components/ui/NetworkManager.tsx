@@ -13,22 +13,36 @@ export function NetworkManager() {
   } = useInfraStore()
   
   const [sourceId, setSourceId] = useState<string>('')
+  const [sourcePortId, setSourcePortId] = useState<string>('')
   const [targetId, setTargetId] = useState<string>('')
+  const [targetPortId, setTargetPortId] = useState<string>('')
+
+  // Reset ports when node selection changes
+  React.useEffect(() => { setSourcePortId('') }, [sourceId])
+  React.useEffect(() => { setTargetPortId('') }, [targetId])
 
   if (!isNetworkManagerOpen) return null
 
-  // We are assuming Site 1 is Primary and Site 2 is DR, or we can just list them by siteId
   const primarySiteId = sites[0]?.id
   const drSiteId = sites[1]?.id
 
   const primaryNodes = nodes.filter(n => n.siteId === primarySiteId && (n.type === 'storage' || n.type === 'backup' || n.type === 'compute'))
   const drNodes = nodes.filter(n => n.siteId === drSiteId && (n.type === 'storage' || n.type === 'backup' || n.type === 'compute'))
 
+  const sourceNode = nodes.find(n => n.id === sourceId)
+  const targetNode = nodes.find(n => n.id === targetId)
+
+  const usedPorts = new Set(connections.map(c => c.startPortId).concat(connections.map(c => c.endPortId)))
+  const availableSourcePorts = sourceNode?.ports.filter(p => !usedPorts.has(p.id)) || []
+  const availableTargetPorts = targetNode?.ports.filter(p => !usedPorts.has(p.id)) || []
+
   const handleCreateLink = () => {
-    if (sourceId && targetId) {
-      addReplicationLink(sourceId, targetId)
+    if (sourceId && sourcePortId && targetId && targetPortId) {
+      addReplicationLink(sourceId, sourcePortId, targetId, targetPortId)
       setSourceId('')
+      setSourcePortId('')
       setTargetId('')
+      setTargetPortId('')
     }
   }
 
@@ -64,37 +78,69 @@ export function NetworkManager() {
             <h3 className="text-sm font-bold text-teal-400 mb-4 uppercase tracking-wider">Create Replication Link</h3>
             
             <div className="space-y-4">
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Source Node (Primary-DC)</label>
-                <select 
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
-                  value={sourceId}
-                  onChange={(e) => setSourceId(e.target.value)}
-                >
-                  <option value="">-- Select Source Node --</option>
-                  {primaryNodes.map(n => (
-                    <option key={n.id} value={n.id}>{n.name} [{n.id.slice(0,6)}]</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Source Node (Primary-DC)</label>
+                  <select 
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
+                    value={sourceId}
+                    onChange={(e) => setSourceId(e.target.value)}
+                  >
+                    <option value="">-- Select Source Node --</option>
+                    {primaryNodes.map(n => (
+                      <option key={n.id} value={n.id}>{n.name} [{n.id.slice(0,6)}]</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Source Port</label>
+                  <select 
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500 disabled:opacity-50"
+                    value={sourcePortId}
+                    onChange={(e) => setSourcePortId(e.target.value)}
+                    disabled={!sourceId}
+                  >
+                    <option value="">-- Select Port --</option>
+                    {availableSourcePorts.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs text-slate-400 block mb-1">Target Node (DR-Site)</label>
-                <select 
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
-                  value={targetId}
-                  onChange={(e) => setTargetId(e.target.value)}
-                >
-                  <option value="">-- Select Target Node --</option>
-                  {drNodes.map(n => (
-                    <option key={n.id} value={n.id}>{n.name} [{n.id.slice(0,6)}]</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Target Node (DR-Site)</label>
+                  <select 
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500"
+                    value={targetId}
+                    onChange={(e) => setTargetId(e.target.value)}
+                  >
+                    <option value="">-- Select Target Node --</option>
+                    {drNodes.map(n => (
+                      <option key={n.id} value={n.id}>{n.name} [{n.id.slice(0,6)}]</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 block mb-1">Target Port</label>
+                  <select 
+                    className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500 disabled:opacity-50"
+                    value={targetPortId}
+                    onChange={(e) => setTargetPortId(e.target.value)}
+                    disabled={!targetId}
+                  >
+                    <option value="">-- Select Port --</option>
+                    {availableTargetPorts.map(p => (
+                      <option key={p.id} value={p.id}>{p.label}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <button 
                 onClick={handleCreateLink}
-                disabled={!sourceId || !targetId}
+                disabled={!sourceId || !sourcePortId || !targetId || !targetPortId}
                 className="w-full py-2 bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold rounded transition-colors"
               >
                 Create Replication Link
@@ -115,6 +161,8 @@ export function NetworkManager() {
                   {activeWanLinks.map(conn => {
                     const sNode = nodes.find(n => n.id === conn.startNodeId)
                     const eNode = nodes.find(n => n.id === conn.endNodeId)
+                    const sPort = sNode?.ports.find(p => p.id === conn.startPortId)
+                    const ePort = eNode?.ports.find(p => p.id === conn.endPortId)
                     
                     const isHealthy = sNode?.healthStatus !== 'critical' && eNode?.healthStatus !== 'critical'
                     
@@ -131,15 +179,21 @@ export function NetworkManager() {
                             Sever Link
                           </button>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <div className="truncate flex-1">
-                            <span className="text-slate-400 text-xs block">Source</span>
-                            <span className="text-white">{sNode?.name || 'Unknown'}</span>
+                        <div className="flex justify-between items-center gap-2">
+                          <div className="flex-1 min-w-0">
+                            <span className="text-slate-400 text-[10px] uppercase tracking-wider block mb-0.5">Source</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-white truncate text-sm" title={sNode?.name || 'Unknown'}>{sNode?.name || 'Unknown'}</span>
+                              <span className="text-teal-400 font-mono text-[10px] shrink-0 border border-teal-500/30 bg-teal-900/20 px-1.5 py-0.5 rounded">[{sPort?.label || '?'}]</span>
+                            </div>
                           </div>
-                          <div className="mx-2 text-slate-500">➜</div>
-                          <div className="truncate flex-1 text-right">
-                            <span className="text-slate-400 text-xs block">Target</span>
-                            <span className="text-white">{eNode?.name || 'Unknown'}</span>
+                          <div className="text-slate-500 shrink-0 mx-1">➜</div>
+                          <div className="flex-1 min-w-0 text-right">
+                            <span className="text-slate-400 text-[10px] uppercase tracking-wider block mb-0.5">Target</span>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <span className="text-teal-400 font-mono text-[10px] shrink-0 border border-teal-500/30 bg-teal-900/20 px-1.5 py-0.5 rounded">[{ePort?.label || '?'}]</span>
+                              <span className="text-white truncate text-sm" title={eNode?.name || 'Unknown'}>{eNode?.name || 'Unknown'}</span>
+                            </div>
                           </div>
                         </div>
                       </div>

@@ -1,11 +1,12 @@
 export type HardwareCatalogSpec = {
   uHeight: number
   wattage: number
-  type: 'compute' | 'storage' | 'backup' | 'network' | 'cooling'
+  type: 'compute' | 'storage' | 'backup' | 'network' | 'cooling' | 'load_balancer'
   color: string
   portLayout: PortLayoutItem[]
   btuOutput?: number
   storageTB: number
+  name?: string
 }
 
 export type PortType = 'power' | 'network' | 'fc' | 'sas'
