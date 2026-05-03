@@ -7,6 +7,7 @@ import type { InfraNode } from '../../store/useInfraStore'
 import { useInfraStore } from '../../store/useInfraStore'
 import { Cables } from './Cables'
 import { Assistant } from './Assistant'
+import { HeatMapOverlay } from './HeatMapOverlay'
 
 export const RACK_HEIGHT = 2.1
 const RACK_U = 42
@@ -609,6 +610,7 @@ function World() {
       <Cables />
       <BlueprintPreview />
       <Assistant />
+      <HeatMapOverlay />
 
       <DeployWave />
 

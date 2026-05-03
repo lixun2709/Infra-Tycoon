@@ -5,17 +5,13 @@ interface TopNavProps {
   onOpenTenants: () => void
   onOpenNetwork: () => void
   onToggleNOC: () => void
-  onOpenMarketplace: () => void
-  isMarketplaceOpen: boolean
 }
 
 export function TopNav({ 
   onOpenBlueprints, 
   onOpenTenants, 
   onOpenNetwork, 
-  onToggleNOC, 
-  onOpenMarketplace,
-  isMarketplaceOpen
+  onToggleNOC
 }: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
   const cashBalance = useInfraStore(s => s.cashBalance)
@@ -39,7 +35,6 @@ export function TopNav({
         {[
           { id: 'noc', label: 'NOC DASHBOARD', icon: '📡', active: false, onClick: onToggleNOC },
           { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
-          { id: 'marketplace', label: 'MARKETPLACE', icon: '💼', active: isMarketplaceOpen, onClick: onOpenMarketplace },
           { id: 'blueprints', label: 'BLUEPRINTS', icon: '📐', active: false, onClick: onOpenBlueprints },
           { id: 'tenants', label: 'TENANTS', icon: '👥', active: false, onClick: onOpenTenants },
         ].map(tab => (

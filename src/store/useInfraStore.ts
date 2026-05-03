@@ -203,6 +203,16 @@ type InfraState = {
   lastTickProfit: number
   activeContracts: Gig[]
   
+  // Day 5: Procurement & Thermal
+  deploymentQueue: HardwareCatalogKey[]
+  isHeatMapVisible: boolean
+  toggleHeatMap: () => void
+  shoppingCart: { key: HardwareCatalogKey; quantity: number }[]
+  addToCart: (key: HardwareCatalogKey) => void
+  removeFromCart: (key: HardwareCatalogKey) => void
+  clearCart: () => void
+  checkout: () => void
+  
   setNetworkLoad: (load: number) => void
   setNetworkManagerOpen: (open: boolean) => void
   setCurrentSiteId: (siteId: string) => void
@@ -265,13 +275,31 @@ type InfraState = {
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
+  // COMPUTE
+  BLADE_CHASSIS_4U: 'Blade Chassis (4U)',
+  BLADE_SERVER: 'Blade Server',
+  GPU_NODE_2U: 'GPU Node (2U)',
   COMPUTE_1U: 'Compute (1U)',
-  NETAPP_STORAGE_2U: 'NetApp Shelf (2U)',
-  RUBRIK_BACKUP_2U: 'Rubrik Node (2U)',
-  SWITCH_1U: 'Switch (1U)',
+  // STORAGE
+  SAN_CONTROLLER_2U: 'SAN Controller (2U)',
+  DISK_SHELF_2U: 'Disk Shelf (2U)',
+  NVME_ARRAY_1U: 'NVMe Flash Array (1U)',
+  // NETWORKING
+  LEAF_SWITCH_1U: 'Leaf Switch (1U)',
+  SPINE_SWITCH_2U: 'Spine Switch (2U)',
+  VPN_GATEWAY_1U: 'VPN Gateway (1U)',
+  // SECURITY
+  NG_FIREWALL_1U: 'NG-Firewall (1U)',
+  SIEM_COLLECTOR_1U: 'SIEM Collector (1U)',
+  IDS_IPS_NODE_2U: 'IDS/IPS Node (2U)',
+  // IDENTITY
+  DIRECTORY_SERVER_1U: 'Directory Server (1U)',
+  HSM_MODULE_1U: 'HSM Module (1U)',
+  // FACILITIES
+  HIGH_DENSITY_PDU_1U: 'High-Density PDU (1U)',
+  ENV_SENSOR: 'Environmental Sensor',
+  IN_ROW_CRAC_4U: 'In-Row CRAC (4U)',
   RACK_42U: 'Server Rack (42U)',
-  CRAC_UNIT_4U: 'CRAC Unit (4U)',
-  LOAD_BALANCER_1U: 'Load Balancer (1U)',
 }
 
 function createPortsForCatalog(nodeId: string, key: HardwareCatalogKey): HardwarePort[] {
@@ -336,11 +364,58 @@ export const useInfraStore = create<InfraState>()(
       cashBalance: 10000,
       lastTickProfit: 0,
       activeContracts: [],
+      deploymentQueue: [],
+      isHeatMapVisible: false,
+      shoppingCart: [],
+
+      addToCart: (key) => set(state => {
+        const existing = state.shoppingCart.find(item => item.key === key)
+        if (existing) {
+          return { shoppingCart: state.shoppingCart.map(item => item.key === key ? { ...item, quantity: item.quantity + 1 } : item) }
+        }
+        return { shoppingCart: [...state.shoppingCart, { key, quantity: 1 }] }
+      }),
+
+      removeFromCart: (key) => set(state => {
+        const existing = state.shoppingCart.find(item => item.key === key)
+        if (existing && existing.quantity > 1) {
+          return { shoppingCart: state.shoppingCart.map(item => item.key === key ? { ...item, quantity: item.quantity - 1 } : item) }
+        }
+        return { shoppingCart: state.shoppingCart.filter(item => item.key !== key) }
+      }),
+
+      clearCart: () => set({ shoppingCart: [] }),
+
+      checkout: () => {
+        const { shoppingCart, cashBalance, pushAlert } = get()
+        const total = shoppingCart.reduce((sum, item) => sum + (HARDWARE_CATALOG[item.key].purchasePrice * item.quantity), 0)
+        
+        if (total > cashBalance) {
+          pushAlert('critical', 'AUTHORIZATION DENIED: Insufficient project capital for requested manifest.')
+          return
+        }
+
+        const newItems: HardwareCatalogKey[] = []
+        shoppingCart.forEach(item => {
+          for (let i = 0; i < item.quantity; i++) {
+            newItems.push(item.key)
+          }
+        })
+
+        set(state => ({
+          cashBalance: state.cashBalance - total,
+          deploymentQueue: [...state.deploymentQueue, ...newItems],
+          shoppingCart: []
+        }))
+        
+        pushAlert('info', `PROJECT AUTHORIZED: ${newItems.length} assets staged for deployment. -$${total.toLocaleString()}`)
+      },
 
       setNetworkLoad: (load) => set({ networkLoad: load }),
       setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
       setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
       setMousePosition: (pos) => set({ mousePosition: pos }),
+      toggleHeatMap: () => set(state => ({ isHeatMapVisible: !state.isHeatMapVisible })),
 
       pushAlert: (severity, message, nodeId) => {
         set((state) => ({
@@ -960,41 +1035,67 @@ export const useInfraStore = create<InfraState>()(
       },
 
       placeCatalogHardware: (key, targetRackId) => {
-        const { nodes, simulationCycle } = get()
+        const { nodes, deploymentQueue, simulationCycle } = get()
         const targetRack = nodes.find(n => n.id === targetRackId)
         if (!targetRack || targetRack.type !== 'rack') return false
-        const targetNodes = nodes.filter(n => n.id === targetRackId || n.parentRackId === targetRackId)
+        
         const spec = HARDWARE_CATALOG[key]
-        const placement = findFirstEmptySlot(targetNodes, spec.uHeight)
+
+        // Blade Logic: Blade Servers can only be placed inside a Blade Chassis
+        if (spec.isBlade) {
+          const hasChassis = nodes.some(n => n.parentRackId === targetRackId && HARDWARE_CATALOG[n.catalogKey as HardwareCatalogKey]?.isBladeChassis)
+          if (!hasChassis) {
+            get().pushAlert('warning', 'Blade Servers require a Blade Chassis for installation.')
+            return false
+          }
+        }
+
+        const targetNodes = nodes.filter(n => n.id === targetRackId || n.parentRackId === targetRackId)
+        
+        let placement;
+        if (spec.isBlade) {
+          // Blade servers reside inside the chassis and don't occupy U slots
+          placement = { rackId: targetRackId, slotIndex: -1 }
+        } else {
+          placement = findFirstEmptySlot(targetNodes, spec.uHeight)
+        }
+
         if (!placement) {
           window.alert('No free slot found in the selected rack.')
           return false
         }
+        
         const node: InfraNode = {
           id: crypto.randomUUID(),
+          catalogKey: key,
           type: spec.type,
-          name: catalogDisplayName[key],
+          name: spec.name || catalogDisplayName[key],
           siteId: targetRack.siteId,
           position: new Vector3(targetRack.position.x, targetRack.position.y, targetRack.position.z),
           uHeight: spec.uHeight,
           wattage: spec.wattage,
-          btuOutput: (spec as any).btuOutput !== undefined ? (spec as any).btuOutput : spec.wattage * 3.41,
+          btuOutput: spec.btuOutput !== undefined ? spec.btuOutput : spec.wattage * 3.41,
           totalStorageTB: spec.storageTB,
           usedStorageTB: spec.storageTB > 0 ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : 0,
-          isImmutable: key === 'RUBRIK_BACKUP_2U',
-          clusterRole: 'active',
-          backupStatus: 'unprotected',
           parentRackId: targetRackId,
           slotIndex: placement.slotIndex,
-          catalogKey: key,
-          ports: [],
-          services: [],
           healthStatus: 'healthy',
-          dataCategory: 'Internal',
+          degradation: 0,
           installDate: simulationCycle,
-          degradation: 0
+          ports: [],
+          services: []
         }
+
         get().addNode(node)
+        
+        // Remove the FIRST occurrence of this key from the deployment queue
+        const qIdx = deploymentQueue.indexOf(key)
+        if (qIdx !== -1) {
+          const newQueue = [...deploymentQueue]
+          newQueue.splice(qIdx, 1)
+          set({ deploymentQueue: newQueue })
+        }
+
         return true
       },
 

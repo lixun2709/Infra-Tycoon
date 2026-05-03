@@ -11,7 +11,6 @@ import { Terminal } from './components/ui/Terminal'
 
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
-import { Marketplace } from './components/ui/Marketplace'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -126,7 +125,7 @@ function App() {
   const [isBlueprintManagerOpen, setIsBlueprintManagerOpen] = useState(false)
   const [isTenantManagerOpen, setIsTenantManagerOpen] = useState(false)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
-  const [isMarketplaceOpen, setIsMarketplaceOpen] = useState(false)
+  const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -143,6 +142,7 @@ function App() {
   const sites = useInfraStore(s => s.sites)
   const setCurrentSiteId = useInfraStore(s => s.setCurrentSiteId)
   const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
+  const pendingType = useInfraStore(s => s.pendingRackType)
 
   useEffect(() => {
     // One-time reset for v1.1 Career Mode
@@ -165,6 +165,16 @@ function App() {
     return () => clearInterval(interval)
   }, [processAutoBackups])
 
+  // Sync store placement mode with local placement state for modal compatibility
+  
+  useEffect(() => {
+    if (placementMode && pendingType && pendingType !== '42U Rack') {
+      setHardwareToAdd(pendingType)
+    } else if (!placementMode) {
+      setHardwareToAdd(null)
+    }
+  }, [placementMode, pendingType])
+
   const handleAddRack = () => {
     setPlacementMode(true, '42U Rack')
   }
@@ -175,8 +185,11 @@ function App() {
 
   const handleConfirmPlacement = (rackId: string) => {
     if (!hardwareToAdd) return
-    placeCatalogHardware(hardwareToAdd, rackId)
-    setHardwareToAdd(null)
+    const success = placeCatalogHardware(hardwareToAdd, rackId)
+    if (success) {
+      setHardwareToAdd(null)
+      useInfraStore.setState({ placementMode: false, pendingRackType: null })
+    }
   }
 
   return (
@@ -190,10 +203,8 @@ function App() {
       <TopNav 
         onOpenBlueprints={() => setIsBlueprintManagerOpen(true)}
         onOpenTenants={() => setIsTenantManagerOpen(true)}
-        onOpenNetwork={() => setNetworkManagerOpen(true)}
+        onOpenNetwork={() => setIsNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
-        onOpenMarketplace={() => setIsMarketplaceOpen(!isMarketplaceOpen)}
-        isMarketplaceOpen={isMarketplaceOpen}
       />
 
       {/* Secondary Header Overlay: Site Toggle & Statistics */}
@@ -243,11 +254,12 @@ function App() {
         </div>
       </div>
 
-      {/* Procurement Button (Bottom Right) */}
+      {/* Procurement System (Floating & Modal) */}
+      {/* Procurement System (Floating) */}
       <ProcurementMenu 
         onAddRack={handleAddRack}
-        onTryPlace={tryPlace}
-        placementMode={placementMode}
+        isOpen={isProcurementOpen}
+        onToggle={setIsProcurementOpen}
       />
 
       {/* Overlays & Managers */}
@@ -260,21 +272,6 @@ function App() {
       <TenantManager isOpen={isTenantManagerOpen} onClose={() => setIsTenantManagerOpen(false)} />
       {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
       <NetworkManager />
-
-      {/* Full-screen Marketplace Modal */}
-      {isMarketplaceOpen && (
-        <div className="fixed inset-0 z-[150] bg-[#020617] flex flex-col pt-16">
-          <div className="absolute top-4 right-8 z-[160]">
-            <button 
-              onClick={() => setIsMarketplaceOpen(false)}
-              className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-xl font-bold transition-all border border-slate-700"
-            >
-              Back to NOC
-            </button>
-          </div>
-          <Marketplace />
-        </div>
-      )}
 
       <Inspector />
       <Terminal />
