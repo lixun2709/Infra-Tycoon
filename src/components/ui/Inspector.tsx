@@ -2,10 +2,10 @@ import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 export function Inspector() {
-  const { nodes, connections, selectedNodeId, cableMode, connectingPort, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts } = useInfraStore()
+  const { nodes, connections, selectedNodeId, cableMode, connectingPort, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const nodeSite = sites.find(s => s.id === selectedNode?.siteId)
-  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'performance'>('details')
+  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'performance' | 'services'>('details')
 
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
 
@@ -69,6 +69,12 @@ export function Inspector() {
           className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeTab === 'performance' ? 'text-white border-b-2 border-purple-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
         >
           Performance
+        </button>
+        <button 
+          onClick={() => setActiveTab('services')}
+          className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeTab === 'services' ? 'text-white border-b-2 border-emerald-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
+        >
+          Services
         </button>
         <button 
           onClick={() => setActiveTab('alerts')}
@@ -297,6 +303,64 @@ export function Inspector() {
               )
             })
           })()}
+        </div>
+      ) : activeTab === 'services' ? (
+        <div className="space-y-6">
+          {/* Service Installation */}
+          <div className="bg-slate-800/30 border border-slate-700/50 p-4 rounded-xl">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Deploy New Service</p>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { type: 'web', icon: '🌐', label: 'Web' },
+                { type: 'storage', icon: '🗄️', label: 'Storage' },
+                { type: 'backup', icon: '🛡️', label: 'Backup' }
+              ].map(s => (
+                <button
+                  key={s.type}
+                  onClick={() => installService(selectedNode.id, s.type as any)}
+                  className="flex flex-col items-center gap-2 p-3 bg-slate-900/50 hover:bg-emerald-500/10 border border-slate-800 hover:border-emerald-500/50 rounded-xl transition-all group"
+                >
+                  <span className="text-xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                  <span className="text-[8px] font-black uppercase text-slate-400 group-hover:text-emerald-400">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Installed Services List */}
+          <div className="space-y-3">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Installed Applications</p>
+            {!selectedNode.services?.length ? (
+              <div className="text-center py-8 bg-slate-900/20 border border-dashed border-slate-800 rounded-xl">
+                <p className="text-[10px] text-slate-600 font-bold uppercase italic">No software deployed</p>
+              </div>
+            ) : (
+              selectedNode.services.map(service => (
+                <div key={service.id} className="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-8 rounded-full ${service.status === 'running' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`} />
+                    <div>
+                      <div className="text-xs font-black text-slate-200 uppercase tracking-tight">{service.type}</div>
+                      <div className="text-[9px] text-slate-500 font-mono">PORT: {service.port}</div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => toggleService(selectedNode.id, service.id, service.status === 'running' ? 'stopped' : 'running')}
+                      className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${
+                        service.status === 'running' 
+                        ? 'bg-rose-500/10 text-rose-500 border border-rose-500/20 hover:bg-rose-500/20' 
+                        : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20'
+                      }`}
+                    >
+                      {service.status === 'running' ? 'Stop' : 'Start'}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       ) : null}
     </div>

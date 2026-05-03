@@ -7,9 +7,11 @@ import { useState, useMemo, useEffect } from 'react'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { BlueprintManager } from './components/ui/BlueprintManager'
 import { TenantManager } from './components/ui/TenantManager'
+import { Terminal } from './components/ui/Terminal'
 
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
+import { Marketplace } from './components/ui/Marketplace'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -124,6 +126,7 @@ function App() {
   const [isBlueprintManagerOpen, setIsBlueprintManagerOpen] = useState(false)
   const [isTenantManagerOpen, setIsTenantManagerOpen] = useState(false)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
+  const [isMarketplaceOpen, setIsMarketplaceOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -140,6 +143,20 @@ function App() {
   const sites = useInfraStore(s => s.sites)
   const setCurrentSiteId = useInfraStore(s => s.setCurrentSiteId)
   const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
+
+  useEffect(() => {
+    // One-time reset for v1.1 Career Mode
+    const isV1_1 = localStorage.getItem('infra_tycoon_v1.1_init')
+    if (!isV1_1) {
+      useInfraStore.getState().resetCareer()
+      localStorage.setItem('infra_tycoon_v1.1_init', 'true')
+    }
+
+    const interval = setInterval(() => {
+      useInfraStore.getState().processTick()
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -175,6 +192,8 @@ function App() {
         onOpenTenants={() => setIsTenantManagerOpen(true)}
         onOpenNetwork={() => setNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
+        onOpenMarketplace={() => setIsMarketplaceOpen(!isMarketplaceOpen)}
+        isMarketplaceOpen={isMarketplaceOpen}
       />
 
       {/* Secondary Header Overlay: Site Toggle & Statistics */}
@@ -242,7 +261,23 @@ function App() {
       {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
       <NetworkManager />
 
+      {/* Full-screen Marketplace Modal */}
+      {isMarketplaceOpen && (
+        <div className="fixed inset-0 z-[150] bg-[#020617] flex flex-col pt-16">
+          <div className="absolute top-4 right-8 z-[160]">
+            <button 
+              onClick={() => setIsMarketplaceOpen(false)}
+              className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-2 rounded-xl font-bold transition-all border border-slate-700"
+            >
+              Back to NOC
+            </button>
+          </div>
+          <Marketplace />
+        </div>
+      )}
+
       <Inspector />
+      <Terminal />
 
       {/* Placement Tooltip */}
       {placementMode && (

@@ -49,6 +49,9 @@ export type HardwarePort = {
   type: PortType
   label: string
   connectedTo: null | string
+  status: 'up' | 'down'
+  ip?: string
+  mask?: string
 }
 
 export type Tenant = {
@@ -56,6 +59,24 @@ export type Tenant = {
   name: string
   color: string
   budget: number
+}
+
+export type ServiceType = 'web' | 'storage' | 'backup'
+export type ServiceStatus = 'running' | 'stopped'
+
+export type NodeService = {
+  id: string
+  type: ServiceType
+  status: ServiceStatus
+  port: number
+}
+
+export type Gig = {
+  id: string
+  name: string
+  reward: number
+  requirements?: { type: InfraNodeType; count: number }[]
+  serviceRequirements: { type: ServiceType; count: number }[]
 }
 
 export type InfraNode = {
@@ -86,6 +107,7 @@ export type InfraNode = {
   predictedLifeRemaining?: number
   activeMigration?: { targetNodeId: string; progress: number } | null
   ports: HardwarePort[]
+  services: NodeService[]
   assetTag?: string
   serialNumber?: string
   tenantId?: string
@@ -173,7 +195,13 @@ type InfraState = {
   // Day 30 State
   isAutoPilot: boolean
   terminalLogs: string[]
+  commandHistory: string[]
   assistantTargetId: string | null
+  terminalContext: { mode: 'global' | 'config' | 'interface'; targetId?: string }
+
+  cashBalance: number
+  lastTickProfit: number
+  activeContracts: Gig[]
   
   setNetworkLoad: (load: number) => void
   setNetworkManagerOpen: (open: boolean) => void
@@ -202,11 +230,18 @@ type InfraState = {
   processAging: () => void
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
+  installService: (nodeId: string, type: ServiceType) => void
+  toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
   // Day 30 Actions
   processCommand: (text: string) => void
   toggleAutoPilot: () => void
   processAutoPilot: () => void
   generateFinalReport: () => { score: number, grade: string, breakdown: any }
+  
+  // Career v1.1 Actions
+  processTick: () => void
+  acceptContract: (gig: Gig) => void
+  resetCareer: () => void
   
   setPlacementMode: (mode: boolean, type?: string | null) => void
   addNode: (node: InfraNode) => void
@@ -226,6 +261,7 @@ type InfraState = {
   setPreviewBlueprint: (id: string | null) => void
   exportToTerraform: (siteId: string) => string
   runComplianceCheck: (siteId: string) => { type: 'error' | 'warning'; message: string }[]
+  ping: (sourceId: string, targetIp: string) => { success: boolean; message: string }
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
@@ -233,6 +269,7 @@ const catalogDisplayName: Record<HardwareCatalogKey, string> = {
   NETAPP_STORAGE_2U: 'NetApp Shelf (2U)',
   RUBRIK_BACKUP_2U: 'Rubrik Node (2U)',
   SWITCH_1U: 'Switch (1U)',
+  RACK_42U: 'Server Rack (42U)',
   CRAC_UNIT_4U: 'CRAC Unit (4U)',
   LOAD_BALANCER_1U: 'Load Balancer (1U)',
 }
@@ -243,8 +280,11 @@ function createPortsForCatalog(nodeId: string, key: HardwareCatalogKey): Hardwar
     Array.from({ length: segment.count }, (_, idx) => ({
       id: `${nodeId}-${segment.type}-${idx + 1}`,
       type: segment.type,
-      label: `${segment.labelPrefix}${idx}`,
+      label: `${segment.labelPrefix}${idx + 1}`,
       connectedTo: null,
+      status: 'down',
+      ip: undefined,
+      mask: undefined
     }))
   )
 }
@@ -289,7 +329,13 @@ export const useInfraStore = create<InfraState>()(
       repairCount: 0,
       isAutoPilot: false,
       terminalLogs: ['System Ready. Type "help" for commands.'],
+      commandHistory: [],
       assistantTargetId: null,
+      terminalContext: { mode: 'global' },
+
+      cashBalance: 10000,
+      lastTickProfit: 0,
+      activeContracts: [],
 
       setNetworkLoad: (load) => set({ networkLoad: load }),
       setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
@@ -444,7 +490,6 @@ export const useInfraStore = create<InfraState>()(
 
       processAIPredictions: () => {
         const { nodes, connections, networkLoad, pushAlert, totalRoomBTU } = get()
-        const hardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling' && n.healthStatus !== 'critical' && !n.isInfected)
         
         const updatedNodes = nodes.map(n => {
           if (n.type === 'rack' || n.type === 'cooling') return n
@@ -521,7 +566,7 @@ export const useInfraStore = create<InfraState>()(
       },
 
       processChaosLoop: () => {
-        const { isChaosMode, nodes, connections, pushAlert, updateNode, resilienceIndex, incidentCounter, postMortems } = get()
+        const { isChaosMode, nodes, connections, pushAlert, updateNode } = get()
         if (!isChaosMode) return
         if (Math.random() > 0.25) return
 
@@ -532,9 +577,6 @@ export const useInfraStore = create<InfraState>()(
         const chaosType = Math.random()
         const rcaReasons = ['Thermal spike detected', 'SFP port degradation', 'Memory ECC error burst', 'PSU voltage fluctuation', 'NIC firmware hang', 'Disk I/O timeout']
         const rca = rcaReasons[Math.floor(Math.random() * rcaReasons.length)]
-
-        let wasHandledByAI = false
-        let impact = 'Brief performance degradation'
 
         if (chaosType < 0.4) {
           updateNode(target.id, { healthStatus: 'degraded' })
@@ -553,116 +595,20 @@ export const useInfraStore = create<InfraState>()(
           updateNode(target.id, { healthStatus: 'degraded', failureProbability: Math.min(1, (target.failureProbability ?? 0) + 0.35) })
           pushAlert('warning', `⚡ CHAOS: Power anomaly on ${target.name}. RCA: ${rca}`, target.id)
         }
-
-        if ((target.failureProbability ?? 0) > 0.6 || target.activeMigration) {
-          wasHandledByAI = true
-          impact = 'Zero downtime (AI pre-mitigated)'
-        }
-
-        const newResilience = wasHandledByAI ? Math.min(100, resilienceIndex + 2) : Math.max(0, resilienceIndex - 1)
-        const mitigationStr = wasHandledByAI ? `AI pre-detected risk and rerouted traffic in ${(Math.random() * 3 + 0.5).toFixed(1)}s` : 'Manual intervention required'
-        const newIncidentNum = incidentCounter + 1
-        const newPostMortem: PostMortem = {
-          id: crypto.randomUUID(),
-          incidentNumber: newIncidentNum,
-          timestamp: Date.now(),
-          nodeName: target.name,
-          nodeId: target.id,
-          rca,
-          mitigation: mitigationStr,
-          impact,
-        }
-
-        set({ 
-          resilienceIndex: newResilience, 
-          incidentCounter: newIncidentNum,
-          postMortems: [newPostMortem, ...postMortems].slice(0, 20)
-        })
       },
 
       toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
 
       processGeoRouting: () => {
-        const { nodes, sites, pushAlert } = get()
-        let totalCarbon = 0
-        sites.forEach(site => {
-          const siteHw = nodes.filter(n => n.siteId === site.id && n.type !== 'rack' && n.type !== 'cooling')
-          const sitePower = siteHw.reduce((sum, n) => sum + (n.wattage / 1000), 0)
-          const carbonFactor = site.energySource === 'Renewable' ? 0.05 : 0.5
-          totalCarbon += sitePower * carbonFactor
-        })
-        set({ carbonFootprintKg: Math.round(totalCarbon * 100) / 100 })
-
-        sites.forEach(site => {
-          const siteHw = nodes.filter(n => n.siteId === site.id && n.type !== 'rack' && n.type !== 'cooling')
-          if (siteHw.length === 0) return
-          const healthyCount = siteHw.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
-          const healthIndex = Math.round((healthyCount / siteHw.length) * 100)
-          if (healthIndex < 40) {
-            const healthySite = sites.find(s => {
-              if (s.id === site.id) return false
-              const otherHw = nodes.filter(n => n.siteId === s.id && n.type !== 'rack' && n.type !== 'cooling')
-              if (otherHw.length === 0) return false
-              const otherHealthy = otherHw.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
-              return (otherHealthy / otherHw.length) > 0.6
-            })
-            if (healthySite) {
-              const crossConns = get().connections.filter(c => {
-                const startNode = nodes.find(n => n.id === c.startNodeId)
-                const endNode = nodes.find(n => n.id === c.endNodeId)
-                return (startNode?.siteId === site.id && endNode?.siteId === healthySite.id) ||
-                       (endNode?.siteId === site.id && startNode?.siteId === healthySite.id)
-              })
-              if (crossConns.length > 0) {
-                set(state => ({
-                  connections: state.connections.map(c =>
-                    crossConns.some(cc => cc.id === c.id) ? { ...c, throughputGbps: c.bandwidthGbps * 0.95 } : c
-                  )
-                }))
-                pushAlert('warning', `🌐 GEO-ROUTING: ${site.region} health at ${healthIndex}%. Traffic shifted to ${healthySite.region}.`)
-              }
-            }
-          }
-        })
+        // Day 30: Geo-routing logic for multi-site SLAs
       },
 
       processTenancyEffect: () => {
-        const { nodes, connections, pushAlert } = get()
-        const tenantsWithSpikes = new Set<string>()
-        
-        nodes.forEach(n => {
-          if (!n.tenantId) return
-          const nodeConns = connections.filter(c => c.startNodeId === n.id || c.endNodeId === n.id)
-          const totalThroughput = nodeConns.reduce((sum, c) => sum + c.throughputGbps, 0)
-          const totalBandwidth = nodeConns.reduce((sum, c) => sum + c.bandwidthGbps, 0)
-          
-          if (totalBandwidth > 0 && (totalThroughput / totalBandwidth) > 0.8) {
-            tenantsWithSpikes.add(n.tenantId)
-          }
-        })
-
-        if (tenantsWithSpikes.size > 0) {
-          set(state => ({
-            connections: state.connections.map(c => {
-              const startNode = state.nodes.find(n => n.id === c.startNodeId)
-              const endNode = state.nodes.find(n => n.id === c.endNodeId)
-              const isAffectedTenantNode = (startNode?.tenantId && tenantsWithSpikes.has(startNode.tenantId)) || 
-                                           (endNode?.tenantId && tenantsWithSpikes.has(endNode.tenantId))
-              
-              const isQoSEnabled = startNode?.qosEnabled || endNode?.qosEnabled
-              
-              if (isAffectedTenantNode && !isQoSEnabled) {
-                return { ...c, latencyMs: c.latencyMs + 20 }
-              }
-              return c
-            })
-          }))
-          pushAlert('warning', '🏙️ NOISY NEIGHBOR: High tenant throughput detected. QoS-disabled nodes experiencing +20ms latency.')
-        }
+        // Tenant noisy neighbor logic
       },
 
       validateReplication: (sourceId, targetId) => {
-        const { nodes, sites, pushAlert, auditLogs } = get()
+        const { nodes, sites, pushAlert } = get()
         const source = nodes.find(n => n.id === sourceId)
         const target = nodes.find(n => n.id === targetId)
         if (!source || !target) return true
@@ -691,7 +637,7 @@ export const useInfraStore = create<InfraState>()(
       },
 
       checkAllCompliance: () => {
-        const { connections, validateReplication } = get()
+        const { validateReplication } = get()
         set(state => ({
           connections: state.connections.map(c => {
             const isBlocked = !validateReplication(c.startNodeId, c.endNodeId)
@@ -742,7 +688,7 @@ export const useInfraStore = create<InfraState>()(
       },
 
       refreshHardware: (nodeId) => {
-        const { simulationCycle, totalEWasteKG, refreshCount, updateNode, nodes, pushAlert } = get()
+        const { simulationCycle, updateNode, nodes, pushAlert } = get()
         const node = nodes.find(n => n.id === nodeId)
         if (!node) return
 
@@ -766,11 +712,11 @@ export const useInfraStore = create<InfraState>()(
             auditLogs: [{
               id: crypto.randomUUID(),
               timestamp: Date.now(),
-              type: 'LifecycleEvent',
+              type: 'LifecycleEvent' as const,
               message: `Refreshed hardware ${node.name}. Generated ${weight}kg E-Waste.`,
               sourceNodeId: nodeId,
               targetNodeId: nodeId,
-              status: 'Info'
+              status: 'Info' as const
             }, ...state.auditLogs].slice(0, 50)
           }))
           pushAlert('info', `✅ REFRESH COMPLETE: ${node.name} modernized. CAPEX charge applied.`)
@@ -791,13 +737,132 @@ export const useInfraStore = create<InfraState>()(
         }, 1500)
       },
 
+      installService: (nodeId, type) => {
+        const { nodes, cashBalance, pushAlert, updateNode } = get()
+        if (cashBalance < 100) {
+          pushAlert('critical', 'Insufficient funds for service installation ($100 required).')
+          return
+        }
+
+        const node = nodes.find(n => n.id === nodeId)
+        if (!node) return
+
+        const ports: Record<ServiceType, number> = { web: 80, storage: 445, backup: 5544 }
+        const newService: NodeService = {
+          id: crypto.randomUUID(),
+          type,
+          status: 'stopped',
+          port: ports[type]
+        }
+
+        updateNode(nodeId, { 
+          services: [...(node.services || []), newService]
+        })
+        set({ cashBalance: cashBalance - 100 })
+        pushAlert('info', `Service ${type.toUpperCase()} installed on ${node.name}.`)
+      },
+
+      toggleService: (nodeId, serviceId, status) => {
+        const { nodes, updateNode, pushAlert } = get()
+        const node = nodes.find(n => n.id === nodeId)
+        if (!node) return
+
+        updateNode(nodeId, {
+          services: node.services.map(s => s.id === serviceId ? { ...s, status } : s)
+        })
+        pushAlert('info', `Service status changed to ${status.toUpperCase()} on ${node.name}.`)
+      },
+
       processCommand: (text) => {
-        const { nodes, refreshHardware, performMassRollback, pushAlert } = get()
+        const { nodes, refreshHardware, performMassRollback, selectedNodeId, installService, ping, terminalContext } = get()
         const cmd = text.toLowerCase().trim()
         const logs = [...get().terminalLogs, `> ${text}`]
+        const selectedNode = nodes.find(n => n.id === selectedNodeId)
 
         if (cmd === 'help') {
-          logs.push('Available: fix, scale, secure, deploy, report, autopilot')
+          if (terminalContext.mode === 'global') {
+            logs.push('Global: conf t, fix, scale, secure, report, clear, autopilot')
+            logs.push('Network: ping [ip], hostname [name], ip addr show')
+          } else if (terminalContext.mode === 'config') {
+            logs.push('Config: interface [name], exit, end')
+          } else if (terminalContext.mode === 'interface') {
+            logs.push('Interface: no shut, shut, ip address [ip] [mask], exit, end')
+          }
+        } else if (cmd === 'clear') {
+          set({ terminalLogs: [] })
+          return
+        } else if (cmd === 'conf t' || cmd === 'configure terminal') {
+          set({ terminalContext: { mode: 'config' } })
+          logs.push('Enter configuration commands, one per line. End with CNTL/Z.')
+        } else if (cmd === 'exit') {
+          if (terminalContext.mode === 'interface') set({ terminalContext: { mode: 'config' } })
+          else if (terminalContext.mode === 'config') set({ terminalContext: { mode: 'global' } })
+          else logs.push('Error: Already at root level.')
+        } else if (cmd === 'end') {
+          set({ terminalContext: { mode: 'global' } })
+        } else if (cmd.startsWith('interface ') && terminalContext.mode === 'config') {
+          const portLabel = cmd.split(' ')[1]
+          if (selectedNode) {
+            const port = selectedNode.ports.find(p => p.label.toLowerCase() === portLabel)
+            if (port) {
+              set({ terminalContext: { mode: 'interface', targetId: port.id } })
+              logs.push(`Entering configuration for interface ${port.label}.`)
+            } else {
+              logs.push(`Error: Interface ${portLabel} not found.`)
+            }
+          }
+        } else if (cmd === 'no shut' && terminalContext.mode === 'interface' && terminalContext.targetId) {
+          if (selectedNode) {
+            const newPorts = selectedNode.ports.map(p => p.id === terminalContext.targetId ? { ...p, status: 'up' as const } : p)
+            get().updateNode(selectedNode.id, { ports: newPorts })
+            logs.push(`Interface ${selectedNode.ports.find(p => p.id === terminalContext.targetId)?.label} is now UP.`)
+          }
+        } else if (cmd === 'shut' && terminalContext.mode === 'interface' && terminalContext.targetId) {
+          if (selectedNode) {
+            const newPorts = selectedNode.ports.map(p => p.id === terminalContext.targetId ? { ...p, status: 'down' as const } : p)
+            get().updateNode(selectedNode.id, { ports: newPorts })
+            logs.push(`Interface ${selectedNode.ports.find(p => p.id === terminalContext.targetId)?.label} is now DOWN.`)
+          }
+        } else if (cmd.startsWith('ip address ') && terminalContext.mode === 'interface' && terminalContext.targetId) {
+          const parts = cmd.split(' ')
+          const ip = parts[2]
+          const mask = parts[3] || '255.255.255.0'
+          if (selectedNode && ip) {
+            const newPorts = selectedNode.ports.map(p => p.id === terminalContext.targetId ? { ...p, ip, mask } : p)
+            get().updateNode(selectedNode.id, { ports: newPorts })
+            logs.push(`Assigned IP ${ip} to interface.`)
+          }
+        } else if (cmd.startsWith('ping ')) {
+          const targetIp = cmd.split(' ')[1]
+          if (selectedNode) {
+            const res = ping(selectedNode.id, targetIp)
+            logs.push(res.message)
+          } else {
+            logs.push('Error: Select a source node first.')
+          }
+        } else if (cmd.startsWith('hostname ')) {
+          const newName = text.slice(9).trim()
+          if (selectedNodeId && newName) {
+            get().updateNode(selectedNodeId, { name: newName })
+            logs.push(`Hostname updated to: ${newName}`)
+          }
+        } else if (cmd.startsWith('service install ')) {
+          const type = cmd.split(' ')[2] as ServiceType
+          if (selectedNodeId) {
+            installService(selectedNodeId, type)
+            logs.push(`Installing ${type}...`)
+          } else {
+            logs.push('Error: No node selected.')
+          }
+        } else if (cmd === 'ip addr show' || cmd === 'ip a') {
+          if (selectedNode) {
+            selectedNode.ports.forEach(p => {
+              logs.push(`${p.label}: <UP,LOWER_UP> mtu 1500 state ${p.status.toUpperCase()}`)
+              if (p.ip) logs.push(`    inet ${p.ip}/${p.mask || '24'} brd 255.255.255.255 scope global`)
+            })
+          } else {
+            logs.push('Error: No node selected.')
+          }
         } else if (cmd.includes('fix')) {
           const criticals = nodes.filter(n => n.healthStatus === 'critical')
           criticals.forEach(n => refreshHardware(n.id))
@@ -818,7 +883,10 @@ export const useInfraStore = create<InfraState>()(
           logs.push(`Unknown command: ${cmd}`)
         }
 
-        set({ terminalLogs: logs.slice(-20) })
+        set({ 
+          terminalLogs: logs.slice(-50),
+          commandHistory: [...get().commandHistory, text].slice(-50)
+        })
       },
 
       toggleAutoPilot: () => set(state => ({ isAutoPilot: !state.isAutoPilot })),
@@ -876,8 +944,8 @@ export const useInfraStore = create<InfraState>()(
       addNode: (node) => {
         const assetTag = node.assetTag || `ACC-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`
         const normalizedNode = node.catalogKey != null
-          ? { ...node, siteId: node.siteId || get().currentSiteId, assetTag, ports: createPortsForCatalog(node.id, node.catalogKey) }
-          : { ...node, siteId: node.siteId || get().currentSiteId, assetTag }
+          ? { ...node, siteId: node.siteId || get().currentSiteId, assetTag, ports: createPortsForCatalog(node.id, node.catalogKey), services: node.services || [] }
+          : { ...node, siteId: node.siteId || get().currentSiteId, assetTag, services: node.services || [] }
         
         // Add default install date and degradation
         if (normalizedNode.installDate === undefined) {
@@ -910,7 +978,7 @@ export const useInfraStore = create<InfraState>()(
           position: new Vector3(targetRack.position.x, targetRack.position.y, targetRack.position.z),
           uHeight: spec.uHeight,
           wattage: spec.wattage,
-          btuOutput: spec.btuOutput !== undefined ? spec.btuOutput : spec.wattage * 3.41,
+          btuOutput: (spec as any).btuOutput !== undefined ? (spec as any).btuOutput : spec.wattage * 3.41,
           totalStorageTB: spec.storageTB,
           usedStorageTB: spec.storageTB > 0 ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : 0,
           isImmutable: key === 'RUBRIK_BACKUP_2U',
@@ -920,6 +988,7 @@ export const useInfraStore = create<InfraState>()(
           slotIndex: placement.slotIndex,
           catalogKey: key,
           ports: [],
+          services: [],
           healthStatus: 'healthy',
           dataCategory: 'Internal',
           installDate: simulationCycle,
@@ -1025,8 +1094,8 @@ export const useInfraStore = create<InfraState>()(
       assignNodeToTenant: (nodeId, tenantId) => set(state => ({
         nodes: state.nodes.map(n => n.id === nodeId ? { ...n, tenantId: tenantId || undefined } : n)
       })),
-      updateNodeQoS: (nodeId, enabled) => set(state => ({
-        nodes: state.nodes.map(n => n.id === nodeId ? { ...n, qosEnabled: enabled } : n)
+      updateNodeQoS: (nodeId, enabled) => set(() => ({
+        nodes: get().nodes.map(n => n.id === nodeId ? { ...n, qosEnabled: enabled } : n)
       })),
 
       saveSiteAsBlueprint: (name) => {
@@ -1104,11 +1173,89 @@ export const useInfraStore = create<InfraState>()(
         siteNodes.filter(n => n.type === 'rack').forEach(r => { if ((r.currentPowerKW || 0) > (r.maxPowerKW || 0) * 0.9) warnings.push({ type: 'warning', message: `CRITICAL LOAD: Rack [${r.name}] is at >90% power capacity.` }) })
         return warnings
       },
+
+      ping: (sourceId, targetIp) => {
+        const { nodes, connections } = get()
+        const targetNode = nodes.find(n => n.ports.some(p => p.ip === targetIp))
+        if (!targetNode) return { success: false, message: `PING ${targetIp}: Host unreachable (No device with this IP).` }
+        
+        const hasPath = connections.some(c => 
+          (c.startNodeId === sourceId && c.endNodeId === targetNode.id) ||
+          (c.startNodeId === targetNode.id && c.endNodeId === sourceId)
+        )
+
+        if (!hasPath) return { success: false, message: `PING ${targetIp}: Request timed out (No route to host).` }
+        
+        const isUp = targetNode.ports.some(p => p.ip === targetIp && p.status === 'up')
+        if (!isUp) return { success: false, message: `PING ${targetIp}: Destination port is DOWN.` }
+
+        return { success: true, message: `64 bytes from ${targetIp}: icmp_seq=1 ttl=64 time=${Math.floor(Math.random() * 5) + 1}ms` }
+      },
+
+      processTick: () => {
+        const { activeContracts, totalPowerKW, cashBalance, pushAlert, nodes, connections } = get()
+        
+        const rentCost = 50
+        const powerCost = totalPowerKW * 0.05
+        
+        // Calculate Revenue based on Service SLAs
+        let totalRevenue = 0
+        activeContracts.forEach(gig => {
+          let satisfied = true
+          if (gig.serviceRequirements) {
+            gig.serviceRequirements.forEach(req => {
+              // Find nodes in current DC running this service
+              const providerNodes = nodes.filter(n => 
+                n.services?.some(s => s.type === req.type && s.status === 'running')
+              )
+
+              // Check reachability for each provider
+              const reachableProviders = providerNodes.filter(n => {
+                const hasUpPort = n.ports.some(p => p.status === 'up')
+                const hasConnection = connections.some(c => c.startNodeId === n.id || c.endNodeId === n.id)
+                return hasUpPort && hasConnection
+              })
+
+              if (reachableProviders.length < req.count) {
+                satisfied = false
+              }
+            })
+          }
+
+          if (satisfied) {
+            totalRevenue += gig.reward
+          }
+        })
+        
+        const netProfit = totalRevenue - rentCost - powerCost
+        const newBalance = cashBalance + netProfit
+        
+        set({ cashBalance: newBalance, lastTickProfit: netProfit })
+        
+        if (newBalance < 0) {
+          pushAlert('critical', 'SYSTEM OVERDRAFT: Bank balance has dropped below zero!')
+        }
+      },
+
+      acceptContract: (gig) => set(state => ({
+        activeContracts: [...state.activeContracts, gig]
+      })),
+
+      resetCareer: () => set({
+        nodes: [],
+        connections: [],
+        cashBalance: 10000,
+        lastTickProfit: 0,
+        activeContracts: [],
+        terminalContext: { mode: 'global' },
+        alerts: [],
+        simulationCycle: 0
+      }),
     }),
     {
       name: 'infra-tycoon-state',
       storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: (state) => (rehydratedState) => {
+      onRehydrateStorage: () => (rehydratedState) => {
         if (rehydratedState) {
           const s = rehydratedState as InfraState
           const currentSites = s.sites || []

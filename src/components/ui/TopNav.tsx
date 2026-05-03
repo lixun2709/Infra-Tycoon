@@ -1,4 +1,3 @@
-import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 interface TopNavProps {
@@ -6,10 +5,21 @@ interface TopNavProps {
   onOpenTenants: () => void
   onOpenNetwork: () => void
   onToggleNOC: () => void
+  onOpenMarketplace: () => void
+  isMarketplaceOpen: boolean
 }
 
-export function TopNav({ onOpenBlueprints, onOpenTenants, onOpenNetwork, onToggleNOC }: TopNavProps) {
+export function TopNav({ 
+  onOpenBlueprints, 
+  onOpenTenants, 
+  onOpenNetwork, 
+  onToggleNOC, 
+  onOpenMarketplace,
+  isMarketplaceOpen
+}: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
+  const cashBalance = useInfraStore(s => s.cashBalance)
+  const lastTickProfit = useInfraStore(s => s.lastTickProfit)
   
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] h-16 bg-[#020617]/90 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-8 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
@@ -29,6 +39,7 @@ export function TopNav({ onOpenBlueprints, onOpenTenants, onOpenNetwork, onToggl
         {[
           { id: 'noc', label: 'NOC DASHBOARD', icon: '📡', active: false, onClick: onToggleNOC },
           { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
+          { id: 'marketplace', label: 'MARKETPLACE', icon: '💼', active: isMarketplaceOpen, onClick: onOpenMarketplace },
           { id: 'blueprints', label: 'BLUEPRINTS', icon: '📐', active: false, onClick: onOpenBlueprints },
           { id: 'tenants', label: 'TENANTS', icon: '👥', active: false, onClick: onOpenTenants },
         ].map(tab => (
@@ -46,18 +57,21 @@ export function TopNav({ onOpenBlueprints, onOpenTenants, onOpenNetwork, onToggl
       {/* System Status & Performance */}
       <div className="flex items-center gap-8">
         <div className="flex flex-col items-end">
-          <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Network Status</p>
+          <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Cash Balance</p>
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" />
-            <span className="text-xs font-black text-white tracking-tight">ENCRYPTED</span>
+            <span className={`text-xs font-black tracking-tight ${cashBalance >= 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+              ${cashBalance.toLocaleString()}
+            </span>
           </div>
         </div>
         
         <div className="h-8 w-px bg-white/10" />
         
         <div className="flex flex-col items-end">
-          <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Uptime</p>
-          <span className="text-xs font-black text-teal-400 font-mono tracking-tighter">99.999%</span>
+          <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Monthly Profit</p>
+          <span className={`text-xs font-black font-mono tracking-tighter ${lastTickProfit >= 0 ? 'text-teal-400' : 'text-orange-500'}`}>
+            {lastTickProfit >= 0 ? '+' : ''}${lastTickProfit.toFixed(0)}
+          </span>
         </div>
       </div>
     </div>

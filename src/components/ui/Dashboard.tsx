@@ -1,15 +1,15 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 export function Dashboard({ onClose }: { onClose: () => void }) {
   const {
-    nodes, connections, alerts, acknowledgeAlert, acknowledgeAllAlerts,
-    setSelectedNode, totalPowerKW, totalRoomBTU, simulateRandomFailure,
+    nodes, alerts, acknowledgeAlert, acknowledgeAllAlerts,
+    totalPowerKW, totalRoomBTU, simulateRandomFailure,
     simulateDataCorruption, triggerSiteDisaster, sites, currentSiteId,
-    initiateFailover, networkLoad, setNetworkLoad, cloudLinks, cloudEgressGB,
-    processCloudTiering, performMassRollback, processAIPredictions,
-    simulateStressTest, toggleChaosMode, isChaosMode, resilienceIndex,
-    refreshCount, repairCount, refreshHardware, repairHardware, generateFinalReport,
+    networkLoad, setNetworkLoad, cloudLinks, cloudEgressGB,
+    generateFinalReport,
+    resilienceIndex, refreshCount, repairCount, refreshHardware, repairHardware,
+    simulateStressTest,
     carbonFootprintKg, tenants, totalEWasteKG, simulationCycle, auditLogs, postMortems
   } = useInfraStore()
   
@@ -293,6 +293,8 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
                     ))}
                   </div>
                 )}
+
+
               </div>
             </div>
 

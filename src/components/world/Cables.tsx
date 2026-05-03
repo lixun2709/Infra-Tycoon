@@ -1,6 +1,6 @@
 import React, { useRef } from 'react'
 import * as THREE from 'three'
-import { Line } from '@react-three/drei'
+import { Line, Html } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useInfraStore, type Connection } from '../../store/useInfraStore'
 import { CLOUD_GATEWAY_POS } from './Scene'
@@ -18,15 +18,15 @@ function getPortWorldPosition(node: any, nodes: any[]) {
     return new THREE.Vector3(
         rack.position.x,
         rack.position.y + RACK_HEIGHT / 2 + yOffset,
-        rack.position.z + 0.45
+        rack.position.z - 0.41 // Flush with back of hardware
     )
 }
 
 const WAN_GATEWAY_POS = new THREE.Vector3(0, 10, -15)
 
 function getWanCurve(portPos: THREE.Vector3, isIncoming: boolean) {
-    const backOfRack = new THREE.Vector3(portPos.x, portPos.y + 0.5, portPos.z - 1)
-    const ceiling = new THREE.Vector3(portPos.x * 0.5, 9, -5)
+    const backOfRack = new THREE.Vector3(portPos.x, portPos.y + 0.5, portPos.z - 2)
+    const ceiling = new THREE.Vector3(portPos.x * 0.5, 12, -8)
     
     const pts = [portPos, backOfRack, ceiling, WAN_GATEWAY_POS]
     if (isIncoming) pts.reverse()
@@ -51,60 +51,72 @@ function LockIcon({ pos }: { pos: THREE.Vector3 }) {
 
 function AnimatedCable({ conn, points, isWan, isVirtual, isCloud, isQuarantined, isMigration, isGlobal, isBlocked }: { conn?: Connection, points: THREE.Vector3[], isWan?: boolean, isVirtual?: boolean, isCloud?: boolean, isQuarantined?: boolean, isMigration?: boolean, isGlobal?: boolean, isBlocked?: boolean }) {
     const lineRef = useRef<any>(null)
-    const secondaryRef = useRef<any>(null)
+    const [hovered, setHovered] = React.useState(false)
     
-    let color = '#2dd4bf'
-    if (conn && conn.latencyMs > 10) color = '#f59e0b'
-    if (isWan) color = '#a855f7' // Purple for WAN
-    if (isVirtual) color = '#ed8936' // Orange for VIP
-    if (isCloud) color = '#38bdf8' // Sky blue for Cloud
-    if (isQuarantined) color = '#ef4444' // Bright red for quarantined
-    if (isMigration) color = '#ffffff' // White for vMotion
-    if (isGlobal) color = '#c9a032' // Gold for Inter-continental
-    if (isBlocked) color = '#4b5563' // Dark grey for blocked
+    const nodes = useInfraStore(s => s.nodes)
+    const startNode = conn ? nodes.find(n => n.id === conn.startNodeId) : null
+    const endNode = conn ? nodes.find(n => n.id === conn.endNodeId) : null
+    const startPort = startNode?.ports.find(p => p.id === conn?.startPortId)
+    const endPort = endNode?.ports.find(p => p.id === conn?.endPortId)
 
-    const networkLoad = useInfraStore(s => s.networkLoad)
-    const baseSpeed = isMigration ? 0.15 : isVirtual ? 0.05 : (conn && conn.bandwidthGbps > 50 ? 0.05 : 0.02)
-    // Map latency inversely to speed (lower latency = faster animation)
-    const latencyMultiplier = conn ? Math.max(0.1, Math.min(2.0, 30 / conn.latencyMs)) : 1
-    const speed = baseSpeed * latencyMultiplier * (networkLoad * 5)
+    // L3 Validation: Pulse only if ports are UP and in same subnet
+    const isSameSubnet = !!(startPort?.ip && endPort?.ip && startPort.ip.split('.').slice(0, 3).join('.') === endPort.ip.split('.').slice(0, 3).join('.'))
+    
+    const L1_UP = startPort?.status === 'up' && endPort?.status === 'up'
+    const L3_UP = L1_UP && isSameSubnet
+    
+    let color = '#ef4444' // Red (Disconnected/Down)
+    if (L3_UP) {
+        color = '#22c55e' // Bright Green (Active L3)
+    } else if (L1_UP) {
+        color = '#94a3b8' // Grey (L1/L2 Active but no L3)
+    } else if (startPort?.status === 'up' || endPort?.status === 'up') {
+        color = '#ef4444' // Red (Cable plugged but one end is shut)
+    }
+
+    if (isWan) color = L3_UP ? '#a855f7' : '#94a3b8'
+    if (isVirtual) color = '#ed8936'
+    if (isCloud) color = '#38bdf8'
+    if (isQuarantined) color = '#ef4444'
+    if (isMigration) color = '#ffffff'
+    if (isGlobal) color = L3_UP ? '#c9a032' : '#94a3b8'
+    if (isBlocked) color = '#4b5563'
+
+    const lineWidth = isGlobal ? 8 : isMigration ? 6 : isCloud ? 5 : isWan ? 6 : (isVirtual ? 4 : (conn && conn.latencyMs > 10 ? 5 : 4))
+
+    const isFlowing = L3_UP || isMigration || isCloud || (isWan && L3_UP)
 
     useFrame(() => {
-        if (lineRef.current && lineRef.current.material && !isQuarantined && !isBlocked) {
-            lineRef.current.material.dashOffset -= speed
-        }
-        if (secondaryRef.current && secondaryRef.current.material && !isQuarantined && !isBlocked) {
-            secondaryRef.current.material.dashOffset -= speed * 1.5 // Double pulse effect
+        if (lineRef.current && isFlowing) {
+            lineRef.current.material.dashOffset -= 0.01
         }
     })
 
     return (
-        <group>
+        <group 
+            onPointerOver={(e) => { e.stopPropagation(); setHovered(true) }}
+            onPointerOut={() => setHovered(false)}
+        >
             <Line
                 ref={lineRef}
                 points={points}
                 color={color}
-                lineWidth={isGlobal ? 4 : isMigration ? 3 : isCloud ? 2.5 : isWan ? 3 : (isVirtual ? 2 : (conn && conn.latencyMs > 10 ? 2.5 : 1.5))}
+                lineWidth={lineWidth}
                 transparent
-                opacity={isBlocked ? 0.3 : (isGlobal ? 0.9 : isMigration ? 0.95 : isVirtual ? 0.8 : 0.8)}
-                dashed
-                dashSize={isGlobal ? 0.4 : isMigration ? 0.1 : 0.2}
-                dashScale={1}
+                opacity={isBlocked ? 0.3 : 0.9}
+                dashed={isFlowing}
+                dashSize={0.2}
                 gapSize={0.1}
             />
-            {isGlobal && (
-                <Line
-                    ref={secondaryRef}
-                    points={points}
-                    color="#ffffff"
-                    lineWidth={1.5}
-                    transparent
-                    opacity={0.6}
-                    dashed
-                    dashSize={0.1}
-                    dashScale={1}
-                    gapSize={0.8}
-                />
+            {hovered && conn && (
+                <Html position={points[Math.floor(points.length / 2)]}>
+                    <div className="pointer-events-none bg-slate-950/90 border border-teal-500/50 p-2 rounded shadow-2xl text-[10px] font-mono text-teal-400 whitespace-nowrap backdrop-blur-sm">
+                        <p className="font-black mb-1 text-white border-b border-white/10 pb-1">Logical Link Status</p>
+                        <p>Status: <span className={L3_UP ? 'text-green-400' : 'text-amber-400'}>{L3_UP ? 'ACTIVE (L3)' : 'LINK ONLY'}</span></p>
+                        <p>{startNode?.name}:{startPort?.label} {'<->'} {endNode?.name}:{endPort?.label}</p>
+                        {!L3_UP && <p className="mt-1 text-red-400 text-[8px] font-black uppercase">Subnet Mismatch or Interface Down</p>}
+                    </div>
+                </Html>
             )}
             {isBlocked && (
                 <LockIcon pos={points[Math.floor(points.length / 2)]} />
@@ -136,6 +148,7 @@ function GhostCable() {
     } else {
         const midPoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5)
         midPoint.y -= Math.min(0.5, startPos.distanceTo(endPos) * 0.2)
+        midPoint.x += 0.15
         curve = new THREE.CatmullRomCurve3([startPos, midPoint, endPos])
     }
     
@@ -197,7 +210,12 @@ export function Cables() {
                     }
 
                     const midPoint = new THREE.Vector3().addVectors(startPos, endPos).multiplyScalar(0.5)
-                    midPoint.y -= Math.min(0.5, startPos.distanceTo(endPos) * 0.2)
+                    const isSameRack = startNode.parentRackId === endNode.parentRackId
+                    if (isSameRack) {
+                        midPoint.z -= 0.2 // Bow slightly backward into the rear aisle space
+                    } else {
+                        midPoint.y -= Math.min(0.5, startPos.distanceTo(endPos) * 0.2)
+                    }
                     curve = new THREE.CatmullRomCurve3([startPos, midPoint, endPos])
                 }
                 

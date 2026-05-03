@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
-import type { HardwareCatalogKey } from '../../physics/hardwareLibrary'
+import { HARDWARE_CATALOG, type HardwareCatalogKey } from '../../physics/hardwareLibrary'
 
 interface ProcurementMenuProps {
   onAddRack: () => void
@@ -10,15 +10,18 @@ interface ProcurementMenuProps {
 
 export function ProcurementMenu({ onAddRack, onTryPlace, placementMode }: ProcurementMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const cash = useInfraStore(s => s.cash)
+  const cashBalance = useInfraStore(s => s.cashBalance)
 
   const items: { key: HardwareCatalogKey; label: string; icon: string; price: number }[] = [
-    { key: 'COMPUTE_1U', label: 'Compute (1U)', icon: '🖥️', price: 1200 },
-    { key: 'NETAPP_STORAGE_2U', label: 'NetApp Shelf (2U)', icon: '🗄️', price: 4500 },
-    { key: 'RUBRIK_BACKUP_2U', label: 'Rubrik Node (2U)', icon: '🛡️', price: 8000 },
-    { key: 'CRAC_UNIT_4U', label: 'CRAC Unit (4U)', icon: '❄️', price: 2500 },
-    { key: 'LOAD_BALANCER_1U', label: 'Load Balancer (1U)', icon: '⚖️', price: 3000 },
+    { key: 'COMPUTE_1U', label: 'Compute (1U)', icon: '🖥️', price: HARDWARE_CATALOG.COMPUTE_1U.purchasePrice },
+    { key: 'NETAPP_STORAGE_2U', label: 'NetApp Shelf (2U)', icon: '🗄️', price: HARDWARE_CATALOG.NETAPP_STORAGE_2U.purchasePrice },
+    { key: 'RUBRIK_BACKUP_2U', label: 'Rubrik Node (2U)', icon: '🛡️', price: HARDWARE_CATALOG.RUBRIK_BACKUP_2U.purchasePrice },
+    { key: 'SWITCH_1U', label: 'Managed Switch (1U)', icon: '🔌', price: HARDWARE_CATALOG.SWITCH_1U.purchasePrice },
+    { key: 'CRAC_UNIT_4U', label: 'CRAC Unit (4U)', icon: '❄️', price: HARDWARE_CATALOG.CRAC_UNIT_4U.purchasePrice },
+    { key: 'LOAD_BALANCER_1U', label: 'Load Balancer (1U)', icon: '⚖️', price: HARDWARE_CATALOG.LOAD_BALANCER_1U.purchasePrice },
   ]
+
+  const rackPrice = HARDWARE_CATALOG.RACK_42U.purchasePrice
 
   return (
     <div className="fixed bottom-8 right-8 z-50">
@@ -54,7 +57,7 @@ export function ProcurementMenu({ onAddRack, onTryPlace, placementMode }: Procur
               <span className="text-xl">🏗️</span>
               <div className="text-left">
                 <p className="text-xs font-bold">42U Server Rack</p>
-                <p className="text-[9px] text-teal-400/70 font-bold uppercase tracking-tighter">$5,000.00</p>
+                <p className="text-[9px] text-teal-400/70 font-bold uppercase tracking-tighter">${rackPrice.toLocaleString()}.00</p>
               </div>
             </div>
             <span className="text-[10px] font-black text-teal-500">ADD</span>
@@ -87,7 +90,7 @@ export function ProcurementMenu({ onAddRack, onTryPlace, placementMode }: Procur
         <div className="p-4 bg-black/40 rounded-b-2xl border-t border-white/5">
           <div className="flex items-center justify-between">
             <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Available Cash</span>
-            <span className="text-sm font-black text-emerald-400">${cash?.toLocaleString() ?? '0.00'}</span>
+            <span className="text-sm font-black text-emerald-400">${cashBalance?.toLocaleString() ?? '0.00'}</span>
           </div>
         </div>
       </div>

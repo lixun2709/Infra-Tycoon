@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { Tenant } from '../../store/useInfraStore'
 
 export function TenantManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { tenants, nodes, addTenant, removeTenant, assignNodeToTenant, updateNodeQoS } = useInfraStore()
+  const { tenants, nodes, addTenant, assignNodeToTenant, updateNodeQoS } = useInfraStore()
   const [newTenantName, setNewTenantName] = useState('')
   const [newTenantColor, setNewTenantColor] = useState('#3b82f6')
   const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null)

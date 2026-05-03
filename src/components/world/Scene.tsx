@@ -99,7 +99,7 @@ function PIIShield({ h }: { h: number }) {
   )
 }
 
-function MaintenanceIcon({ h }: { h: number }) {
+function MaintenanceIcon() {
   const meshRef = useRef<THREE.Mesh>(null)
   useFrame(({ clock }) => {
     if (!meshRef.current) return
@@ -134,12 +134,12 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
   const emissiveIntensity = (node.healthStatus === 'critical' || node.isInfected) ? (Math.sin(Date.now() / 150) * 0.8 + 1.2) : (node.degradation > 70 ? (Math.random() * 0.4 + 0.2) : (isSelected ? 1.5 : 1))
 
   return (
-    <group position={[0, y, 0.1]}>
+    <group position={[0, y, 0.08]}>
       {node.isRefreshing ? (
-        <MaintenanceIcon h={h} />
+        <MaintenanceIcon />
       ) : (
         <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
-          <boxGeometry args={[0.92, h, 0.88]} />
+          <boxGeometry args={[0.92, h, 0.9]} />
           <meshStandardMaterial
             color={isSelected ? '#199277' : node.isInfected ? '#4a044e' : color}
             metalness={0.4}
@@ -269,13 +269,13 @@ function Rack({ node, isSelected, onSelect, children }: { node: InfraNode; isSel
       <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
         <boxGeometry args={[1, RACK_HEIGHT, 1]} />
         <meshStandardMaterial
-          color={isOverload ? '#3b0a14' : '#0c144d'}
+          color={isOverload ? '#3b0a14' : '#2d3748'}
           emissive={isOverload ? '#ff0000' : '#000000'}
           emissiveIntensity={isOverload ? 0.8 : 0}
           metalness={0.8}
           roughness={0.2}
           transparent
-          opacity={isOverload ? 0.3 : 0.15}
+          opacity={isOverload ? 0.3 : 0.4}
           depthWrite={false}
         />
         <Edges color={isSelected ? '#2dd4bf' : (isOverload ? '#ff4444' : '#f0f7fa')} threshold={14} lineWidth={isSelected ? 3 : 1.5} />
@@ -293,7 +293,7 @@ function Rack({ node, isSelected, onSelect, children }: { node: InfraNode; isSel
 }
 
 function Floor() {
-  const { placementMode, pendingRackType, setPlacementMode, addNode } = useInfraStore()
+  const { placementMode, setPlacementMode, addNode, currentSiteId } = useInfraStore()
   const [ghostPos, setGhostPos] = useState<THREE.Vector3 | null>(null)
 
   return (
@@ -327,6 +327,10 @@ function Floor() {
             currentPowerKW: 0,
             status: 'online',
             ports: [],
+            siteId: currentSiteId,
+            services: [],
+            installDate: useInfraStore.getState().simulationCycle,
+            degradation: 0
           })
           setPlacementMode(false, null)
           setGhostPos(null)
@@ -510,17 +514,17 @@ function CameraAnimator() {
   useEffect(() => {
     if (!controls) return
     const handleStart = () => setIsManualOverride(true)
-    controls.addEventListener('start', handleStart)
-    return () => controls.removeEventListener('start', handleStart)
+    ;(controls as any).addEventListener('start', handleStart)
+    return () => (controls as any).removeEventListener('start', handleStart)
   }, [controls])
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!controls) return
 
     // Site switch transition: snap to site default view
     if (prevSiteId.current !== currentSiteId) {
       camera.position.lerp(new THREE.Vector3(5, 4, 5), 0.1)
-      controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1)
+      ;(controls as any).target.lerp(new THREE.Vector3(0, 0, 0), 0.1)
       if (camera.position.distanceTo(new THREE.Vector3(5, 4, 5)) < 0.1) {
         prevSiteId.current = currentSiteId
       }
@@ -557,7 +561,7 @@ function CameraAnimator() {
     }
 
     (controls as any).target.lerp(targetPos, delta * 4)
-    controls.update()
+    ;(controls as any).update()
   })
 
   return null
@@ -566,7 +570,6 @@ function CameraAnimator() {
 function World() {
   const { nodes, selectedNodeId, setSelectedNode, totalRoomBTU, currentSiteId } = useInfraStore()
   const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
-  const hardwareNodes = useMemo(() => nodes.filter(n => n.type !== 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
   const isHot = totalRoomBTU > 50000
 
   return (
@@ -675,7 +678,7 @@ function DeployWave() {
     prevNodesCount.current = nodes.length
   }, [nodes.length])
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (active) {
       setScale(s => {
         if (s > 40) {

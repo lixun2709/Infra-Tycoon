@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
