@@ -146,22 +146,43 @@ export function Dashboard() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                {activeAlertTab === 'active' && (
+              {activeAlertTab === 'active' && (
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center mb-2 px-1">
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Active System Alerts</p>
+                    {alerts.filter(a => !a.isAcknowledged).length > 0 && (
+                      <button 
+                        onClick={acknowledgeAllAlerts}
+                        className="text-[9px] font-black text-teal-500 hover:text-teal-400 uppercase tracking-tighter"
+                      >
+                        Acknowledge All
+                      </button>
+                    )}
+                  </div>
                   <div className="space-y-2">
                     {alerts.filter(a => !a.isAcknowledged).map(alert => (
-                      <div key={alert.id} className={`p-3 rounded-lg border flex gap-3 ${alert.severity === 'critical' ? 'bg-red-950/20 border-red-900/40' : 'bg-slate-800/30 border-slate-700/50'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse' : 'bg-amber-400'}`} />
-                        <div className="flex-1">
-                          <p className="text-[11px] text-slate-200 leading-relaxed font-medium">{alert.message}</p>
-                          <p className="text-[9px] text-slate-500 mt-2 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                      <div key={alert.id} className={`p-3 rounded-lg border flex flex-col gap-2 ${alert.severity === 'critical' ? 'bg-red-950/20 border-red-900/40' : 'bg-slate-800/30 border-slate-700/50'}`}>
+                        <div className="flex gap-3">
+                          <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse' : 'bg-amber-400'}`} />
+                          <div className="flex-1">
+                            <p className="text-[11px] text-slate-200 leading-relaxed font-medium">{alert.message}</p>
+                            <p className="text-[9px] text-slate-500 mt-1 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                          </div>
                         </div>
+                        <button 
+                          onClick={() => acknowledgeAlert(alert.id)}
+                          className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-[8px] font-black uppercase text-slate-400 tracking-widest transition-colors"
+                        >
+                          Acknowledge
+                        </button>
                       </div>
                     ))}
                     {alerts.filter(a => !a.isAcknowledged).length === 0 && (
                       <div className="text-center py-12 opacity-30 italic text-xs">No active alerts.</div>
                     )}
                   </div>
-                )}
+                </div>
+              )}
 
                 {activeAlertTab === 'esg' && (
                   <div className="space-y-6">
