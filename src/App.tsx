@@ -203,7 +203,7 @@ function App() {
       <TopNav 
         onOpenBlueprints={() => setIsBlueprintManagerOpen(true)}
         onOpenTenants={() => setIsTenantManagerOpen(true)}
-        onOpenNetwork={() => setIsNetworkManagerOpen(true)}
+        onOpenNetwork={() => setNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
       />
 

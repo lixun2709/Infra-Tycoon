@@ -1350,7 +1350,10 @@ export const useInfraStore = create<InfraState>()(
         activeContracts: [],
         terminalContext: { mode: 'global' },
         alerts: [],
-        simulationCycle: 0
+        simulationCycle: 0,
+        deploymentQueue: [],
+        shoppingCart: [],
+        isHeatMapVisible: false,
       }),
     }),
     {
