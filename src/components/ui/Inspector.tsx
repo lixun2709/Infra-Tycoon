@@ -36,7 +36,7 @@ export function Inspector() {
 
   return (
     <>
-    <div className="fixed right-0 top-0 h-full w-80 bg-[#060b18]/95 text-white p-6 shadow-2xl backdrop-blur-md border-l border-slate-800 overflow-y-auto">
+    <div className="fixed right-0 top-16 h-[calc(100vh-64px)] w-80 bg-[#060b18]/95 text-white p-6 shadow-2xl backdrop-blur-md border-l border-slate-800 overflow-y-auto z-40">
       <input 
         type="text" 
         value={selectedNode.name} 

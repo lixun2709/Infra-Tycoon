@@ -55,8 +55,8 @@ export function NetworkManager() {
   })
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#070f52]/80 backdrop-blur-sm p-4">
-      <div className="bg-[#0a1536] border border-[#48afbb]/50 p-6 rounded-lg shadow-2xl max-w-4xl w-full flex flex-col gap-6 max-h-[90vh]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#070f52]/80 backdrop-blur-sm p-6" onClick={() => setNetworkManagerOpen(false)}>
+      <div className="bg-[#0a1536] border border-[#48afbb]/50 p-6 rounded-2xl shadow-2xl max-w-5xl w-full flex flex-col gap-6 max-h-[90vh] animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         
         <div className="flex justify-between items-center border-b border-slate-700 pb-4">
           <div>

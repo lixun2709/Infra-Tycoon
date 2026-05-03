@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
-export function Dashboard() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [activeAlertTab, setActiveAlertTab] = useState<'active' | 'history' | 'ai' | 'esg' | 'chargeback' | 'audit' | 'lifecycle'>('active')
+export function Dashboard({ onClose }: { onClose: () => void }) {
   const {
     nodes, connections, alerts, acknowledgeAlert, acknowledgeAllAlerts,
     setSelectedNode, totalPowerKW, totalRoomBTU, simulateRandomFailure,
@@ -11,12 +9,11 @@ export function Dashboard() {
     initiateFailover, networkLoad, setNetworkLoad, cloudLinks, cloudEgressGB,
     processCloudTiering, performMassRollback, processAIPredictions,
     simulateStressTest, toggleChaosMode, isChaosMode, resilienceIndex,
-    postMortems, processChaosLoop, toggleGlobalMap, carbonFootprintKg,
-    tenants, processTenancyEffect, auditLogs, simulationCycle, totalEWasteKG,
     refreshCount, repairCount, refreshHardware, repairHardware, generateFinalReport,
-    isAutoPilot, toggleAutoPilot 
+    carbonFootprintKg, tenants, totalEWasteKG, simulationCycle, auditLogs, postMortems
   } = useInfraStore()
   
+  const [activeAlertTab, setActiveAlertTab] = useState<'active' | 'history' | 'ai' | 'esg' | 'chargeback' | 'audit' | 'lifecycle'>('active')
   const [showFinalReport, setShowFinalReport] = useState(false)
   const [reportData, setReportData] = useState<any>(null)
 
@@ -26,8 +23,6 @@ export function Dashboard() {
     setShowFinalReport(true)
   }
 
-  const currentSite = sites.find(s => s.id === currentSiteId)
-
   const allHardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
   const siteHardware = allHardware.filter(n => n.siteId === currentSiteId)
 
@@ -36,8 +31,6 @@ export function Dashboard() {
 
   const siteHealthyCount = siteHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
   const siteHealthIndex = siteHardware.length > 0 ? Math.round((siteHealthyCount / siteHardware.length) * 100) : 100
-
-  const unacknowledgedCount = alerts.filter(a => !a.isAcknowledged).length
 
   // Security Stats
   const infectedCount = allHardware.filter(n => n.isInfected).length
@@ -89,37 +82,23 @@ export function Dashboard() {
       const store = useInfraStore.getState()
       store.processCloudTiering()
       store.processAIPredictions()
-      store.processChaosLoop()
       store.processTenancyEffect()
       store.processAging()
-      store.processAutoPilot()
     }, 1000)
     return () => clearInterval(interval)
   }, [networkLoad])
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed top-4 left-[300px] z-40 bg-[#070f52]/90 border border-[#48afbb]/50 text-white px-4 py-2 rounded-md shadow-lg hover:bg-[#0a1536] transition-colors font-semibold text-sm flex items-center gap-2 backdrop-blur-md"
-      >
-        <span>📊</span> NOC Dashboard
-        {unacknowledgedCount > 0 && <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full animate-pulse">{unacknowledgedCount}</span>}
-      </button>
-    )
-  }
-
   return (
     <>
-      <div className="fixed inset-0 z-40 flex items-start justify-center pt-6 pb-6 px-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
-        <div className="w-full max-w-6xl bg-[#060b18]/98 text-white shadow-2xl backdrop-blur-md border border-slate-700/50 rounded-xl overflow-hidden flex flex-col" style={{ height: 'min(92vh, 850px)' }} onClick={(e) => e.stopPropagation()}>
+      <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+        <div className="w-full max-w-[1400px] bg-[#060b18]/98 text-white shadow-2xl backdrop-blur-md border border-slate-700/50 rounded-2xl overflow-hidden flex flex-col" style={{ height: 'min(94vh, 1000px)' }} onClick={(e) => e.stopPropagation()}>
 
           {/* Header */}
           <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-[#070f52] flex-shrink-0">
             <h2 className="font-black text-sm tracking-[0.2em] flex items-center gap-3 uppercase">
               <span>📡</span> NOC Operations Center
             </h2>
-            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors text-lg">✕</button>
+            <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors text-lg">✕</button>
           </div>
 
           <div className="flex flex-1 min-h-0">
@@ -146,43 +125,65 @@ export function Dashboard() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              {activeAlertTab === 'active' && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-2 px-1">
-                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Active System Alerts</p>
-                    {alerts.filter(a => !a.isAcknowledged).length > 0 && (
-                      <button 
-                        onClick={acknowledgeAllAlerts}
-                        className="text-[9px] font-black text-teal-500 hover:text-teal-400 uppercase tracking-tighter"
-                      >
-                        Acknowledge All
-                      </button>
-                    )}
+                {activeAlertTab === 'active' && (
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center mb-1 px-1">
+                      <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Active Alerts</p>
+                      {alerts.filter(a => !a.isAcknowledged).length > 0 && (
+                        <button 
+                          onClick={acknowledgeAllAlerts}
+                          className="text-[9px] font-black text-teal-500 hover:text-teal-400 uppercase tracking-tighter"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+                    <div className="space-y-2">
+                      {alerts.filter(a => !a.isAcknowledged).map(alert => (
+                        <div key={alert.id} className={`p-2.5 rounded-lg border flex flex-col gap-2 ${alert.severity === 'critical' ? 'bg-red-950/20 border-red-900/40' : 'bg-slate-800/30 border-slate-700/50'}`}>
+                          <div className="flex gap-2.5">
+                            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse' : 'bg-amber-400'}`} />
+                            <div className="flex-1">
+                              <p className="text-[10px] text-slate-200 leading-tight font-medium">{alert.message}</p>
+                              <p className="text-[8px] text-slate-500 mt-1 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => acknowledgeAlert(alert.id)}
+                            className="w-full py-1 bg-slate-800 hover:bg-slate-700 rounded text-[8px] font-black uppercase text-slate-400 tracking-widest transition-colors"
+                          >
+                            Acknowledge
+                          </button>
+                        </div>
+                      ))}
+                      {alerts.filter(a => !a.isAcknowledged).length === 0 && (
+                        <div className="text-center py-8 opacity-30 italic text-[10px]">No active alerts.</div>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {alerts.filter(a => !a.isAcknowledged).map(alert => (
-                      <div key={alert.id} className={`p-3 rounded-lg border flex flex-col gap-2 ${alert.severity === 'critical' ? 'bg-red-950/20 border-red-900/40' : 'bg-slate-800/30 border-slate-700/50'}`}>
-                        <div className="flex gap-3">
-                          <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse' : 'bg-amber-400'}`} />
-                          <div className="flex-1">
-                            <p className="text-[11px] text-slate-200 leading-relaxed font-medium">{alert.message}</p>
-                            <p className="text-[9px] text-slate-500 mt-1 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                )}
+
+                {activeAlertTab === 'history' && (
+                  <div className="space-y-3">
+                    <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-1">Event History</p>
+                    <div className="space-y-2">
+                      {alerts.filter(a => a.isAcknowledged).sort((a,b) => b.timestamp - a.timestamp).map(alert => (
+                        <div key={alert.id} className="p-2.5 rounded-lg border border-slate-800 bg-slate-900/30 opacity-70">
+                          <div className="flex gap-2.5">
+                            <div className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 bg-slate-600" />
+                            <div className="flex-1">
+                              <p className="text-[10px] text-slate-400 leading-tight">{alert.message}</p>
+                              <p className="text-[8px] text-slate-600 mt-1 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                            </div>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => acknowledgeAlert(alert.id)}
-                          className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 rounded text-[8px] font-black uppercase text-slate-400 tracking-widest transition-colors"
-                        >
-                          Acknowledge
-                        </button>
-                      </div>
-                    ))}
-                    {alerts.filter(a => !a.isAcknowledged).length === 0 && (
-                      <div className="text-center py-12 opacity-30 italic text-xs">No active alerts.</div>
-                    )}
+                      ))}
+                      {alerts.filter(a => a.isAcknowledged).length === 0 && (
+                        <div className="text-center py-8 opacity-30 italic text-[10px]">No historical data.</div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
                 {activeAlertTab === 'esg' && (
                   <div className="space-y-6">
@@ -296,26 +297,26 @@ export function Dashboard() {
             </div>
 
             {/* MAIN PANEL */}
-            <div className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar space-y-6">
+            <div className="flex-1 flex flex-col p-4 overflow-y-auto custom-scrollbar space-y-4">
 
               {/* TOP METRICS */}
-              <div className="grid grid-cols-3 gap-5">
-                <div className="bg-slate-900/60 border border-slate-700/50 p-5 rounded-xl">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Global Health Index</p>
-                  <p className={`text-5xl font-black ${globalHealthIndex > 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{globalHealthIndex}%</p>
-                  <p className="text-[10px] text-slate-600 mt-2 font-bold">{globalHealthyCount} / {allHardware.length} Nodes Healthy</p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">Global Health</p>
+                  <p className={`text-3xl font-black ${globalHealthIndex > 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{globalHealthIndex}%</p>
+                  <p className="text-[9px] text-slate-600 mt-1 font-bold">{globalHealthyCount}/{allHardware.length} Healthy</p>
                 </div>
-                <div className="bg-slate-900/60 border border-slate-700/50 p-5 rounded-xl">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Primary-DC Health</p>
-                  <p className={`text-5xl font-black ${siteHealthIndex > 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{siteHealthIndex}%</p>
-                  <div className="w-full bg-slate-950 h-1.5 rounded-full mt-4 overflow-hidden">
+                <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl">
+                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">DC Health</p>
+                  <p className={`text-3xl font-black ${siteHealthIndex > 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{siteHealthIndex}%</p>
+                  <div className="w-full bg-slate-950 h-1 rounded-full mt-2 overflow-hidden">
                     <div className="bg-emerald-500 h-full" style={{ width: `${siteHealthIndex}%` }} />
                   </div>
                 </div>
-                <div className="bg-slate-900/60 border border-orange-500/20 p-5 rounded-xl">
-                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-3">Resilience Index</p>
-                  <p className="text-5xl font-black text-orange-500">{resilienceIndex}</p>
-                  <div className="w-full bg-slate-950 h-1.5 rounded-full mt-4 overflow-hidden">
+                <div className="bg-slate-900/60 border border-orange-500/20 p-4 rounded-xl">
+                  <p className="text-[9px] font-black text-orange-500 uppercase tracking-widest mb-2">Resilience</p>
+                  <p className="text-3xl font-black text-orange-500">{resilienceIndex}</p>
+                  <div className="w-full bg-slate-950 h-1 rounded-full mt-2 overflow-hidden">
                     <div className="bg-orange-500 h-full" style={{ width: `${resilienceIndex}%` }} />
                   </div>
                 </div>
@@ -344,82 +345,66 @@ export function Dashboard() {
               </div>
 
               {/* FINOPS */}
-              <div className="bg-slate-900/60 border border-slate-700/50 p-6 rounded-xl">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">FinOps — Monthly Spend</p>
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className="text-4xl font-black text-emerald-400">${Math.round(totalMonthlyCost)}</span>
-                  <span className="text-slate-500 text-sm font-bold">/mo</span>
+              <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl">
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2">FinOps — Monthly Spend</p>
+                <div className="flex items-baseline gap-1 mb-4">
+                  <span className="text-2xl font-black text-emerald-400">${Math.round(totalMonthlyCost)}</span>
+                  <span className="text-slate-500 text-[10px] font-bold">/mo</span>
                 </div>
-                <div className="grid grid-cols-3 gap-12 text-center">
+                <div className="grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1">On-Prem</p>
-                    <p className="text-lg font-black text-white">${Math.round(localCostMonthly)}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">On-Prem</p>
+                    <p className="text-sm font-black text-white">${Math.round(localCostMonthly)}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Cloud</p>
-                    <p className="text-lg font-black text-blue-400">${Math.round(cloudCostMonthly)}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Cloud</p>
+                    <p className="text-sm font-black text-blue-400">${Math.round(cloudCostMonthly)}</p>
                   </div>
                   <div>
-                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Egress</p>
-                    <p className="text-lg font-black text-orange-400">${Math.round(egressCostMonthly)}</p>
+                    <p className="text-[8px] font-black text-slate-500 uppercase mb-1">Egress</p>
+                    <p className="text-sm font-black text-orange-400">${Math.round(egressCostMonthly)}</p>
                   </div>
                 </div>
               </div>
 
               {/* SECURITY */}
-              <div className="bg-slate-900/60 border border-slate-700/50 p-6 rounded-xl">
+              <div className="bg-slate-900/60 border border-slate-700/50 p-4 rounded-xl">
                 <div className="grid grid-cols-3 text-center">
                   <div>
-                    <p className="text-3xl font-black text-purple-500">{infectedCount}</p>
-                    <p className="text-[9px] font-black text-slate-600 uppercase mt-1">Infected</p>
+                    <p className="text-2xl font-black text-purple-500">{infectedCount}</p>
+                    <p className="text-[8px] font-black text-slate-600 uppercase mt-1">Infected</p>
                   </div>
                   <div>
-                    <p className="text-3xl font-black text-blue-500">{protectedCount}</p>
-                    <p className="text-[9px] font-black text-slate-600 uppercase mt-1">Protected</p>
+                    <p className="text-2xl font-black text-blue-500">{protectedCount}</p>
+                    <p className="text-[8px] font-black text-slate-600 uppercase mt-1">Protected</p>
                   </div>
                   <div>
-                    <p className="text-3xl font-black text-slate-400">{exposedCount}</p>
-                    <p className="text-[9px] font-black text-slate-600 uppercase mt-1">Exposed</p>
+                    <p className="text-2xl font-black text-slate-400">{exposedCount}</p>
+                    <p className="text-[8px] font-black text-slate-600 uppercase mt-1">Exposed</p>
                   </div>
                 </div>
               </div>
 
-              {/* ACTIONS */}
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={simulateRandomFailure} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">⚡ Hardware Failure</button>
-                <button onClick={simulateDataCorruption} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">🦠 Ransomware</button>
-                <button onClick={triggerSiteDisaster} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">🔥 Site Disaster</button>
-                <button onClick={simulateStressTest} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">🧬 Stress Test</button>
-              </div>
-
-              {/* NEW DAY 30 CONTROLS */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* ACTIONS & CONTROLS */}
+              <div className="grid grid-cols-4 gap-2">
+                <button onClick={simulateRandomFailure} className="py-2 bg-slate-900 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:border-teal-500/50 transition-colors">⚡ Failure</button>
+                <button onClick={simulateDataCorruption} className="py-2 bg-slate-900 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:border-red-500/50 transition-colors">🦠 Ransom</button>
+                <button onClick={triggerSiteDisaster} className="py-2 bg-slate-900 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:border-orange-500/50 transition-colors">🔥 Disaster</button>
+                <button onClick={simulateStressTest} className="py-2 bg-slate-900 border border-slate-700 rounded-lg text-[8px] font-black uppercase tracking-widest hover:border-blue-500/50 transition-colors">🧬 Stress</button>
+                
                 <button 
-                  onClick={toggleAutoPilot}
-                  className={`py-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${isAutoPilot ? 'bg-teal-900/40 border-teal-400 text-teal-300 animate-pulse' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
+                  onClick={handleCompleteSimulation}
+                  className="col-span-4 py-2 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-lg font-black text-[8px] uppercase tracking-[0.2em] shadow-lg border border-teal-400/30 transition-all"
                 >
-                  {isAutoPilot ? '🤖 AUTO-PILOT ON' : '🤖 AUTO-PILOT OFF'}
-                </button>
-                <button 
-                  onClick={toggleChaosMode}
-                  className={`py-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${isChaosMode ? 'bg-red-900/40 border-red-500 text-red-300' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
-                >
-                  CHAOS MODE
+                  🏆 Complete 30-Day Simulation
                 </button>
               </div>
-
-              <button 
-                onClick={handleCompleteSimulation}
-                className="w-full py-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-lg font-black text-xs uppercase tracking-[0.3em] shadow-lg border border-teal-400/30 transition-all"
-              >
-                🏆 Complete 30-Day Simulation
-              </button>
 
               {/* NETWORK LOAD */}
-              <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/50">
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Network Load Control</p>
-                  <p className="text-xs font-black text-teal-400 font-mono">{(networkLoad * 100).toFixed(0)}%</p>
+              <div className="bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/50">
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Network Load Control</p>
+                  <p className="text-[9px] font-black text-teal-400 font-mono">{(networkLoad * 100).toFixed(0)}%</p>
                 </div>
                 <input
                   type="range" min="0" max="1" step="0.05" value={networkLoad}

@@ -7,7 +7,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { BlueprintManager } from './components/ui/BlueprintManager'
 import { TenantManager } from './components/ui/TenantManager'
-import { Terminal } from './components/ui/Terminal'
+
+import { TopNav } from './components/ui/TopNav'
+import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -33,7 +35,7 @@ function EmergencyToasts() {
   const isCritical = activeAlert.severity === 'critical'
 
   return (
-    <div className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
+    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
       <div className={`bg-[#1f0909]/95 border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : 'border-amber-500 ring-amber-900/30'}`}>
         <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : '⚠️'}</div>
         <div className="flex-1">
@@ -121,6 +123,8 @@ function App() {
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
   const [isBlueprintManagerOpen, setIsBlueprintManagerOpen] = useState(false)
   const [isTenantManagerOpen, setIsTenantManagerOpen] = useState(false)
+  const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
+  
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
@@ -159,131 +163,75 @@ function App() {
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-slate-900 font-sans text-slate-200">
-      <header className="absolute top-4 left-[520px] z-20 pointer-events-none">
-        <div className="pointer-events-auto bg-[#0a1536]/90 border border-slate-700/80 rounded-lg p-1 backdrop-blur-md flex items-center gap-1 shadow-xl">
-          {sites.map(site => (
-            <button
-              key={site.id}
-              onClick={() => setCurrentSiteId(site.id)}
-              className={`px-4 py-1.5 rounded text-xs font-bold transition-all flex items-center gap-2 ${currentSiteId === site.id ? 'bg-teal-600 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-            >
-              {site.isDisaster && <span className="text-base animate-pulse">🔥</span>}
-              {site.name}
-            </button>
-          ))}
-        </div>
-      </header>
-
+    <div className="relative h-screen w-screen overflow-hidden bg-[#020617] font-sans text-slate-200">
+      {/* 3D Scene Background */}
       <div className="fixed inset-0 z-0 cursor-crosshair">
         <Scene />
       </div>
 
-      <aside className="pointer-events-auto fixed left-0 top-0 z-30 flex h-full w-72 flex-col gap-5 border-r border-[#48afbb]/35 bg-[#070f52] p-5 text-white shadow-[4px_0_24px_rgba(0,0,0,0.35)]">
-        <div className="border-b border-white/10 pb-4">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#48afbb]">
-            Data center
-          </p>
-          <h1 className="mt-1 text-lg font-semibold tracking-tight text-[#fcfdfd]">
-            Infra-Tycoon <span className="text-teal-400">3D</span>
-          </h1>
-          <p className="mt-1 text-xs leading-relaxed text-[#a8bfd0]">
-            Global Infrastructure Simulator
-          </p>
-        </div>
-        <div>
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#48afbb]">
-            Data Center Management
-          </p>
-          <div className="flex flex-col gap-2 mb-6">
-            <button
-              onClick={() => setNetworkManagerOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-md border border-purple-500/50 bg-purple-900/30 text-purple-100 hover:bg-purple-800/40 hover:border-purple-400 transition-colors shadow-sm"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-[#a855f7]">🌐</span> Global Network
-              </span>
-              <span className="text-purple-400 text-xs">Configure</span>
-            </button>
+      {/* Top Navigation Bar */}
+      <TopNav 
+        onOpenBlueprints={() => setIsBlueprintManagerOpen(true)}
+        onOpenTenants={() => setIsTenantManagerOpen(true)}
+        onOpenNetwork={() => setNetworkManagerOpen(true)}
+        onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
+      />
 
-            <button
-              onClick={() => setIsBlueprintManagerOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-md border border-blue-500/50 bg-blue-900/30 text-blue-100 hover:bg-blue-800/40 hover:border-blue-400 transition-colors shadow-sm"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-[#3b82f6]">📐</span> Blueprints & IaC
-              </span>
-              <span className="text-blue-400 text-xs">Manage</span>
-            </button>
-
-            <button
-              onClick={() => setIsTenantManagerOpen(true)}
-              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-md border border-emerald-500/50 bg-emerald-900/30 text-emerald-100 hover:bg-emerald-800/40 hover:border-emerald-400 transition-colors shadow-sm"
-            >
-              <span className="flex items-center gap-2">
-                <span className="text-[#10b981]">👥</span> Tenant Isolation
-              </span>
-              <span className="text-emerald-400 text-xs">Logical</span>
-            </button>
+      {/* Secondary Header Overlay: Site Toggle & Statistics */}
+      <div className="fixed top-16 left-0 right-0 z-40 pointer-events-none">
+        <div className="max-w-[1600px] mx-auto px-8 py-4 flex items-start justify-between">
+          
+          {/* Site Toggle (DR/Primary) */}
+          <div className="pointer-events-auto bg-[#0a1536]/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 flex items-center gap-1.5 shadow-2xl">
+            {sites.map(site => (
+              <button
+                key={site.id}
+                onClick={() => setCurrentSiteId(site.id)}
+                className={`px-5 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all flex items-center gap-3 ${currentSiteId === site.id ? 'bg-teal-600 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+              >
+                {site.isDisaster && <span className="text-sm animate-pulse">🔥</span>}
+                {site.name.toUpperCase()}
+              </button>
+            ))}
           </div>
 
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#48afbb]">
-            Rack
-          </p>
-          <button
-            type="button"
-            onClick={handleAddRack}
-            disabled={placementMode}
-            className={`w-full rounded-md border px-3 py-2.5 text-sm font-semibold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52] ${placementMode ? 'bg-slate-700 border-slate-600 text-slate-400' : 'border-[#48afbb]/50 bg-[#199277] text-white hover:bg-[#1faa8c] hover:border-[#5ec9b8]'}`}
-          >
-            {placementMode ? 'Placing Rack...' : 'Add 42U Rack'}
-          </button>
-        </div>
-
-        <div className="border-t border-white/10 pt-4">
-          <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#48afbb]">
-            Hardware catalog
-          </p>
-          <div className="flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={() => tryPlace('COMPUTE_1U')}
-              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52]"
-            >
-              Add Compute (1U)
-            </button>
-            <button
-              type="button"
-              onClick={() => tryPlace('NETAPP_STORAGE_2U')}
-              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52]"
-            >
-              Add NetApp Shelf (2U)
-            </button>
-            <button
-              type="button"
-              onClick={() => tryPlace('RUBRIK_BACKUP_2U')}
-              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52]"
-            >
-              Add Rubrik Node (2U)
-            </button>
-            <button
-              type="button"
-              onClick={() => tryPlace('CRAC_UNIT_4U')}
-              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52]"
-            >
-              Add CRAC Unit (4U)
-            </button>
-            <button
-              type="button"
-              onClick={() => tryPlace('LOAD_BALANCER_1U')}
-              className="rounded-md border border-white/15 bg-[#0d1854] px-3 py-2 text-left text-sm font-medium text-[#fcfdfd] transition hover:bg-[#121f6b] focus:outline-none focus:ring-2 focus:ring-[#48afbb] focus:ring-offset-2 focus:ring-offset-[#070f52] shadow-[0_0_10px_rgba(221,107,32,0.3)] border-[#dd6b20]/40"
-            >
-              Add Load Balancer (1U)
-            </button>
+          {/* Room Statistics */}
+          <div className={`pointer-events-auto bg-[#0a1536]/80 backdrop-blur-md border border-white/10 rounded-xl p-5 shadow-2xl transition-all w-[320px] ${selectedNodeId ? 'translate-x-[-340px]' : ''}`}>
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
+              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-teal-400">
+                Facility Metrics
+              </p>
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_5px_teal]" />
+            </div>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Load</span>
+                <span className="text-sm font-black text-white">{totalPowerKW.toFixed(1)} kW</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thermal</span>
+                <span className="text-sm font-black text-white">{totalRoomBTU.toLocaleString()} <span className="text-[8px] text-slate-500">BTU/H</span></span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerts</span>
+                <span className={`text-sm font-black ${overloadedRackCount > 0 ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`}>
+                  {overloadedRackCount > 0 ? `${overloadedRackCount} OVERLOAD` : 'NOMINAL'}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </aside>
+      </div>
 
+      {/* Procurement Button (Bottom Right) */}
+      <ProcurementMenu 
+        onAddRack={handleAddRack}
+        onTryPlace={tryPlace}
+        placementMode={placementMode}
+      />
+
+      {/* Overlays & Managers */}
       <EmergencyToasts />
       <RansomwareVignette />
       <ChaosVignette />
@@ -291,83 +239,72 @@ function App() {
       <SiteTransitionOverlay />
       <BlueprintManager isOpen={isBlueprintManagerOpen} onClose={() => setIsBlueprintManagerOpen(false)} />
       <TenantManager isOpen={isTenantManagerOpen} onClose={() => setIsTenantManagerOpen(false)} />
-      <Dashboard />
+      {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
       <NetworkManager />
-      <Terminal />
+
       <Inspector />
 
-      <div
-        className={`pointer-events-none fixed top-4 z-20 w-[260px] rounded-lg border border-[#48afbb]/25 bg-white/70 p-4 text-[#070f52] shadow-lg backdrop-blur-sm transition-all ${
-          selectedNodeId ? 'right-[21.5rem]' : 'right-4'
-        }`}
-      >
-        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[#0b3a4a]">
-          Room statistics
-        </p>
-        <div className="mt-3 space-y-2 text-sm">
-          <div className="flex items-baseline justify-between">
-            <span className="text-[#0b3a4a]">Total power</span>
-            <span className="font-semibold">{totalPowerKW.toFixed(1)} kW</span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-[#0b3a4a]">Total heat</span>
-            <span className="font-semibold">
-              {totalRoomBTU.toLocaleString()} BTU/hr
-            </span>
-          </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-[#0b3a4a]">Overloaded racks</span>
-            <span
-              className={
-                overloadedRackCount > 0
-                  ? 'font-semibold text-red-700'
-                  : 'font-semibold'
-              }
-            >
-              {overloadedRackCount}
-            </span>
-          </div>
-        </div>
-      </div>
-      
+      {/* Placement Tooltip */}
       {placementMode && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 bg-teal-900/90 text-teal-100 px-6 py-3 rounded-full border border-teal-500 shadow-2xl backdrop-blur-md font-medium text-sm animate-bounce">
-          Hover over the grid to position your rack, then click to place.
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-teal-500 text-[#020617] px-8 py-4 rounded-2xl border-2 border-white/20 shadow-[0_20px_50px_rgba(20,184,166,0.3)] backdrop-blur-md font-black text-xs uppercase tracking-widest animate-bounce">
+          Select target location on grid to deploy rack
         </div>
       )}
 
+      {/* Thermal Alert Overlay */}
       {totalRoomBTU > 50000 && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-40 bg-red-900/90 text-red-100 px-6 py-3 rounded-full border border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] backdrop-blur-md font-bold text-sm animate-pulse flex items-center gap-2">
-          <span className="text-xl">⚠️</span> HIGH TEMPERATURE WARNING: Add Cooling!
+        <div className="fixed bottom-24 left-8 z-40 bg-red-600/20 border border-red-500/50 text-red-500 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)] backdrop-blur-md font-black text-xs uppercase tracking-[0.2em] animate-pulse flex items-center gap-4">
+          <span className="text-2xl">⚠️</span>
+          <div>
+            <p>Thermal Critical</p>
+            <p className="text-[9px] text-red-400/70 mt-1">Cooling capacity exceeded</p>
+          </div>
         </div>
       )}
 
+      {/* Hardware Target Rack Selection Modal */}
       {hardwareToAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#070f52]/80 backdrop-blur-sm">
-          <div className="bg-[#0a1536] border border-[#48afbb]/50 p-6 rounded-lg shadow-2xl max-w-md w-full">
-            <h2 className="text-xl font-bold text-white mb-4">Select Target Rack</h2>
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#020617]/90 backdrop-blur-xl p-4">
+          <div className="bg-[#0a1536] border border-white/10 p-8 rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] max-w-md w-full">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-teal-500/20 rounded-2xl flex items-center justify-center text-2xl">🏗️</div>
+              <div>
+                <h2 className="text-xl font-black text-white tracking-tight uppercase">Deployment Target</h2>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Select rack for installation</p>
+              </div>
+            </div>
+
             {racks.length === 0 ? (
-              <p className="text-slate-400 text-sm mb-4">You need to place a rack first.</p>
+              <div className="bg-slate-900/50 border border-white/5 p-6 rounded-2xl text-center mb-8">
+                <p className="text-slate-400 text-sm font-bold uppercase tracking-widest">No Racks Detected</p>
+                <p className="text-[10px] text-slate-500 mt-2 font-medium">Please deploy a server rack before installing hardware components.</p>
+              </div>
             ) : (
-              <div className="flex flex-col gap-2 max-h-60 overflow-y-auto mb-4 pr-2">
+              <div className="flex flex-col gap-3 max-h-72 overflow-y-auto mb-8 pr-2 custom-scrollbar">
                 {racks.map(rack => (
                   <button 
                     key={rack.id}
                     onClick={() => handleConfirmPlacement(rack.id)}
-                    className="p-3 text-left bg-slate-800/80 hover:bg-teal-900/60 border border-slate-700 hover:border-teal-500 rounded text-white transition-colors flex justify-between items-center"
+                    className="group p-5 text-left bg-white/5 hover:bg-teal-500/10 border border-white/5 hover:border-teal-500/30 rounded-2xl transition-all flex justify-between items-center"
                   >
-                    <span className="font-semibold">{rack.name}</span>
-                    <span className="text-xs text-slate-400">ID: {rack.id.slice(0,6)}</span>
+                    <div>
+                      <p className="font-black text-white text-sm tracking-tight">{rack.name.toUpperCase()}</p>
+                      <p className="text-[9px] text-slate-500 font-bold tracking-widest mt-1">SN: {rack.id.slice(0,12).toUpperCase()}</p>
+                    </div>
+                    <div className="w-8 h-8 bg-white/5 group-hover:bg-teal-500 group-hover:text-[#020617] rounded-lg flex items-center justify-center transition-all">
+                      <span className="text-xs font-black">→</span>
+                    </div>
                   </button>
                 ))}
               </div>
             )}
-            <div className="flex justify-end">
+
+            <div className="flex gap-4">
               <button 
                 onClick={() => setHardwareToAdd(null)}
-                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm transition-colors"
+                className="flex-1 py-4 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
               >
-                Cancel
+                Abort
               </button>
             </div>
           </div>

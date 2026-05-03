@@ -26,8 +26,8 @@ export function TenantManager({ isOpen, onClose }: { isOpen: boolean; onClose: (
   const unassignedNodes = nodes.filter(n => !n.tenantId && n.type !== 'rack' && n.type !== 'cooling')
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#0a1128] border border-slate-700/50 rounded-xl w-full max-w-4xl flex h-[80vh] shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-[200] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-6" onClick={onClose}>
+      <div className="bg-[#0a1128] border border-slate-700/50 rounded-2xl w-full max-w-6xl flex h-[85vh] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
         {/* Left Sidebar: Tenant List */}
         <div className="w-72 border-r border-slate-700/50 flex flex-col bg-slate-900/40">
           <div className="p-4 border-b border-slate-700/50">
