@@ -129,6 +129,27 @@ export function Inspector() {
         </div>
       </div>
 
+      {(selectedNode.type === 'storage' || selectedNode.type === 'compute' || selectedNode.type === 'backup') && (
+        <div className="space-y-4 mb-6 bg-yellow-950/20 p-4 rounded-lg border border-yellow-900/30">
+          <div>
+            <p className="text-yellow-400 text-[10px] uppercase tracking-widest mb-2 font-black">⚖️ Sovereignty & Compliance</p>
+            <label className="text-[10px] text-slate-400 block mb-1 uppercase font-bold">Data Category</label>
+            <select 
+              value={selectedNode.dataCategory || 'Internal'} 
+              onChange={(e) => updateNode(selectedNode.id, { dataCategory: e.target.value as any })}
+              className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1.5 text-xs text-white focus:outline-none focus:border-yellow-500"
+            >
+              <option value="Public">Public (Unrestricted)</option>
+              <option value="Internal">Internal (Strict Replication)</option>
+              <option value="PII">PII (Geographic Lockdown)</option>
+            </select>
+            <p className="text-[9px] text-slate-500 mt-2 leading-tight">
+              {selectedNode.dataCategory === 'PII' ? '⚠️ PII data is geographically locked and cannot be replicated outside its primary region.' : 'Compliance rules will be enforced on all replication links.'}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4 mb-6 bg-slate-800/50 p-4 rounded-lg">
         <div>
           <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-2">Asset Details</p>

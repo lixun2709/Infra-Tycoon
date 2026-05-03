@@ -34,8 +34,24 @@ function getWanCurve(portPos: THREE.Vector3, isIncoming: boolean) {
     return new THREE.CatmullRomCurve3(pts)
 }
 
-function AnimatedCable({ conn, points, isWan, isVirtual, isCloud, isQuarantined, isMigration }: { conn?: Connection, points: THREE.Vector3[], isWan?: boolean, isVirtual?: boolean, isCloud?: boolean, isQuarantined?: boolean, isMigration?: boolean }) {
+function LockIcon({ pos }: { pos: THREE.Vector3 }) {
+    return (
+        <group position={pos}>
+            <mesh position={[0, 0, 0]}>
+                <boxGeometry args={[0.08, 0.08, 0.08]} />
+                <meshStandardMaterial color="#4b5563" metalness={0.8} />
+            </mesh>
+            <mesh position={[0, 0.06, 0]}>
+                <torusGeometry args={[0.04, 0.01, 8, 12, Math.PI]} />
+                <meshStandardMaterial color="#4b5563" />
+            </mesh>
+        </group>
+    )
+}
+
+function AnimatedCable({ conn, points, isWan, isVirtual, isCloud, isQuarantined, isMigration, isGlobal, isBlocked }: { conn?: Connection, points: THREE.Vector3[], isWan?: boolean, isVirtual?: boolean, isCloud?: boolean, isQuarantined?: boolean, isMigration?: boolean, isGlobal?: boolean, isBlocked?: boolean }) {
     const lineRef = useRef<any>(null)
+    const secondaryRef = useRef<any>(null)
     
     let color = '#2dd4bf'
     if (conn && conn.latencyMs > 10) color = '#f59e0b'
@@ -44,6 +60,8 @@ function AnimatedCable({ conn, points, isWan, isVirtual, isCloud, isQuarantined,
     if (isCloud) color = '#38bdf8' // Sky blue for Cloud
     if (isQuarantined) color = '#ef4444' // Bright red for quarantined
     if (isMigration) color = '#ffffff' // White for vMotion
+    if (isGlobal) color = '#c9a032' // Gold for Inter-continental
+    if (isBlocked) color = '#4b5563' // Dark grey for blocked
 
     const networkLoad = useInfraStore(s => s.networkLoad)
     const baseSpeed = isMigration ? 0.15 : isVirtual ? 0.05 : (conn && conn.bandwidthGbps > 50 ? 0.05 : 0.02)
@@ -52,24 +70,46 @@ function AnimatedCable({ conn, points, isWan, isVirtual, isCloud, isQuarantined,
     const speed = baseSpeed * latencyMultiplier * (networkLoad * 5)
 
     useFrame(() => {
-        if (lineRef.current && lineRef.current.material && !isQuarantined) {
+        if (lineRef.current && lineRef.current.material && !isQuarantined && !isBlocked) {
             lineRef.current.material.dashOffset -= speed
+        }
+        if (secondaryRef.current && secondaryRef.current.material && !isQuarantined && !isBlocked) {
+            secondaryRef.current.material.dashOffset -= speed * 1.5 // Double pulse effect
         }
     })
 
     return (
-        <Line
-            ref={lineRef}
-            points={points}
-            color={color}
-            lineWidth={isMigration ? 3 : isCloud ? 2.5 : isWan ? 3 : (isVirtual ? 2 : (conn && conn.latencyMs > 10 ? 2.5 : 1.5))}
-            transparent
-            opacity={isMigration ? 0.95 : isVirtual ? 0.8 : 0.8}
-            dashed
-            dashSize={isMigration ? 0.1 : 0.2}
-            dashScale={1}
-            gapSize={0.1}
-        />
+        <group>
+            <Line
+                ref={lineRef}
+                points={points}
+                color={color}
+                lineWidth={isGlobal ? 4 : isMigration ? 3 : isCloud ? 2.5 : isWan ? 3 : (isVirtual ? 2 : (conn && conn.latencyMs > 10 ? 2.5 : 1.5))}
+                transparent
+                opacity={isBlocked ? 0.3 : (isGlobal ? 0.9 : isMigration ? 0.95 : isVirtual ? 0.8 : 0.8)}
+                dashed
+                dashSize={isGlobal ? 0.4 : isMigration ? 0.1 : 0.2}
+                dashScale={1}
+                gapSize={0.1}
+            />
+            {isGlobal && (
+                <Line
+                    ref={secondaryRef}
+                    points={points}
+                    color="#ffffff"
+                    lineWidth={1.5}
+                    transparent
+                    opacity={0.6}
+                    dashed
+                    dashSize={0.1}
+                    dashScale={1}
+                    gapSize={0.8}
+                />
+            )}
+            {isBlocked && (
+                <LockIcon pos={points[Math.floor(points.length / 2)]} />
+            )}
+        </group>
     )
 }
 
@@ -162,8 +202,10 @@ export function Cables() {
                 }
                 
                 const points = curve.getPoints(24)
+                const isGlobal = startNode.siteId !== endNode.siteId
+                const isBlocked = conn.status === 'blocked' || conn.isBlockedByCompliance
 
-                return <AnimatedCable key={conn.id} conn={conn} points={points} isWan={isWan} isQuarantined={startNode.isInfected || endNode.isInfected} />
+                return <AnimatedCable key={conn.id} conn={conn} points={points} isWan={isWan} isQuarantined={startNode.isInfected || endNode.isInfected} isGlobal={isGlobal} isBlocked={isBlocked} />
             })}
 
             {nodes.filter(n => n.type === 'load_balancer' && n.siteId === currentSiteId && n.healthStatus !== 'critical').map(lb => {

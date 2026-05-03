@@ -1,10 +1,30 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 export function Dashboard() {
   const [isOpen, setIsOpen] = useState(false)
-  const [activeAlertTab, setActiveAlertTab] = useState<'active' | 'history'>('active')
-  const { nodes, connections, alerts, acknowledgeAlert, acknowledgeAllAlerts, setSelectedNode, totalPowerKW, totalRoomBTU, simulateRandomFailure, simulateDataCorruption, triggerSiteDisaster, sites, currentSiteId, initiateFailover, networkLoad, setNetworkLoad, cloudLinks, cloudEgressGB, processCloudTiering, performMassRollback, processAIPredictions, simulateStressTest } = useInfraStore()
+  const [activeAlertTab, setActiveAlertTab] = useState<'active' | 'history' | 'ai' | 'esg' | 'chargeback' | 'audit' | 'lifecycle'>('active')
+  const {
+    nodes, connections, alerts, acknowledgeAlert, acknowledgeAllAlerts,
+    setSelectedNode, totalPowerKW, totalRoomBTU, simulateRandomFailure,
+    simulateDataCorruption, triggerSiteDisaster, sites, currentSiteId,
+    initiateFailover, networkLoad, setNetworkLoad, cloudLinks, cloudEgressGB,
+    processCloudTiering, performMassRollback, processAIPredictions,
+    simulateStressTest, toggleChaosMode, isChaosMode, resilienceIndex,
+    postMortems, processChaosLoop, toggleGlobalMap, carbonFootprintKg,
+    tenants, processTenancyEffect, auditLogs, simulationCycle, totalEWasteKG,
+    refreshCount, repairCount, refreshHardware, repairHardware, generateFinalReport,
+    isAutoPilot, toggleAutoPilot 
+  } = useInfraStore()
+  
+  const [showFinalReport, setShowFinalReport] = useState(false)
+  const [reportData, setReportData] = useState<any>(null)
+
+  const handleCompleteSimulation = () => {
+    const report = generateFinalReport()
+    setReportData(report)
+    setShowFinalReport(true)
+  }
 
   const currentSite = sites.find(s => s.id === currentSiteId)
 
@@ -17,65 +37,69 @@ export function Dashboard() {
   const siteHealthyCount = siteHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
   const siteHealthIndex = siteHardware.length > 0 ? Math.round((siteHealthyCount / siteHardware.length) * 100) : 100
 
-  const criticalCount = allHardware.filter(n => n.healthStatus === 'critical').length
   const unacknowledgedCount = alerts.filter(a => !a.isAcknowledged).length
 
+  // Security Stats
   const infectedCount = allHardware.filter(n => n.isInfected).length
-  const protectedCount = allHardware.filter(n => n.isImmutable).length
-  const unprotectedCount = allHardware.filter(n => !n.isImmutable && !n.isInfected).length
-  const hasActiveThreats = infectedCount > 0
+  const protectedCount = allHardware.filter(n => n.backupStatus === 'protected').length
+  const exposedCount = allHardware.filter(n => n.backupStatus === 'unprotected' && !n.isInfected).length
 
-  // Max capacity examples for the sparklines
-  const MAX_POWER = 50 // kW
-  const MAX_BTU = 100000 // BTU/hr
-
-  const powerPercent = Math.min(100, (totalPowerKW / MAX_POWER) * 100)
-  const thermalPercent = Math.min(100, (totalRoomBTU / MAX_BTU) * 100)
-
-  // FinOps cost calculation
+  // FinOps summary
   const localStorageTB = nodes.reduce((sum, n) => sum + (n.usedStorageTB ?? 0), 0)
   const cloudStorageTB = cloudLinks.reduce((sum, cl) => sum + cl.tieredTB, 0)
-  const localCostMonthly = localStorageTB * 1000 * 0.02 // $0.02/GB
-  const cloudCostMonthly = cloudStorageTB * 1000 * 0.05 // $0.05/GB for cloud
-  const egressCostMonthly = cloudEgressGB * 0.09 // $0.09/GB egress
+  const localCostMonthly = localStorageTB * 1000 * 0.02
+  const cloudCostMonthly = cloudStorageTB * 1000 * 0.05
+  const egressCostMonthly = cloudEgressGB * 0.09
   const totalMonthlyCost = localCostMonthly + cloudCostMonthly + egressCostMonthly
+
+  // Chargeback Report Data
+  const chargebackReport = useMemo(() => {
+    return tenants.map(tenant => {
+      const tenantNodes = nodes.filter(n => n.tenantId === tenant.id)
+      let computeCost = 0
+      let storageCost = 0
+      let networkCost = 0
+      let backupCost = 0
+      tenantNodes.forEach(n => {
+        if (n.type === 'compute') computeCost += 200
+        if (n.type === 'storage') storageCost += 50 + (n.totalStorageTB ?? 0) * 5
+        if (n.type === 'network') networkCost += 100
+        if (n.type === 'backup') backupCost += 150
+      })
+      const total = computeCost + storageCost + networkCost + backupCost
+      return { ...tenant, compute: computeCost, storage: storageCost, network: networkCost, backup: backupCost, total }
+    })
+  }, [tenants, nodes])
 
   // Live Performance Simulator
   useEffect(() => {
     if (networkLoad === 0) return
     const interval = setInterval(() => {
       useInfraStore.setState(state => {
-        // Randomize connection throughput based on network load
         const updatedConnections = state.connections.map(c => {
+          if (c.status === 'blocked') return { ...c, throughputGbps: 0 }
           const targetThroughput = c.bandwidthGbps * networkLoad
           const variance = targetThroughput * 0.2
           const newThroughput = Math.max(0, Math.min(c.bandwidthGbps, targetThroughput + (Math.random() * variance * 2 - variance)))
-          return { ...c, throughputGbps: newThroughput }
+          const newSync = Math.min(100, (c.syncProgress ?? 0) + (newThroughput / c.bandwidthGbps) * 5)
+          return { ...c, throughputGbps: newThroughput, syncProgress: newSync }
         })
-
-        // Increase storage slightly over time based on load
-        const updatedNodes = state.nodes.map(n => {
-          if ((n.type === 'storage' || n.type === 'backup' || n.type === 'compute') && (n.totalStorageTB ?? 0) > 0 && n.healthStatus !== 'critical') {
-            const addedStorage = (networkLoad * 0.5) * Math.random()
-            const newUsed = Math.min(n.totalStorageTB!, (n.usedStorageTB ?? 0) + addedStorage)
-            return { ...n, usedStorageTB: newUsed }
-          }
-          return n
-        })
-
-        return { connections: updatedConnections, nodes: updatedNodes }
+        return { connections: updatedConnections }
       })
-      // Trigger cloud tiering check
-      useInfraStore.getState().processCloudTiering()
-      // Run AI predictions
-      useInfraStore.getState().processAIPredictions()
+      const store = useInfraStore.getState()
+      store.processCloudTiering()
+      store.processAIPredictions()
+      store.processChaosLoop()
+      store.processTenancyEffect()
+      store.processAging()
+      store.processAutoPilot()
     }, 1000)
     return () => clearInterval(interval)
   }, [networkLoad])
 
   if (!isOpen) {
     return (
-      <button 
+      <button
         onClick={() => setIsOpen(true)}
         className="fixed top-4 left-[300px] z-40 bg-[#070f52]/90 border border-[#48afbb]/50 text-white px-4 py-2 rounded-md shadow-lg hover:bg-[#0a1536] transition-colors font-semibold text-sm flex items-center gap-2 backdrop-blur-md"
       >
@@ -86,313 +110,359 @@ export function Dashboard() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-start justify-center pt-6 pb-6 px-4 bg-black/50 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
-      <div className="w-full max-w-5xl bg-[#060b18]/98 text-white shadow-2xl backdrop-blur-md border border-slate-700 rounded-xl overflow-hidden flex flex-col" style={{ height: 'min(88vh, 780px)' }} onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-[#070f52] flex-shrink-0">
-          <h2 className="font-bold tracking-wide flex items-center gap-2">
-            <span>📡</span> NOC Operations Center
-          </h2>
-          <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors text-lg">
-            ✕
-          </button>
-        </div>
+    <>
+      <div className="fixed inset-0 z-40 flex items-start justify-center pt-6 pb-6 px-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
+        <div className="w-full max-w-6xl bg-[#060b18]/98 text-white shadow-2xl backdrop-blur-md border border-slate-700/50 rounded-xl overflow-hidden flex flex-col" style={{ height: 'min(92vh, 850px)' }} onClick={(e) => e.stopPropagation()}>
 
-        {/* Two-column body */}
-        <div className="flex flex-1 min-h-0">
-          {/* LEFT: Alert Feed & AI Advisor */}
-          <div className="w-[340px] flex-shrink-0 border-r border-slate-700/50 flex flex-col bg-slate-900/40">
-            <div className="flex border-b border-slate-700/50 bg-[#070f52]">
-              <button 
-                onClick={() => setActiveAlertTab('active')}
-                className={`flex-1 py-2.5 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeAlertTab === 'active' ? 'text-white border-b-2 border-teal-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                Alerts {unacknowledgedCount > 0 && <span className="ml-1 bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full">{unacknowledgedCount}</span>}
-              </button>
-              <button 
-                onClick={() => setActiveAlertTab('history')}
-                className={`flex-1 py-2.5 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeAlertTab === 'history' ? 'text-white border-b-2 border-slate-400 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                History
-              </button>
-              <button 
-                onClick={() => setActiveAlertTab('ai' as any)}
-                className={`flex-1 py-2.5 text-[10px] uppercase tracking-widest font-bold transition-colors ${activeAlertTab === ('ai' as any) ? 'text-white border-b-2 border-orange-500 bg-slate-800/50' : 'text-slate-500 hover:text-slate-300'}`}
-              >
-                🧠 AI
-              </button>
-            </div>
-
-            {activeAlertTab === 'active' && unacknowledgedCount > 0 && (
-              <div className="px-3 pt-2 pb-1 flex justify-end flex-shrink-0">
-                <button 
-                  onClick={acknowledgeAllAlerts}
-                  className="text-[9px] font-bold uppercase tracking-wider text-slate-400 hover:text-white px-2 py-0.5 border border-slate-600 rounded bg-slate-800 transition-colors"
-                >
-                  Acknowledge All
-                </button>
-              </div>
-            )}
-
-            <div className="p-3 space-y-2 flex-1 overflow-y-auto">
-              {activeAlertTab === ('ai' as any) ? (
-                /* AI Advisor Tab Content */
-                <div className="space-y-3">
-                  <div className="text-center py-2">
-                    <p className="text-[10px] text-orange-400 uppercase tracking-widest font-bold">Predictive Intelligence</p>
-                    <p className="text-[9px] text-slate-500 mt-1">Monitoring {allHardware.length} nodes</p>
-                  </div>
-                  
-                  {(() => {
-                    const atRiskNodes = allHardware.filter(n => (n.failureProbability ?? 0) > 0.3).sort((a, b) => (b.failureProbability ?? 0) - (a.failureProbability ?? 0))
-                    
-                    if (atRiskNodes.length === 0) {
-                      return (
-                        <div className="text-center py-6">
-                          <p className="text-2xl">✅</p>
-                          <p className="text-xs text-slate-500 mt-2">All systems nominal. No predictive alerts.</p>
-                        </div>
-                      )
-                    }
-
-                    return atRiskNodes.map(node => {
-                      const prob = (node.failureProbability ?? 0)
-                      const life = node.predictedLifeRemaining ?? 720
-                      const severity = prob > 0.8 ? 'critical' : prob > 0.6 ? 'high' : 'medium'
-                      const barColor = severity === 'critical' ? 'bg-red-500' : severity === 'high' ? 'bg-orange-500' : 'bg-amber-400'
-                      
-                      return (
-                        <div key={node.id} className={`p-2.5 rounded-lg border ${severity === 'critical' ? 'border-red-900/60 bg-red-950/20' : severity === 'high' ? 'border-orange-900/40 bg-orange-950/10' : 'border-amber-900/30 bg-amber-950/10'}`}>
-                          <div className="flex justify-between items-start">
-                            <button onClick={() => setSelectedNode(node.id)} className="text-[11px] font-bold text-white hover:text-orange-300 transition-colors text-left">
-                              {node.name}
-                            </button>
-                            <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded ${severity === 'critical' ? 'text-red-300 bg-red-900/40' : severity === 'high' ? 'text-orange-300 bg-orange-900/40' : 'text-amber-300 bg-amber-900/40'}`}>
-                              {severity}
-                            </span>
-                          </div>
-                          
-                          <div className="mt-1.5">
-                            <div className="flex justify-between text-[9px] mb-0.5">
-                              <span className="text-slate-500">Failure Risk</span>
-                              <span className={`font-mono font-bold ${severity === 'critical' ? 'text-red-400' : severity === 'high' ? 'text-orange-400' : 'text-amber-400'}`}>{(prob * 100).toFixed(0)}%</span>
-                            </div>
-                            <div className="w-full bg-slate-800 rounded-full h-1 overflow-hidden">
-                              <div className={`h-full transition-all ${barColor}`} style={{ width: `${prob * 100}%` }} />
-                            </div>
-                          </div>
-
-                          <div className="flex justify-between items-center mt-1.5">
-                            <span className="text-[9px] text-slate-500">⏱ TTF: <span className="text-slate-300 font-mono">{life < 24 ? `${life}h` : `${Math.floor(life / 24)}d ${life % 24}h`}</span></span>
-                            {node.activeMigration ? (
-                              <span className="text-[8px] text-white bg-blue-600 px-1.5 py-0.5 rounded font-bold animate-pulse">MIGRATING {node.activeMigration.progress}%</span>
-                            ) : prob > 0.8 ? (
-                              <span className="text-[8px] text-orange-300 bg-orange-900/40 px-1.5 py-0.5 rounded font-bold">PENDING</span>
-                            ) : (
-                              <span className="text-[8px] text-slate-500">Monitoring</span>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-              ) : (() => {
-                const displayedAlerts = alerts.filter(a => activeAlertTab === 'active' ? !a.isAcknowledged : a.isAcknowledged)
-
-                if (displayedAlerts.length === 0) {
-                  return (
-                    <p className="text-xs text-slate-500 italic text-center py-8">
-                      {activeAlertTab === 'active' ? 'No active alerts. Systems nominal.' : 'No alert history.'}
-                    </p>
-                  )
-                }
-
-                return displayedAlerts.map(alert => {
-                  const relatedNode = alert.nodeId ? nodes.find(n => n.id === alert.nodeId) : null
-                  return (
-                    <div key={alert.id} className={`flex gap-2 items-start p-2 rounded-lg border ${activeAlertTab === 'history' ? 'opacity-50 border-slate-800' : alert.severity === 'critical' ? 'border-red-900/40 bg-red-950/20' : 'border-slate-800 bg-slate-800/20'}`}>
-                      <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 shadow-sm ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse shadow-red-500/50' : alert.severity === 'warning' ? 'bg-amber-400 shadow-amber-400/50' : 'bg-blue-400 shadow-blue-400/50'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-[11px] leading-snug ${alert.severity === 'critical' ? 'text-red-200' : alert.severity === 'warning' ? 'text-amber-200' : 'text-slate-300'}`}>
-                          {alert.message}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                          <span className="text-[9px] text-slate-500">
-                            {new Date(alert.timestamp).toLocaleTimeString()}
-                          </span>
-                          {relatedNode && (
-                            <button 
-                              onClick={() => setSelectedNode(relatedNode.id)}
-                              className="text-[8px] font-bold px-1 py-0.5 border border-slate-600 rounded bg-slate-800 text-slate-300 hover:text-white hover:border-slate-400 transition-colors"
-                            >
-                              📍 {relatedNode.name}
-                            </button>
-                          )}
-                          {activeAlertTab === 'active' && (
-                            <button 
-                              onClick={() => acknowledgeAlert(alert.id)}
-                              className="text-[8px] font-bold uppercase tracking-wider text-teal-400 hover:text-teal-300 px-1.5 py-0.5 border border-teal-500/30 rounded bg-teal-900/20 transition-colors ml-auto"
-                            >
-                              ACK
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })
-              })()}
-            </div>
+          {/* Header */}
+          <div className="p-4 border-b border-slate-700/50 flex justify-between items-center bg-[#070f52] flex-shrink-0">
+            <h2 className="font-black text-sm tracking-[0.2em] flex items-center gap-3 uppercase">
+              <span>📡</span> NOC Operations Center
+            </h2>
+            <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors text-lg">✕</button>
           </div>
 
-          {/* RIGHT: Metrics & Controls */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-                <h3 className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-1">Global Health Index</h3>
-                <div className="flex items-end gap-2">
-                  <span className={`text-4xl font-black ${globalHealthIndex > 80 ? 'text-green-400' : globalHealthIndex > 50 ? 'text-amber-400' : 'text-red-500'}`}>{globalHealthIndex}%</span>
-                </div>
-                <p className="text-[10px] text-slate-500 mt-1">{globalHealthyCount} / {allHardware.length} Nodes Healthy</p>
+          <div className="flex flex-1 min-h-0">
+            {/* LEFT SIDEBAR: Navigation Tabs & Tab Content */}
+            <div className="w-80 flex-shrink-0 border-r border-slate-700/30 flex flex-col bg-slate-950/40">
+              <div className="flex border-b border-slate-700/30 bg-[#070f52]/60">
+                {[
+                  { id: 'active', label: 'ALERTS' },
+                  { id: 'history', label: 'HISTORY' },
+                  { id: 'ai', label: '🧠 AI' },
+                  { id: 'esg', label: '🌿 ESG' },
+                  { id: 'lifecycle', label: '♻️ LIFE' },
+                  { id: 'audit', label: '⚖️ AUDIT' },
+                  { id: 'chargeback', label: '💸 FINOPS' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveAlertTab(tab.id as any)}
+                    className={`flex-1 py-3 text-[9px] font-black tracking-widest transition-all ${activeAlertTab === tab.id ? 'text-white border-b-2 border-teal-500 bg-slate-800/40' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-                <h3 className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-1">{currentSite?.name} Health</h3>
-                <div className="flex items-end gap-2">
-                  <span className={`text-3xl font-black ${siteHealthIndex > 80 ? 'text-green-400' : siteHealthIndex > 50 ? 'text-amber-400' : 'text-red-500'}`}>{siteHealthIndex}%</span>
-                </div>
+              <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                {activeAlertTab === 'active' && (
+                  <div className="space-y-2">
+                    {alerts.filter(a => !a.isAcknowledged).map(alert => (
+                      <div key={alert.id} className={`p-3 rounded-lg border flex gap-3 ${alert.severity === 'critical' ? 'bg-red-950/20 border-red-900/40' : 'bg-slate-800/30 border-slate-700/50'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${alert.severity === 'critical' ? 'bg-red-500 animate-pulse' : 'bg-amber-400'}`} />
+                        <div className="flex-1">
+                          <p className="text-[11px] text-slate-200 leading-relaxed font-medium">{alert.message}</p>
+                          <p className="text-[9px] text-slate-500 mt-2 font-mono">{new Date(alert.timestamp).toLocaleTimeString()}</p>
+                        </div>
+                      </div>
+                    ))}
+                    {alerts.filter(a => !a.isAcknowledged).length === 0 && (
+                      <div className="text-center py-12 opacity-30 italic text-xs">No active alerts.</div>
+                    )}
+                  </div>
+                )}
+
+                {activeAlertTab === 'esg' && (
+                  <div className="space-y-6">
+                    <div className="text-center">
+                      <p className="text-[10px] text-emerald-400 font-black uppercase tracking-[0.2em] mb-2">Sustainability & Compliance</p>
+                      <div className="bg-emerald-950/10 border border-emerald-900/20 p-6 rounded-lg">
+                        <p className="text-4xl font-black text-emerald-400">{carbonFootprintKg.toFixed(2)}</p>
+                        <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mt-1">KG CO₂ / HOUR</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Regional Impact</p>
+                      {sites.map(site => (
+                        <div key={site.id} className="bg-slate-900/40 border border-slate-800 p-3 rounded-lg flex justify-between items-center">
+                          <div>
+                            <p className="text-xs font-bold text-white">{site.name}</p>
+                            <p className="text-[9px] text-slate-500 mt-0.5">{site.region}</p>
+                          </div>
+                          <span className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase ${site.energySource === 'Renewable' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
+                            {site.energySource}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {activeAlertTab === 'lifecycle' && (
+                  <div className="space-y-6">
+                    <div className="bg-slate-900/60 border border-slate-800 p-4 rounded-lg grid grid-cols-2 gap-4">
+                      <div className="text-center">
+                        <p className="text-xl font-black text-white">{totalEWasteKG.toFixed(0)}</p>
+                        <p className="text-[8px] text-slate-500 uppercase font-bold">KG E-Waste</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-black text-teal-400">
+                          {((refreshCount / (refreshCount + repairCount + 0.1)) * 100).toFixed(0)}%
+                        </p>
+                        <p className="text-[8px] text-slate-500 uppercase font-bold">Circular Score</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {allHardware.sort((a, b) => (simulationCycle - (a.installDate ?? 0)) - (simulationCycle - (b.installDate ?? 0))).map(node => {
+                        const age = simulationCycle - (node.installDate ?? 0)
+                        const isEOL = age > 800 || (node.degradation ?? 0) > 70
+                        return (
+                          <div key={node.id} className={`p-2.5 rounded-lg border ${isEOL ? 'bg-orange-950/20 border-orange-500/40' : 'bg-slate-900/40 border-slate-800'}`}>
+                            <div className="flex justify-between items-center mb-1 text-[10px] font-bold">
+                              <span className="text-white truncate max-w-[120px]">{node.name}</span>
+                              <span className={isEOL ? 'text-orange-500' : 'text-slate-500'}>{isEOL ? 'EOL' : 'ACTIVE'}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[9px] text-slate-500">
+                              <span>Age: {age}</span>
+                              <span>{(node.degradation ?? 0).toFixed(0)}% Wear</span>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              <button onClick={() => repairHardware(node.id)} className="py-1 bg-slate-800 rounded text-[8px] font-black uppercase">Repair</button>
+                              <button onClick={() => refreshHardware(node.id)} className="py-1 bg-teal-900/40 border border-teal-500/30 rounded text-[8px] font-black uppercase">Refresh</button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {activeAlertTab === 'audit' && (
+                  <div className="space-y-3">
+                    {auditLogs.map(log => (
+                      <div key={log.id} className="bg-slate-900/60 border border-yellow-900/20 p-3 rounded-lg">
+                        <div className="flex justify-between text-[8px] mb-1">
+                          <span className="text-yellow-500 font-black uppercase">{log.type}</span>
+                          <span className="text-slate-600">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-200 leading-tight">{log.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activeAlertTab === 'ai' && (
+                  <div className="space-y-4 text-center">
+                    <p className="text-[10px] text-orange-500 font-black uppercase tracking-[0.2em] mb-4">AIOps Post-Mortems</p>
+                    {postMortems.map(pm => (
+                      <div key={pm.id} className="bg-slate-900/40 border border-slate-800 p-2.5 rounded-lg text-left">
+                        <p className="text-[10px] font-black text-orange-500 mb-1">INCIDENT #{pm.incidentNumber}</p>
+                        <p className="text-[9px] text-slate-300 italic mb-1">"{pm.rca}"</p>
+                        <p className="text-[8px] text-slate-500">Node: {pm.nodeName}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {activeAlertTab === 'chargeback' && (
+                  <div className="space-y-3">
+                    {chargebackReport.map(r => (
+                      <div key={r.id} className="p-3 bg-slate-900/40 border border-slate-800 rounded-lg">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-xs font-bold text-white">{r.name}</span>
+                          <span className="text-xs font-black text-emerald-400">${r.total}</span>
+                        </div>
+                        <div className="w-full bg-slate-950 h-1 rounded-full overflow-hidden">
+                          <div className="bg-blue-500 h-full" style={{ width: '40%' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex justify-between text-[10px] mb-1 text-slate-400 uppercase">
-                  <span>Facility Power</span>
-                  <span>{totalPowerKW.toFixed(1)}kW</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-full transition-all ${powerPercent > 80 ? 'bg-red-500' : 'bg-[#48afbb]'}`} style={{ width: `${powerPercent}%` }} />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-[10px] mb-1 text-slate-400 uppercase">
-                  <span>Thermal Load</span>
-                  <span>{Math.max(0, totalRoomBTU).toLocaleString()} BTU</span>
-                </div>
-                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div className={`h-full transition-all ${totalRoomBTU > 50000 ? 'bg-red-500' : totalRoomBTU < 0 ? 'bg-blue-400' : 'bg-orange-400'}`} style={{ width: `${Math.max(0, thermalPercent)}%` }} />
-                </div>
-              </div>
-            </div>
+            {/* MAIN PANEL */}
+            <div className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar space-y-6">
 
-            <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-              <h3 className="text-slate-400 text-[10px] font-bold tracking-widest uppercase mb-2">FinOps — Monthly Spend</h3>
-              <div className="flex items-end gap-1">
-                <span className="text-2xl font-black text-emerald-400">${totalMonthlyCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                <span className="text-[10px] text-slate-500 pb-1">/mo</span>
+              {/* TOP METRICS */}
+              <div className="grid grid-cols-3 gap-5">
+                <div className="bg-slate-900/60 border border-slate-700/50 p-5 rounded-xl">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Global Health Index</p>
+                  <p className={`text-5xl font-black ${globalHealthIndex > 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{globalHealthIndex}%</p>
+                  <p className="text-[10px] text-slate-600 mt-2 font-bold">{globalHealthyCount} / {allHardware.length} Nodes Healthy</p>
+                </div>
+                <div className="bg-slate-900/60 border border-slate-700/50 p-5 rounded-xl">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Primary-DC Health</p>
+                  <p className={`text-5xl font-black ${siteHealthIndex > 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{siteHealthIndex}%</p>
+                  <div className="w-full bg-slate-950 h-1.5 rounded-full mt-4 overflow-hidden">
+                    <div className="bg-emerald-500 h-full" style={{ width: `${siteHealthIndex}%` }} />
+                  </div>
+                </div>
+                <div className="bg-slate-900/60 border border-orange-500/20 p-5 rounded-xl">
+                  <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-3">Resilience Index</p>
+                  <p className="text-5xl font-black text-orange-500">{resilienceIndex}</p>
+                  <div className="w-full bg-slate-950 h-1.5 rounded-full mt-4 overflow-hidden">
+                    <div className="bg-orange-500 h-full" style={{ width: `${resilienceIndex}%` }} />
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 mt-2">
-                <div>
-                  <p className="text-[9px] text-slate-500 uppercase">On-Prem</p>
-                  <p className="text-[10px] text-slate-300 font-mono">${localCostMonthly.toFixed(0)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-sky-400 uppercase">Cloud</p>
-                  <p className="text-[10px] text-sky-300 font-mono">${cloudCostMonthly.toFixed(0)}</p>
-                </div>
-                <div>
-                  <p className="text-[9px] text-amber-400 uppercase">Egress</p>
-                  <p className="text-[10px] text-amber-300 font-mono">${egressCostMonthly.toFixed(0)}</p>
-                </div>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={simulateRandomFailure}
-                className="py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[11px] font-semibold text-white transition-colors flex justify-center items-center gap-2"
-              >
-                <span>⚡</span> Hardware Failure
-              </button>
-              <button 
-                onClick={simulateDataCorruption}
-                className="py-1.5 bg-purple-900/40 hover:bg-purple-800/60 border border-purple-500/40 rounded text-[11px] font-semibold text-purple-200 transition-colors flex justify-center items-center gap-2"
-              >
-                <span>🦠</span> Ransomware
-              </button>
-              <button 
-                onClick={triggerSiteDisaster}
-                className="py-1.5 bg-red-900/40 hover:bg-red-800/60 border border-red-500/40 rounded text-[11px] font-semibold text-red-200 transition-colors flex justify-center items-center gap-2"
-              >
-                <span>🔥</span> Site Disaster
-              </button>
-              
-              {currentSite?.isDisaster ? (
+              {/* SECONDARY STATS */}
+              <div className="grid grid-cols-2 gap-8">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase">
+                    <span>Facility Power</span>
+                    <span className="text-slate-300">{totalPowerKW.toFixed(1)}KW</span>
+                  </div>
+                  <div className="w-full bg-slate-900 h-1 rounded-full overflow-hidden">
+                    <div className="bg-blue-500 h-full" style={{ width: `${Math.min(100, (totalPowerKW / 50) * 100)}%` }} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-[9px] font-black text-slate-500 uppercase">
+                    <span>Thermal Load</span>
+                    <span className="text-slate-300">{totalRoomBTU.toFixed(0)} BTU</span>
+                  </div>
+                  <div className="w-full bg-slate-900 h-1 rounded-full overflow-hidden">
+                    <div className="bg-red-500 h-full" style={{ width: `${Math.min(100, (totalRoomBTU / 100000) * 100)}%` }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* FINOPS */}
+              <div className="bg-slate-900/60 border border-slate-700/50 p-6 rounded-xl">
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">FinOps — Monthly Spend</p>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className="text-4xl font-black text-emerald-400">${Math.round(totalMonthlyCost)}</span>
+                  <span className="text-slate-500 text-sm font-bold">/mo</span>
+                </div>
+                <div className="grid grid-cols-3 gap-12 text-center">
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1">On-Prem</p>
+                    <p className="text-lg font-black text-white">${Math.round(localCostMonthly)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Cloud</p>
+                    <p className="text-lg font-black text-blue-400">${Math.round(cloudCostMonthly)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] font-black text-slate-500 uppercase mb-1">Egress</p>
+                    <p className="text-lg font-black text-orange-400">${Math.round(egressCostMonthly)}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECURITY */}
+              <div className="bg-slate-900/60 border border-slate-700/50 p-6 rounded-xl">
+                <div className="grid grid-cols-3 text-center">
+                  <div>
+                    <p className="text-3xl font-black text-purple-500">{infectedCount}</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase mt-1">Infected</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-blue-500">{protectedCount}</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase mt-1">Protected</p>
+                  </div>
+                  <div>
+                    <p className="text-3xl font-black text-slate-400">{exposedCount}</p>
+                    <p className="text-[9px] font-black text-slate-600 uppercase mt-1">Exposed</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTIONS */}
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={simulateRandomFailure} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">⚡ Hardware Failure</button>
+                <button onClick={simulateDataCorruption} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">🦠 Ransomware</button>
+                <button onClick={triggerSiteDisaster} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">🔥 Site Disaster</button>
+                <button onClick={simulateStressTest} className="py-3 bg-slate-900 border border-slate-700 rounded-lg text-[10px] font-black uppercase tracking-widest">🧬 Stress Test</button>
+              </div>
+
+              {/* NEW DAY 30 CONTROLS */}
+              <div className="grid grid-cols-2 gap-3">
                 <button 
-                  onClick={initiateFailover}
-                  className="py-1.5 bg-blue-900/40 hover:bg-blue-800/60 border border-blue-500/40 rounded text-[11px] font-black text-blue-300 transition-all flex justify-center items-center gap-2 shadow-[0_0_15px_rgba(59,130,246,0.3)] animate-pulse"
+                  onClick={toggleAutoPilot}
+                  className={`py-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${isAutoPilot ? 'bg-teal-900/40 border-teal-400 text-teal-300 animate-pulse' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
                 >
-                  <span>🌐</span> FAILOVER
+                  {isAutoPilot ? '🤖 AUTO-PILOT ON' : '🤖 AUTO-PILOT OFF'}
                 </button>
-              ) : (
                 <button 
-                  onClick={simulateStressTest}
-                  className="py-1.5 bg-orange-900/40 hover:bg-orange-800/60 border border-orange-500/40 rounded text-[11px] font-semibold text-orange-200 transition-colors flex justify-center items-center gap-2"
+                  onClick={toggleChaosMode}
+                  className={`py-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all ${isChaosMode ? 'bg-red-900/40 border-red-500 text-red-300' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
                 >
-                  <span>🔬</span> Stress Test
+                  CHAOS MODE
                 </button>
-              )}
-            </div>
-
-            {/* Threat Map */}
-            <div className={`p-4 rounded-lg border ${hasActiveThreats ? 'bg-fuchsia-950/40 border-fuchsia-500/50 shadow-[0_0_15px_rgba(217,70,239,0.15)]' : 'bg-slate-900/60 border-slate-700/50'}`}>
-              <h3 className={`text-[10px] font-bold tracking-widest uppercase mb-2 ${hasActiveThreats ? 'text-fuchsia-400' : 'text-slate-400'}`}>Security — Threat Map</h3>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="text-center">
-                  <p className={`text-2xl font-black ${infectedCount > 0 ? 'text-fuchsia-400 animate-pulse' : 'text-slate-600'}`}>{infectedCount}</p>
-                  <p className="text-[9px] text-fuchsia-400 uppercase">Infected</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-blue-400">{protectedCount}</p>
-                  <p className="text-[9px] text-blue-400 uppercase">Protected</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-2xl font-black text-slate-400">{unprotectedCount}</p>
-                  <p className="text-[9px] text-slate-500 uppercase">Exposed</p>
-                </div>
               </div>
-              {hasActiveThreats && (
-                <button 
-                  onClick={performMassRollback}
-                  className="w-full mt-3 py-2 bg-fuchsia-900/50 hover:bg-fuchsia-800/60 border border-fuchsia-500/50 rounded text-[11px] font-black text-fuchsia-200 transition-all flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(217,70,239,0.2)] animate-pulse hover:shadow-[0_0_30px_rgba(217,70,239,0.4)]"
-                >
-                  <span>🔄</span> PERFORM MASS ROLLBACK
-                </button>
-              )}
-            </div>
 
-            <div className="bg-slate-900/60 p-4 rounded-lg border border-slate-700/50">
-              <h4 className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-3">Live Traffic Control</h4>
-              <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] text-slate-300">Network Load</span>
-                  <span className="text-[10px] text-teal-400 font-mono">{Math.round(networkLoad * 100)}%</span>
+              <button 
+                onClick={handleCompleteSimulation}
+                className="w-full py-4 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white rounded-lg font-black text-xs uppercase tracking-[0.3em] shadow-lg border border-teal-400/30 transition-all"
+              >
+                🏆 Complete 30-Day Simulation
+              </button>
+
+              {/* NETWORK LOAD */}
+              <div className="bg-slate-950/40 p-4 rounded-xl border border-slate-800/50">
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Network Load Control</p>
+                  <p className="text-xs font-black text-teal-400 font-mono">{(networkLoad * 100).toFixed(0)}%</p>
                 </div>
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="1" 
-                  step="0.05" 
-                  value={networkLoad} 
+                <input
+                  type="range" min="0" max="1" step="0.05" value={networkLoad}
                   onChange={(e) => setNetworkLoad(parseFloat(e.target.value))}
-                  className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-teal-500 [&::-webkit-slider-thumb]:rounded-full"
+                  className="w-full h-1 bg-slate-900 rounded-lg appearance-none cursor-pointer accent-teal-500"
                 />
               </div>
+
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* FINAL REPORT MODAL */}
+      {showFinalReport && reportData && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-slate-950/90 backdrop-blur-xl">
+          <div className="bg-slate-900 border-2 border-teal-500/50 w-full max-w-2xl rounded-2xl overflow-hidden shadow-[0_0_100px_rgba(45,212,191,0.2)]">
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-8 text-center relative">
+              <p className="text-[10px] font-black text-teal-100 uppercase tracking-[0.4em] mb-2">Simulation Complete</p>
+              <h2 className="text-4xl font-black text-white uppercase tracking-tighter">{reportData.grade}</h2>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <div className="grid grid-cols-4 gap-6">
+                {[
+                  { label: 'Performance', val: reportData.score, color: 'text-teal-400' },
+                  { label: 'Resilience', val: reportData.breakdown.resilienceIndex, color: 'text-blue-400' },
+                  { label: 'Compliance', val: 100 - (reportData.breakdown.violations * 5), color: 'text-emerald-400' },
+                  { label: 'Sustainability', val: 100 - Math.min(100, reportData.breakdown.carbonFootprintKg), color: 'text-green-400' }
+                ].map((stat, i) => (
+                  <div key={i} className="text-center">
+                    <p className={`text-3xl font-black ${stat.color}`}>{stat.val}%</p>
+                    <p className="text-[8px] text-slate-500 uppercase font-bold tracking-widest">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="bg-slate-950/60 rounded-xl p-6 border border-slate-800">
+                <p className="text-sm text-slate-400 italic leading-relaxed">
+                  "Having demonstrated exceptional proficiency in autonomous infrastructure management, compliance sovereignty, and sustainable lifecycle operations..."
+                </p>
+                <div className="mt-6 flex justify-between items-end">
+                  <div>
+                    <p className="text-[10px] font-black text-teal-500 uppercase">Status</p>
+                    <p className="text-lg font-black text-white uppercase tracking-widest">
+                      {reportData.score > 80 ? '🎖️ ARCHITECT VERIFIED' : '🎓 APPRENTICE GRADUATE'}
+                    </p>
+                  </div>
+                  <div className="text-right text-xs font-mono text-slate-400">
+                    {new Date().toISOString().split('T')[0]}
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setShowFinalReport(false)}
+                className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-black text-xs uppercase tracking-[0.2em] transition-all"
+              >
+                Return to Command Center
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }

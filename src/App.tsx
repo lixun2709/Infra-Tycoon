@@ -4,6 +4,10 @@ import { NetworkManager } from './components/ui/NetworkManager'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
 import { useState, useMemo, useEffect } from 'react'
+import { GlobalMap } from './components/ui/GlobalMap'
+import { BlueprintManager } from './components/ui/BlueprintManager'
+import { TenantManager } from './components/ui/TenantManager'
+import { Terminal } from './components/ui/Terminal'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -62,8 +66,61 @@ function RansomwareVignette() {
   )
 }
 
+function ChaosVignette() {
+  const isChaosMode = useInfraStore(s => s.isChaosMode)
+
+  if (!isChaosMode) return null
+
+  return (
+    <div 
+      className="fixed inset-0 z-[89] pointer-events-none"
+      style={{
+        background: 'radial-gradient(ellipse at center, transparent 60%, rgba(200, 50, 30, 0.12) 85%, rgba(180, 30, 10, 0.25) 100%)',
+        animation: 'pulse 3s ease-in-out infinite',
+      }}
+    />
+  )
+}
+
+function SiteTransitionOverlay() {
+  const currentSiteId = useInfraStore(s => s.currentSiteId)
+  const [displaySiteId, setDisplaySiteId] = useState(currentSiteId)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    if (currentSiteId !== displaySiteId) {
+      setIsVisible(true)
+      const timer = setTimeout(() => {
+        setDisplaySiteId(currentSiteId)
+        setIsVisible(false)
+      }, 1000)
+      return () => clearTimeout(timer)
+    }
+  }, [currentSiteId])
+
+  if (!isVisible) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-[#020617] flex items-center justify-center transition-opacity duration-500">
+      <div className="text-center">
+        <div className="relative w-24 h-24 mb-6 mx-auto">
+          <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
+          <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center">
+             <span className="text-2xl animate-pulse">🛰️</span>
+          </div>
+        </div>
+        <h2 className="text-xl font-black text-white tracking-[0.3em] uppercase mb-2">Syncing Data Center</h2>
+        <p className="text-blue-500 font-mono text-[10px] uppercase tracking-widest">Protocol: Secure Geo-Relay v4.2</p>
+      </div>
+    </div>
+  )
+}
+
 function App() {
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
+  const [isBlueprintManagerOpen, setIsBlueprintManagerOpen] = useState(false)
+  const [isTenantManagerOpen, setIsTenantManagerOpen] = useState(false)
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
@@ -122,7 +179,7 @@ function App() {
         <Scene />
       </div>
 
-      <aside className="pointer-events-auto fixed left-0 top-0 z-30 flex h-full w-72 flex-col gap-5 border-r border-[#48afbb]/35 bg-[#070f52] p-5 text-white shadow-[4px_0_24px_rgba(7,15,82,0.35)]">
+      <aside className="pointer-events-auto fixed left-0 top-0 z-30 flex h-full w-72 flex-col gap-5 border-r border-[#48afbb]/35 bg-[#070f52] p-5 text-white shadow-[4px_0_24px_rgba(0,0,0,0.35)]">
         <div className="border-b border-white/10 pb-4">
           <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#48afbb]">
             Data center
@@ -147,6 +204,26 @@ function App() {
                 <span className="text-[#a855f7]">🌐</span> Global Network
               </span>
               <span className="text-purple-400 text-xs">Configure</span>
+            </button>
+
+            <button
+              onClick={() => setIsBlueprintManagerOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-md border border-blue-500/50 bg-blue-900/30 text-blue-100 hover:bg-blue-800/40 hover:border-blue-400 transition-colors shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-[#3b82f6]">📐</span> Blueprints & IaC
+              </span>
+              <span className="text-blue-400 text-xs">Manage</span>
+            </button>
+
+            <button
+              onClick={() => setIsTenantManagerOpen(true)}
+              className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold rounded-md border border-emerald-500/50 bg-emerald-900/30 text-emerald-100 hover:bg-emerald-800/40 hover:border-emerald-400 transition-colors shadow-sm"
+            >
+              <span className="flex items-center gap-2">
+                <span className="text-[#10b981]">👥</span> Tenant Isolation
+              </span>
+              <span className="text-emerald-400 text-xs">Logical</span>
             </button>
           </div>
 
@@ -209,8 +286,14 @@ function App() {
 
       <EmergencyToasts />
       <RansomwareVignette />
+      <ChaosVignette />
+      <GlobalMap />
+      <SiteTransitionOverlay />
+      <BlueprintManager isOpen={isBlueprintManagerOpen} onClose={() => setIsBlueprintManagerOpen(false)} />
+      <TenantManager isOpen={isTenantManagerOpen} onClose={() => setIsTenantManagerOpen(false)} />
       <Dashboard />
       <NetworkManager />
+      <Terminal />
       <Inspector />
 
       <div

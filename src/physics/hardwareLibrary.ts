@@ -12,7 +12,7 @@ export type HardwareCatalogSpec = {
 export type PortType = 'power' | 'network' | 'fc' | 'sas'
 
 export type PortLayoutItem = {
-  type: PortType
+  type: PortTypess
   count: number
   labelPrefix: string
 }

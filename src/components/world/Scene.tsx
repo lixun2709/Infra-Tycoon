@@ -6,10 +6,11 @@ import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import type { InfraNode } from '../../store/useInfraStore'
 import { useInfraStore } from '../../store/useInfraStore'
 import { Cables } from './Cables'
+import { Assistant } from './Assistant'
 
 export const RACK_HEIGHT = 2.1
 const RACK_U = 42
-const U_WORLD = RACK_HEIGHT / RACK_U
+export const U_WORLD = RACK_HEIGHT / RACK_U
 
 const TYPE_ACCENT: Record<string, string> = {
   compute: '#4a5568',
@@ -48,35 +49,120 @@ function USlotLines() {
   )
 }
 
+function StorageBar({ used, total, color, h }: { used: number, total: number, color: string, h: number }) {
+  const ratio = total > 0 ? Math.min(1, used / total) : 0
+  const barH = h * ratio
+  if (barH <= 0) return null
+  return (
+    <group position={[-0.45, 0, 0.445]}>
+      <mesh>
+        <boxGeometry args={[0.03, h, 0.01]} />
+        <meshBasicMaterial color="#0f172a" />
+      </mesh>
+      <mesh position={[0, -h / 2 + barH / 2, 0.005]}>
+        <boxGeometry args={[0.03, barH, 0.01]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  )
+}
+
+function NeuralPulse({ color, h }: { color: string, h: number }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return
+    const s = 1 + Math.sin(clock.elapsedTime * 3) * 0.03
+    meshRef.current.scale.set(s, 1, s)
+  })
+  return (
+    <mesh ref={meshRef}>
+      <boxGeometry args={[1.05, h + 0.05, 1.05]} />
+      <meshBasicMaterial color={color} transparent opacity={0.15} depthWrite={false} />
+    </mesh>
+  )
+}
+
+function PIIShield({ h }: { h: number }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return
+    meshRef.current.rotation.y = clock.elapsedTime * 2
+  })
+  return (
+    <group position={[0, -h / 2 + 0.05, 0]}>
+      <mesh ref={meshRef}>
+        <torusGeometry args={[0.55, 0.015, 16, 32]} />
+        <meshStandardMaterial color="#fbbf24" emissive="#fbbf24" emissiveIntensity={1} />
+      </mesh>
+      <pointLight color="#fbbf24" distance={0.5} intensity={1} />
+    </group>
+  )
+}
+
+function MaintenanceIcon({ h }: { h: number }) {
+  const meshRef = useRef<THREE.Mesh>(null)
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return
+    meshRef.current.rotation.z = clock.elapsedTime * 4
+    meshRef.current.position.y = Math.sin(clock.elapsedTime * 10) * 0.05
+  })
+  return (
+    <group position={[0, 0, 0]}>
+      <mesh ref={meshRef} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.2, 0.05, 12, 8]} />
+        <meshStandardMaterial color="#2dd4bf" emissive="#2dd4bf" emissiveIntensity={2} />
+      </mesh>
+      <pointLight color="#2dd4bf" distance={1} intensity={2} />
+    </group>
+  )
+}
+
 function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelected: boolean, onSelect: (id: string) => void }) {
+  const { tenants } = useInfraStore()
   if (node.slotIndex == null || node.parentRackId == null) return null
+
+  const tenant = tenants.find(t => t.id === node.tenantId)
+  const brandColor = tenant ? tenant.color : (node.isInfected ? '#d946ef' : '#22c55e')
+
   const color = node.catalogKey != null ? HARDWARE_CATALOG[node.catalogKey].color : TYPE_ACCENT[node.type] ?? '#718096'
 
   const h = node.uHeight * U_WORLD
   const y = rackHardwareCenterY(node.slotIndex, node.uHeight)
   const healthColor = node.isInfected ? '#d946ef' : node.healthStatus === 'critical' ? '#ef4444' : node.healthStatus === 'degraded' ? '#eab308' : '#22c55e'
 
+  const emissiveColor = node.isInfected ? '#d946ef' : (node.healthStatus === 'critical' ? '#ef4444' : (node.degradation > 70 ? '#f59e0b' : (tenant ? tenant.color : '#000000')))
+  const emissiveIntensity = (node.healthStatus === 'critical' || node.isInfected) ? (Math.sin(Date.now() / 150) * 0.8 + 1.2) : (node.degradation > 70 ? (Math.random() * 0.4 + 0.2) : (isSelected ? 1.5 : 1))
+
   return (
     <group position={[0, y, 0.1]}>
-      <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
-        <boxGeometry args={[0.92, h, 0.88]} />
-        <meshStandardMaterial
-          color={isSelected ? '#199277' : node.isInfected ? '#4a044e' : color}
-          metalness={0.4}
-          roughness={0.4}
-          emissive={isSelected ? '#2dd4bf' : node.isInfected ? '#d946ef' : '#000000'}
-          emissiveIntensity={isSelected ? 0.3 : node.isInfected ? 0.5 : 0}
-        />
-        <Edges color={isSelected ? '#ffffff' : '#f7fafc'} threshold={20} lineWidth={isSelected ? 2 : 1} />
-      </mesh>
+      {node.isRefreshing ? (
+        <MaintenanceIcon h={h} />
+      ) : (
+        <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
+          <boxGeometry args={[0.92, h, 0.88]} />
+          <meshStandardMaterial
+            color={isSelected ? '#199277' : node.isInfected ? '#4a044e' : color}
+            metalness={0.4}
+            roughness={0.4}
+            emissive={emissiveColor}
+            emissiveIntensity={emissiveIntensity}
+          />
+          <Edges color={isSelected ? '#ffffff' : '#f7fafc'} threshold={20} lineWidth={isSelected ? 2 : 1} />
+        </mesh>
+      )}
+
+      {/* Tenant Branding */}
+      {tenant && <NeuralPulse color={tenant.color} h={h} />}
+      {(node.totalStorageTB ?? 0) > 0 && <StorageBar used={node.usedStorageTB ?? 0} total={node.totalStorageTB ?? 0} color={brandColor} h={h} />}
+      {node.dataCategory === 'PII' && <PIIShield h={h} />}
 
       <mesh position={[0.4, 0, 0.445]}>
-         <sphereGeometry args={[0.02, 16, 16]} />
-         <meshStandardMaterial color={healthColor} emissive={healthColor} emissiveIntensity={0.8} />
+        <sphereGeometry args={[0.02, 16, 16]} />
+        <meshStandardMaterial color={healthColor} emissive={healthColor} emissiveIntensity={0.8} />
       </mesh>
 
       {node.isImmutable && (
-        <group position={[0, h/2 + 0.04, 0.45]}>
+        <group position={[0, h / 2 + 0.04, 0.45]}>
           <Text fontSize={0.06} color="#60a5fa" outlineColor="#1e3a8a" outlineWidth={0.01}>🛡️</Text>
           <pointLight color="#60a5fa" distance={0.5} intensity={0.5} />
         </group>
@@ -85,9 +171,9 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
       {/* AI At-Risk Orange Aura */}
       {(node.failureProbability ?? 0) > 0.6 && !node.isInfected && (
         <group>
-          <pointLight 
-            color="#f97316" 
-            distance={1.5} 
+          <pointLight
+            color="#f97316"
+            distance={1.5}
             intensity={(node.failureProbability ?? 0) * 3}
           />
           <mesh>
@@ -97,9 +183,12 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
         </group>
       )}
 
+      {/* Chaos Spark Particles */}
+      {node.healthStatus === 'degraded' && <ChaosSparkParticles h={h} />}
+
       {/* Migration indicator */}
       {node.activeMigration && (
-        <group position={[0, h/2 + 0.08, 0.45]}>
+        <group position={[0, h / 2 + 0.08, 0.45]}>
           <Text fontSize={0.05} color="#ffffff" outlineColor="#000000" outlineWidth={0.01}>
             ⚡ {node.activeMigration.progress}%
           </Text>
@@ -113,10 +202,64 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
   )
 }
 
+function ChaosSparkParticles({ h }: { h: number }) {
+  const sparkCount = 8
+  const meshRef = useRef<THREE.InstancedMesh>(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const offsets = useMemo(() =>
+    Array.from({ length: sparkCount }, () => ({
+      x: (Math.random() - 0.5) * 0.8,
+      y: (Math.random() - 0.5) * h,
+      z: (Math.random() - 0.5) * 0.8,
+      speed: 0.5 + Math.random() * 1.5,
+      phase: Math.random() * Math.PI * 2,
+    })), [h])
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return
+    const t = clock.elapsedTime
+    offsets.forEach((o, i) => {
+      const flicker = Math.sin(t * o.speed * 10 + o.phase) * 0.5 + 0.5
+      dummy.position.set(o.x, o.y + Math.sin(t * o.speed + o.phase) * 0.15, o.z)
+      dummy.scale.setScalar(flicker * 0.03 + 0.01)
+      dummy.updateMatrix()
+      meshRef.current!.setMatrixAt(i, dummy.matrix)
+    })
+    meshRef.current.instanceMatrix.needsUpdate = true
+  })
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, sparkCount]}>
+      <sphereGeometry args={[1, 6, 6]} />
+      <meshBasicMaterial color="#ef4444" transparent opacity={0.9} />
+    </instancedMesh>
+  )
+}
+
+function ChaosOverlay() {
+  const isChaosMode = useInfraStore(s => s.isChaosMode)
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current || !isChaosMode) return
+    const mat = meshRef.current.material as THREE.MeshBasicMaterial
+    mat.opacity = 0.02 + Math.sin(clock.elapsedTime * 8) * 0.015 + Math.random() * 0.01
+  })
+
+  if (!isChaosMode) return null
+
+  return (
+    <mesh ref={meshRef} position={[0, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[30, 30]} />
+      <meshBasicMaterial color="#ff0000" transparent opacity={0.03} depthWrite={false} side={THREE.DoubleSide} />
+    </mesh>
+  )
+}
+
 function Rack({ node, isSelected, onSelect, children }: { node: InfraNode; isSelected: boolean, onSelect: (id: string) => void; children?: ReactNode }) {
   const status = node.status ?? 'online'
   const isOverload = status === 'power_overload'
-  
+
   const currentW = node.currentPowerKW ?? 0
   const maxW = node.maxPowerKW ?? 5.0
   const powerText = `${currentW.toFixed(1)} / ${maxW.toFixed(1)} kW`
@@ -125,14 +268,14 @@ function Rack({ node, isSelected, onSelect, children }: { node: InfraNode; isSel
     <group position={[node.position.x, node.position.y + RACK_HEIGHT / 2, node.position.z]}>
       <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
         <boxGeometry args={[1, RACK_HEIGHT, 1]} />
-        <meshStandardMaterial 
-          color={isOverload ? '#3b0a14' : '#0c144d'} 
+        <meshStandardMaterial
+          color={isOverload ? '#3b0a14' : '#0c144d'}
           emissive={isOverload ? '#ff0000' : '#000000'}
           emissiveIntensity={isOverload ? 0.8 : 0}
-          metalness={0.8} 
-          roughness={0.2} 
-          transparent 
-          opacity={isOverload ? 0.3 : 0.15} 
+          metalness={0.8}
+          roughness={0.2}
+          transparent
+          opacity={isOverload ? 0.3 : 0.15}
           depthWrite={false}
         />
         <Edges color={isSelected ? '#2dd4bf' : (isOverload ? '#ff4444' : '#f0f7fa')} threshold={14} lineWidth={isSelected ? 3 : 1.5} />
@@ -155,9 +298,9 @@ function Floor() {
 
   return (
     <>
-      <mesh 
-        rotation={[-Math.PI / 2, 0, 0]} 
-        position={[0, -0.01, 0]} 
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, -0.01, 0]}
         receiveShadow
         onPointerMove={(e) => {
           if (!placementMode) return
@@ -192,13 +335,13 @@ function Floor() {
         <planeGeometry args={[30, 30]} />
         <meshBasicMaterial visible={false} />
       </mesh>
-      
+
       {placementMode && ghostPos && (
         <group position={[ghostPos.x, ghostPos.y + RACK_HEIGHT / 2, ghostPos.z]}>
           <mesh>
-             <boxGeometry args={[1, RACK_HEIGHT, 1]} />
-             <meshStandardMaterial color="#199277" transparent opacity={0.5} />
-             <Edges color="#2dd4bf" />
+            <boxGeometry args={[1, RACK_HEIGHT, 1]} />
+            <meshStandardMaterial color="#199277" transparent opacity={0.5} />
+            <Edges color="#2dd4bf" />
           </mesh>
         </group>
       )}
@@ -208,7 +351,7 @@ function Floor() {
 
 function WanGatewayPanel() {
   const { connections, nodes } = useInfraStore()
-  
+
   // A link is interrupted if any node in a WAN connection is critical
   const isInterrupted = connections.some(conn => {
     const startNode = nodes.find(n => n.id === conn.startNodeId)
@@ -216,7 +359,7 @@ function WanGatewayPanel() {
     if (!startNode || !endNode) return false
     const isWan = startNode.siteId !== endNode.siteId
     if (!isWan) return false
-    
+
     return startNode.healthStatus === 'critical' || endNode.healthStatus === 'critical'
   })
 
@@ -227,7 +370,7 @@ function WanGatewayPanel() {
         <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
         <Edges color="#475569" />
       </mesh>
-      
+
       {/* Ports Array */}
       {Array.from({ length: 8 }).map((_, i) => (
         <mesh key={i} position={[-1.4 + i * 0.4, 0, 0.15]}>
@@ -243,13 +386,13 @@ function WanGatewayPanel() {
           <meshBasicMaterial color="#ef4444" transparent opacity={0.3} depthWrite={false} />
         </mesh>
       )}
-      
+
       {/* Light Source */}
-      <pointLight 
-        position={[0, 0, 1]} 
-        color={isInterrupted ? '#ef4444' : '#a855f7'} 
-        distance={8} 
-        intensity={isInterrupted ? 2 : 1} 
+      <pointLight
+        position={[0, 0, 1]}
+        color={isInterrupted ? '#ef4444' : '#a855f7'}
+        distance={8}
+        intensity={isInterrupted ? 2 : 1}
       />
 
       <Text position={[0, 1.2, 0]} fontSize={0.4} color={isInterrupted ? '#ef4444' : '#e2e8f0'} outlineColor="#000000" outlineWidth={0.02}>
@@ -264,14 +407,14 @@ export { CLOUD_GATEWAY_POS }
 
 function CloudParticle({ offset }: { offset: number }) {
   const ref = useRef<THREE.Mesh>(null)
-  
+
   useFrame(({ clock }) => {
     if (!ref.current) return
     const t = clock.getElapsedTime() + offset
     ref.current.position.y = Math.sin(t * 0.8) * 0.3
     ref.current.position.x = Math.cos(t * 0.5 + offset) * 0.4
     ref.current.position.z = Math.sin(t * 0.6 + offset * 2) * 0.4
-    ;(ref.current.material as any).opacity = 0.4 + Math.sin(t * 1.5) * 0.3
+      ; (ref.current.material as any).opacity = 0.4 + Math.sin(t * 1.5) * 0.3
   })
 
   return (
@@ -329,7 +472,7 @@ function CloudGateway() {
           </mesh>
         </group>
       </Float>
-      
+
       {/* Floating particles */}
       {Array.from({ length: 12 }).map((_, i) => (
         <group key={i} position={[(Math.random() - 0.5) * 4, (Math.random() - 0.5) * 2 + 0.5, (Math.random() - 0.5) * 4]}>
@@ -343,7 +486,7 @@ function CloudGateway() {
       <Text position={[0, 1.5, 0]} fontSize={0.35} color="#7dd3fc" outlineColor="#0c4a6e" outlineWidth={0.02}>
         CLOUD REGION
       </Text>
-      
+
       {hasActiveLinks && (
         <Text position={[0, -1, 0]} fontSize={0.18} color="#94a3b8">
           {cloudLinks.length} Active Tier{cloudLinks.length > 1 ? 's' : ''}
@@ -354,13 +497,15 @@ function CloudGateway() {
 }
 
 function CameraAnimator() {
-  const { controls } = useThree()
-  const { selectedNodeId, nodes } = useInfraStore()
+  const { controls, camera } = useThree()
+  const { selectedNodeId, nodes, currentSiteId, isGlobalMapOpen } = useInfraStore()
   const [isManualOverride, setIsManualOverride] = useState(false)
-  
+  const prevSiteId = useRef(currentSiteId)
+  const prevMapState = useRef(isGlobalMapOpen)
+
   useEffect(() => {
     setIsManualOverride(false)
-  }, [selectedNodeId])
+  }, [selectedNodeId, currentSiteId])
 
   useEffect(() => {
     if (!controls) return
@@ -370,13 +515,37 @@ function CameraAnimator() {
   }, [controls])
 
   useFrame((state, delta) => {
-    if (!selectedNodeId || isManualOverride || !controls) return
+    if (!controls) return
+
+    // Site switch transition: snap to site default view
+    if (prevSiteId.current !== currentSiteId) {
+      camera.position.lerp(new THREE.Vector3(5, 4, 5), 0.1)
+      controls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1)
+      if (camera.position.distanceTo(new THREE.Vector3(5, 4, 5)) < 0.1) {
+        prevSiteId.current = currentSiteId
+      }
+      return
+    }
+
+    if (prevMapState.current !== isGlobalMapOpen) {
+      // Zoom out when map opens
+      if (isGlobalMapOpen) {
+        camera.position.lerp(new THREE.Vector3(15, 12, 15), 0.05)
+      } else {
+        camera.position.lerp(new THREE.Vector3(5, 4, 5), 0.05)
+      }
+      if (camera.position.distanceTo(isGlobalMapOpen ? new THREE.Vector3(15, 12, 15) : new THREE.Vector3(5, 4, 5)) < 0.2) {
+        prevMapState.current = isGlobalMapOpen
+      }
+    }
+
+    if (!selectedNodeId || isManualOverride) return
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId)
     if (!selectedNode) return
 
     let targetPos = new THREE.Vector3(selectedNode.position.x, selectedNode.position.y, selectedNode.position.z)
-    
+
     if (selectedNode.parentRackId) {
       const rack = nodes.find(n => n.id === selectedNode.parentRackId)
       if (rack) {
@@ -384,7 +553,7 @@ function CameraAnimator() {
         targetPos.set(rack.position.x, rack.position.y + RACK_HEIGHT / 2 + yOffset, rack.position.z)
       }
     } else if (selectedNode.type === 'rack') {
-       targetPos.y += RACK_HEIGHT / 2
+      targetPos.y += RACK_HEIGHT / 2
     }
 
     (controls as any).target.lerp(targetPos, delta * 4)
@@ -405,39 +574,44 @@ function World() {
       <color attach="background" args={isHot ? ['#3a1a1a'] : ['#e8eef2']} />
       <ambientLight intensity={0.8} color={isHot ? '#ff8c00' : '#ffffff'} />
       <directionalLight position={[10, 10, 5]} intensity={1} color={isHot ? '#ffb347' : '#ffffff'} />
-      
-      <Grid 
-        args={[30, 30]} 
-        cellSize={1} 
-        cellThickness={1} 
-        cellColor="#b9c5cf" 
-        sectionSize={5} 
-        sectionThickness={1.5} 
-        sectionColor="#48afbb" 
-        fadeDistance={25} 
-        fadeStrength={1.5} 
+
+      <Grid
+        args={[30, 30]}
+        cellSize={1}
+        cellThickness={1}
+        cellColor="#b9c5cf"
+        sectionSize={5}
+        sectionThickness={1.5}
+        sectionColor="#48afbb"
+        fadeDistance={25}
+        fadeStrength={1.5}
       />
 
-      <OrbitControls 
-        makeDefault 
-        enableDamping={true} 
-        dampingFactor={0.05} 
-        rotateSpeed={0.5} 
-        zoomSpeed={0.7} 
-        minDistance={5} 
-        maxDistance={50} 
+      <OrbitControls
+        makeDefault
+        enableDamping={true}
+        dampingFactor={0.05}
+        rotateSpeed={0.5}
+        zoomSpeed={0.7}
+        minDistance={5}
+        maxDistance={50}
       />
-      
+
       <CameraAnimator />
 
       <Floor />
+      <ChaosOverlay />
       <WanGatewayPanel />
       <CloudGateway />
       <Cables />
+      <BlueprintPreview />
+      <Assistant />
+
+      <DeployWave />
 
       {racks.map((rack) => (
-        <Rack 
-          key={rack.id} 
+        <Rack
+          key={rack.id}
           node={rack}
           isSelected={selectedNodeId === rack.id}
           onSelect={setSelectedNode}
@@ -453,6 +627,73 @@ function World() {
         </Rack>
       ))}
     </>
+  )
+}
+
+function BlueprintPreview() {
+  const { previewBlueprintId, blueprints } = useInfraStore()
+  const blueprint = blueprints.find(b => b.id === previewBlueprintId)
+  if (!blueprint) return null
+
+  const racks = blueprint.nodes.filter(n => n.type === 'rack')
+
+  return (
+    <group>
+      {racks.map(rack => (
+        <group key={`preview-${rack.id}`} position={[rack.position.x, rack.position.y + RACK_HEIGHT / 2, rack.position.z]}>
+          <mesh>
+            <boxGeometry args={[1.05, RACK_HEIGHT + 0.05, 1.05]} />
+            <meshStandardMaterial color="#3b82f6" transparent opacity={0.15} wireframe />
+          </mesh>
+          {blueprint.nodes.filter(n => n.parentRackId === rack.id).map(hw => {
+            const h = hw.uHeight * U_WORLD
+            const yOffset = -RACK_HEIGHT / 2 + U_WORLD * (hw.slotIndex! - 1 + hw.uHeight / 2)
+            return (
+              <mesh key={`preview-hw-${hw.id}`} position={[0, yOffset, 0]}>
+                <boxGeometry args={[0.92, h - 0.01, 0.92]} />
+                <meshStandardMaterial color="#60a5fa" transparent opacity={0.3} emissive="#60a5fa" emissiveIntensity={0.5} />
+              </mesh>
+            )
+          })}
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function DeployWave() {
+  const [active, setActive] = useState(false)
+  const [scale, setScale] = useState(0)
+  const prevNodesCount = useRef(0)
+  const nodes = useInfraStore(s => s.nodes)
+
+  useEffect(() => {
+    if (nodes.length > prevNodesCount.current + 3) {
+      setActive(true)
+      setScale(0)
+    }
+    prevNodesCount.current = nodes.length
+  }, [nodes.length])
+
+  useFrame((state, delta) => {
+    if (active) {
+      setScale(s => {
+        if (s > 40) {
+          setActive(false)
+          return 0
+        }
+        return s + delta * 25
+      })
+    }
+  })
+
+  if (!active) return null
+
+  return (
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
+      <ringGeometry args={[scale, scale + 2, 64]} />
+      <meshBasicMaterial color="#10b981" transparent opacity={0.4 * (1 - scale / 40)} />
+    </mesh>
   )
 }
 
