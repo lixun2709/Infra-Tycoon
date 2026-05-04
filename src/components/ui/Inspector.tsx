@@ -2,14 +2,15 @@ import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 
 export function Inspector() {
-  const { nodes, connections, selectedNodeId, cableMode, connectingPort, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService } = useInfraStore()
+  const { nodes, connections, selectedNodeId, patchingActive, activePatchSource, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
-  const nodeSite = sites.find(s => s.id === selectedNode?.siteId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'performance' | 'services'>('details')
 
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
 
   if (!selectedNode) return null
+
+  const nodeSite = sites.find(s => s.id === selectedNode.siteId)
 
   const handleDecommissionClick = () => {
     if (selectedNode.type === 'rack') {
@@ -158,26 +159,89 @@ export function Inspector() {
 
       <div className="space-y-4 mb-6 bg-slate-800/50 p-4 rounded-lg">
         <div>
-          <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-2">Asset Details</p>
-          <div className="flex flex-col gap-3">
-            <div>
-              <label className="text-xs text-slate-400 block mb-1">Asset Tag</label>
-              <input 
-                type="text" 
-                value={selectedNode.assetTag || ''} 
-                onChange={(e) => updateNode(selectedNode.id, { assetTag: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-teal-500"
-              />
+          <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-3">Enterprise Asset Intelligence</p>
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-between items-center bg-slate-950/50 p-2.5 rounded-xl border border-white/5">
+              <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Hardware Power</span>
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${selectedNode.isPoweredOn ? 'bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-slate-700'}`} />
+                <span className={`text-[10px] font-black uppercase tracking-tighter ${selectedNode.isPoweredOn ? 'text-green-500' : 'text-slate-600'}`}>
+                  {selectedNode.isPoweredOn ? 'Live' : 'Off'}
+                </span>
+              </div>
             </div>
+
             <div>
-              <label className="text-xs text-slate-400 block mb-1">Serial Number</label>
-              <input 
-                type="text" 
-                value={selectedNode.serialNumber || ''} 
-                onChange={(e) => updateNode(selectedNode.id, { serialNumber: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-teal-500"
-                placeholder="Enter S/N..."
-              />
+              <label className="text-[9px] text-slate-600 block mb-1 font-black uppercase tracking-widest ml-1">System Identity</label>
+              <div className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-[11px] font-black text-white tracking-tight flex items-center gap-2">
+                <span className="opacity-30">#</span>
+                {selectedNode.hostname || 'UNSET_IDENTITY'}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[9px] text-slate-600 block mb-1 font-black uppercase tracking-widest ml-1">Logical IP Stack</label>
+              <div className={`w-full bg-slate-950 border rounded-xl px-3 py-2.5 text-[11px] font-mono font-black shadow-[inset_0_0_15px_rgba(0,0,0,0.3)] flex justify-between items-center ${selectedNode.managementIP ? 'border-teal-500/30 text-teal-400' : 'border-red-500/30 text-red-500 animate-pulse'}`}>
+                <span>{selectedNode.managementIP || 'IP_PENDING'}</span>
+                <span className={`text-[8px] px-1.5 py-0.5 rounded font-black tracking-widest uppercase ${
+                  selectedNode.provisioningState === 'bootstrapped' ? 'bg-teal-500/10 text-teal-500' :
+                  selectedNode.provisioningState === 'patched' ? 'bg-blue-500/10 text-blue-500' :
+                  'bg-red-500/10 text-red-500'
+                }`}>
+                  {selectedNode.provisioningState}
+                </span>
+              </div>
+              {!selectedNode.managementIP && (
+                <p className="text-[8px] text-red-500/60 font-bold uppercase mt-1.5 ml-1 animate-pulse">⚠️ Run 'bootstrap' protocol via terminal</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[9px] text-slate-600 block mb-1 font-black uppercase tracking-widest ml-1">MAC Address</label>
+                <div className="bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-[9px] font-mono text-slate-400 uppercase">
+                  {selectedNode.macAddress || 'PENDING'}
+                </div>
+              </div>
+              <div>
+                <label className="text-[9px] text-slate-600 block mb-1 font-black uppercase tracking-widest ml-1">Asset Tag</label>
+                <input 
+                  type="text" 
+                  value={selectedNode.assetTag || ''} 
+                  onChange={(e) => updateNode(selectedNode.id, { assetTag: e.target.value })}
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-[9px] text-white focus:outline-none focus:border-teal-500 font-bold"
+                  placeholder="TAG-000"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[9px] text-slate-600 block mb-1 font-black uppercase tracking-widest ml-1">Hardware Serial</label>
+                <input 
+                  type="text" 
+                  value={selectedNode.serialNumber || ''} 
+                  onChange={(e) => updateNode(selectedNode.id, { serialNumber: e.target.value })}
+                  className="w-full bg-slate-950 border border-white/5 rounded-xl px-3 py-2 text-[9px] text-white focus:outline-none focus:border-teal-500 font-bold"
+                  placeholder="SN-XXXXXXXX"
+                />
+              </div>
+              <div className="flex flex-col">
+                <label className="text-[9px] text-slate-600 block mb-2 font-black uppercase tracking-widest ml-1">Deployment Lifecycle</label>
+                <div className="flex gap-1 mt-1">
+                  {['unboxed', 'racked', 'patched', 'bootstrapped'].map((s, idx) => {
+                    const states = ['unboxed', 'racked', 'patched', 'bootstrapped']
+                    const currentIdx = states.indexOf(selectedNode.provisioningState)
+                    const isDone = idx <= currentIdx
+                    return (
+                      <div key={s} className="flex-1 flex flex-col gap-1">
+                        <div className={`h-1 rounded-full transition-all ${isDone ? 'bg-teal-500' : 'bg-slate-800'}`} />
+                      </div>
+                    )
+                  })}
+                </div>
+                <p className="text-[8px] text-slate-500 font-black uppercase mt-1.5 text-center tracking-tighter">{selectedNode.provisioningState}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -187,7 +251,7 @@ export function Inspector() {
         <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-3">Rear Connectivity</p>
         <div className="grid grid-cols-1 gap-3">
           {selectedNode.ports.map((port) => {
-            const isConnecting = connectingPort?.portId === port.id
+            const isConnecting = activePatchSource?.portId === port.id
             const conn = connections.find(c => c.startPortId === port.id || c.endPortId === port.id)
             
             return (
@@ -232,10 +296,10 @@ export function Inspector() {
         </button>
       </div>
 
-      {cableMode && (
+      {patchingActive && (
         <div className="mt-6 p-4 bg-teal-900/40 border border-teal-500 rounded-lg">
           <p className="text-xs text-teal-200">
-            <strong>Cabling Active:</strong> Select target port to complete the link.
+            <strong>Patching Active:</strong> Select target port to complete the link.
           </p>
         </div>
       )}

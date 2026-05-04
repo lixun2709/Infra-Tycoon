@@ -10,7 +10,7 @@ export function calculateRackPower(rackId: string) {
   if (!rack || rack.type !== 'rack') return
 
   const rackNodes = nodes.filter((n) => n.parentRackId === rackId)
-  const totalW = rackNodes.reduce((sum, n) => sum + (n.wattage ?? 0), 0)
+  const totalW = rackNodes.reduce((sum, n) => sum + (n.isPoweredOn ? (n.wattage ?? 0) : 10), 0)
 
   // Facility Rule: Default limit 5kW. High-Density PDU upgrades to 15kW.
   const hasPDU = rackNodes.some(n => n.catalogKey === 'HIGH_DENSITY_PDU_1U')

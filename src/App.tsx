@@ -1,12 +1,9 @@
 import { Inspector } from './components/ui/Inspector'
 import { Dashboard } from './components/ui/Dashboard'
-import { NetworkManager } from './components/ui/NetworkManager'
+import { GlobalNetwork } from './components/ui/GlobalNetwork'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
 import { useState, useMemo, useEffect } from 'react'
-import { GlobalMap } from './components/ui/GlobalMap'
-import { BlueprintManager } from './components/ui/BlueprintManager'
-import { TenantManager } from './components/ui/TenantManager'
 import { Terminal } from './components/ui/Terminal'
 
 import { TopNav } from './components/ui/TopNav'
@@ -52,78 +49,10 @@ function EmergencyToasts() {
   )
 }
 
-function RansomwareVignette() {
-  const nodes = useInfraStore(s => s.nodes)
-  const hasInfection = nodes.some(n => n.isInfected)
 
-  if (!hasInfection) return null
-
-  return (
-    <div 
-      className="fixed inset-0 z-[90] pointer-events-none animate-pulse"
-      style={{
-        background: 'radial-gradient(ellipse at center, transparent 50%, rgba(168, 28, 88, 0.25) 80%, rgba(120, 0, 60, 0.5) 100%)',
-        mixBlendMode: 'screen',
-      }}
-    />
-  )
-}
-
-function ChaosVignette() {
-  const isChaosMode = useInfraStore(s => s.isChaosMode)
-
-  if (!isChaosMode) return null
-
-  return (
-    <div 
-      className="fixed inset-0 z-[89] pointer-events-none"
-      style={{
-        background: 'radial-gradient(ellipse at center, transparent 60%, rgba(200, 50, 30, 0.12) 85%, rgba(180, 30, 10, 0.25) 100%)',
-        animation: 'pulse 3s ease-in-out infinite',
-      }}
-    />
-  )
-}
-
-function SiteTransitionOverlay() {
-  const currentSiteId = useInfraStore(s => s.currentSiteId)
-  const [displaySiteId, setDisplaySiteId] = useState(currentSiteId)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    if (currentSiteId !== displaySiteId) {
-      setIsVisible(true)
-      const timer = setTimeout(() => {
-        setDisplaySiteId(currentSiteId)
-        setIsVisible(false)
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [currentSiteId])
-
-  if (!isVisible) return null
-
-  return (
-    <div className="fixed inset-0 z-[100] bg-[#020617] flex items-center justify-center transition-opacity duration-500">
-      <div className="text-center">
-        <div className="relative w-24 h-24 mb-6 mx-auto">
-          <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full" />
-          <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <div className="absolute inset-0 flex items-center justify-center">
-             <span className="text-2xl animate-pulse">🛰️</span>
-          </div>
-        </div>
-        <h2 className="text-xl font-black text-white tracking-[0.3em] uppercase mb-2">Syncing Data Center</h2>
-        <p className="text-blue-500 font-mono text-[10px] uppercase tracking-widest">Protocol: Secure Geo-Relay v4.2</p>
-      </div>
-    </div>
-  )
-}
 
 function App() {
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
-  const [isBlueprintManagerOpen, setIsBlueprintManagerOpen] = useState(false)
-  const [isTenantManagerOpen, setIsTenantManagerOpen] = useState(false)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
@@ -146,12 +75,6 @@ function App() {
   const pendingType = useInfraStore(s => s.pendingRackType)
 
   useEffect(() => {
-    // One-time reset for v1.1 Career Mode
-    const isV1_1 = localStorage.getItem('infra_tycoon_v1.1_init')
-    if (!isV1_1) {
-      useInfraStore.getState().resetCareer()
-      localStorage.setItem('infra_tycoon_v1.1_init', 'true')
-    }
 
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 't' && (e.target as HTMLElement).tagName !== 'INPUT') {
@@ -213,8 +136,6 @@ function App() {
 
       {/* Top Navigation Bar */}
       <TopNav 
-        onOpenBlueprints={() => setIsBlueprintManagerOpen(true)}
-        onOpenTenants={() => setIsTenantManagerOpen(true)}
         onOpenNetwork={() => setNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
@@ -225,19 +146,6 @@ function App() {
       <div className="fixed top-16 left-0 right-0 z-40 pointer-events-none">
         <div className="max-w-[1600px] mx-auto px-8 py-4 flex items-start justify-between">
           
-          {/* Site Toggle (DR/Primary) */}
-          <div className="pointer-events-auto bg-[#0a1536]/80 backdrop-blur-md border border-white/10 rounded-xl p-1.5 flex items-center gap-1.5 shadow-2xl">
-            {sites.map(site => (
-              <button
-                key={site.id}
-                onClick={() => setCurrentSiteId(site.id)}
-                className={`px-5 py-2 rounded-lg text-[10px] font-black tracking-widest transition-all flex items-center gap-3 ${currentSiteId === site.id ? 'bg-teal-600 text-white shadow-[0_0_20px_rgba(20,184,166,0.3)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
-              >
-                {site.isDisaster && <span className="text-sm animate-pulse">🔥</span>}
-                {site.name.toUpperCase()}
-              </button>
-            ))}
-          </div>
 
           {/* Room Statistics */}
           <div className={`pointer-events-auto bg-[#0a1536]/80 backdrop-blur-md border border-white/10 rounded-xl p-5 shadow-2xl transition-all w-[320px] ${selectedNodeId ? 'translate-x-[-340px]' : ''}`}>
@@ -278,14 +186,8 @@ function App() {
 
       {/* Overlays & Managers */}
       <EmergencyToasts />
-      <RansomwareVignette />
-      <ChaosVignette />
-      <GlobalMap />
-      <SiteTransitionOverlay />
-      <BlueprintManager isOpen={isBlueprintManagerOpen} onClose={() => setIsBlueprintManagerOpen(false)} />
-      <TenantManager isOpen={isTenantManagerOpen} onClose={() => setIsTenantManagerOpen(false)} />
       {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
-      <NetworkManager />
+      <GlobalNetwork />
 
       <Inspector />
       

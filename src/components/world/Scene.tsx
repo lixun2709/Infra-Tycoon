@@ -5,7 +5,6 @@ import * as THREE from 'three'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import type { InfraNode } from '../../store/useInfraStore'
 import { useInfraStore } from '../../store/useInfraStore'
-import { Cables } from './Cables'
 import { Assistant } from './Assistant'
 import { HeatMapOverlay } from './HeatMapOverlay'
 
@@ -327,6 +326,7 @@ function Floor() {
             maxPowerKW: 5.0,
             currentPowerKW: 0,
             status: 'online',
+            catalogKey: 'RACK_42U',
             ports: [],
             siteId: currentSiteId,
             services: [],
@@ -351,59 +351,6 @@ function Floor() {
         </group>
       )}
     </>
-  )
-}
-
-function WanGatewayPanel() {
-  const { connections, nodes } = useInfraStore()
-
-  // A link is interrupted if any node in a WAN connection is critical
-  const isInterrupted = connections.some(conn => {
-    const startNode = nodes.find(n => n.id === conn.startNodeId)
-    const endNode = nodes.find(n => n.id === conn.endNodeId)
-    if (!startNode || !endNode) return false
-    const isWan = startNode.siteId !== endNode.siteId
-    if (!isWan) return false
-
-    return startNode.healthStatus === 'critical' || endNode.healthStatus === 'critical'
-  })
-
-  return (
-    <group position={[0, 10, -15.1]}>
-      <mesh>
-        <boxGeometry args={[4, 1.5, 0.2]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.8} roughness={0.2} />
-        <Edges color="#475569" />
-      </mesh>
-
-      {/* Ports Array */}
-      {Array.from({ length: 8 }).map((_, i) => (
-        <mesh key={i} position={[-1.4 + i * 0.4, 0, 0.15]}>
-          <circleGeometry args={[0.08, 16]} />
-          <meshBasicMaterial color={isInterrupted ? '#ef4444' : '#a855f7'} />
-        </mesh>
-      ))}
-
-      {/* Pulse Effect */}
-      {isInterrupted && (
-        <mesh position={[0, 0, 0.2]}>
-          <planeGeometry args={[4.2, 1.7]} />
-          <meshBasicMaterial color="#ef4444" transparent opacity={0.3} depthWrite={false} />
-        </mesh>
-      )}
-
-      {/* Light Source */}
-      <pointLight
-        position={[0, 0, 1]}
-        color={isInterrupted ? '#ef4444' : '#a855f7'}
-        distance={8}
-        intensity={isInterrupted ? 2 : 1}
-      />
-
-      <Text position={[0, 1.2, 0]} fontSize={0.4} color={isInterrupted ? '#ef4444' : '#e2e8f0'} outlineColor="#000000" outlineWidth={0.02}>
-        WAN GATEWAY
-      </Text>
-    </group>
   )
 }
 
@@ -605,9 +552,7 @@ function World() {
 
       <Floor />
       <ChaosOverlay />
-      <WanGatewayPanel />
       <CloudGateway />
-      <Cables />
       <BlueprintPreview />
       <Assistant />
       <HeatMapOverlay />
