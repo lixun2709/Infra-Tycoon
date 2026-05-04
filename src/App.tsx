@@ -126,6 +126,7 @@ function App() {
   const [isTenantManagerOpen, setIsTenantManagerOpen] = useState(false)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
+  const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -152,10 +153,21 @@ function App() {
       localStorage.setItem('infra_tycoon_v1.1_init', 'true')
     }
 
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 't' && (e.target as HTMLElement).tagName !== 'INPUT') {
+        setIsTerminalOpen(prev => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+
     const interval = setInterval(() => {
       useInfraStore.getState().processTick()
     }, 10000)
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('keydown', handleKeyPress)
+    }
   }, [])
 
   useEffect(() => {
@@ -205,6 +217,8 @@ function App() {
         onOpenTenants={() => setIsTenantManagerOpen(true)}
         onOpenNetwork={() => setNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
+        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        isTerminalOpen={isTerminalOpen}
       />
 
       {/* Secondary Header Overlay: Site Toggle & Statistics */}
@@ -274,7 +288,8 @@ function App() {
       <NetworkManager />
 
       <Inspector />
-      <Terminal />
+      
+      {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
 
       {/* Placement Tooltip */}
       {placementMode && (

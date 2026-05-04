@@ -5,13 +5,17 @@ interface TopNavProps {
   onOpenTenants: () => void
   onOpenNetwork: () => void
   onToggleNOC: () => void
+  onToggleTerminal: () => void
+  isTerminalOpen: boolean
 }
 
 export function TopNav({ 
   onOpenBlueprints, 
   onOpenTenants, 
   onOpenNetwork, 
-  onToggleNOC
+  onToggleNOC,
+  onToggleTerminal,
+  isTerminalOpen
 }: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
   const cashBalance = useInfraStore(s => s.cashBalance)
@@ -35,6 +39,7 @@ export function TopNav({
         {[
           { id: 'noc', label: 'NOC DASHBOARD', icon: '📡', active: false, onClick: onToggleNOC },
           { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
+          { id: 'terminal', label: 'GLOBAL TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
           { id: 'blueprints', label: 'BLUEPRINTS', icon: '📐', active: false, onClick: onOpenBlueprints },
           { id: 'tenants', label: 'TENANTS', icon: '👥', active: false, onClick: onOpenTenants },
         ].map(tab => (

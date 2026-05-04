@@ -6,8 +6,10 @@ import {
   type HardwareCatalogKey,
   type PortType,
 } from '../physics/hardwareLibrary'
+import { TECHNICAL_MANUALS } from '../physics/Manuals'
 import { findFirstEmptySlot } from '../physics/snapping'
 import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine'
+import type { TerminalPane, TerminalSession } from './terminalTypes'
 
 export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer'
 export type RackStatus = 'online' | 'power_overload'
@@ -79,7 +81,9 @@ export type Gig = {
   serviceRequirements: { type: ServiceType; count: number }[]
 }
 
-export type InfraNode = {
+
+
+export interface InfraNode {
   id: string
   type: InfraNodeType
   siteId: string
@@ -98,6 +102,13 @@ export type InfraNode = {
   backupStatus?: BackupStatus
   totalStorageTB?: number
   usedStorageTB?: number
+  
+  // Day 6: Advanced Terminal & Config
+  isConfigured?: boolean
+  managementIP?: string
+  vlan?: number
+  vlanConfig?: { mode: 'access' | 'trunk'; nativeVlan: number }
+  volumes?: { name: string; sizeTB: number }[]
   isImmutable?: boolean
   clusterRole?: 'active' | 'standby'
   cloudTieredTB?: number
@@ -194,14 +205,27 @@ type InfraState = {
   repairCount: number
   // Day 30 State
   isAutoPilot: boolean
-  terminalLogs: string[]
-  commandHistory: string[]
   assistantTargetId: string | null
-  terminalContext: { mode: 'global' | 'config' | 'interface'; targetId?: string }
 
   cashBalance: number
   lastTickProfit: number
   activeContracts: Gig[]
+  
+  // Day 6: Enterprise Management Console
+  terminalStates: Record<string, {
+    sessions: TerminalSession[]
+    activeSessionId: string
+    layout: {
+      width: number
+      height: number
+      x: number
+      y: number
+      isMaximized: boolean
+    }
+    aliases: Record<string, string>
+    envVars: Record<string, string>
+    storedFiles: Record<string, string>
+  }>
   
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
@@ -247,6 +271,18 @@ type InfraState = {
   toggleAutoPilot: () => void
   processAutoPilot: () => void
   generateFinalReport: () => { score: number, grade: string, breakdown: any }
+  
+  // Terminal Actions
+  updateTerminalLayout: (layout: Partial<{ width: number; height: number; x: number; y: number; isMaximized: boolean }>) => void
+  addTerminalSession: (title?: string) => void
+  closeTerminalSession: (sessionId: string) => void
+  setActiveSession: (sessionId: string) => void
+  splitTerminalPane: (direction: 'vertical' | 'horizontal') => void
+  setActivePane: (paneId: string) => void
+  closeTerminalPane: (paneId: string) => void
+  setTerminalAlias: (name: string, command: string) => void
+  setTerminalEnvVar: (name: string, value: string) => void
+  writeTerminalFile: (path: string, content: string) => void
   
   // Career v1.1 Actions
   processTick: () => void
@@ -356,10 +392,37 @@ export const useInfraStore = create<InfraState>()(
       refreshCount: 0,
       repairCount: 0,
       isAutoPilot: false,
-      terminalLogs: ['System Ready. Type "help" for commands.'],
-      commandHistory: [],
+      terminalStates: {
+        'site-1': { 
+          sessions: [{ 
+            id: 's1-1', 
+            title: 'Primary Bastion', 
+            panes: [{ id: 'p1-1', logs: ['Enterprise Console v1.3 Ready.'], history: [], cwd: '/', context: { mode: 'global', targetId: null } }],
+            activePaneId: 'p1-1',
+            layout: 'single'
+          }],
+          activeSessionId: 's1-1',
+          layout: { width: 850, height: 550, x: 100, y: 120, isMaximized: false },
+          aliases: { 'll': 'ls -la', 'netstat': 'show ip int brief' },
+          envVars: { 'DOMAIN': 'infra.local', 'USER': 'admin' },
+          storedFiles: { '/etc/motd': 'Welcome to Global Infrastructure Management v1.3\nSecurity Authorized Personnel Only.' }
+        },
+        'site-2': { 
+          sessions: [{ 
+            id: 's2-1', 
+            title: 'DR Bastion', 
+            panes: [{ id: 'p2-1', logs: ['DR Console v1.3 Ready.'], history: [], cwd: '/', context: { mode: 'global', targetId: null } }],
+            activePaneId: 'p2-1',
+            layout: 'single'
+          }],
+          activeSessionId: 's2-1',
+          layout: { width: 850, height: 550, x: 100, y: 120, isMaximized: false },
+          aliases: {},
+          envVars: { 'USER': 'admin' },
+          storedFiles: { '/etc/motd': 'DR Site Management Console' }
+        }
+      },
       assistantTargetId: null,
-      terminalContext: { mode: 'global' },
 
       cashBalance: 10000,
       lastTickProfit: 0,
@@ -848,119 +911,418 @@ export const useInfraStore = create<InfraState>()(
         pushAlert('info', `Service status changed to ${status.toUpperCase()} on ${node.name}.`)
       },
 
-      processCommand: (text) => {
-        const { nodes, refreshHardware, performMassRollback, selectedNodeId, installService, ping, terminalContext } = get()
-        const cmd = text.toLowerCase().trim()
-        const logs = [...get().terminalLogs, `> ${text}`]
-        const selectedNode = nodes.find(n => n.id === selectedNodeId)
-
-        if (cmd === 'help') {
-          if (terminalContext.mode === 'global') {
-            logs.push('Global: conf t, fix, scale, secure, report, clear, autopilot')
-            logs.push('Network: ping [ip], hostname [name], ip addr show')
-          } else if (terminalContext.mode === 'config') {
-            logs.push('Config: interface [name], exit, end')
-          } else if (terminalContext.mode === 'interface') {
-            logs.push('Interface: no shut, shut, ip address [ip] [mask], exit, end')
-          }
-        } else if (cmd === 'clear') {
-          set({ terminalLogs: [] })
-          return
-        } else if (cmd === 'conf t' || cmd === 'configure terminal') {
-          set({ terminalContext: { mode: 'config' } })
-          logs.push('Enter configuration commands, one per line. End with CNTL/Z.')
-        } else if (cmd === 'exit') {
-          if (terminalContext.mode === 'interface') set({ terminalContext: { mode: 'config' } })
-          else if (terminalContext.mode === 'config') set({ terminalContext: { mode: 'global' } })
-          else logs.push('Error: Already at root level.')
-        } else if (cmd === 'end') {
-          set({ terminalContext: { mode: 'global' } })
-        } else if (cmd.startsWith('interface ') && terminalContext.mode === 'config') {
-          const portLabel = cmd.split(' ')[1]
-          if (selectedNode) {
-            const port = selectedNode.ports.find(p => p.label.toLowerCase() === portLabel)
-            if (port) {
-              set({ terminalContext: { mode: 'interface', targetId: port.id } })
-              logs.push(`Entering configuration for interface ${port.label}.`)
-            } else {
-              logs.push(`Error: Interface ${portLabel} not found.`)
+      updateTerminalLayout: (layout) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        set(s => ({
+          terminalStates: {
+            ...s.terminalStates,
+            [siteId]: {
+              ...state,
+              layout: { 
+                width: state.layout?.width || 700, 
+                height: state.layout?.height || 450, 
+                x: state.layout?.x || 100, 
+                y: state.layout?.y || 100, 
+                isMaximized: state.layout?.isMaximized || false,
+                ...layout 
+              }
             }
           }
-        } else if (cmd === 'no shut' && terminalContext.mode === 'interface' && terminalContext.targetId) {
-          if (selectedNode) {
-            const newPorts = selectedNode.ports.map(p => p.id === terminalContext.targetId ? { ...p, status: 'up' as const } : p)
-            get().updateNode(selectedNode.id, { ports: newPorts })
-            logs.push(`Interface ${selectedNode.ports.find(p => p.id === terminalContext.targetId)?.label} is now UP.`)
+        }))
+      },
+
+      addTerminalSession: (title = 'New Session') => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        const id = `s-${Math.random().toString(36).substr(2, 9)}`
+        const paneId = `p-${Math.random().toString(36).substr(2, 9)}`
+        const newSession: TerminalSession = {
+          id,
+          title,
+          panes: [{ 
+            id: paneId, 
+            logs: [`Session ${title} started.`], 
+            history: [], 
+            cwd: '/', 
+            context: { mode: 'global', targetId: null } 
+          }],
+          activePaneId: paneId,
+          layout: 'single'
+        }
+        set(s => ({
+          terminalStates: {
+            ...s.terminalStates,
+            [siteId]: {
+              ...state,
+              sessions: [...(state.sessions || []), newSession],
+              activeSessionId: id,
+              layout: state.layout || { width: 850, height: 550, x: 100, y: 120, isMaximized: false }
+            }
           }
-        } else if (cmd === 'shut' && terminalContext.mode === 'interface' && terminalContext.targetId) {
-          if (selectedNode) {
-            const newPorts = selectedNode.ports.map(p => p.id === terminalContext.targetId ? { ...p, status: 'down' as const } : p)
-            get().updateNode(selectedNode.id, { ports: newPorts })
-            logs.push(`Interface ${selectedNode.ports.find(p => p.id === terminalContext.targetId)?.label} is now DOWN.`)
-          }
-        } else if (cmd.startsWith('ip address ') && terminalContext.mode === 'interface' && terminalContext.targetId) {
-          const parts = cmd.split(' ')
-          const ip = parts[2]
-          const mask = parts[3] || '255.255.255.0'
-          if (selectedNode && ip) {
-            const newPorts = selectedNode.ports.map(p => p.id === terminalContext.targetId ? { ...p, ip, mask } : p)
-            get().updateNode(selectedNode.id, { ports: newPorts })
-            logs.push(`Assigned IP ${ip} to interface.`)
-          }
-        } else if (cmd.startsWith('ping ')) {
-          const targetIp = cmd.split(' ')[1]
-          if (selectedNode) {
-            const res = ping(selectedNode.id, targetIp)
-            logs.push(res.message)
-          } else {
-            logs.push('Error: Select a source node first.')
-          }
-        } else if (cmd.startsWith('hostname ')) {
-          const newName = text.slice(9).trim()
-          if (selectedNodeId && newName) {
-            get().updateNode(selectedNodeId, { name: newName })
-            logs.push(`Hostname updated to: ${newName}`)
-          }
-        } else if (cmd.startsWith('service install ')) {
-          const type = cmd.split(' ')[2] as ServiceType
-          if (selectedNodeId) {
-            installService(selectedNodeId, type)
-            logs.push(`Installing ${type}...`)
-          } else {
-            logs.push('Error: No node selected.')
-          }
-        } else if (cmd === 'ip addr show' || cmd === 'ip a') {
-          if (selectedNode) {
-            selectedNode.ports.forEach(p => {
-              logs.push(`${p.label}: <UP,LOWER_UP> mtu 1500 state ${p.status.toUpperCase()}`)
-              if (p.ip) logs.push(`    inet ${p.ip}/${p.mask || '24'} brd 255.255.255.255 scope global`)
-            })
-          } else {
-            logs.push('Error: No node selected.')
-          }
-        } else if (cmd.includes('fix')) {
-          const criticals = nodes.filter(n => n.healthStatus === 'critical')
-          criticals.forEach(n => refreshHardware(n.id))
-          logs.push(`Initiated repair for ${criticals.length} critical systems.`)
-        } else if (cmd.includes('secure')) {
-          performMassRollback()
-          logs.push('Executing global security rollback & immutable snapshot verification.')
-        } else if (cmd.includes('scale')) {
-          set({ networkLoad: 0.8 })
-          logs.push('Scaling throughput parameters to 80% capacity.')
-        } else if (cmd.includes('autopilot')) {
-          get().toggleAutoPilot()
-          logs.push(`Auto-Pilot mode set to ${!get().isAutoPilot}`)
-        } else if (cmd.includes('report')) {
-          const r = get().generateFinalReport()
-          logs.push(`FINAL REPORT: Grade ${r.grade} (Score: ${r.score})`)
-        } else {
-          logs.push(`Unknown command: ${cmd}`)
+        }))
+      },
+
+      splitTerminalPane: (direction) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        const session = state.sessions.find(s => s.id === state.activeSessionId)
+        if (!session || session.panes.length >= 2) return // Simple 2-pane split for now
+
+        const newPaneId = `p-${Math.random().toString(36).substr(2, 9)}`
+        const activePane = session.panes.find(p => p.id === session.activePaneId) || session.panes[0]
+        
+        const newPane: TerminalPane = {
+          ...activePane,
+          id: newPaneId,
+          logs: [`Pane split ${direction}.`],
+          history: [...activePane.history]
         }
 
-        set({ 
-          terminalLogs: logs.slice(-50),
-          commandHistory: [...get().commandHistory, text].slice(-50)
+        const updatedSessions = state.sessions.map(s => 
+          s.id === session.id ? { 
+            ...s, 
+            panes: [...s.panes, newPane], 
+            activePaneId: newPaneId,
+            layout: direction 
+          } : s
+        )
+
+        set(s => ({
+          terminalStates: {
+            ...s.terminalStates,
+            [siteId]: { ...state, sessions: updatedSessions }
+          }
+        }))
+      },
+
+      setActivePane: (paneId) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        const updatedSessions = state.sessions.map(s => 
+          s.id === state.activeSessionId ? { ...s, activePaneId: paneId } : s
+        )
+        set(s => ({
+          terminalStates: {
+            ...s.terminalStates,
+            [siteId]: { ...state, sessions: updatedSessions }
+          }
+        }))
+      },
+
+      closeTerminalPane: (paneId) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state || !state.activeSessionId) return
+        
+        const activeSession = state.sessions.find(s => s.id === state.activeSessionId)
+        if (!activeSession) return
+
+        if (activeSession.panes.length <= 1) {
+          get().closeTerminalSession(state.activeSessionId)
+          return
+        }
+
+        const newPanes = activeSession.panes.filter(p => p.id !== paneId)
+        const newActivePaneId = activeSession.activePaneId === paneId ? newPanes[0].id : activeSession.activePaneId
+
+        set(s => {
+          const updated = { ...s.terminalStates }
+          const updatedSessions = state.sessions.map(sess => {
+            if (sess.id !== state.activeSessionId) return sess
+            return { ...sess, panes: newPanes, activePaneId: newActivePaneId, layout: 'single' }
+          })
+          updated[siteId] = { ...state, sessions: updatedSessions }
+          return { terminalStates: updated }
+        })
+      },
+
+      setTerminalAlias: (name, command) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        set(s => {
+          const updated = { ...s.terminalStates }
+          updated[siteId] = { ...state, aliases: { ...state.aliases, [name]: command } }
+          return { terminalStates: updated }
+        })
+      },
+
+      setTerminalEnvVar: (name, value) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        set(s => {
+          const updated = { ...s.terminalStates }
+          updated[siteId] = { ...state, envVars: { ...state.envVars, [name]: value } }
+          return { terminalStates: updated }
+        })
+      },
+
+      writeTerminalFile: (path, content) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        set(s => {
+          const updated = { ...s.terminalStates }
+          updated[siteId] = { ...state, storedFiles: { ...state.storedFiles, [path]: content } }
+          return { terminalStates: updated }
+        })
+      },
+
+      closeTerminalSession: (sessionId) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state || !state.sessions || state.sessions.length <= 1) return
+        
+        const newSessions = state.sessions.filter(s => s.id !== sessionId)
+        const newActiveId = state.activeSessionId === sessionId ? newSessions[0].id : state.activeSessionId
+        
+        set(s => ({
+          terminalStates: {
+            ...s.terminalStates,
+            [siteId]: {
+              ...state,
+              sessions: newSessions,
+              activeSessionId: newActiveId
+            }
+          }
+        }))
+      },
+
+      setActiveSession: (sessionId) => {
+        const siteId = get().currentSiteId
+        const state = get().terminalStates[siteId]
+        if (!state) return
+        set(s => {
+          const updated = { ...s.terminalStates }
+          updated[siteId] = { ...state, activeSessionId: sessionId }
+          return { terminalStates: updated }
+        })
+      },
+
+      processCommand: (text) => {
+        const siteId = get().currentSiteId
+        const siteState = get().terminalStates[siteId]
+        if (!siteState) return
+        
+        const session = siteState.sessions.find(s => s.id === siteState.activeSessionId)
+        if (!session) return
+        const pane = session.panes.find(p => p.id === session.activePaneId) || session.panes[0]
+
+        const { nodes, updateNode, alerts, writeTerminalFile, setTerminalAlias, setTerminalEnvVar } = get()
+        
+        // --- 1. ALIAS SUBSTITUTION ---
+        let processedCmd = text.trim()
+        const firstWord = processedCmd.split(/\s+/)[0]
+        if (siteState.aliases[firstWord]) {
+           processedCmd = siteState.aliases[firstWord] + processedCmd.slice(firstWord.length)
+        }
+
+        // --- 2. ENV VAR SUBSTITUTION ---
+        processedCmd = processedCmd.replace(/\$(\w+)/g, (_, name) => siteState.envVars[name] || '')
+
+        // --- 3. REDIRECTION ---
+        let redirectPath: string | null = null
+        if (processedCmd.includes('>')) {
+          const parts = processedCmd.split('>')
+          processedCmd = parts[0].trim()
+          redirectPath = parts[1].trim()
+        }
+
+        // --- 4. PIPING SETUP ---
+        const pipeParts = processedCmd.split('|').map(s => s.trim())
+        const baseCmd = pipeParts[0]
+        const args = baseCmd.split(/\s+/)
+        const cmdLower = args[0].toLowerCase()
+
+        let output: string[] = [] 
+        let newContext = { ...pane.context }
+        let newCwd = pane.cwd
+        let forceClear = false
+
+        // --- 5. CORE COMMAND LOGIC ---
+        if (cmdLower === 'help') {
+          output.push("--- [[GREEN]]v1.3 HIGH-FIDELITY MANAGEMENT CONSOLE[[RESET]] ---")
+          output.push("SHELL: alias [n]=[c], export [V]=[K], watch [c], nano [f], > [f]")
+          output.push("NAV: [[BLUE]]ls -la[[RESET]], [[BLUE]]cd[[RESET]], [[BLUE]]pwd[[RESET]], [[RED]]clear[[RESET]], [[BLUE]]man [topic][[RESET]]")
+          output.push("NET: [[GREEN]]show ip int brief[[RESET]], [[GREEN]]show vlan brief[[RESET]], nmap, traceroute")
+          output.push("ONTAP: [[BLUE]]vserver show[[RESET]], [[BLUE]]cluster health show[[RESET]], volume expand")
+          output.push("RUBRIK: [[GREEN]]sla list[[RESET]], protection_status, snapshot create")
+          output.push("SEC: [[RED]]iptables -L[[RESET]], nmap -v -A [IP]")
+          output.push("PANE SPLITS: [[YELLOW]]Ctrl+Shift+V (Vert), Ctrl+Shift+H (Horiz)[[RESET]]")
+        } else if (cmdLower === 'clear') {
+          forceClear = true
+        } else if (cmdLower === 'top') {
+          newContext = { mode: 'top', targetId: null }
+          output.push("Starting interactive resource monitor...")
+        } else if (cmdLower === 'nano') {
+          const path = args[1]
+          if (!path) {
+            output.push("usage: [[YELLOW]]nano [file][[RESET]]")
+          } else {
+            const fullPath = path.startsWith('/') ? path : `${newCwd}${newCwd === '/' ? '' : '/'}${path}`
+            newContext = { mode: 'nano', targetId: fullPath }
+            if (!siteState.storedFiles[fullPath]) {
+              writeTerminalFile(fullPath, "") 
+            }
+          }
+        } else if (cmdLower === 'alias') {
+          if (!args[1]) {
+            Object.entries(siteState.aliases).forEach(([k, v]) => output.push(`alias ${k}='${v}'`))
+          } else {
+            const aliasPart = processedCmd.slice(6).trim()
+            const [name, ...cmdParts] = aliasPart.split('=')
+            const cmd = cmdParts.join('=').replace(/^['"]|['"]$/g, '')
+            setTerminalAlias(name.trim(), cmd)
+            output.push(`Alias '${name}' defined.`)
+          }
+        } else if (cmdLower === 'export') {
+          const exportPart = processedCmd.slice(7).trim()
+          const [name, ...valParts] = exportPart.split('=')
+          const val = valParts.join('=').replace(/^['"]|['"]$/g, '')
+          setTerminalEnvVar(name.trim(), val)
+          output.push(`Environment variable '${name}' exported.`)
+        } else if (cmdLower === 'ls') {
+          if (args.includes('-la')) {
+            output.push("total 48")
+            output.push("drwxr-xr-x  2 root  root  4096 May 1  12:00 [[BLUE]]bin[[RESET]]")
+            output.push("drwxr-xr-x  2 root  root  4096 May 1  12:00 [[BLUE]]etc[[RESET]]")
+            output.push("drwxr-xr-x  2 root  root  4096 May 1  12:00 [[BLUE]]root[[RESET]]")
+            Object.entries(siteState.storedFiles).forEach(([k, v]) => {
+              output.push(`-rw-r--r--  1 root  root  ${v.length} May 2  14:22 [[GREEN]]${k.split('/').pop()}[[RESET]]`)
+            })
+          } else {
+            output.push("[[BLUE]]bin[[RESET]]  [[BLUE]]etc[[RESET]]  [[BLUE]]root[[RESET]]  " + Object.keys(siteState.storedFiles).map(f => `[[GREEN]]${f.split('/').pop()}[[RESET]]`).join('  '))
+          }
+        } else if (cmdLower === 'show' && args[1] === 'ip' && args[2] === 'int' && args[3] === 'brief') {
+          output.push("Interface              IP-Address      OK? Method Status                Protocol")
+          output.push("---------------------- --------------- --- ------ --------------------- ---------")
+          nodes.filter(n => n.siteId === siteId && n.type !== 'rack').slice(0, 12).forEach(n => {
+            const ip = n.ports[0]?.ip || 'unassigned'
+            const status = Math.random() > 0.05 ? "[[GREEN]]up[[RESET]]" : "[[RED]]down[[RESET]]"
+            output.push(`${n.name.padEnd(22)} ${ip.padEnd(15)} YES manual ${status.padEnd(30)} ${status}`)
+          })
+        } else if (cmdLower === 'show' && args[1] === 'vlan' && args[2] === 'brief') {
+          output.push("VLAN Name                             Status    Ports")
+          output.push("---- -------------------------------- --------- -------------------------------")
+          output.push("1    default                          [[GREEN]]active[[RESET]]    Gi1/0/1, Gi1/0/2, Gi1/0/3")
+          output.push("10   MGMT_VLAN                        [[GREEN]]active[[RESET]]    Gi1/0/24")
+          output.push("100  PROD_DATA                        [[GREEN]]active[[RESET]]    Gi1/0/48")
+          output.push("666  QUARANTINE                       [[RED]]suspended[[RESET]]")
+        } else if (cmdLower === 'cluster' && args[1] === 'health' && args[2] === 'show') {
+          output.push("Node            Health  Eligibility   Epsilon")
+          output.push("--------------- ------- ------------  -------")
+          nodes.filter(n => n.siteId === siteId && n.type === 'storage').forEach(n => {
+            output.push(`${n.name.padEnd(15)} [[GREEN]]true[[RESET]]   true          false`)
+          })
+        } else if (cmdLower === 'sla' && args[1] === 'list') {
+          output.push("SLA Domain           Gold Copy    Retention    Status")
+          output.push("-------------------- ------------ ------------ ----------------")
+          output.push("Gold-Standard        Yes          7 Years      [[GREEN]]COMPLIANT[[RESET]]")
+          output.push("Silver-Tier          Yes          3 Years      [[GREEN]]COMPLIANT[[RESET]]")
+          output.push("Bronze-Dev           No           30 Days      [[YELLOW]]WARNING[[RESET]]")
+        } else if (cmdLower === 'cat') {
+          const path = args[1]
+          if (siteState.storedFiles[path]) output.push(...siteState.storedFiles[path].split('\n'))
+          else if (siteState.storedFiles[`/etc/${path}`]) output.push(...siteState.storedFiles[`/etc/${path}`].split('\n'))
+          else output.push(`[[RED]]cat: ${path}: No such file or directory[[RESET]]`)
+        } else if (cmdLower === 'ssh') {
+          const ip = args[1]
+          const node = nodes.find(n => n.ports.some(p => p.ip === ip) && n.siteId === siteId)
+          if (node) {
+            newContext = { mode: 'ssh', targetId: node.id }
+            output.push(`[[GREEN]]Connection established to ${node.name} (${ip})[[RESET]]`)
+            output.push(`Last login: ${new Date().toLocaleString()} from bastion.infra`)
+          } else output.push(`[[RED]]ssh: connect to host ${ip} port 22: Connection timed out[[RESET]]`)
+        } else if (cmdLower === 'ping') {
+          const target = args[1]
+          output.push(`[[BLUE]]PING ${target} (56(84) bytes of data)[[RESET]]`)
+          for(let i=1; i<=4; i++) {
+            output.push(`64 bytes from ${target}: icmp_seq=${i} ttl=64 time=${(Math.random()*2+1).toFixed(2)} ms`)
+          }
+        } else if (cmdLower === 'echo') {
+          output.push(args.slice(1).join(' '))
+        } else if (cmdLower === 'exit') {
+          if (newContext.mode !== 'global') {
+            newContext = { mode: 'global', targetId: null }
+            output.push("[[YELLOW]]Connection closed. Session detached.[[RESET]]")
+          } else {
+            // If already global, close the pane
+            setTimeout(() => get().closeTerminalPane(pane.id), 50)
+            return
+          }
+        } else if (cmdLower === 'sh') {
+          const path = args[1]
+          if (siteState.storedFiles[path]) {
+            const scriptLines = siteState.storedFiles[path].split('\n').filter(l => l.trim() && !l.startsWith('#'))
+            output.push(`[[BLUE]]Executing script: ${path}...[[RESET]]`)
+            setTimeout(() => {
+              scriptLines.forEach(line => get().processCommand(line))
+            }, 10)
+            return
+          } else output.push(`[[RED]]sh: ${path}: No such file[[RESET]]`)
+        } else {
+          // Fallback
+          if (cmdLower === 'pwd') output.push(newCwd)
+          else if (cmdLower === 'history') pane.history.forEach((h, i) => output.push(`${(i+1).toString().padEnd(3)} ${h}`))
+          else if (cmdLower === 'man') {
+            const topic = args[1]
+            if (TECHNICAL_MANUALS[topic]) output.push(...TECHNICAL_MANUALS[topic])
+            else output.push(`[[RED]]Manual entry for '${topic}' not found.[[RESET]]`)
+          } else output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
+        }
+
+        // --- 6. APPLY PIPES (GREP, TAIL, HEAD) ---
+        for (let i = 1; i < pipeParts.length; i++) {
+           const part = pipeParts[i]
+           if (part.startsWith('grep ')) {
+              const pattern = part.slice(5).trim().replace(/^["']|["']$/g, '')
+              output = output.filter(line => new RegExp(pattern, 'i').test(line))
+              // Add highlighting
+              output = output.map(line => line.replace(new RegExp(`(${pattern})`, 'gi'), '[[YELLOW]]$1[[RESET]]'))
+           } else if (part.startsWith('tail')) {
+              output = output.slice(-10)
+           } else if (part.startsWith('head')) {
+              output = output.slice(0, 10)
+           }
+        }
+
+        // --- 7. FINAL REDIRECTION ---
+        if (redirectPath) {
+           writeTerminalFile(redirectPath, output.join('\n'))
+           output = [`[Output redirected to ${redirectPath}]`]
+        }
+
+        set(s => {
+          const currentSiteState = s.terminalStates[siteId]
+          if (!currentSiteState) return {}
+          
+          const finalSessions = currentSiteState.sessions.map(s => {
+            if (s.id !== session.id) return s
+            const updatedPanes = s.panes.map(p => {
+               if (p.id !== pane.id) return p
+               return {
+                  ...p,
+                  logs: forceClear ? [] : [...p.logs, `> ${text}`, ...output].slice(-200),
+                  history: [...p.history, text].slice(-100),
+                  context: newContext,
+                  cwd: newCwd
+               }
+            })
+            return { ...s, panes: updatedPanes }
+          })
+
+          return {
+            terminalStates: {
+              ...s.terminalStates,
+              [siteId]: { ...currentSiteState, sessions: finalSessions }
+            }
+          }
         })
       },
 
@@ -1026,6 +1388,12 @@ export const useInfraStore = create<InfraState>()(
         if (normalizedNode.installDate === undefined) {
           normalizedNode.installDate = get().simulationCycle
           normalizedNode.degradation = 0
+          // Day 6: New hardware is unconfigured
+          if (normalizedNode.type !== 'rack' && normalizedNode.type !== 'facility') {
+            normalizedNode.isConfigured = false
+          } else {
+            normalizedNode.isConfigured = true
+          }
         }
 
         set((state) => ({ nodes: [...state.nodes, normalizedNode] }))
@@ -1354,6 +1722,36 @@ export const useInfraStore = create<InfraState>()(
         deploymentQueue: [],
         shoppingCart: [],
         isHeatMapVisible: false,
+        terminalStates: {
+          'site-1': { 
+            sessions: [{ 
+              id: 's1-1', 
+              title: 'Primary Bastion', 
+              panes: [{ id: 'p1-1', logs: ['Enterprise Console v1.3 Ready.'], history: [], cwd: '/', context: { mode: 'global', targetId: null } }],
+              activePaneId: 'p1-1',
+              layout: 'single'
+            }],
+            activeSessionId: 's1-1',
+            layout: { width: 850, height: 550, x: 100, y: 120, isMaximized: false },
+            aliases: { 'll': 'ls -la' },
+            envVars: { 'USER': 'admin' },
+            storedFiles: { '/etc/motd': 'Welcome back, Architect.' }
+          },
+          'site-2': { 
+            sessions: [{ 
+              id: 's2-1', 
+              title: 'DR Bastion', 
+              panes: [{ id: 'p2-1', logs: ['DR Console v1.3 Ready.'], history: [], cwd: '/', context: { mode: 'global', targetId: null } }],
+              activePaneId: 'p2-1',
+              layout: 'single'
+            }],
+            activeSessionId: 's2-1',
+            layout: { width: 850, height: 550, x: 100, y: 120, isMaximized: false },
+            aliases: {},
+            envVars: { 'USER': 'admin' },
+            storedFiles: { '/etc/motd': 'DR Site Management Console' }
+          }
+        },
       }),
     }),
     {
@@ -1362,6 +1760,44 @@ export const useInfraStore = create<InfraState>()(
       onRehydrateStorage: () => (rehydratedState) => {
         if (rehydratedState) {
           const s = rehydratedState as InfraState
+          
+          // v1.3 Migration: Ensure terminal states have panes and aliases
+          const updatedTerminalStates = { ...s.terminalStates }
+          let needsMigration = false
+          
+          Object.keys(updatedTerminalStates).forEach(siteId => {
+            const state = updatedTerminalStates[siteId]
+            if (state && (!state.sessions?.[0]?.panes || !state.aliases)) {
+              needsMigration = true
+              updatedTerminalStates[siteId] = {
+                ...state,
+                aliases: state.aliases || { 'll': 'ls -la' },
+                envVars: state.envVars || { 'USER': 'admin' },
+                storedFiles: state.storedFiles || { '/etc/motd': 'System Upgraded to v1.3' },
+                sessions: (state.sessions || []).map(sess => {
+                  if (sess.panes) return sess
+                  const pId = `p-${Math.random().toString(36).substr(2, 9)}`
+                  return {
+                    ...sess,
+                    panes: [{ 
+                      id: pId, 
+                      logs: (sess as any).logs || ['Session Migrated to v1.3.'],
+                      history: (sess as any).history || [],
+                      cwd: (sess as any).cwd || '/',
+                      context: (sess as any).context || { mode: 'global', targetId: null }
+                    }],
+                    activePaneId: pId,
+                    layout: 'single'
+                  } as TerminalSession
+                })
+              }
+            }
+          })
+
+          if (needsMigration) {
+            useInfraStore.setState({ terminalStates: updatedTerminalStates })
+          }
+
           const currentSites = s.sites || []
           if (currentSites.some(x => !x.region || !x.geoCoords) || currentSites.length === 0) {
             useInfraStore.setState({
