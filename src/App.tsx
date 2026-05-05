@@ -5,6 +5,7 @@ import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
 import { useState, useMemo, useEffect } from 'react'
 import { Terminal } from './components/ui/Terminal'
+import { OperatorHandbook } from './components/ui/OperatorHandbook'
 
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
@@ -56,6 +57,7 @@ function App() {
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
+  const [isHandbookOpen, setIsHandbookOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -69,8 +71,6 @@ function App() {
   const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
   const placementMode = useInfraStore((s) => s.placementMode)
   const processAutoBackups = useInfraStore((s) => s.processAutoBackups)
-  const sites = useInfraStore(s => s.sites)
-  const setCurrentSiteId = useInfraStore(s => s.setCurrentSiteId)
   const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
   const pendingType = useInfraStore(s => s.pendingRackType)
 
@@ -103,20 +103,17 @@ function App() {
   // Sync store placement mode with local placement state for modal compatibility
   
   useEffect(() => {
-    if (placementMode && pendingType && pendingType !== '42U Rack') {
-      setHardwareToAdd(pendingType)
+    if (placementMode && pendingType && pendingType !== 'RACK_42U') {
+      setHardwareToAdd(pendingType as HardwareCatalogKey)
     } else if (!placementMode) {
       setHardwareToAdd(null)
     }
   }, [placementMode, pendingType])
 
   const handleAddRack = () => {
-    setPlacementMode(true, '42U Rack')
+    setPlacementMode(true, 'RACK_42U')
   }
 
-  const tryPlace = (key: HardwareCatalogKey) => {
-    setHardwareToAdd(key)
-  }
 
   const handleConfirmPlacement = (rackId: string) => {
     if (!hardwareToAdd) return
@@ -139,6 +136,7 @@ function App() {
         onOpenNetwork={() => setNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        onOpenHandbook={() => setIsHandbookOpen(true)}
         isTerminalOpen={isTerminalOpen}
       />
 
@@ -192,6 +190,7 @@ function App() {
       <Inspector />
       
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
+      {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
 
       {/* Placement Tooltip */}
       {placementMode && (

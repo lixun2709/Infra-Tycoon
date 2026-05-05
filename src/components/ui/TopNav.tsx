@@ -4,6 +4,7 @@ interface TopNavProps {
   onOpenNetwork: () => void
   onToggleNOC: () => void
   onToggleTerminal: () => void
+  onOpenHandbook: () => void
   isTerminalOpen: boolean
 }
 
@@ -11,6 +12,7 @@ export function TopNav({
   onOpenNetwork, 
   onToggleNOC,
   onToggleTerminal,
+  onOpenHandbook,
   isTerminalOpen
 }: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
@@ -23,8 +25,8 @@ export function TopNav({
           <span className="text-xl font-black text-[#020617]">IT</span>
         </div>
         <div>
-          <h1 className="text-sm font-black text-white tracking-tighter uppercase leading-none">Infra-Tycoon <span className="text-teal-400">OS</span></h1>
-          <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1">Enterprise Ops v1.4</p>
+          <h1 className="text-sm font-black text-white tracking-tighter uppercase leading-none">SDDC <span className="text-teal-400">Orchestrator</span></h1>
+          <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1">Enterprise Ops v2.0</p>
         </div>
       </div>
 
@@ -34,6 +36,7 @@ export function TopNav({
           { id: 'noc', label: 'NOC DASHBOARD', icon: '📡', active: false, onClick: onToggleNOC },
           { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
           { id: 'terminal', label: 'GLOBAL TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
+          { id: 'handbook', label: 'HANDBOOK', icon: '📖', active: false, onClick: (onOpenHandbook as any) },
         ].map(tab => (
           <button
             key={tab.id}

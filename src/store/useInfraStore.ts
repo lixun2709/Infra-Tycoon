@@ -11,12 +11,13 @@ import { findFirstEmptySlot } from '../physics/snapping'
 import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
 
-export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer'
+export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer' | 'security' | 'identity' | 'facility'
 export type RackStatus = 'online' | 'power_overload'
 export type HealthStatus = 'healthy' | 'degraded' | 'critical'
 export type AlertSeverity = 'info' | 'warning' | 'critical'
 export type BackupStatus = 'protected' | 'unprotected' | 'backing_up'
 export type DataCategory = 'Public' | 'Internal' | 'PII'
+export type SystemState = 'off' | 'booting' | 'running'
 
 export type InfraAlert = {
   id: string
@@ -56,12 +57,6 @@ export type HardwarePort = {
   mask?: string
 }
 
-export type Tenant = {
-  id: string
-  name: string
-  color: string
-  budget: number
-}
 
 export type ServiceType = 'web' | 'storage' | 'backup' | 'DHCP' | 'DNS' | 'NTP'
 export type ServiceStatus = 'running' | 'stopped' | 'degraded'
@@ -73,13 +68,6 @@ export type NodeService = {
   port: number
 }
 
-export type Gig = {
-  id: string
-  name: string
-  reward: number
-  requirements?: { type: InfraNodeType; count: number }[]
-  serviceRequirements: { type: ServiceType; count: number }[]
-}
 
 export type DnsRecord = { id: string; hostname: string; ip: string; ttl: number }
 export type DhcpLease = { id: string; nodeId: string; ip: string; expires: number }
@@ -107,26 +95,32 @@ export interface InfraNode {
   totalStorageTB?: number
   usedStorageTB?: number
   
-  // v1.6 Bootstrap Workflow
-  isPoweredOn?: boolean
+  // v2.0 SDDC Orchestration
+  systemState: SystemState
+  bootProgress: number
+  
+  // Logical Identity
   hostname?: string
-  isConfigured?: boolean
   managementIP?: string
-  vlan?: number
   macAddress?: string
   provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped'
+  isConfigured?: boolean
+  vlan?: number
   
   ports: HardwarePort[]
   services: NodeService[]
   assetTag?: string
   serialNumber?: string
-  tenantId?: string
-  qosEnabled?: boolean
   dataCategory?: DataCategory
-  // Lifecycle & Aging
+
   installDate: number // Simulation cycle index
   degradation: number // 0-100
+  temperature?: number
   isRefreshing?: boolean
+  failureProbability?: number
+  isImmutable?: boolean
+  isInfected?: boolean
+  activeMigration?: { targetNodeId: string; progress: number }
 }
 
 export interface CloudLink {
@@ -189,14 +183,18 @@ type InfraState = {
   isNetworkManagerOpen: boolean
   networkLoad: number
   resilienceIndex: number
-  // Day 29 Metrics
+  // v2.0 SDDC Metrics
+  operationalBudget: number
+  capacityUnits: number
   simulationCycle: number
   dnsRecords: DnsRecord[]
   dhcpLeases: DhcpLease[]
   availableIPPool: string[]
-  ntpSyncStatus: { nodeId: string; lastSync: number }[]
+  ntpSyncStatus: NtpSyncStatus[]
   networkUptime: number
   postMortems: PostMortem[]
+  blueprints: Blueprint[]
+  previewBlueprintId: string | null
   
   // Day 6: Enterprise Management Console
   terminalStates: Record<string, {
@@ -218,6 +216,9 @@ type InfraState = {
   deploymentQueue: HardwareCatalogKey[]
   isHeatMapVisible: boolean
   toggleHeatMap: () => void
+  toggleGlobalMap: () => void
+  saveSiteAsBlueprint: (name: string) => void
+  applyBlueprint: (id: string) => void
   
   setNetworkLoad: (load: number) => void
   setNetworkManagerOpen: (open: boolean) => void
@@ -283,6 +284,17 @@ type InfraState = {
   setNodeHostname: (nodeId: string, name: string) => void
   assignNetworkDetails: () => void
   checkNetworkPath: (startId: string, endId: string) => boolean
+  resetState: () => void
+
+  // v2.0 Management Plane Additions
+  isAutoPilot: boolean
+  assistantTargetId: string | null
+  isGlobalMapOpen: boolean
+  isChaosMode: boolean
+  validateReplication: (linkId: string) => boolean
+  addReplicationLink: (sourceId: string, targetId: string) => void
+  checkAllCompliance: () => void
+  updateTerminalLogs: (sessionId: string, paneId: string, logs: string[]) => void
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
@@ -321,11 +333,28 @@ function createPortsForCatalog(nodeId: string, key: HardwareCatalogKey): Hardwar
       type: segment.type,
       label: `${segment.labelPrefix}${idx + 1}`,
       connectedTo: null,
-      status: 'down',
+      status: 'down' as const,
       ip: undefined,
       mask: undefined
     }))
   )
+}
+
+const INITIAL_TERMINAL_STATE = {
+  'site-1': { 
+    sessions: [{ 
+      id: 's1-1', 
+      title: 'Primary Bastion', 
+      panes: [{ id: 'p1-1', logs: ['Enterprise Console v2.0 Ready.'], history: [], cwd: '/', context: { mode: 'global' as const, targetId: null } }],
+      activePaneId: 'p1-1',
+      layout: 'single' as const
+    }],
+    activeSessionId: 's1-1',
+    layout: { width: 850, height: 550, x: 100, y: 120, isMaximized: false },
+    aliases: { 'll': 'ls -la', 'netstat': 'show ip int brief' },
+    envVars: { 'DOMAIN': 'infra.local', 'USER': 'admin' },
+    storedFiles: { '/etc/motd': 'Welcome to Global Infrastructure Management v2.0\nSecurity Authorized Personnel Only.' }
+  }
 }
 
 export const useInfraStore = create<InfraState>()(
@@ -355,40 +384,8 @@ export const useInfraStore = create<InfraState>()(
       resilienceIndex: 100,
       postMortems: [],
       incidentCounter: 400,
-      isGlobalMapOpen: false,
-      carbonFootprintKg: 0,
-      tenants: [],
-      previewBlueprintId: null,
-      blueprints: [],
-      
-      // v1.5 Orchestration State
-      dnsRecords: [],
-      dhcpLeases: [],
-      availableIPPool: Array.from({ length: 154 }, (_, i) => `10.0.0.${101 + i}`), // 101-254
-      ntpSyncStatus: [],
-      networkUptime: 100,
-
-      simulationCycle: 0,
-      totalEWasteKG: 0,
-      refreshCount: 0,
-      repairCount: 0,
       isAutoPilot: false,
-      terminalStates: {
-        'site-1': { 
-          sessions: [{ 
-            id: 's1-1', 
-            title: 'Primary Bastion', 
-            panes: [{ id: 'p1-1', logs: ['Enterprise Console v1.6 Ready.'], history: [], cwd: '/', context: { mode: 'global', targetId: null } }],
-            activePaneId: 'p1-1',
-            layout: 'single'
-          }],
-          activeSessionId: 's1-1',
-          layout: { width: 850, height: 550, x: 100, y: 120, isMaximized: false },
-          aliases: { 'll': 'ls -la', 'netstat': 'show ip int brief' },
-          envVars: { 'DOMAIN': 'infra.local', 'USER': 'admin' },
-          storedFiles: { '/etc/motd': 'Welcome to Global Infrastructure Management v1.6\nSecurity Authorized Personnel Only.' }
-        }
-      },
+      terminalStates: INITIAL_TERMINAL_STATE,
       deploymentQueue: [],
       isHeatMapVisible: false,
       simulationCycle: 0,
@@ -397,9 +394,13 @@ export const useInfraStore = create<InfraState>()(
       availableIPPool: Array.from({ length: 154 }, (_, i) => `10.0.0.${101 + i}`),
       ntpSyncStatus: [],
       networkUptime: 100,
-      auditLogs: [],
-      postMortems: [],
-      incidentCounter: 0,
+      operationalBudget: 1000000,
+      capacityUnits: 0,
+      blueprints: [],
+      previewBlueprintId: null,
+      assistantTargetId: null,
+      isGlobalMapOpen: false,
+      isChaosMode: false,
 
 
       setNetworkLoad: (load) => set({ networkLoad: load }),
@@ -457,10 +458,6 @@ export const useInfraStore = create<InfraState>()(
             infected++
             updateNode(target.id, { 
               isInfected: true, 
-              entropyLevel: 100, 
-              healthStatus: 'critical', 
-              usedStorageTB: 0, 
-              backupStatus: 'unprotected' 
             })
             pushAlert('critical', `🦠 RANSOMWARE: ${target.name} encrypted! Entropy 100%. Data lost.`, target.id)
           }
@@ -505,14 +502,7 @@ export const useInfraStore = create<InfraState>()(
         }
       },
 
-      setNetworkLoad: (load) => set({ networkLoad: load }),
-      setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
-      setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
-      setMousePosition: (pos) => set({ mousePosition: pos }),
-      acknowledgeAllAlerts: () => set(state => ({
-        alerts: state.alerts.map(a => ({ ...a, isAcknowledged: true }))
-      })),
-      processAutoBackups: () => {},
+
 
       processAging: () => {
         const { simulationCycle, nodes, updateNode, pushAlert } = get()
@@ -568,21 +558,7 @@ export const useInfraStore = create<InfraState>()(
             isRefreshing: false
           })
           
-          const weight = node.uHeight * 15 // Roughly 15kg per U
-          set(state => ({ 
-            totalEWasteKG: state.totalEWasteKG + weight, 
-            refreshCount: state.refreshCount + 1,
-            auditLogs: [{
-              id: crypto.randomUUID(),
-              timestamp: Date.now(),
-              type: 'LifecycleEvent' as const,
-              message: `Refreshed hardware ${node.name}. Generated ${weight}kg E-Waste.`,
-              sourceNodeId: nodeId,
-              targetNodeId: nodeId,
-              status: 'Info' as const
-            }, ...state.auditLogs].slice(0, 50)
-          }))
-          pushAlert('info', `✅ REFRESH COMPLETE: ${node.name} modernized. CAPEX charge applied.`)
+          pushAlert('info', `✅ REFRESH COMPLETE: ${node.name} modernized. Lifecycle cycle reset.`)
         }, 3000)
       },
 
@@ -595,23 +571,17 @@ export const useInfraStore = create<InfraState>()(
             healthStatus: 'healthy',
             failureProbability: 0.1
           })
-          set(state => ({ repairCount: state.repairCount + 1 }))
           pushAlert('info', `🔧 REPAIR COMPLETE: ${nodeId.slice(0,6)} component service successful.`)
         }, 1500)
       },
 
       installService: (nodeId, type) => {
-        const { nodes, cashBalance, pushAlert, updateNode } = get()
+        const { nodes, pushAlert, updateNode } = get()
         const node = nodes.find(n => n.id === nodeId)
         if (!node) return
 
         if (node.services?.some(s => s.type === type)) {
           pushAlert('warning', `Service ${type.toUpperCase()} is already installed on ${node.hostname || node.name}.`)
-          return
-        }
-
-        if (cashBalance < 100) {
-          pushAlert('critical', 'Insufficient funds for service installation ($100 required).')
           return
         }
 
@@ -626,7 +596,6 @@ export const useInfraStore = create<InfraState>()(
         updateNode(nodeId, { 
           services: [...(node.services || []), newService]
         })
-        set({ cashBalance: cashBalance - 100 })
         pushAlert('info', `Service ${type.toUpperCase()} installed on ${node.hostname || node.name}.`)
       },
 
@@ -764,7 +733,7 @@ export const useInfraStore = create<InfraState>()(
           const updated = { ...s.terminalStates }
           const updatedSessions = state.sessions.map(sess => {
             if (sess.id !== state.activeSessionId) return sess
-            return { ...sess, panes: newPanes, activePaneId: newActivePaneId, layout: 'single' }
+            return { ...sess, panes: newPanes, activePaneId: newActivePaneId, layout: 'single' as const }
           })
           updated[siteId] = { ...state, sessions: updatedSessions }
           return { terminalStates: updated }
@@ -840,11 +809,11 @@ export const useInfraStore = create<InfraState>()(
         const siteState = get().terminalStates[siteId]
         if (!siteState) return
         
-        const session = siteState.sessions.find(s => s.id === siteState.activeSessionId)
-        if (!session) return
-        const pane = session.panes.find(p => p.id === session.activePaneId) || session.panes[0]
+        const activeSession = siteState.sessions.find(s => s.id === siteState.activeSessionId)
+        if (!activeSession) return
+        const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId) || activeSession.panes[0]
 
-        const { nodes, updateNode, alerts, writeTerminalFile, setTerminalAlias, setTerminalEnvVar, dnsRecords } = get()
+        const { nodes, updateNode, writeTerminalFile, setTerminalAlias, setTerminalEnvVar, dnsRecords } = get()
         
         const resolveHostname = (host: string) => {
           const record = dnsRecords.find(r => r.hostname === host)
@@ -876,8 +845,8 @@ export const useInfraStore = create<InfraState>()(
         const cmdLower = args[0].toLowerCase()
 
         let output: string[] = [] 
-        let newContext = { ...pane.context }
-        let newCwd = pane.cwd
+        let newContext = { ...activePane.context }
+        let newCwd = activePane.cwd
         let forceClear = false
 
         // --- 5. CORE COMMAND LOGIC ---
@@ -896,9 +865,17 @@ export const useInfraStore = create<InfraState>()(
           })
           
           if (!hasOobLink && !['exit', 'help'].includes(cmdLower)) {
-            output.push("[[RED]]ERROR: No Serial/OOB connection to [${targetNode.hostname || targetNode.id.slice(0,8)}].[[RESET]]")
+            output.push(`[[RED]]ERROR: No Serial/OOB connection to [${targetNode.hostname || targetNode.id.slice(0,8)}].[[RESET]]`)
             output.push("Verify physical Top-of-Rack patching to Management Switch.")
-            get().updateTerminalLogs(id, [...pane.logs, ...output])
+            // Use set directly since we are in processCommand
+            set(s => {
+              const cs = s.terminalStates[siteId]
+              const ns = cs.sessions.map(sess => sess.id === activeSession.id ? {
+                ...sess,
+                panes: sess.panes.map(p => p.id === activePane.id ? { ...p, logs: [...p.logs, `> ${text}`, ...output].slice(-200) } : p)
+              } : sess)
+              return { terminalStates: { ...s.terminalStates, [siteId]: { ...cs, sessions: ns } } }
+            })
             return
           }
         }
@@ -910,20 +887,21 @@ export const useInfraStore = create<InfraState>()(
           output.push("NET: [[GREEN]]ping [target][[RESET]], [[GREEN]]show ip brief[[RESET]], [[GREEN]]traceroute[[RESET]]")
           output.push("ORCH: [[BLUE]]apt install[[RESET]], [[BLUE]]systemctl start[[RESET]], [[BLUE]]sync-ntp[[RESET]]")
           output.push("NAV: [[YELLOW]]scan console[[RESET]], [[YELLOW]]connect console [id][[RESET]], [[YELLOW]]exit[[RESET]]")
-        } else if (cmdLower === 'clear') {
-          forceClear = true
-        } else if (targetNode && !targetNode.isPoweredOn && !['poweron', 'exit', 'help'].includes(cmdLower)) {
+        } else if (targetNode && targetNode.systemState === 'off' && !['poweron', 'exit', 'help'].includes(cmdLower)) {
           output.push("[[RED]]SYSTEM ERROR: Node is logically powered down.[[RESET]]")
           output.push("Required: '[[YELLOW]]poweron[[RESET]]' to initialize CPU/RAM.")
-        } else if (targetNode && targetNode.isPoweredOn && !targetNode.hostname && !['hostname', 'exit', 'help', 'ipmi'].includes(cmdLower)) {
+        } else if (targetNode && targetNode.systemState === 'booting' && !['exit', 'help'].includes(cmdLower)) {
+          output.push("[[YELLOW]]BOOT INTERRUPT: System is currently in POST/Kernel initialization.[[RESET]]")
+          output.push(`Progress: ${targetNode.bootProgress}% | Please wait for success telemetry.`)
+        } else if (targetNode && targetNode.systemState === 'running' && !targetNode.hostname && !['hostname', 'exit', 'help', 'ipmi'].includes(cmdLower)) {
           output.push("[[RED]]BOOT ERROR: Unique Hostname not set.[[RESET]]")
           output.push("Required: '[[YELLOW]]hostname [name][[RESET]]' to set node identity.")
         } else if (cmdLower === 'poweron') {
           if (newContext.mode === 'ssh' && targetNode) {
             get().powerOnNode(targetNode.id)
             output.push("[[GREEN]]Initializing Hardware Stack...[[RESET]]")
-            output.push("CPU Check: OK | RAM Check: OK | Disk Check: OK")
-            output.push("BIOS/UEFI Loaded. Kernel waiting for identity.")
+            output.push("POST: CPU Check [OK] | RAM Sync [OK] | Bus Scan [OK]")
+            output.push("Kernel handover initiated. Boot sequence active.")
           } else output.push("[[RED]]poweron: must be connected to a node serial console.[[RESET]]")
         } else if (cmdLower === 'hostname') {
           const name = args[1]
@@ -955,13 +933,19 @@ export const useInfraStore = create<InfraState>()(
         } else if (cmdLower === 'ls') {
           output.push("[[BLUE]]bin[[RESET]]  [[BLUE]]etc[[RESET]]  [[BLUE]]root[[RESET]]  [[BLUE]]var[[RESET]]")
           Object.keys(siteState.storedFiles).forEach(f => output.push(`[[GREEN]]${f.split('/').pop()}[[RESET]]`))
-        } else if (cmdLower === 'show' && args[1] === 'ip' && args[2] === 'brief') {
+        } else if (cmdLower === 'show' && args[1] === 'vlan' && args[2] === 'brief') {
+          output.push("VLAN Name                             Status    Ports")
+          output.push("---- -------------------------------- --------- -------------------------------")
+          output.push("1    default                          active    Gi1/0/1, Gi1/0/2")
+          output.push("10   Management                       active    Gi1/0/10")
+        } else if (cmdLower === 'show' && args[1] === 'ip' && (args[2] === 'brief' || (args[2] === 'int' && args[3] === 'brief'))) {
           output.push("Interface       IP-Address      Status                Protocol")
           output.push("---------       ----------      ------                --------")
           nodes.filter(n => n.siteId === siteId && n.type !== 'rack').forEach(n => {
             const ip = n.managementIP || 'unassigned'
-            const status = n.isPoweredOn ? "[[GREEN]]up[[RESET]]" : "[[RED]]down[[RESET]]"
-            output.push(`${n.hostname || n.id.slice(0,8)}`.padEnd(15) + `${ip.padEnd(15)} ${status.padEnd(21)} ${status}`)
+            const statusColor = n.systemState === 'running' ? '[[GREEN]]' : n.systemState === 'booting' ? '[[YELLOW]]' : '[[RED]]'
+            const status = `${statusColor}${n.systemState.toUpperCase()}[[RESET]]`
+            output.push(`${n.hostname || n.id.slice(0,8)}`.padEnd(15) + `${ip.padEnd(15)} ${status.padEnd(30)}`)
           })
         } else if (cmdLower === 'ping') {
           const target = args[1]
@@ -988,7 +972,7 @@ export const useInfraStore = create<InfraState>()(
           const ip = resolveHostname(host)
           const node = nodes.find(n => (n.managementIP === ip || n.hostname === host) && n.siteId === siteId)
           if (node) {
-            if (!node.isPoweredOn) output.push(`[[RED]]ssh: connect to host ${host} port 22: Host is down[[RESET]]`)
+            if (node.systemState !== 'running') output.push(`[[RED]]ssh: connect to host ${host} port 22: Host is ${node.systemState.toUpperCase()}[[RESET]]`)
             else {
               newContext = { mode: 'ssh', targetId: node.id }
               output.push(`[[GREEN]]SSH: Connection established to ${node.hostname || node.name} (${ip})[[RESET]]`)
@@ -1001,7 +985,7 @@ export const useInfraStore = create<InfraState>()(
             output.push("ID       NAME                 POWER    IP_STATUS")
             output.push("-------- -------------------- -------- ---------")
             unconfigured.forEach(n => {
-              output.push(`${n.id.slice(0, 8)} ${n.name.padEnd(20)} ${n.isPoweredOn ? '[[GREEN]]ON[[RESET]]' : '[[RED]]OFF[[RESET]]'} [[YELLOW]]PENDING[[RESET]]`)
+              output.push(`${n.id.slice(0, 8)} ${n.name.padEnd(20)} ${n.systemState.toUpperCase().padEnd(8)} [[YELLOW]]PENDING[[RESET]]`)
             })
           }
         } else if (cmdLower === 'connect' && args[1] === 'console') {
@@ -1010,7 +994,8 @@ export const useInfraStore = create<InfraState>()(
           if (node) {
             newContext = { mode: 'ssh', targetId: node.id }
             output.push(`[[GREEN]]OOB Console: Serial link established to ${node.name}.[[RESET]]`)
-            if (!node.isPoweredOn) output.push("[[YELLOW]]System is currently Powered Off. Use 'poweron' to start.[[RESET]]")
+            if (node.systemState === 'off') output.push("[[YELLOW]]System is currently Powered Off. Use 'poweron' to start.[[RESET]]")
+            else if (node.systemState === 'booting') output.push(`[[YELLOW]]System is booting (${node.bootProgress}%). Please wait.[[RESET]]`)
           } else output.push(`[[RED]]connect: node '${targetId}' not found.[[RESET]]`)
         } else if (cmdLower === 'apt' && args[1] === 'install') {
           const pkg = args[2]
@@ -1060,7 +1045,9 @@ export const useInfraStore = create<InfraState>()(
           if (newContext.mode !== 'global') {
             newContext = { mode: 'global', targetId: null }
             output.push("[[YELLOW]]Console detached.[[RESET]]")
-          } else setTimeout(() => get().closeTerminalPane(pane.id), 50)
+          } else setTimeout(() => get().closeTerminalPane(activePane.id), 50)
+        } else if (cmdLower === 'echo') {
+          output.push(args.slice(1).join(' '))
         } else if (cmdLower === 'bootstrap') {
           output.push("--- [[GREEN]]v1.6 BOOTSTRAP PROTOCOL[[RESET]] ---")
           output.push("Step 1: [[YELLOW]]poweron[[RESET]]           - Initialize hardware stack")
@@ -1073,6 +1060,36 @@ export const useInfraStore = create<InfraState>()(
           const topic = args[1]
           if (TECHNICAL_MANUALS[topic]) output.push(...TECHNICAL_MANUALS[topic])
           else output.push(`[[RED]]No manual entry for ${topic}[[RESET]]`)
+        } else if (cmdLower === 'clear') {
+          forceClear = true
+        } else if (cmdLower === 'export') {
+          const pair = args[1]
+          if (pair && pair.includes('=')) {
+            const [key, val] = pair.split('=')
+            setTerminalEnvVar(key, val)
+            output.push(`[[GREEN]]EXPORT:[[RESET]] ${key} set to ${val}`)
+          }
+        } else if (cmdLower === 'alias') {
+          const pair = args.slice(1).join(' ')
+          if (pair && pair.includes('=')) {
+            const eqIdx = pair.indexOf('=')
+            const name = pair.slice(0, eqIdx).trim()
+            let cmd = pair.slice(eqIdx + 1).trim()
+            if ((cmd.startsWith('"') && cmd.endsWith('"')) || (cmd.startsWith("'") && cmd.endsWith("'"))) {
+              cmd = cmd.slice(1, -1)
+            }
+            setTerminalAlias(name, cmd)
+            output.push(`[[GREEN]]ALIAS:[[RESET]] ${name} -> ${cmd}`)
+          }
+        } else if (cmdLower === 'sh') {
+          const path = args[1]
+          if (siteState.storedFiles[path]) {
+            const lines = siteState.storedFiles[path].split('\n')
+            lines.forEach(line => {
+              if (line.trim()) get().processCommand(line)
+            })
+            output.push(`[[BLUE]]Executing shell script: ${path}[[RESET]]`)
+          } else output.push(`[[RED]]sh: ${path}: No such file[[RESET]]`)
         } else {
           output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
         }
@@ -1103,9 +1120,9 @@ export const useInfraStore = create<InfraState>()(
           if (!currentSiteState) return {}
           
           const finalSessions = currentSiteState.sessions.map(s => {
-            if (s.id !== session.id) return s
+            if (s.id !== activeSession.id) return s
             const updatedPanes = s.panes.map(p => {
-               if (p.id !== pane.id) return p
+               if (p.id !== activePane.id) return p
                return {
                   ...p,
                   logs: forceClear ? [] : [...p.logs, `> ${text}`, ...output].slice(-200),
@@ -1129,7 +1146,7 @@ export const useInfraStore = create<InfraState>()(
       toggleAutoPilot: () => set(state => ({ isAutoPilot: !state.isAutoPilot })),
 
       processAutoPilot: () => {
-        const { nodes, isAutoPilot, refreshHardware, validateReplication, addReplicationLink } = get()
+        const { nodes, isAutoPilot, refreshHardware } = get()
         if (!isAutoPilot) return
 
         // Auto-fix EOL gear
@@ -1144,77 +1161,42 @@ export const useInfraStore = create<InfraState>()(
         if (piiNode) {
           const hasBackup = get().connections.some(c => c.startNodeId === piiNode.id || c.endNodeId === piiNode.id)
           if (!hasBackup) {
-            const target = nodes.find(n => n.id !== piiNode.id && n.type === 'backup' && n.siteId === piiNode.id && validateReplication(piiNode.id, n.id))
+            const target = nodes.find(n => n.id !== piiNode.id && n.type === 'backup' && n.siteId === piiNode.siteId && get().validateReplication(piiNode.id))
             if (target) {
               set({ assistantTargetId: piiNode.parentRackId || piiNode.id })
-              addReplicationLink(piiNode.id, piiNode.ports[0].id, target.id, target.ports[0].id)
+              get().addReplicationLink(piiNode.id, target.id)
             }
           }
         }
       },
 
-      generateFinalReport: () => {
-        const { resilienceIndex, carbonFootprintKg, refreshCount, totalEWasteKG, auditLogs } = get()
-        
-        const violations = auditLogs.filter(l => l.status === 'Blocked').length
-        const score = Math.round(
-          (resilienceIndex * 0.4) + 
-          (Math.max(0, 100 - violations * 5) * 0.2) + 
-          (Math.max(0, 100 - carbonFootprintKg) * 0.2) + 
-          (refreshCount * 2)
-        )
-
-        let grade = 'Junior Admin'
-        if (score > 90) grade = 'Grandmaster Architect'
-        else if (score > 80) grade = 'Senior Infrastructure Lead'
-        else if (score > 60) grade = 'Reliability Engineer'
-
-        return {
-          score,
-          grade,
-          breakdown: { resilienceIndex, violations, carbonFootprintKg, totalEWasteKG }
-        }
-      },
 
       setPlacementMode: (mode, type = null) => set({ placementMode: mode, pendingRackType: type }),
 
       addNode: (node) => {
-        const { cashBalance, pushAlert, simulationCycle, currentSiteId } = get()
+        const { pushAlert, simulationCycle, currentSiteId } = get()
         
-        // Deduct balance for immediate rack placement
-        if (node.type === 'rack') {
-          if (cashBalance < 200) {
-            pushAlert('critical', 'AUTHORIZATION DENIED: Insufficient capital to anchor new rack assets.')
-            return
-          }
-        }
-
         const assetTag = node.assetTag || `ACC-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`
-        const normalizedNode = {
+        const normalizedNode: InfraNode = {
           ...node,
           siteId: node.siteId || currentSiteId,
           assetTag,
           installDate: node.installDate ?? simulationCycle,
           degradation: node.degradation ?? 0,
-          isPoweredOn: false,
-          hostname: '',
-          isConfigured: false,
-          managementIP: '',
-          macAddress: `00:50:56:${Math.floor(Math.random()*16).toString(16)}:${Math.floor(Math.random()*16).toString(16)}:${Math.floor(Math.random()*16).toString(16)}`.toUpperCase(),
-          provisioningState: node.parentRackId ? 'racked' : 'unboxed',
-          // Fix: Ensure ports are created safely even if catalogKey is missing (e.g. for racks)
+          services: node.services || [],
+          systemState: node.systemState || 'off',
+          bootProgress: node.bootProgress || 0,
+          provisioningState: node.provisioningState || (node.parentRackId ? 'racked' : 'unboxed'),
           ports: node.ports?.length > 0 ? node.ports : (node.catalogKey ? createPortsForCatalog(node.id, node.catalogKey as HardwareCatalogKey) : []),
-          services: node.services || []
         }
 
         set((state) => ({ 
-          nodes: [...state.nodes, normalizedNode],
-          cashBalance: node.type === 'rack' ? state.cashBalance - 200 : state.cashBalance
+          nodes: [...state.nodes, normalizedNode]
         }))
 
         if (normalizedNode.type === 'rack') {
           calculateRackPower(normalizedNode.id)
-          pushAlert('info', `DEPLOYED: ${normalizedNode.name} anchored at site grid. -$200`)
+          pushAlert('info', `DEPLOYED: ${normalizedNode.name} anchored at site grid.`)
         } else if (normalizedNode.parentRackId) {
           calculateRackPower(normalizedNode.parentRackId)
         }
@@ -1229,8 +1211,8 @@ export const useInfraStore = create<InfraState>()(
         const spec = HARDWARE_CATALOG[key]
 
         // Blade Logic: Blade Servers can only be placed inside a Blade Chassis
-        if (spec.isBlade) {
-          const hasChassis = nodes.some(n => n.parentRackId === targetRackId && HARDWARE_CATALOG[n.catalogKey as HardwareCatalogKey]?.isBladeChassis)
+        if ((spec as any).isBlade) {
+          const hasChassis = nodes.some(n => n.parentRackId === targetRackId && (HARDWARE_CATALOG[n.catalogKey as HardwareCatalogKey] as any).isBladeChassis)
           if (!hasChassis) {
             get().pushAlert('warning', 'Blade Servers require a Blade Chassis for installation.')
             return false
@@ -1240,7 +1222,7 @@ export const useInfraStore = create<InfraState>()(
         const targetNodes = nodes.filter(n => n.id === targetRackId || n.parentRackId === targetRackId)
         
         let placement;
-        if (spec.isBlade) {
+        if ((spec as any).isBlade) {
           // Blade servers reside inside the chassis and don't occupy U slots
           placement = { rackId: targetRackId, slotIndex: -1 }
         } else {
@@ -1261,7 +1243,7 @@ export const useInfraStore = create<InfraState>()(
           position: new Vector3(targetRack.position.x, targetRack.position.y, targetRack.position.z),
           uHeight: spec.uHeight,
           wattage: spec.wattage,
-          btuOutput: spec.btuOutput !== undefined ? spec.btuOutput : spec.wattage * 3.41,
+          btuOutput: (spec as any).btuOutput !== undefined ? (spec as any).btuOutput : spec.wattage * 3.41,
           totalStorageTB: spec.storageTB,
           usedStorageTB: spec.storageTB > 0 ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : 0,
           parentRackId: targetRackId,
@@ -1270,7 +1252,10 @@ export const useInfraStore = create<InfraState>()(
           degradation: 0,
           installDate: simulationCycle,
           ports: [],
-          services: []
+          services: [],
+          systemState: 'off',
+          bootProgress: 0,
+          provisioningState: 'racked'
         }
 
         get().addNode(node)
@@ -1292,7 +1277,7 @@ export const useInfraStore = create<InfraState>()(
       }),
  
       handlePortClick: (nodeId, portId) => {
-        const { patchingActive, activePatchSource, validateReplication } = get()
+        const { patchingActive, activePatchSource } = get()
         if (!patchingActive) set({ patchingActive: true, activePatchSource: { nodeId, portId } })
         else {
           if (activePatchSource?.nodeId === nodeId && activePatchSource?.portId === portId) {
@@ -1300,7 +1285,7 @@ export const useInfraStore = create<InfraState>()(
             return
           }
           
-          const isBlocked = !validateReplication(activePatchSource!.nodeId, nodeId)
+          const isBlocked = !get().validateReplication(activePatchSource!.nodeId)
           
           const newConnection: Connection = {
             id: crypto.randomUUID(),
@@ -1328,15 +1313,24 @@ export const useInfraStore = create<InfraState>()(
         }
       },
 
-      addReplicationLink: (sourceId, sourcePortId, targetId, targetPortId) => {
-        const { validateReplication } = get()
-        const isBlocked = !validateReplication(sourceId, targetId)
+      addReplicationLink: (sourceId, targetId) => {
+        const { nodes, validateReplication } = get()
+        const isBlocked = !validateReplication(sourceId)
+        
+        const sNode = nodes.find(n => n.id === sourceId)
+        const tNode = nodes.find(n => n.id === targetId)
+        if (!sNode || !tNode) return
+
+        const sPort = sNode.ports.find(p => p.type === 'network') || sNode.ports[0]
+        const tPort = tNode.ports.find(p => p.type === 'network') || tNode.ports[0]
+        if (!sPort || !tPort) return
+
         const newConnection: Connection = {
           id: crypto.randomUUID(),
           startNodeId: sourceId,
-          startPortId: sourcePortId,
+          startPortId: sPort.id,
           endNodeId: targetId,
-          endPortId: targetPortId,
+          endPortId: tPort.id,
           bandwidthGbps: 100,
           throughputGbps: 0,
           latencyMs: 1,
@@ -1379,19 +1373,8 @@ export const useInfraStore = create<InfraState>()(
         }
       },
 
-      addTenant: (tenant) => set(state => ({ tenants: [...state.tenants, tenant] })),
-      removeTenant: (id) => set(state => ({
-        tenants: state.tenants.filter(t => t.id !== id),
-        nodes: state.nodes.map(n => n.tenantId === id ? { ...n, tenantId: undefined } : n)
-      })),
-      assignNodeToTenant: (nodeId, tenantId) => set(state => ({
-        nodes: state.nodes.map(n => n.id === nodeId ? { ...n, tenantId: tenantId || undefined } : n)
-      })),
-      updateNodeQoS: (nodeId, enabled) => set(() => ({
-        nodes: get().nodes.map(n => n.id === nodeId ? { ...n, qosEnabled: enabled } : n)
-      })),
 
-      saveSiteAsBlueprint: (name) => {
+      saveSiteAsBlueprint: (name: string) => {
         const { nodes, connections, currentSiteId } = get()
         const siteNodes = nodes.filter(n => n.siteId === currentSiteId)
         const siteConnections = connections.filter(c => {
@@ -1409,7 +1392,7 @@ export const useInfraStore = create<InfraState>()(
         set(state => ({ blueprints: [...state.blueprints, newBlueprint] }))
       },
 
-      applyBlueprint: (id) => {
+      applyBlueprint: (id: string) => {
         const { blueprints, currentSiteId, nodes, connections } = get()
         const blueprint = blueprints.find(b => b.id === id)
         if (!blueprint) return
@@ -1527,7 +1510,7 @@ export const useInfraStore = create<InfraState>()(
 
         if (!hasPath) return { success: false, message: `PING ${targetIp}: Request timed out (No route to host).` }
         
-        if (!targetNode.isPoweredOn) return { success: false, message: `PING ${targetIp}: Host is DOWN.` }
+        if (targetNode.systemState !== 'running') return { success: false, message: `PING ${targetIp}: Host is DOWN.` }
 
         return { success: true, message: `64 bytes from ${targetIp}: icmp_seq=1 ttl=64 time=${Math.floor(Math.random() * 5) + 1}ms` }
       },
@@ -1557,8 +1540,8 @@ export const useInfraStore = create<InfraState>()(
         rackNodes.forEach(node => {
           const hasConnection = connections.some(c => c.startNodeId === node.id || c.endNodeId === node.id)
           if (!hasConnection) {
-            const nodePort = node.ports.find(p => p.type === 'RJ45' || p.type === 'SFP+')
-            const switchPort = primarySwitch.ports.find(p => p.type === nodePort?.type && !connections.some(c => c.startPortId === p.id || c.endPortId === p.id))
+            const nodePort = node.ports.find(p => p.type === 'network')
+            const switchPort = primarySwitch.ports.find(p => p.type === 'network' && !connections.some(c => c.startPortId === p.id || c.endPortId === p.id))
             
             if (nodePort && switchPort) {
               patchConnection(node.id, nodePort.id, primarySwitch.id, switchPort.id)
@@ -1579,9 +1562,31 @@ export const useInfraStore = create<InfraState>()(
         return { ntpSyncStatus: [...state.ntpSyncStatus, newSync] }
       }),
 
-      powerOnNode: (nodeId) => set(state => ({
-        nodes: state.nodes.map(n => n.id === nodeId ? { ...n, isPoweredOn: true } : n)
-      })),
+      powerOnNode: (nodeId) => {
+        const { nodes, updateNode, pushAlert } = get()
+        const node = nodes.find(n => n.id === nodeId)
+        if (!node || node.systemState !== 'off') return
+
+        updateNode(nodeId, { systemState: 'booting', bootProgress: 0 })
+        pushAlert('info', `POWER_ON: Asset ${node.hostname || node.id.slice(0,8)} initializing POST sequence.`, nodeId)
+
+        const interval = setInterval(() => {
+          const latestNode = get().nodes.find(n => n.id === nodeId)
+          if (!latestNode || latestNode.systemState !== 'booting') {
+            clearInterval(interval)
+            return
+          }
+
+          const nextProgress = latestNode.bootProgress + Math.floor(Math.random() * 15) + 5
+          if (nextProgress >= 100) {
+            updateNode(nodeId, { systemState: 'running', bootProgress: 100 })
+            pushAlert('info', `BOOT_SUCCESS: ${latestNode.hostname || latestNode.id.slice(0,8)} is operational.`, nodeId)
+            clearInterval(interval)
+          } else {
+            updateNode(nodeId, { bootProgress: nextProgress })
+          }
+        }, 1000)
+      },
 
       setNodeHostname: (nodeId, name) => set(state => ({
         nodes: state.nodes.map(n => n.id === nodeId ? { ...n, hostname: name } : n)
@@ -1656,16 +1661,98 @@ export const useInfraStore = create<InfraState>()(
         return false
       },
 
+      generateFinalReport: () => {
+        const { nodes, resilienceIndex, capacityUnits } = get()
+        const nodeCount = nodes.filter(n => n.type !== 'rack').length
+        const healthyCount = nodes.filter(n => n.healthStatus === 'healthy').length
+        const healthScore = nodeCount > 0 ? (healthyCount / nodeCount) * 100 : 100
+        
+        const finalScore = (healthScore + resilienceIndex + Math.min(100, capacityUnits / 10)) / 3
+        const grade = finalScore > 90 ? 'S' : finalScore > 80 ? 'A' : finalScore > 70 ? 'B' : 'C'
+        return {
+          score: finalScore,
+          grade,
+          breakdown: {
+            availability: healthScore,
+            resilience: resilienceIndex,
+            capacity: capacityUnits
+          }
+        }
+      },
+      validateReplication: (linkId: string) => {
+        // SDDC Logic: Replication is valid if source node is healthy and has logical network identity
+        const node = get().nodes.find(n => n.id === linkId)
+        return !!(node && node.healthStatus === 'healthy' && node.provisioningState === 'bootstrapped')
+      },
+
+      checkAllCompliance: () => {
+        // Implementation for global compliance audit
+      },
+
+      toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
+
+      updateTerminalLogs: (sessionId: string, paneId: string, logs: string[]) => set(state => {
+        const siteId = state.currentSiteId
+        const siteState = state.terminalStates[siteId]
+        if (!siteState) return state
+        
+        return {
+          terminalStates: {
+            ...state.terminalStates,
+            [siteId]: {
+              ...siteState,
+              sessions: siteState.sessions.map(s => s.id === sessionId ? {
+                ...s,
+                panes: s.panes.map(p => p.id === paneId ? { ...p, logs: [...p.logs, ...logs] } : p)
+              } : s)
+            }
+          }
+        }
+      }),
+
+      resetState: () => {
+        set({
+          nodes: [],
+          connections: [],
+          cloudLinks: [],
+          alerts: [],
+          auditLogs: [],
+          deploymentQueue: [],
+          simulationCycle: 0,
+          dnsRecords: [],
+          dhcpLeases: [],
+          ntpSyncStatus: [],
+          postMortems: [],
+          operationalBudget: 1000000,
+          capacityUnits: 0,
+          terminalStates: INITIAL_TERMINAL_STATE as any,
+          isAutoPilot: false,
+          isGlobalMapOpen: false,
+          isChaosMode: false,
+          assistantTargetId: null
+        })
+      },
+
       processTick: () => {
         const { nodes } = get()
         
-        // Professional Ops Metrics: Capacity & Health
+        // 1. Recalculate Facilities (Power/Thermal)
+        recalculateRoomStats()
+        
+        // 2. Refresh Racks
+        nodes.filter(n => n.type === 'rack').forEach(r => calculateRackPower(r.id))
+        
+        // 3. Health & SLA Telemetry
         const degradedCount = nodes.filter(n => (n.degradation ?? 0) > 50).length
-        if (degradedCount > 0) {
+        if (degradedCount > 0 && Math.random() > 0.8) {
           get().pushAlert('warning', `INFRA HEALTH: ${degradedCount} nodes are operating outside normal thermal/wear parameters.`)
         }
         
-        set(state => ({ simulationCycle: state.simulationCycle + 1 }))
+        // 4. Site-Specific Budget Ops
+        set(state => ({ 
+          simulationCycle: state.simulationCycle + 1,
+          operationalBudget: state.operationalBudget - (nodes.length * 2) // Basic OpEx
+        }))
       },
     }),
     {

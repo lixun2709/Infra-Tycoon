@@ -16,7 +16,10 @@ export const TECHNICAL_MANUALS: Record<string, string[]> = {
     "[[BLUE]]PRO-TIPS:[[RESET]]",
     "• [[YELLOW]][Tab][[RESET]] - Context-aware autocomplete",
     "• [[YELLOW]]watch [cmd][[RESET]] - Real-time metric monitoring",
-    "• [[YELLOW]]top[[RESET]] - Integrated resource scheduler view"
+    "• [[YELLOW]]top[[RESET]] - Integrated resource scheduler view",
+    "• [[YELLOW]]Ctrl+Shift+V[[RESET]] - Vertical Split Pane",
+    "• [[YELLOW]]Ctrl+Shift+H[[RESET]] - Horizontal Split Pane",
+    "• [[YELLOW]]Ctrl+Shift+W[[RESET]] - Close Active Pane"
   ],
   dhcp: [
     "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
@@ -123,5 +126,19 @@ export const TECHNICAL_MANUALS: Record<string, string[]> = {
     "--- ENTERPRISE SERVICE ORCHESTRATION ---",
     "Select a specific orchestrator from the grid to access",
     "deep-dive technical manuals and configuration tables."
+  ],
+  cluster: [
+    "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
+    "┃  PROTOCOL: NETAPP ONTAP CLUSTER MANAGEMENT          ┃",
+    "┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛",
+    "",
+    "[[BLUE]]OVERVIEW:[[RESET]]",
+    "Manages high-availability storage clusters and logical",
+    "aggregates across physical disk shelves.",
+    "",
+    "[[GREEN]]COMMANDS:[[RESET]]",
+    "• [[YELLOW]]cluster health show[[RESET]] - Check node-level HA status",
+    "• [[YELLOW]]aggregate create[[RESET]]    - Provision new storage volumes",
+    "• [[YELLOW]]volume mount[[RESET]]       - Expose LUNs to the compute fabric"
   ]
 };

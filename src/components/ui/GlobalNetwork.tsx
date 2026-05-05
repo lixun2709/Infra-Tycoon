@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useInfraStore, type InfraNode, type HardwarePort, type ServiceType } from '../../store/useInfraStore'
+import { useState } from 'react'
+import { useInfraStore, type ServiceType } from '../../store/useInfraStore'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 
 export function GlobalNetwork() {
@@ -12,14 +12,11 @@ export function GlobalNetwork() {
     currentSiteId,
     patchConnection,
     removeConnection,
-    getServiceStatus,
-    verifyService
+    getServiceStatus
   } = useInfraStore()
   
   const [activeTab, setActiveTab] = useState<'topology' | 'patching' | 'services'>('topology')
   const [serviceSubTab, setServiceSubTab] = useState<'overview' | 'DHCP' | 'DNS' | 'NTP'>('overview')
-  const [expandedRacks, setExpandedRacks] = useState<Set<string>>(new Set())
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set())
   const [selectedRackIds, setSelectedRackIds] = useState<Set<string>>(new Set())
   const [flippedServices, setFlippedServices] = useState<Set<ServiceType>>(new Set())
   const [configuringService, setConfiguringService] = useState<ServiceType | null>(null)
@@ -36,19 +33,6 @@ export function GlobalNetwork() {
 
   if (!isNetworkManagerOpen) return null
 
-  const toggleRack = (id: string) => {
-    const next = new Set(expandedRacks)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setExpandedRacks(next)
-  }
-
-  const toggleNode = (id: string) => {
-    const next = new Set(expandedNodes)
-    if (next.has(id)) next.delete(id)
-    else next.add(id)
-    setExpandedNodes(next)
-  }
 
   const toggleRackSelection = (id: string) => {
     const next = new Set(selectedRackIds)
@@ -227,7 +211,7 @@ export function GlobalNetwork() {
   }
 
   const renderPatching = () => {
-    const racks = nodes.filter(n => n.siteId === selectedSiteId && n.type === 'rack')
+    const racks = nodes.filter(n => n.siteId === currentSiteId && n.type === 'rack')
     const srcNodes = nodes.filter(n => n.parentRackId === srcRackId)
     const dstNodes = nodes.filter(n => n.parentRackId === dstRackId)
     
@@ -629,7 +613,7 @@ export function GlobalNetwork() {
                     <span className="text-[9px] text-slate-600 font-bold uppercase">Subnet: 10.0.0.0/24</span>
                  </div>
                  <div className="grid grid-cols-3 gap-5 overflow-y-auto custom-scrollbar scrollbar-hide max-h-[500px] pr-2">
-                    {nodes.filter(n => n.managementIP && n.siteId === selectedSiteId).map(n => (
+                    {nodes.filter(n => n.managementIP && n.siteId === currentSiteId).map(n => (
                       <div key={n.id} className="bg-slate-950/60 p-5 rounded-3xl border border-white/5 flex flex-col gap-3">
                          <div className="flex justify-between items-start">
                             <div className="text-[11px] font-black text-white truncate max-w-[120px]">{n.hostname || n.name}</div>
@@ -639,7 +623,7 @@ export function GlobalNetwork() {
                          <div className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">MAC: {n.macAddress || 'STATIC'}</div>
                       </div>
                     ))}
-                    {nodes.filter(n => n.managementIP && n.siteId === selectedSiteId).length === 0 && (
+                    {nodes.filter(n => n.managementIP && n.siteId === currentSiteId).length === 0 && (
                       <div className="col-span-3 py-20 text-center opacity-20">
                          <div className="text-4xl mb-4">🛰️</div>
                          <p className="text-xs font-black uppercase tracking-widest">No Active Leases Detected</p>
@@ -653,7 +637,7 @@ export function GlobalNetwork() {
               <div className="flex-1 space-y-6">
                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Time-Sync Distribution Status</h4>
                  <div className="grid grid-cols-2 gap-4 overflow-y-auto custom-scrollbar scrollbar-hide max-h-[500px] pr-2">
-                    {nodes.filter(n => n.siteId === selectedSiteId && n.type !== 'rack').map(n => (
+                    {nodes.filter(n => n.siteId === currentSiteId && n.type !== 'rack').map(n => (
                       <div key={n.id} className="bg-slate-950/60 p-5 rounded-3xl border border-white/5 flex justify-between items-center">
                          <div className="flex items-center gap-4">
                             <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]" />
@@ -690,9 +674,9 @@ export function GlobalNetwork() {
               <span className="animate-pulse">G</span>
             </div>
             <div>
-              <h2 className="text-lg font-black text-white tracking-[-0.05em] uppercase leading-none">Global Network Manager</h2>
+              <h2 className="text-lg font-black text-white tracking-[-0.05em] uppercase leading-none">SDDC <span className="text-teal-400">Orchestrator</span></h2>
               <div className="flex items-center gap-3 mt-2">
-                 <span className="text-teal-400 font-mono text-[10px] font-black tracking-widest uppercase bg-teal-500/5 px-2 py-0.5 rounded-md border border-teal-500/20">Clean Slate v1.6</span>
+                 <span className="text-teal-400 font-mono text-[10px] font-black tracking-widest uppercase bg-teal-500/5 px-2 py-0.5 rounded-md border border-teal-500/20">SDDC v2.0</span>
                  <span className="w-1.5 h-1.5 rounded-full bg-slate-700" />
                  <span className="text-slate-500 font-bold text-[9px] uppercase tracking-widest">Enterprise LAN Orchestration</span>
               </div>

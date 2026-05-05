@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useInfraStore } from '../useInfraStore'
-import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 
 // Mock three
 vi.mock('three', () => ({
@@ -10,9 +9,9 @@ vi.mock('three', () => ({
   }
 }))
 
-describe('useInfraStore', () => {
+describe('useInfraStore v2.0', () => {
   beforeEach(() => {
-    useInfraStore.getState().resetCareer()
+    useInfraStore.getState().resetState()
     // Reset sites to default
     useInfraStore.setState({
       sites: [
@@ -22,29 +21,19 @@ describe('useInfraStore', () => {
     })
   })
 
-  it('should add items to shopping cart', () => {
-    const { addToCart } = useInfraStore.getState()
-    addToCart('COMPUTE_1U')
+  it('should stage items to deployment queue', () => {
+    useInfraStore.setState(state => ({
+      deploymentQueue: [...state.deploymentQueue, 'COMPUTE_1U']
+    }))
     
     const state = useInfraStore.getState()
-    expect(state.shoppingCart).toHaveLength(1)
-    expect(state.shoppingCart[0].key).toBe('COMPUTE_1U')
-    expect(state.shoppingCart[0].quantity).toBe(1)
+    expect(state.deploymentQueue).toHaveLength(1)
+    expect(state.deploymentQueue[0]).toBe('COMPUTE_1U')
     
-    addToCart('COMPUTE_1U')
-    expect(useInfraStore.getState().shoppingCart[0].quantity).toBe(2)
-  })
-
-  it('should checkout and move items to deployment queue', () => {
-    const { addToCart, checkout } = useInfraStore.getState()
-    addToCart('COMPUTE_1U')
-    
-    checkout()
-    
-    const state = useInfraStore.getState()
-    expect(state.deploymentQueue).toContain('COMPUTE_1U')
-    expect(state.shoppingCart).toHaveLength(0)
-    expect(state.cashBalance).toBe(10000 - HARDWARE_CATALOG['COMPUTE_1U'].purchasePrice)
+    useInfraStore.setState(state => ({
+      deploymentQueue: [...state.deploymentQueue, 'COMPUTE_1U']
+    }))
+    expect(useInfraStore.getState().deploymentQueue).toHaveLength(2)
   })
 
   it('should handle blade server placement constraints', () => {
@@ -61,7 +50,12 @@ describe('useInfraStore', () => {
       wattage: 0,
       btuOutput: 0,
       ports: [],
-      services: []
+      services: [],
+      systemState: 'running',
+      bootProgress: 100,
+      provisioningState: 'bootstrapped',
+      installDate: 0,
+      degradation: 0
     })
 
     // Try to place blade server without chassis - should fail
@@ -78,7 +72,7 @@ describe('useInfraStore', () => {
   })
 
   it('should remove items from deployment queue after placement', () => {
-    const { addToCart, checkout, placeCatalogHardware, addNode } = useInfraStore.getState()
+    const { placeCatalogHardware, addNode } = useInfraStore.getState()
     
     // Setup
     addNode({ 
@@ -91,11 +85,15 @@ describe('useInfraStore', () => {
       wattage: 0, 
       btuOutput: 0,
       ports: [],
-      services: []
+      services: [],
+      systemState: 'running',
+      bootProgress: 100,
+      provisioningState: 'bootstrapped',
+      installDate: 0,
+      degradation: 0
     })
-    addToCart('COMPUTE_1U')
-    addToCart('COMPUTE_1U')
-    checkout()
+    
+    useInfraStore.setState({ deploymentQueue: ['COMPUTE_1U', 'COMPUTE_1U'] })
     
     expect(useInfraStore.getState().deploymentQueue).toHaveLength(2)
     

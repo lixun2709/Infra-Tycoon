@@ -1,13 +1,9 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { 
   AlertCircle, 
   History, 
-  Brain, 
-  Leaf, 
-  RefreshCcw, 
   Scale, 
-  DollarSign,
   LayoutDashboard,
   X,
   Zap
@@ -16,9 +12,9 @@ import {
 export function Dashboard({ onClose }: { onClose: () => void }) {
   const {
     nodes, alerts, acknowledgeAlert, acknowledgeAllAlerts,
-    totalPowerKW, totalRoomBTU, sites, currentSiteId,
-    networkLoad, setNetworkLoad, cloudLinks, cloudEgressGB,
-    resilienceIndex, simulationCycle, auditLogs,
+    totalPowerKW, currentSiteId,
+    networkLoad,
+    simulationCycle, auditLogs,
     isHeatMapVisible, toggleHeatMap
   } = useInfraStore()
   
@@ -33,9 +29,6 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
   const siteHealthyCount = siteHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
   const siteHealthIndex = siteHardware.length > 0 ? Math.round((siteHealthyCount / siteHardware.length) * 100) : 100
 
-  // Facility Stats
-  const storageUtilization = nodes.reduce((sum, n) => sum + (n.usedStorageTB ?? 0), 0)
-  const powerUtilization = totalPowerKW / 50 * 100
 
 
   // Live Performance Simulator
@@ -164,21 +157,21 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
                     Facility Utilization — Capacity Forecast
                   </p>
                   <div className="flex items-baseline gap-2 mb-6">
-                    <span className="text-4xl font-black text-teal-400 tracking-tighter">{(totalPowerKW / 50 * 100).toFixed(1)}%</span>
-                    <span className="text-slate-500 text-sm font-bold uppercase tracking-widest">Aggregate power load</span>
+                    <span className="text-4xl font-black text-teal-400 tracking-tighter">{(totalPowerKW / 100 * 100).toFixed(1)}%</span>
+                    <span className="text-slate-500 text-sm font-bold uppercase tracking-widest">Aggregate Site Power Load (100kW Limit)</span>
                   </div>
                   <div className="grid grid-cols-3 gap-8">
                     <div className="p-4 bg-slate-950/50 border border-white/5 rounded-2xl">
-                      <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">U-Space</p>
-                      <p className="text-xl font-black text-white">{nodes.filter(n => n.parentRackId).length} Units</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Occupancy</p>
+                      <p className="text-xl font-black text-white">{nodes.filter(n => n.parentRackId).length} / {nodes.filter(n => n.type === 'rack').length * 42} U-Slots</p>
                     </div>
                     <div className="p-4 bg-slate-950/50 border border-white/5 rounded-2xl">
-                      <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">HVAC Efficiency</p>
-                      <p className="text-xl font-black text-blue-400">0.9 PUE</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Efficiency (PUE)</p>
+                      <p className="text-xl font-black text-blue-400">1.12 Nominal</p>
                     </div>
                     <div className="p-4 bg-slate-950/50 border border-white/5 rounded-2xl">
-                      <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Logical Fabric</p>
-                      <p className="text-xl font-black text-orange-400">{useInfraStore.getState().connections.length} Links</p>
+                      <p className="text-[9px] font-black text-slate-500 uppercase mb-2 tracking-widest">Fabric Links</p>
+                      <p className="text-xl font-black text-orange-400">{useInfraStore.getState().connections.length} Active</p>
                     </div>
                   </div>
                 </div>

@@ -9,9 +9,9 @@ vi.mock('three', () => ({
   }
 }))
 
-describe('Full Workflow Integration', () => {
+describe('Full Workflow Integration v2.0', () => {
   beforeEach(() => {
-    useInfraStore.getState().resetCareer()
+    useInfraStore.getState().resetState()
     useInfraStore.setState({
       sites: [{ id: 'site-1', name: 'DC1', isDisaster: false, region: 'EU', energySource: 'Grid', geoCoords: { lat: 0, lng: 0 } }],
       currentSiteId: 'site-1'
@@ -20,7 +20,6 @@ describe('Full Workflow Integration', () => {
 
   it('should complete a full procurement to deployment cycle', () => {
     // 1. Initial State
-    expect(useInfraStore.getState().cashBalance).toBe(10000)
     expect(useInfraStore.getState().nodes).toHaveLength(0)
     
     // 2. Add Rack
@@ -34,19 +33,19 @@ describe('Full Workflow Integration', () => {
       wattage: 0,
       btuOutput: 0,
       ports: [],
-      services: []
+      services: [],
+      systemState: 'running',
+      bootProgress: 100,
+      provisioningState: 'bootstrapped',
+      installDate: 0,
+      degradation: 0
     })
     
-    // 3. Buy Hardware (Cart -> Checkout)
-    useInfraStore.getState().addToCart('BLADE_CHASSIS_4U')
-    useInfraStore.getState().addToCart('BLADE_SERVER')
-    useInfraStore.getState().addToCart('COMPUTE_1U')
+    // 3. Stage Hardware (Deployment Queue)
+    useInfraStore.setState({
+      deploymentQueue: ['BLADE_CHASSIS_4U', 'BLADE_SERVER', 'COMPUTE_1U']
+    })
     
-    expect(useInfraStore.getState().shoppingCart).toHaveLength(3)
-    
-    useInfraStore.getState().checkout()
-    
-    expect(useInfraStore.getState().cashBalance).toBeLessThan(10000)
     expect(useInfraStore.getState().deploymentQueue).toHaveLength(3)
     
     // 4. Deploy from Staging

@@ -10,7 +10,15 @@ export function calculateRackPower(rackId: string) {
   if (!rack || rack.type !== 'rack') return
 
   const rackNodes = nodes.filter((n) => n.parentRackId === rackId)
-  const totalW = rackNodes.reduce((sum, n) => sum + (n.isPoweredOn ? (n.wattage ?? 0) : 10), 0)
+  const totalW = rackNodes.reduce((sum, n) => {
+    // SDDC v2.0 Power Profile: 
+    // - Running: 100% Wattage
+    // - Booting: 50% Wattage (Post-init draw)
+    // - Off: 10W (Standby/OOB Management)
+    const baseW = n.systemState === 'running' ? (n.wattage ?? 0) : 
+                 n.systemState === 'booting' ? (n.wattage ?? 0) * 0.5 : 10
+    return sum + baseW
+  }, 0)
 
   // Facility Rule: Default limit 5kW. High-Density PDU upgrades to 15kW.
   const hasPDU = rackNodes.some(n => n.catalogKey === 'HIGH_DENSITY_PDU_1U')

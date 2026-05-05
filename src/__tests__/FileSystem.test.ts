@@ -1,12 +1,27 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { useInfraStore } from '../store/useInfraStore'
 
 describe('v1.3 Terminal Kernel - File System & Scripting', () => {
   beforeEach(() => {
-    useInfraStore.getState().resetCareer()
+    useInfraStore.getState().resetState()
     // Add nodes for scripting tests
     useInfraStore.getState().addNode({
-       id: 'node-1', siteId: 'site-1', name: 'Node-1', type: 'compute', ports: [], isConfigured: true, degradation: 0, price: 0, runningCosts: 0
+       id: 'node-1', 
+       siteId: 'site-1', 
+       name: 'Node-1', 
+       type: 'compute', 
+       ports: [], 
+       isConfigured: true, 
+       degradation: 0,
+       systemState: 'running',
+       bootProgress: 100,
+       provisioningState: 'bootstrapped',
+       position: { x: 0, y: 0, z: 0 } as any,
+       uHeight: 1,
+       wattage: 300,
+       btuOutput: 1000,
+       services: [],
+       installDate: 0
     })
   })
 
@@ -29,10 +44,10 @@ describe('v1.3 Terminal Kernel - File System & Scripting', () => {
   })
 
   it('should execute shell scripts and update infrastructure state', async () => {
-    const { writeTerminalFile, processCommand, nodes } = useInfraStore.getState()
+    const { writeTerminalFile, processCommand } = useInfraStore.getState()
     const scriptPath = 'provision.sh'
     const targetIP = '192.168.1.50'
-    const targetNodeId = nodes[0].id
+    // const targetNodeId = nodes[0].id
     
     // Script that exports a var, echos it, and would normally do more
     const scriptContent = [

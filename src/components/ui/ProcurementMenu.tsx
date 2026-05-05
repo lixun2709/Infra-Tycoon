@@ -144,7 +144,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
               </div>
 
               <div className="flex-1 overflow-y-auto p-10 grid grid-cols-2 gap-8 bg-slate-900/5 custom-scrollbar">
-                {items.map(item => (
+                {items.map((item: any) => (
                   <button
                     key={item.key}
                     onClick={() => stageAsset(item.key)}

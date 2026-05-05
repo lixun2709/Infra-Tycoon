@@ -67,20 +67,6 @@ function StorageBar({ used, total, color, h }: { used: number, total: number, co
   )
 }
 
-function NeuralPulse({ color, h }: { color: string, h: number }) {
-  const meshRef = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }) => {
-    if (!meshRef.current) return
-    const s = 1 + Math.sin(clock.elapsedTime * 3) * 0.03
-    meshRef.current.scale.set(s, 1, s)
-  })
-  return (
-    <mesh ref={meshRef}>
-      <boxGeometry args={[1.05, h + 0.05, 1.05]} />
-      <meshBasicMaterial color={color} transparent opacity={0.15} depthWrite={false} />
-    </mesh>
-  )
-}
 
 function PIIShield({ h }: { h: number }) {
   const meshRef = useRef<THREE.Mesh>(null)
@@ -118,11 +104,7 @@ function MaintenanceIcon() {
 }
 
 function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelected: boolean, onSelect: (id: string) => void }) {
-  const { tenants } = useInfraStore()
   if (node.slotIndex == null || node.parentRackId == null) return null
-
-  const tenant = tenants.find(t => t.id === node.tenantId)
-  const brandColor = tenant ? tenant.color : (node.isInfected ? '#d946ef' : '#22c55e')
 
   const color = node.catalogKey != null ? HARDWARE_CATALOG[node.catalogKey].color : TYPE_ACCENT[node.type] ?? '#718096'
 
@@ -130,7 +112,7 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
   const y = rackHardwareCenterY(node.slotIndex, node.uHeight)
   const healthColor = node.isInfected ? '#d946ef' : node.healthStatus === 'critical' ? '#ef4444' : node.healthStatus === 'degraded' ? '#eab308' : '#22c55e'
 
-  const emissiveColor = node.isInfected ? '#d946ef' : (node.healthStatus === 'critical' ? '#ef4444' : (node.degradation > 70 ? '#f59e0b' : (tenant ? tenant.color : '#000000')))
+  const emissiveColor = node.isInfected ? '#d946ef' : (node.healthStatus === 'critical' ? '#ef4444' : (node.degradation > 70 ? '#f59e0b' : '#000000'))
   const emissiveIntensity = (node.healthStatus === 'critical' || node.isInfected) ? (Math.sin(Date.now() / 150) * 0.8 + 1.2) : (node.degradation > 70 ? (Math.random() * 0.4 + 0.2) : (isSelected ? 1.5 : 1))
 
   return (
@@ -151,9 +133,7 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
         </mesh>
       )}
 
-      {/* Tenant Branding */}
-      {tenant && <NeuralPulse color={tenant.color} h={h} />}
-      {(node.totalStorageTB ?? 0) > 0 && <StorageBar used={node.usedStorageTB ?? 0} total={node.totalStorageTB ?? 0} color={brandColor} h={h} />}
+      {(node.totalStorageTB ?? 0) > 0 && <StorageBar used={node.usedStorageTB ?? 0} total={node.totalStorageTB ?? 0} color="#2dd4bf" h={h} />}
       {node.dataCategory === 'PII' && <PIIShield h={h} />}
 
       <mesh position={[0.4, 0, 0.445]}>
@@ -330,8 +310,12 @@ function Floor() {
             ports: [],
             siteId: currentSiteId,
             services: [],
+            systemState: 'running',
+            bootProgress: 100,
+            provisioningState: 'bootstrapped',
             installDate: useInfraStore.getState().simulationCycle,
-            degradation: 0
+            degradation: 0,
+            temperature: 22
           })
           setPlacementMode(false, null)
           setGhostPos(null)

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
-import type { TerminalPane, TerminalSession } from '../../store/terminalTypes'
-import { X, Plus, Maximize2, Minimize2, Terminal as TerminalIcon, GripHorizontal, Activity, Cpu, Shield, Database } from 'lucide-react'
+import type { TerminalPane } from '../../store/terminalTypes'
+import { X, Plus, Maximize2, Minimize2, Terminal as TerminalIcon, GripHorizontal, Activity, Cpu, Shield } from 'lucide-react'
 
 export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -34,9 +34,11 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   if (!siteState || !siteState.sessions || siteState.sessions.length === 0) return null
 
   const { sessions, activeSessionId, layout } = siteState
-  const activeSession = sessions?.find(s => s.id === activeSessionId) || sessions[0]
+  const activeSession = sessions?.find(s => s.id === activeSessionId) || sessions?.[0]
+  if (!activeSession) return null
   const { panes, activePaneId, layout: sessionLayout } = activeSession
-  const activePane = panes.find(p => p.id === activePaneId) || panes[0]
+  const activePane = panes?.find(p => p.id === activePaneId) || panes?.[0]
+  if (!activePane) return null
   
   useEffect(() => {
     if (siteState?.layout) {
@@ -209,8 +211,8 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     )
   }
 
-  const TopMonitor: React.FC<{ pane: TerminalPane }> = ({ pane }) => {
-    const [tick, setTick] = useState(0)
+  const TopMonitor: React.FC = () => {
+    const [, setTick] = useState(0)
     useEffect(() => {
       const interval = setInterval(() => setTick(t => t + 1), 1000)
       const handleGlobalKey = (e: KeyboardEvent) => {
@@ -298,7 +300,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const paneNode = pane.context.targetId ? nodes.find(n => n.id === pane.context.targetId) : null
     
     if (pane.context.mode === 'nano') return <NanoEditor pane={pane} />
-    if (pane.context.mode === 'top') return <TopMonitor pane={pane} />
+    if (pane.context.mode === 'top') return <TopMonitor />
 
     return (
       <div 

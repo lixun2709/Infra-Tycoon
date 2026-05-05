@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { useInfraStore } from '../store/useInfraStore'
 
 describe('v1.3 Terminal Kernel - Store & Persistence', () => {
   beforeEach(() => {
-    useInfraStore.getState().resetCareer()
+    useInfraStore.getState().resetState()
     // Add a node for testing
     useInfraStore.getState().addNode({
       id: 'node-1',
@@ -13,8 +13,15 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
       ports: [],
       isConfigured: true,
       degradation: 0,
-      price: 0,
-      runningCosts: 0
+      systemState: 'running',
+      bootProgress: 100,
+      provisioningState: 'bootstrapped',
+      position: { x: 0, y: 0, z: 0 } as any,
+      uHeight: 1,
+      wattage: 300,
+      btuOutput: 1000,
+      services: [],
+      installDate: 0
     })
   })
 
@@ -33,7 +40,7 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
   })
 
   it('should manage independent sessions and splits', () => {
-    const { addTerminalSession, splitTerminalPane, setActiveSession, terminalStates } = useInfraStore.getState()
+    const { addTerminalSession, splitTerminalPane, setActiveSession } = useInfraStore.getState()
     
     // Create 3 tabs
     addTerminalSession('Tab 2')

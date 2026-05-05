@@ -7,7 +7,7 @@ export type HardwareCatalogSpec = {
   portLayout: PortLayoutItem[]
   btuOutput?: number
   storageTB: number
-  name?: string
+  name: string
   isBlade?: boolean
   isBladeChassis?: boolean
   useCase: string
@@ -285,6 +285,7 @@ export const HARDWARE_CATALOG = {
 
   // --- BASE ---
   RACK_42U: {
+    name: 'Server Rack (42U)',
     uHeight: 42,
     wattage: 0,
     type: 'rack',
