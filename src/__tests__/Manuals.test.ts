@@ -18,6 +18,6 @@ describe('v1.3 Terminal Kernel - Manuals & Documentation', () => {
     
     expect(fullText).toContain('Ctrl+Shift+V')
     expect(fullText).toContain('Ctrl+Shift+H')
-    expect(fullText).toContain('PROFESSIONAL EDITION')
+    expect(fullText).toContain('ENTERPRISE EDITION')
   })
 })
