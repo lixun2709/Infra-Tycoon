@@ -7,10 +7,10 @@
 
 ## Phase 2: 3D Hardware Mounting Realism
 - [x] Phase 2.1: Physics-Based Mounting (Slide-and-seat animations)
-- [ ] Phase 2.2: Port-Level Configuration (LED status & manual speed settings)
-- [ ] Phase 2.3: Component-Level Realism (Internal CPUs/RAM/Drives)
+- [x] Phase 2.2: Port-Level Configuration (LED status & manual speed settings)
+- [x] Phase 2.3: Component-Level Realism (Internal CPUs/RAM/Drives)
 
 ## Phase 3: Learning Progression System
-- [ ] Phase 3.1: Guided Tutorial Engine ("Your First Rack")
-- [ ] Phase 3.2: Certifications & Achievements (Net+, Server+)
+- [x] Phase 3.1: Guided Tutorial Engine ("Your First Rack" reactive tracking)
+- [x] Phase 3.2: Certifications & Achievements (Rubrik-themed Mission HUD & Port Refinement)
 

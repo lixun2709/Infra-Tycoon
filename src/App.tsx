@@ -9,6 +9,8 @@ import { OperatorHandbook } from './components/ui/OperatorHandbook'
 
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
+import { MissionHUD } from './components/ui/MissionHUD'
+import { MissionLogic } from './components/world/MissionLogic'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -186,6 +188,8 @@ function App() {
       <EmergencyToasts />
       {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
       <GlobalNetwork />
+      <MissionHUD />
+      <MissionLogic />
 
       <Inspector />
       

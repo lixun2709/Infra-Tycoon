@@ -1,14 +1,21 @@
 import { Vector3 } from 'three'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-export {
+import {
   HARDWARE_CATALOG,
   type HardwareCatalogKey,
   type PortType,
 } from '../physics/hardwareLibrary'
+
+export {
+  HARDWARE_CATALOG,
+  type HardwareCatalogKey,
+  type PortType,
+}
 import { TECHNICAL_MANUALS } from '../physics/Manuals'
 import { findFirstEmptySlot } from '../physics/snapping'
 import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine'
+import { useMissionStore } from './useMissionStore'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
 
 export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer' | 'security' | 'identity' | 'facility'
@@ -52,11 +59,17 @@ export type HardwarePort = {
   type: PortType
   label: string
   connectedTo: null | string
-  status: 'up' | 'down'
+  status: 'up' | 'down' | 'negotiating'
   ip?: string
   mask?: string
   speedMbps?: number
   vlan?: number
+}
+
+export type ComponentHealth = {
+  cpu: HealthStatus[]
+  ram: HealthStatus[]
+  drives: HealthStatus[]
 }
 
 
@@ -120,6 +133,7 @@ export interface InfraNode {
   degradation: number // 0-100
   temperature?: number
   isRefreshing?: boolean
+  componentHealth?: ComponentHealth
   failureProbability?: number
   isImmutable?: boolean
   isInfected?: boolean
@@ -1196,6 +1210,11 @@ export const useInfraStore = create<InfraState>()(
           bootProgress: node.bootProgress || 0,
           provisioningState: node.provisioningState || (node.parentRackId ? 'racked' : 'unboxed'),
           ports: node.ports?.length > 0 ? node.ports : (node.catalogKey ? createPortsForCatalog(node.id, node.catalogKey as HardwareCatalogKey) : []),
+          componentHealth: node.componentHealth || {
+            cpu: Array(node.type === 'compute' ? 2 : 1).fill('healthy'),
+            ram: Array(node.type === 'compute' ? 8 : 4).fill('healthy'),
+            drives: Array(node.type === 'storage' ? 12 : 2).fill('healthy')
+          }
         }
 
         set((state) => ({ 
@@ -1205,8 +1224,16 @@ export const useInfraStore = create<InfraState>()(
         if (normalizedNode.type === 'rack') {
           calculateRackPower(normalizedNode.id)
           pushAlert('info', `DEPLOYED: ${normalizedNode.name} anchored at site grid.`)
+          useMissionStore.getState().completeObjective('m1', 'm1_obj1')
         } else if (normalizedNode.parentRackId) {
           calculateRackPower(normalizedNode.parentRackId)
+          if (normalizedNode.type === 'network') {
+            useMissionStore.getState().completeObjective('m1', 'm1_obj2')
+          } else if (normalizedNode.type === 'compute') {
+            useMissionStore.getState().completeObjective('m1', 'm1_obj3')
+          } else if (normalizedNode.type === 'facility' && normalizedNode.catalogKey === 'HIGH_DENSITY_PDU_1U') {
+            useMissionStore.getState().completeObjective('m2', 'm2_obj2')
+          }
         }
         recalculateRoomStats()
       },
@@ -1264,7 +1291,12 @@ export const useInfraStore = create<InfraState>()(
           services: [],
           systemState: 'off',
           bootProgress: 0,
-          provisioningState: 'racked'
+          provisioningState: 'racked',
+          componentHealth: {
+            cpu: Array(spec.type === 'compute' ? 2 : 1).fill('healthy'),
+            ram: Array(spec.type === 'compute' ? 8 : 4).fill('healthy'),
+            drives: Array(spec.storageTB > 0 ? 12 : 2).fill('healthy')
+          }
         }
 
         get().addNode(node)
@@ -1325,13 +1357,42 @@ export const useInfraStore = create<InfraState>()(
             connections: [...state.connections, newConnection],
             nodes: state.nodes.map(n => 
               (n.id === nodeId || n.id === activePatchSource!.nodeId) 
-              ? { ...n, provisioningState: n.provisioningState === 'racked' ? 'patched' : n.provisioningState } 
+              ? { 
+                  ...n, 
+                  provisioningState: n.provisioningState === 'racked' ? 'patched' : n.provisioningState,
+                  ports: n.ports.map(p => (p.id === portId || p.id === activePatchSource!.portId) ? { ...p, status: 'negotiating' } : p)
+                } 
               : n
             ),
             patchingActive: false,
             activePatchSource: null,
           }))
+
+          // Transition from negotiating to up after 2 seconds
+          setTimeout(() => {
+            set(state => ({
+              nodes: state.nodes.map(n => 
+                (n.id === nodeId || n.id === activePatchSource!.nodeId)
+                ? { ...n, ports: n.ports.map(p => (p.id === portId || p.id === activePatchSource!.portId) ? { ...p, status: 'up' } : p) }
+                : n
+              )
+            }))
+          }, 2000)
+
+          useMissionStore.getState().completeObjective('m2', 'm2_obj1')
         }
+      },
+
+      replaceComponent: (nodeId, type, index) => {
+        set(state => ({
+          nodes: state.nodes.map(n => n.id === nodeId && n.componentHealth ? {
+            ...n,
+            componentHealth: {
+              ...n.componentHealth,
+              [type]: n.componentHealth[type as keyof ComponentHealth].map((h, i) => i === index ? 'healthy' : h)
+            }
+          } : n)
+        }))
       },
 
       addReplicationLink: (sourceId, targetId) => {
@@ -1519,6 +1580,7 @@ export const useInfraStore = create<InfraState>()(
           type: get().nodes.find(n => n.id === sNodeId)?.ports.find(p => p.id === sPortId)?.type
         }
         set(state => ({ connections: [...state.connections, newConn] }))
+        useMissionStore.getState().completeObjective('m2', 'm2_obj1')
       },
 
       setPreviewBlueprint: (id) => set({ previewBlueprintId: id }),

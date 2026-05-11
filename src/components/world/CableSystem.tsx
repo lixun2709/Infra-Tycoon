@@ -101,17 +101,25 @@ function getPortWorldPosition(node: InfraNode, portId: string, allNodes: InfraNo
   if (portIdx === -1) return new THREE.Vector3(rack.position.x, worldY, rack.position.z - 0.455)
 
   // Adaptive Spacing Logic matches PortVisuals exactly
-  const isHighDensity = sortedPorts.length > 12
-  const portsPerRow = isHighDensity ? 24 : 8
-  const rowCount = Math.ceil(sortedPorts.length / portsPerRow)
+  const portCount = sortedPorts.length
+  const isHighDensity = portCount > 12
+  
+  let portsPerRow = 8
+  if (isHighDensity) {
+    if (portCount <= 24) portsPerRow = 12
+    else if (portCount <= 54) portsPerRow = Math.ceil(portCount / 2)
+    else portsPerRow = 24
+  }
+  
+  const rowCount = Math.ceil(portCount / portsPerRow)
   const row = Math.floor(portIdx / portsPerRow)
   const col = portIdx % portsPerRow
   
-  const portsInThisRow = (row === rowCount - 1) ? (sortedPorts.length % portsPerRow || portsPerRow) : portsPerRow
+  const portsInThisRow = (row === rowCount - 1) ? (portCount % portsPerRow || portsPerRow) : portsPerRow
   
-  const totalWidth = 0.82
-  const spacingX = isHighDensity ? 0.035 : (portsInThisRow > 1 ? totalWidth / (portsInThisRow - 1) : 0)
-  const spacingY = isHighDensity ? 0.024 : 0.04
+  const totalWidth = 0.88
+  const spacingX = isHighDensity ? (totalWidth / (portsPerRow - 1)) * 0.95 : (portsInThisRow > 1 ? totalWidth / (portsInThisRow - 1) * 0.9 : 0.1)
+  const spacingY = isHighDensity ? 0.025 : 0.045
   
   const x = portsInThisRow > 1 ? (col - (portsInThisRow - 1) / 2) * spacingX : 0
   const y = (rowCount > 1) ? (row - (rowCount - 1) / 2) * -spacingY : 0

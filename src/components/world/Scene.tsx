@@ -108,14 +108,15 @@ function MaintenanceIcon() {
 function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSelect: (id: string) => void }) {
   const { handlePortClick, activePatchSource } = useInfraStore()
   const [hoveredPortId, setHoveredPortId] = useState<string | null>(null)
+  const isSelected = useInfraStore(s => s.selectedNodeId === node.id)
   
   const scheme = useMemo(() => {
     switch(node.type) {
-      case 'network': return { panel: '#0f172a', bezel: '#334155' }
-      case 'storage': return { panel: '#1e3a8a', bezel: '#1e40af' }
-      case 'compute': return { panel: '#171717', bezel: '#404040' }
-      case 'security': return { panel: '#450a0a', bezel: '#7f1d1d' }
-      default: return { panel: '#1a1a1a', bezel: '#262626' }
+      case 'network': return { panel: '#0f172a', bezel: '#334155', boundary: '#1e293b' }
+      case 'storage': return { panel: '#1e3a8a', bezel: '#1e40af', boundary: '#1d4ed8' }
+      case 'compute': return { panel: '#171717', bezel: '#404040', boundary: '#262626' }
+      case 'security': return { panel: '#450a0a', bezel: '#7f1d1d', boundary: '#991b1b' }
+      default: return { panel: '#1a1a1a', bezel: '#262626', boundary: '#404040' }
     }
   }, [node.type])
 
@@ -129,31 +130,38 @@ function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSele
     <group position={[0, 0, -0.455]} rotation={[0, Math.PI, 0]}>
       {/* Bezel Frame */}
       <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
-        <boxGeometry args={[0.91, h * 0.92, 0.005]} />
+        <boxGeometry args={[0.91, h * 0.92, 0.01]} />
         <meshStandardMaterial color={scheme.bezel} metalness={1} roughness={0.1} />
       </mesh>
 
-      {/* Main Back Panel */}
-      <mesh position={[0, 0, 0.001]} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
+      {/* Main Recessed Back Panel */}
+      <mesh position={[0, 0, 0.004]} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
         <boxGeometry args={[0.88, h * 0.88, 0.002]} />
         <meshStandardMaterial color={scheme.panel} metalness={0.5} roughness={0.8} />
       </mesh>
 
       <group position={[0, 0, 0.01]}>
         {sortedPorts.map((port, idx) => {
-          const isHighDensity = sortedPorts.length > 12
-          const portsPerRow = isHighDensity ? 24 : 8
-          const rowCount = Math.ceil(sortedPorts.length / portsPerRow)
+          const portCount = sortedPorts.length
+          const isHighDensity = portCount > 12
+          
+          let portsPerRow = 8
+          if (isHighDensity) {
+            if (portCount <= 24) portsPerRow = 12
+            else if (portCount <= 54) portsPerRow = Math.ceil(portCount / 2)
+            else portsPerRow = 24
+          }
+          
+          const rowCount = Math.ceil(portCount / portsPerRow)
           const row = Math.floor(idx / portsPerRow)
           const col = idx % portsPerRow
           
-          const portsInThisRow = (row === rowCount - 1) ? (sortedPorts.length % portsPerRow || portsPerRow) : portsPerRow
+          const portsInThisRow = (row === rowCount - 1) ? (portCount % portsPerRow || portsPerRow) : portsPerRow
           
-          // Adaptive Spacing Logic
-          const totalWidth = 0.82
-          const spacingX = isHighDensity ? 0.035 : (portsInThisRow > 1 ? totalWidth / (portsInThisRow - 1) : 0)
-          const spacingY = isHighDensity ? 0.024 : 0.04
-          const portSize = isHighDensity ? 0.016 : 0.018
+          const totalWidth = 0.88
+          const spacingX = isHighDensity ? (totalWidth / (portsPerRow - 1)) * 0.95 : (portsInThisRow > 1 ? totalWidth / (portsInThisRow - 1) * 0.9 : 0.1)
+          const spacingY = isHighDensity ? 0.025 : 0.045
+          const portSize = isHighDensity ? 0.009 : 0.014
           
           const x = portsInThisRow > 1 ? (col - (portsInThisRow - 1) / 2) * spacingX : 0
           const y = (rowCount > 1) ? (row - (rowCount - 1) / 2) * -spacingY : 0
@@ -161,37 +169,60 @@ function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSele
           const isSource = activePatchSource?.nodeId === node.id && activePatchSource?.portId === port.id
           const isPlugged = port.connectedTo !== null || isSource
 
+          // Containment Boundaries (Only show if selected)
+          const showBoundary = isSelected && (idx % (isHighDensity ? 12 : 4) === 0)
+          const boundaryWidth = isHighDensity ? spacingX * 11.5 : spacingX * 3.5
+
           return (
-            <group key={port.id} position={[x, y, 0.003]}>
+            <group key={port.id} position={[x, y, 0]}>
+              {showBoundary && (
+                <mesh position={[boundaryWidth / 2 - spacingX * 0.2, 0, -0.002]}>
+                  <planeGeometry args={[boundaryWidth + spacingX * 0.8, spacingY * 1.2]} />
+                  <meshStandardMaterial color={scheme.boundary} transparent opacity={0.3} />
+                </mesh>
+              )}
+
+              {/* Port Outer Housing - Only 1 mesh instead of 2 for optimization */}
+              <mesh position={[0, 0, -0.003]}>
+                <boxGeometry args={[portSize * 1.2, portSize * 1.2, 0.006]} />
+                <meshStandardMaterial color="#000000" metalness={0.9} roughness={0.1} />
+              </mesh>
+
+              {/* Port Inner Core */}
               <mesh 
                 onPointerOver={() => setHoveredPortId(port.id)}
                 onPointerOut={() => setHoveredPortId(null)}
                 onClick={(e) => { e.stopPropagation(); handlePortClick(node.id, port.id); }}
+                position={[0, 0, 0.001]}
               >
-                <boxGeometry args={[portSize, portSize, 0.005]} />
+                <boxGeometry args={[portSize, portSize, 0.004]} />
                 <meshStandardMaterial 
                   color={isPlugged ? "#00f2ff" : "#ffffff"} 
-                  metalness={0.8} roughness={0.2} 
+                  metalness={1} roughness={0.0} 
                   emissive={isPlugged ? "#00f2ff" : "#ffffff"}
-                  emissiveIntensity={isPlugged ? 3.0 : 1.5}
+                  emissiveIntensity={isPlugged ? 4.0 : 1.5}
                 />
               </mesh>
               
-              <mesh position={[0, 0, 0.002]}>
-                <boxGeometry args={[portSize * 0.75, portSize * 0.75, 0.002]} />
-                <meshStandardMaterial color="#000" />
-              </mesh>
-
-              <Text position={[0, portSize * 0.6 + 0.002, 0.002]} fontSize={isHighDensity ? 0.005 : 0.007} color="#ffffff" anchorX="center" anchorY="bottom">
+              <Text position={[0, portSize * 0.6 + 0.003, 0.005]} fontSize={isHighDensity ? 0.0035 : 0.006} color="#94a3b8" anchorX="center" anchorY="bottom">
                 {port.label}
               </Text>
 
-              {hoveredPortId === port.id && (
-                <Billboard position={[0, 0.05, 0.05]} follow={true}>
-                  <Text fontSize={0.03} color="#2dd4bf" outlineColor="#000000" outlineWidth={0.005}>
-                    {port.label.toUpperCase()}
-                  </Text>
-                </Billboard>
+              {/* Only show details if selected or hovered */}
+              {(isSelected || hoveredPortId === port.id) && (
+                <>
+                  {hoveredPortId === port.id && (
+                    <Billboard position={[0, 0.04, 0.05]} follow={true}>
+                      <mesh position={[0, 0, -0.01]}>
+                        <planeGeometry args={[0.08, 0.02]} />
+                        <meshBasicMaterial color="#000000" transparent opacity={0.8} />
+                      </mesh>
+                      <Text fontSize={0.012} color="#00f2ff">
+                        {port.label.toUpperCase()}
+                      </Text>
+                    </Billboard>
+                  )}
+                </>
               )}
 
               <StatusLED portId={port.id} nodeId={node.id} />
@@ -205,45 +236,59 @@ function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSele
 
 function StatusLED({ portId, nodeId }: { portId: string, nodeId: string }) {
   const { connections, nodes } = useInfraStore()
+  const node = nodes.find(n => n.id === nodeId)
+  const port = node?.ports.find(p => p.id === portId)
   const conn = connections.find(c => (c.startNodeId === nodeId && c.startPortId === portId) || (c.endNodeId === nodeId && c.endPortId === portId))
+  
   const matRef = useRef<THREE.MeshStandardMaterial>(null)
   const lightRef = useRef<THREE.PointLight>(null)
 
-  // Verify that BOTH nodes in the connection still exist to avoid ghost LEDs
   const otherNodeId = conn ? (conn.startNodeId === nodeId ? conn.endNodeId : conn.startNodeId) : null
   const otherNodeExists = nodes.some(n => n.id === otherNodeId)
   
-  const isActive = conn && conn.status === 'active' && otherNodeExists
+  const isNegotiating = port?.status === 'negotiating'
+  const isActive = conn && conn.status === 'active' && otherNodeExists && !isNegotiating
   const isBlocked = conn && conn.status === 'blocked' && otherNodeExists
 
-  useFrame(() => {
-    if (matRef.current && isActive) {
-      const flicker = 10.0 + Math.random() * 20.0
-      matRef.current.emissiveIntensity = flicker
-      if (lightRef.current) {
-        lightRef.current.intensity = flicker * 0.05
+  const isSelected = useInfraStore(s => s.selectedNodeId === nodeId)
+
+  useFrame(({ clock }) => {
+    if (matRef.current) {
+      if (isNegotiating) {
+        const flicker = Math.sin(clock.elapsedTime * 30) > 0 ? 8.0 : 0.0
+        matRef.current.color.set('#f59e0b')
+        matRef.current.emissive.set('#f59e0b')
+        matRef.current.emissiveIntensity = flicker
+      } else if (isActive) {
+        const flicker = 10.0 + Math.random() * 20.0
+        matRef.current.color.set('#22c55e')
+        matRef.current.emissive.set('#22c55e')
+        matRef.current.emissiveIntensity = flicker
+      } else if (isBlocked) {
+        matRef.current.color.set('#ef4444')
+        matRef.current.emissive.set('#ef4444')
+        matRef.current.emissiveIntensity = 8.0
+      } else {
+        matRef.current.color.set('#1e293b')
+        matRef.current.emissive.set('#000000')
+        matRef.current.emissiveIntensity = 0
       }
-    } else if (matRef.current && isBlocked) {
-      matRef.current.emissiveIntensity = 8.0
     }
   })
 
-  const ledColor = isActive ? '#00ff00' : (isBlocked ? '#ff0000' : '#111111')
-
   return (
-    <group position={[0.01, 0.01, 0.006]}>
-      <Billboard follow={true}>
-        <mesh>
-          <sphereGeometry args={[0.008, 8, 8]} />
-          <meshStandardMaterial 
-            ref={matRef}
-            color={ledColor}
-            emissive={ledColor}
-            emissiveIntensity={isActive ? 10 : 0}
-          />
-        </mesh>
-      </Billboard>
-      {isActive && <pointLight ref={lightRef} color="#00ff00" distance={0.05} intensity={1} />}
+    <group position={[0.005, 0.005, 0.003]}>
+      <mesh>
+        <sphereGeometry args={[0.002, 8, 8]} />
+        <meshStandardMaterial ref={matRef} metalness={1} roughness={0} />
+      </mesh>
+      {isSelected && (isActive || isNegotiating) && (
+        <pointLight 
+          color={isNegotiating ? '#f59e0b' : '#22c55e'} 
+          distance={0.05} 
+          intensity={0.5} 
+        />
+      )}
     </group>
   )
 }
@@ -409,66 +454,70 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
   )
 }
 
-function InternalHardware({ _node, h }: { _node: InfraNode, h: number }) {
+function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
+  const health = node.componentHealth || { cpu: ['healthy'], ram: ['healthy', 'healthy', 'healthy', 'healthy'], drives: ['healthy', 'healthy'] }
+  
   return (
     <group position={[0, -0.02, 0.05]}>
-      {/* Dual CPU Heatsinks - Stark White */}
-      <group position={[-0.15, 0, 0]}>
-        <mesh>
-          <boxGeometry args={[0.22, h * 0.85, 0.22]} />
-          <meshStandardMaterial color="#ffffff" metalness={0.5} roughness={0.1} emissive="#ffffff" emissiveIntensity={0.2} />
-        </mesh>
-        <Billboard position={[0, h * 0.425 + 0.02, 0]} follow={true}>
-          <Text fontSize={0.05} color="#000000" anchorY="middle">CPU 0</Text>
-        </Billboard>
-      </group>
+      {/* Dual CPU Heatsinks */}
+      {health.cpu.map((status, i) => (
+        <group key={`cpu-${i}`} position={[i === 0 ? -0.15 : 0.15, 0, 0]}>
+          <mesh>
+            <boxGeometry args={[0.22, h * 0.85, 0.22]} />
+            <meshStandardMaterial 
+              color={status === 'healthy' ? '#ffffff' : status === 'degraded' ? '#eab308' : '#ef4444'} 
+              metalness={0.5} roughness={0.1} 
+              emissive={status === 'healthy' ? '#ffffff' : status === 'degraded' ? '#eab308' : '#ef4444'} 
+              emissiveIntensity={status === 'healthy' ? 0.2 : 0.8} 
+            />
+          </mesh>
+          <Billboard position={[0, h * 0.425 + 0.02, 0]} follow={true}>
+            <Text fontSize={0.04} color="#ffffff" anchorY="middle" outlineColor="#000000" outlineWidth={0.005}>
+              CPU {i} {status !== 'healthy' && `(${status.toUpperCase()})`}
+            </Text>
+          </Billboard>
+        </group>
+      ))}
       
-      <group position={[0.15, 0, 0]}>
-        <mesh>
-          <boxGeometry args={[0.22, h * 0.85, 0.22]} />
-          <meshStandardMaterial color="#ffffff" metalness={0.5} roughness={0.1} emissive="#ffffff" emissiveIntensity={0.2} />
-        </mesh>
-        <Billboard position={[0, h * 0.425 + 0.02, 0]} follow={true}>
-          <Text fontSize={0.05} color="#000000" anchorY="middle">CPU 1</Text>
-        </Billboard>
-      </group>
-      
-      {/* RAM Banks - Stark White */}
+      {/* RAM Banks */}
       <group position={[0, 0, 0.2]}>
-        {Array.from({ length: 12 }).map((_, i) => (
-          <group key={i} position={[i * 0.04 - 0.22, 0, 0]}>
+        {health.ram.map((status, i) => (
+          <group key={`ram-${i}`} position={[i * 0.04 - (health.ram.length * 0.02), 0, 0]}>
             <mesh>
               <boxGeometry args={[0.015, h * 0.75, 0.18]} />
-              <meshStandardMaterial color="#ffffff" roughness={0.5} emissive="#ffffff" emissiveIntensity={0.1} />
+              <meshStandardMaterial 
+                color={status === 'healthy' ? '#ffffff' : status === 'degraded' ? '#eab308' : '#ef4444'} 
+                roughness={0.5} 
+                emissive={status === 'healthy' ? '#ffffff' : status === 'degraded' ? '#eab308' : '#ef4444'} 
+                emissiveIntensity={status === 'healthy' ? 0.1 : 0.6} 
+              />
             </mesh>
-            <Billboard position={[0, h * 0.375 + 0.02, 0]} follow={true}>
-              <Text fontSize={0.018} color="#000000" anchorY="middle">DIMM {String.fromCharCode(65 + i)}</Text>
-            </Billboard>
           </group>
         ))}
       </group>
       
-      {/* HDD/SSD Drive Array - Stark White */}
+      {/* HDD/SSD Drive Array */}
       <group position={[0, 0, -0.3]}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <group key={i} position={[i * 0.12 - 0.3, 0, 0]}>
+        {health.drives.slice(0, 6).map((status, i) => (
+          <group key={`drive-${i}`} position={[i * 0.12 - 0.3, 0, 0]}>
             <mesh>
               <boxGeometry args={[0.11, h * 0.95, 0.28]} />
-              <meshStandardMaterial color="#ffffff" metalness={0.3} roughness={0.2} emissive="#ffffff" emissiveIntensity={0.05} />
+              <meshStandardMaterial 
+                color={status === 'healthy' ? '#ffffff' : status === 'degraded' ? '#eab308' : '#ef4444'} 
+                metalness={0.3} roughness={0.2} 
+                emissive={status === 'healthy' ? '#ffffff' : status === 'degraded' ? '#eab308' : '#ef4444'} 
+                emissiveIntensity={status === 'healthy' ? 0.05 : 0.5} 
+              />
             </mesh>
             <Billboard position={[0, h * 0.475 + 0.02, 0]} follow={true}>
-              {/* Vertical orientation for vertical drives */}
-              <Text rotation={[0, 0, Math.PI / 2]} fontSize={0.025} color="#000000" anchorY="middle">DRIVE {i}</Text>
+              <Text fontSize={0.02} color="#ffffff" anchorY="middle" outlineColor="#000000" outlineWidth={0.005}>
+                DRIVE {i}
+              </Text>
             </Billboard>
           </group>
         ))}
       </group>
 
-      {/* Internal "Circuitry" Plane - Deep Green PCB */}
-      <mesh position={[0, -h/2 + 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[0.85, 0.85]} />
-        <meshStandardMaterial color="#064e3b" />
-      </mesh>
     </group>
   )
 }

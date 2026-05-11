@@ -286,6 +286,37 @@ export function Inspector() {
             </div>
 
             <div className="mt-8 border-t border-slate-800 pt-6">
+              <p className="text-slate-400 text-[10px] uppercase tracking-widest mb-4">Internal Component Health</p>
+              <div className="space-y-4">
+                {selectedNode.componentHealth && (Object.entries(selectedNode.componentHealth) as [keyof ComponentHealth, HealthStatus[]][]).map(([type, items]) => (
+                  <div key={type} className="bg-slate-900/40 p-4 rounded-xl border border-white/5">
+                    <div className="flex justify-between items-center mb-3">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{type} Array</span>
+                      <span className="text-[9px] text-slate-600 font-mono">{items.length} Units</span>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      {items.map((status, idx) => (
+                        <div 
+                          key={idx} 
+                          title={`${type.toUpperCase()} ${idx}: ${status.toUpperCase()}`}
+                          className={`h-1.5 rounded-full transition-all ${status === 'healthy' ? 'bg-emerald-500/40' : status === 'degraded' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500 animate-bounce shadow-[0_0_8px_rgba(244,63,94,0.6)]'}`}
+                        />
+                      ))}
+                    </div>
+                    {items.some(s => s !== 'healthy') && (
+                      <button 
+                        onClick={() => (useInfraStore.getState() as any).replaceComponent(selectedNode.id, type, items.findIndex(s => s !== 'healthy'))}
+                        className="mt-3 w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-[9px] font-black uppercase tracking-widest rounded-lg border border-emerald-500/20 transition-all"
+                      >
+                        Hot-Swap Failed {type.slice(0, -1)}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-slate-800 pt-6">
               <button
                 onClick={handleDecommissionClick}
                 className="w-full py-3 bg-red-900/40 hover:bg-red-800/60 text-red-400 hover:text-red-300 border border-red-800/50 rounded-xl transition-all text-[10px] font-black uppercase tracking-widest"
