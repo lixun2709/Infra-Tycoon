@@ -223,6 +223,7 @@ export function Inspector() {
                 {selectedNode.ports.map((port) => {
                   const isConnecting = activePatchSource?.portId === port.id
                   const conn = connections.find(c => (c.startNodeId === selectedNode.id && c.startPortId === port.id) || (c.endNodeId === selectedNode.id && c.endPortId === port.id))
+                  const updatePort = (useInfraStore.getState() as any).updatePort
 
                   return (
                     <div key={port.id} className={`flex flex-col gap-1 border p-3 rounded-md transition-all ${isConnecting ? 'bg-teal-500/20 border-teal-500' : 'bg-slate-800/80 border-slate-700'}`}>
@@ -236,6 +237,33 @@ export function Inspector() {
                         </div>
                         <div className={`w-2 h-2 rounded-full ${conn ? 'bg-green-500 shadow-[0_0_8px_green]' : isConnecting ? 'bg-teal-400 animate-pulse' : 'bg-slate-600'}`} />
                       </button>
+
+                      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-700/50">
+                        <div>
+                          <label className="text-[8px] text-slate-500 uppercase font-black block mb-0.5">Link Speed</label>
+                          <select 
+                            value={port.speedMbps || 1000} 
+                            onChange={(e) => updatePort(selectedNode.id, port.id, { speedMbps: parseInt(e.target.value) })}
+                            className="w-full bg-slate-900 border-none text-[9px] text-teal-400 font-mono rounded px-1 py-0.5 focus:ring-1 focus:ring-teal-500"
+                          >
+                            <option value="10">10M</option>
+                            <option value="100">100M</option>
+                            <option value="1000">1G</option>
+                            <option value="10000">10G</option>
+                            <option value="100000">100G</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[8px] text-slate-500 uppercase font-black block mb-0.5">VLAN ID</label>
+                          <input 
+                            type="number" 
+                            min="1" max="4094"
+                            value={port.vlan || 1}
+                            onChange={(e) => updatePort(selectedNode.id, port.id, { vlan: parseInt(e.target.value) })}
+                            className="w-full bg-slate-900 border-none text-[9px] text-purple-400 font-mono rounded px-1 py-0.5 focus:ring-1 focus:ring-purple-500"
+                          />
+                        </div>
+                      </div>
 
                       {conn && (
                         <div className="mt-2 pt-2 border-t border-slate-700/80 text-[10px] flex justify-between items-center text-slate-300">

@@ -1,7 +1,7 @@
 import { Vector3 } from 'three'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import {
+export {
   HARDWARE_CATALOG,
   type HardwareCatalogKey,
   type PortType,
@@ -55,6 +55,8 @@ export type HardwarePort = {
   status: 'up' | 'down'
   ip?: string
   mask?: string
+  speedMbps?: number
+  vlan?: number
 }
 
 
@@ -103,7 +105,7 @@ export interface InfraNode {
   hostname?: string
   managementIP?: string
   macAddress?: string
-  provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped'
+  provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'decommissioning'
   isConfigured?: boolean
   vlan?: number
   
@@ -114,6 +116,7 @@ export interface InfraNode {
   dataCategory?: DataCategory
 
   installDate: number // Simulation cycle index
+  installTimestamp?: number // Real-world timestamp for animations
   degradation: number // 0-100
   temperature?: number
   isRefreshing?: boolean
@@ -141,6 +144,8 @@ export interface Connection {
   isBlockedByCompliance?: boolean
   status?: 'active' | 'blocked'
   syncProgress?: number
+  type?: PortType
+  highlightTime?: number
 }
 
 export interface PostMortem {
@@ -295,6 +300,8 @@ type InfraState = {
   addReplicationLink: (sourceId: string, targetId: string) => void
   checkAllCompliance: () => void
   updateTerminalLogs: (sessionId: string, paneId: string, logs: string[]) => void
+  finalRemoveNode: (id: string) => void
+  visualizePath: (startId: string, endId: string) => void
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
@@ -956,6 +963,7 @@ export const useInfraStore = create<InfraState>()(
             const targetNode = nodes.find(n => n.managementIP === ip || n.hostname === target)
             
             if (targetNode && get().checkNetworkPath(newContext.targetId || 'bastion', targetNode.id)) {
+              get().visualizePath(newContext.targetId || 'bastion', targetNode.id)
               const result = get().ping(newContext.targetId || 'bastion', ip)
               if (result.success) {
                 output.push(`[[BLUE]]PING ${target} (${ip}) 56(84) bytes of data.[[RESET]]`)
@@ -1251,6 +1259,7 @@ export const useInfraStore = create<InfraState>()(
           healthStatus: 'healthy',
           degradation: 0,
           installDate: simulationCycle,
+          installTimestamp: Date.now(),
           ports: [],
           services: [],
           systemState: 'off',
@@ -1277,10 +1286,21 @@ export const useInfraStore = create<InfraState>()(
       }),
  
       handlePortClick: (nodeId, portId) => {
-        const { patchingActive, activePatchSource } = get()
+        const { patchingActive, activePatchSource, nodes } = get()
         if (!patchingActive) set({ patchingActive: true, activePatchSource: { nodeId, portId } })
         else {
           if (activePatchSource?.nodeId === nodeId && activePatchSource?.portId === portId) {
+            set({ patchingActive: false, activePatchSource: null })
+            return
+          }
+
+          const sourceNode = nodes.find(n => n.id === activePatchSource!.nodeId)
+          const sourcePort = sourceNode?.ports.find(p => p.id === activePatchSource!.portId)
+          const targetNode = nodes.find(n => n.id === nodeId)
+          const targetPort = targetNode?.ports.find(p => p.id === portId)
+
+          if (sourcePort && targetPort && sourcePort.type !== targetPort.type) {
+            get().pushAlert('critical', `MISWIRE DETECTED: Incompatible physical layer. Cannot connect ${sourcePort.type.toUpperCase()} to ${targetPort.type.toUpperCase()}.`)
             set({ patchingActive: false, activePatchSource: null })
             return
           }
@@ -1298,7 +1318,8 @@ export const useInfraStore = create<InfraState>()(
             latencyMs: 1,
             isBlockedByCompliance: isBlocked,
             status: isBlocked ? 'blocked' : 'active',
-            syncProgress: 0
+            syncProgress: 0,
+            type: sourcePort?.type
           }
           set((state) => ({
             connections: [...state.connections, newConnection],
@@ -1336,7 +1357,8 @@ export const useInfraStore = create<InfraState>()(
           latencyMs: 1,
           isBlockedByCompliance: isBlocked,
           status: isBlocked ? 'blocked' : 'active',
-          syncProgress: 0
+          syncProgress: 0,
+          type: sPort.type
         }
         set((state) => ({ connections: [...state.connections, newConnection] }))
       },
@@ -1348,6 +1370,13 @@ export const useInfraStore = create<InfraState>()(
       removeNode: (id) => {
         const nodeToRemove = get().nodes.find(n => n.id === id)
         if (!nodeToRemove) return
+        
+        // If it's hardware, trigger the 'decommissioning' animation first
+        if (nodeToRemove.type !== 'rack') {
+          get().updateNode(id, { provisioningState: 'decommissioning' })
+          return
+        }
+
         const parentRackId = nodeToRemove.parentRackId
         set((state) => {
           const idsToRemove = new Set([id])
@@ -1364,6 +1393,19 @@ export const useInfraStore = create<InfraState>()(
         recalculateRoomStats()
       },
 
+      finalRemoveNode: (id) => {
+        const nodeToRemove = get().nodes.find(n => n.id === id)
+        if (!nodeToRemove) return
+        const parentRackId = nodeToRemove.parentRackId
+        set((state) => ({
+          nodes: state.nodes.filter(n => n.id !== id),
+          connections: state.connections.filter(c => c.startNodeId !== id && c.endNodeId !== id),
+          selectedNodeId: state.selectedNodeId === id ? null : state.selectedNodeId
+        }))
+        if (parentRackId) calculateRackPower(parentRackId)
+        recalculateRoomStats()
+      },
+
       updateNode: (id, updates) => {
         set((state) => ({
           nodes: state.nodes.map((n) => (n.id === id ? { ...n, ...updates } : n)),
@@ -1371,6 +1413,15 @@ export const useInfraStore = create<InfraState>()(
         if (updates.dataCategory) {
           get().checkAllCompliance()
         }
+      },
+
+      updatePort: (nodeId, portId, updates) => {
+        set(state => ({
+          nodes: state.nodes.map(n => n.id === nodeId ? {
+            ...n,
+            ports: n.ports.map(p => p.id === portId ? { ...p, ...updates } : p)
+          } : n)
+        }))
       },
 
 
@@ -1464,7 +1515,8 @@ export const useInfraStore = create<InfraState>()(
           bandwidthGbps: 100,
           throughputGbps: 0,
           latencyMs: 0.1,
-          status: 'active'
+          status: 'active',
+          type: get().nodes.find(n => n.id === sNodeId)?.ports.find(p => p.id === sPortId)?.type
         }
         set(state => ({ connections: [...state.connections, newConn] }))
       },
@@ -1753,6 +1805,41 @@ export const useInfraStore = create<InfraState>()(
           simulationCycle: state.simulationCycle + 1,
           operationalBudget: state.operationalBudget - (nodes.length * 2) // Basic OpEx
         }))
+      },
+
+      visualizePath: (startId, endId) => {
+        const { connections } = get()
+        if (startId === endId) return
+
+        // BFS to find shortest path
+        const queue: { nodeId: string; path: string[] }[] = [{ nodeId: startId, path: [] }]
+        const visited = new Set<string>([startId])
+        
+        while (queue.length > 0) {
+          const { nodeId, path } = queue.shift()!
+          
+          if (nodeId === endId) {
+            set(state => ({
+              connections: state.connections.map(c => 
+                path.includes(c.id) ? { ...c, highlightTime: Date.now() + 5000 } : c
+              )
+            }))
+            return
+          }
+
+          connections.forEach(c => {
+            if (c.status === 'blocked') return
+            let nextId: string | null = null
+            if (c.startNodeId === nodeId) nextId = c.endNodeId
+            else if (c.endNodeId === nodeId) nextId = c.startNodeId
+
+            if (nextId && !visited.has(nextId)) {
+              visited.add(nextId)
+              queue.push({ nodeId: nextId, path: [...path, c.id] })
+            }
+          })
+        }
+        get().pushAlert('warning', 'Network unreachable: No valid path found between selected nodes.')
       },
     }),
     {
