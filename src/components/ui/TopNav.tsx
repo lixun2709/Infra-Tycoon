@@ -7,6 +7,7 @@ interface TopNavProps {
   onToggleEconomy: () => void
   onToggleGlobalMap: () => void
   onOpenHandbook: () => void
+  onToggleSaveManager: () => void
   isTerminalOpen: boolean
 }
 
@@ -17,6 +18,7 @@ export function TopNav({
   onToggleEconomy,
   onToggleGlobalMap,
   onOpenHandbook,
+  onToggleSaveManager,
   isTerminalOpen,
 }: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
@@ -44,7 +46,8 @@ export function TopNav({
           { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
           { id: 'economy', label: 'FINANCIALS', icon: '💰', active: false, onClick: onToggleEconomy },
           { id: 'terminal', label: 'GLOBAL TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
-          { id: 'handbook', label: 'HANDBOOK', icon: '📖', active: false, onClick: (onOpenHandbook as any) },
+          { id: 'handbook', label: 'HANDBOOK', icon: '📖', active: false, onClick: onOpenHandbook },
+          { id: 'save', label: 'PERSISTENCE', icon: '💾', active: false, onClick: onToggleSaveManager },
         ].map(tab => (
           <button
             key={tab.id}

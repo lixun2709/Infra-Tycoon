@@ -16,16 +16,17 @@ import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { Rocket, X, DollarSign, TrendingUp, Award } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
+import { useHotkeys } from './hooks/useHotkeys'
 
 function EmergencyToasts() {
   const alerts = useInfraStore(s => s.alerts)
   const [activeAlert, setActiveAlert] = useState<typeof alerts[0] | null>(null)
 
   useEffect(() => {
-    const popups = alerts.filter(a => a.severity === 'critical' || a.severity === 'warning')
+    const popups = alerts.filter(a => a.severity === 'critical' || a.severity === 'warning' || a.severity === 'info' || a.severity === 'success')
     if (popups.length === 0) return
 
-    const latest = popups[0]
+    const latest = popups[popups.length - 1] // Show most recent
     if (Date.now() - latest.timestamp < 6000) {
       setActiveAlert(latest)
       const timer = setTimeout(() => {
@@ -38,16 +39,18 @@ function EmergencyToasts() {
   if (!activeAlert) return null
 
   const isCritical = activeAlert.severity === 'critical'
+  const isInfo = activeAlert.severity === 'info'
+  const isSuccess = activeAlert.severity === 'success'
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
-      <div className={`bg-[#1f0909]/95 border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : 'border-amber-500 ring-amber-900/30'}`}>
-        <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : '⚠️'}</div>
+      <div className={`bg-[#0a1536]/95 backdrop-blur-xl border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : (isSuccess ? 'border-emerald-500 ring-emerald-900/30' : (isInfo ? 'border-teal-500 ring-teal-900/30' : 'border-amber-500 ring-amber-900/30'))}`}>
+        <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : (isSuccess ? '✅' : (isInfo ? '💾' : '⚠️'))}</div>
         <div className="flex-1">
-          <h2 className={`text-sm font-black tracking-widest uppercase mb-1 drop-shadow-sm ${isCritical ? 'text-red-500' : 'text-amber-500'}`}>
-            {isCritical ? 'Critical Failure' : 'Action Denied'}
+          <h2 className={`text-sm font-black tracking-widest uppercase mb-1 drop-shadow-sm ${isCritical ? 'text-red-500' : (isSuccess ? 'text-emerald-400' : (isInfo ? 'text-teal-400' : 'text-amber-500'))}`}>
+            {isCritical ? 'Critical Failure' : (isSuccess ? 'Operation Success' : (isInfo ? 'System Sync' : 'Action Denied'))}
           </h2>
-          <p className={`font-semibold text-sm leading-snug ${isCritical ? 'text-red-100' : 'text-amber-100'}`}>
+          <p className={`font-semibold text-sm leading-snug ${isCritical ? 'text-red-100' : (isSuccess ? 'text-emerald-50' : (isInfo ? 'text-teal-100' : 'text-amber-100'))}`}>
             {activeAlert.message}
           </p>
         </div>
@@ -58,11 +61,15 @@ function EmergencyToasts() {
 
 
 
+import { SaveManager } from './components/ui/SaveManager'
+
 function App() {
+  useHotkeys()
+  const isSaveManagerOpen = useInfraStore(s => s.isSaveManagerOpen)
+  const setIsSaveManagerOpen = (val: boolean) => useInfraStore.setState({ isSaveManagerOpen: val })
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [isHandbookOpen, setIsHandbookOpen] = useState(false)
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   const [isEconomyOpen, setIsEconomyOpen] = useState(false)
@@ -80,13 +87,29 @@ function App() {
     fixState()
   }, [fixState])
 
+  // Phase 10.2: Auto-Save System
+  useEffect(() => {
+    const timer = setInterval(() => {
+      useInfraStore.getState().saveGame('auto')
+    }, 5 * 60 * 1000) // 5 minutes
+    return () => clearInterval(timer)
+  }, [])
+
   const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
 
   const placeCatalogHardware = useInfraStore((s) => s.placeCatalogHardware)
   const totalPowerKW = useInfraStore((s) => s.totalPowerKW)
   const totalRoomBTU = useInfraStore((s) => s.totalRoomBTU)
   const overloadedRackCount = useInfraStore((s) => s.overloadedRackCount)
-  const selectedNodeId = useInfraStore((s) => s.selectedNodeId)
+  const {
+    selectedNodeId,
+    setSelectedNode,
+    currentSiteId: siteId,
+    setIsTerminalOpen,
+    isTerminalOpen,
+    addTerminalSession,
+    terminalStates
+  } = useInfraStore()
   const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
   const placementMode = useInfraStore((s) => s.placementMode)
   const processAutoBackups = useInfraStore((s) => s.processAutoBackups)
@@ -99,7 +122,7 @@ function App() {
 
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 't' && (e.target as HTMLElement).tagName !== 'INPUT') {
-        setIsTerminalOpen(prev => !prev)
+        setIsTerminalOpen(!isTerminalOpen)
       }
     }
 
@@ -112,7 +135,7 @@ function App() {
       clearInterval(interval)
       window.removeEventListener('keydown', handleKeyPress)
     }
-  }, [])
+  }, [isTerminalOpen, setIsTerminalOpen])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -145,6 +168,8 @@ function App() {
     }
   }
 
+  const siteTerminal = terminalStates[currentSiteId]
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[#020617] font-sans text-slate-200">
       {/* 3D Scene Background */}
@@ -154,63 +179,103 @@ function App() {
 
       {/* Top Navigation Bar */}
       <TopNav 
-        onOpenNetwork={() => setNetworkManagerOpen(true)}
+        onOpenNetwork={() => setNetworkManagerOpen(!useInfraStore.getState().isNetworkManagerOpen)} 
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
-        onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        onToggleTerminal={() => {
+           setIsTerminalOpen(!isTerminalOpen)
+           if (siteTerminal?.sessions.length === 0) {
+              addTerminalSession('Main Console')
+           }
+        }}
         onToggleEconomy={() => setIsEconomyOpen(!isEconomyOpen)}
         onToggleGlobalMap={toggleGlobalMap}
-        onOpenHandbook={() => setIsHandbookOpen(true)}
+        onOpenHandbook={() => setIsHandbookOpen(!isHandbookOpen)}
+        onToggleSaveManager={() => setIsSaveManagerOpen(!isSaveManagerOpen)}
         isTerminalOpen={isTerminalOpen}
       />
+
+      {isSaveManagerOpen && (
+        <SaveManager onClose={() => setIsSaveManagerOpen(false)} />
+      )}
       
       <GlobalMap />
 
-      {/* Secondary Header Overlay: Combined Metrics */}
+      {/* Professional Control Center: Ultra-Compact & Informative */}
       <div className="fixed top-20 left-8 z-40 pointer-events-none">
-        <div className={`pointer-events-auto bg-[#0a1536]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-2xl transition-all w-[340px] ${selectedNodeId ? 'translate-x-[-360px] opacity-0' : 'translate-x-0 opacity-100'}`}>
+        <div className={`pointer-events-auto bg-[#0a1536]/90 backdrop-blur-2xl border border-white/10 rounded-[1.5rem] p-4 shadow-2xl transition-all w-[250px] ${selectedNodeId ? 'translate-x-[-300px] opacity-0' : 'translate-x-0 opacity-100'}`}>
           
-          {/* Financials Section */}
-          <div className="flex gap-3 mb-6 pb-6 border-b border-white/5">
-            <div className="flex-1 bg-white/5 rounded-2xl p-3 border border-white/5">
-              <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Balance</p>
-              <p className="text-sm font-black text-emerald-400">${balance.toLocaleString()}</p>
+          {/* Header Area */}
+          <div className="flex items-center justify-between mb-4 px-1">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-[0.15em] text-teal-400 flex items-center gap-1.5">
+                <TrendingUp className="w-2.5 h-2.5" /> Command
+              </p>
+              <p className="text-[7px] text-slate-500 font-bold uppercase mt-0.5">Site Telemetry</p>
             </div>
-            <div className="flex-1 bg-white/5 rounded-2xl p-3 border border-white/5">
-              <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Reputation</p>
-              <p className="text-sm font-black text-amber-400">{reputation}%</p>
+            <div className="flex items-center gap-2">
+              <span className="text-[7px] text-teal-500/50 font-black uppercase">Live</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
             </div>
           </div>
 
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-400 flex items-center gap-2">
-              <TrendingUp className="w-3 h-3" /> Facility Metrics
-            </p>
-            <div className="w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_5px_teal]" />
+          {/* Financials */}
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+              <p className="text-[6px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Capital</p>
+              <p className="text-[10px] font-black text-emerald-400">${balance.toLocaleString()}</p>
+            </div>
+            <div className="bg-white/5 rounded-xl p-2 border border-white/5">
+              <p className="text-[6px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Trust</p>
+              <p className="text-[10px] font-black text-amber-400">{reputation}%</p>
+            </div>
           </div>
           
-          <div className="space-y-4">
+          {/* Metrics List */}
+          <div className="space-y-2.5 px-1 mb-4">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Load</span>
-              <span className="text-sm font-black text-white">{totalPowerKW.toFixed(1)} kW</span>
+              <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tight">Load</span>
+              <span className="text-[10px] font-black text-white">{totalPowerKW.toFixed(1)} kW</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thermal</span>
-              <span className="text-sm font-black text-white">{totalRoomBTU.toLocaleString()} <span className="text-[8px] text-slate-500">BTU/H</span></span>
+              <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tight">Thermal</span>
+              <span className="text-[10px] font-black text-white">{totalRoomBTU.toLocaleString()} <span className="text-[7px] text-slate-500 font-normal">BTU</span></span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerts</span>
-              <span className={`text-sm font-black ${overloadedRackCount > 0 ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`}>
-                {overloadedRackCount > 0 ? `${overloadedRackCount} OVERLOAD` : 'NOMINAL'}
+              <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tight">Status</span>
+              <span className={`text-[9px] font-black ${overloadedRackCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                {overloadedRackCount > 0 ? 'FAILURES' : 'NOMINAL'}
               </span>
             </div>
-            <div className="flex items-center justify-between pt-4 border-t border-white/5">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hybrid Bursting</span>
-              <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${cloudBurstingActive ? 'bg-orange-500 shadow-[0_0_8px_#f97316]' : 'bg-slate-700'}`} />
-                <span className={`text-xs font-black uppercase ${cloudBurstingActive ? 'text-orange-400' : 'text-slate-500'}`}>
-                  {cloudBurstingActive ? `${activeCloudInstances} Cloud Nodes` : 'Standby'}
-                </span>
+          </div>
+
+          {/* Infrastructure Context */}
+          {cloudBurstingActive && (
+            <div className="mb-4 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl flex items-center justify-between">
+              <div>
+                <span className="text-[8px] font-black text-orange-400 uppercase tracking-widest block">Cloud Overflow</span>
+                <span className="text-[7px] text-orange-400/50 font-bold">Hybrid scale-out active</span>
               </div>
+              <span className="text-[10px] font-black text-orange-400">{activeCloudInstances} Nodes</span>
+            </div>
+          )}
+
+          {/* Legend: Hotkey Shortcuts */}
+          <div className="pt-4 border-t border-white/5">
+            <p className="text-[7px] text-slate-500 font-black uppercase tracking-[0.2em] mb-3 text-center">Quick Access Links</p>
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+              {[
+                { k: 'T', l: 'Terminal' },
+                { k: 'R', l: 'Racks' },
+                { k: 'Tab', l: 'Hardware' },
+                { k: '^S', l: 'Quick Save' },
+              ].map(hk => (
+                <div key={hk.k} className="flex items-center gap-1.5 group/key cursor-help">
+                  <div className="min-w-[18px] h-4 flex items-center justify-center bg-white/10 rounded-md border border-white/10 text-[8px] font-black text-teal-400 px-1 shadow-sm group-hover/key:bg-teal-500 group-hover/key:text-[#0a1536] transition-all">
+                    {hk.k}
+                  </div>
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight group-hover/key:text-white transition-colors">{hk.l}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>

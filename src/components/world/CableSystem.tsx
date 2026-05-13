@@ -150,10 +150,10 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
       const rack = allNodes.find(n => n.id === startNode.parentRackId)!
       const sideX = start.x > rack.position.x ? rack.position.x + 0.46 : rack.position.x - 0.46
       
-      const p1 = start.clone().setZ(start.z - 0.05) // Out of port
-      const p2 = p1.clone().setX(sideX) // To side channel
-      const p3 = end.clone().setZ(end.z - 0.05).setX(sideX) // Down/Up channel
-      const p4 = end.clone().setZ(end.z - 0.05) // Back from channel
+      const p1 = new THREE.Vector3(start.x, start.y, start.z - 0.05) // Out of port
+      const p2 = new THREE.Vector3(sideX, p1.y, p1.z) // To side channel
+      const p3 = new THREE.Vector3(sideX, end.y, end.z - 0.05) // Down/Up channel
+      const p4 = new THREE.Vector3(end.x, end.y, end.z - 0.05) // Back from channel
       
       points = [start, p1, p2, p3, p4, end]
     } else {

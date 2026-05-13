@@ -6,7 +6,6 @@ import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import type { InfraNode } from '../../store/useInfraStore'
 import { useInfraStore } from '../../store/useInfraStore'
-import { Assistant } from './Assistant'
 import { HeatMapOverlay } from './HeatMapOverlay'
 import { CableSystem } from './CableSystem'
 import { audioManager } from '../../utils/AudioManager'
@@ -1077,7 +1076,6 @@ function World() {
       <CloudGateway />
       <BlueprintPreview />
       <CableSystem />
-      <Assistant />
       <HeatMapOverlay />
 
       <DeployWave />

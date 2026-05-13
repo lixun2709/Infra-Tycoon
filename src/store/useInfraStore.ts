@@ -184,6 +184,13 @@ export interface Blueprint {
   createdAt: number
 }
 
+export interface SaveMetadata {
+  id: string
+  timestamp: number
+  siteName: string
+  nodeCount: number
+}
+
 export type ApplicationDeployment = {
   id: string
   appId: string
@@ -298,6 +305,8 @@ type InfraState = {
   setTerminalAlias: (name: string, command: string) => void
   setTerminalEnvVar: (name: string, value: string) => void
   writeTerminalFile: (path: string, content: string) => void
+  isTerminalOpen: boolean
+  setIsTerminalOpen: (val: boolean) => void
   
   // v5.0 Service Layer Actions
   deployApplication: (appId: string, nodeId: string) => void
@@ -349,6 +358,11 @@ type InfraState = {
   finalRemoveNode: (id: string) => void
   visualizePath: (startId: string, endId: string) => void
   fixState: () => void
+
+  // Phase 10: Save System
+  saveGame: (slotId: string) => void
+  loadGame: (slotId: string) => void
+  getAvailableSaves: () => SaveMetadata[]
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
@@ -446,7 +460,9 @@ export const useInfraStore = create<InfraState>()(
       pendingRackType: null,
       alerts: [],
       auditLogs: [],
-      isNetworkManagerOpen: false,
+       isNetworkManagerOpen: false,
+       isTerminalOpen: false,
+       setIsTerminalOpen: (val: boolean) => set({ isTerminalOpen: val }),
       networkLoad: 0.1,
       resilienceIndex: 100,
       postMortems: [],
@@ -729,6 +745,7 @@ export const useInfraStore = create<InfraState>()(
           layout: 'single'
         }
         set(s => ({
+          isTerminalOpen: true, // Auto-open on new session
           terminalStates: {
             ...s.terminalStates,
             [siteId]: {
@@ -2162,6 +2179,48 @@ export const useInfraStore = create<InfraState>()(
         }
         get().pushAlert('warning', 'Network unreachable: No valid path found between selected nodes.')
       },
+
+      saveGame: (slotId) => {
+        const state = get()
+        const meta: SaveMetadata = {
+          id: slotId,
+          timestamp: Date.now(),
+          siteName: state.sites.find(s => s.id === state.currentSiteId)?.name || 'Unknown',
+          nodeCount: state.nodes.length
+        }
+        
+        const saveData = JSON.stringify({ state, meta })
+        localStorage.setItem(`infra-tycoon-save-${slotId}`, saveData)
+        
+        // Update list of saves in a special meta key
+        const existingMeta = JSON.parse(localStorage.getItem('infra-tycoon-saves-meta') || '[]') as SaveMetadata[]
+        const newMeta = [meta, ...existingMeta.filter(m => m.id !== slotId)].slice(0, 10)
+        localStorage.setItem('infra-tycoon-saves-meta', JSON.stringify(newMeta))
+        
+        get().pushAlert('success', `Game saved to Slot ${slotId}`)
+      },
+
+      loadGame: (slotId) => {
+        const saveData = localStorage.getItem(`infra-tycoon-save-${slotId}`)
+        if (!saveData) {
+          get().pushAlert('critical', `Failed to load Slot ${slotId}: No data found.`)
+          return
+        }
+        
+        try {
+          const { state } = JSON.parse(saveData)
+          set(state)
+          get().pushAlert('success', `Game loaded from Slot ${slotId}`)
+          // Force a small delay then fix state
+          setTimeout(() => get().fixState(), 100)
+        } catch (e) {
+          get().pushAlert('critical', `Failed to load Slot ${slotId}: Data corruption.`)
+        }
+      },
+
+      getAvailableSaves: () => {
+        return JSON.parse(localStorage.getItem('infra-tycoon-saves-meta') || '[]') as SaveMetadata[]
+      }
     }),
     {
       name: 'infra-tycoon-state',

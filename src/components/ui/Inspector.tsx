@@ -1,5 +1,6 @@
 import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { ConfirmDialog } from './ConfirmDialog'
 
 export function Inspector() {
   const { nodes, connections, selectedNodeId, activePatchSource, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService } = useInfraStore()
@@ -447,32 +448,15 @@ export function Inspector() {
         ) : null}
       </div>
 
-      {showDecommissionConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#000000]/80 backdrop-blur-sm p-4">
-          <div className="bg-[#0a1536] border border-red-500/50 p-6 rounded-xl shadow-[0_0_50px_rgba(220,38,38,0.2)] max-w-sm w-full">
-            <h3 className="text-xl font-bold text-red-500 flex items-center gap-3 mb-3">
-              <span className="text-2xl">⚠️</span> Destructive Action
-            </h3>
-            <p className="text-sm text-slate-300 mb-6 leading-relaxed">
-              Are you absolutely sure you want to permanently decommission <strong className="text-white">{selectedNode.name}</strong>? This action will completely erase its configuration and cannot be undone.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => setShowDecommissionConfirm(false)}
-                className="px-4 py-2 text-sm font-bold text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-700 rounded transition-colors border border-slate-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDecommission}
-                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-500 rounded shadow-[0_0_20px_rgba(220,38,38,0.6)] hover:shadow-[0_0_30px_rgba(220,38,38,0.8)] transition-all"
-              >
-                Confirm Decommission
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog 
+        isOpen={showDecommissionConfirm}
+        title="Decommission Asset?"
+        message={`Are you absolutely sure you want to permanently decommission ${selectedNode.name}? This action will completely erase its configuration and cannot be undone.`}
+        confirmText="Confirm Decommission"
+        type="danger"
+        onConfirm={confirmDecommission}
+        onCancel={() => setShowDecommissionConfirm(false)}
+      />
     </>
   )
 }
