@@ -14,3 +14,13 @@
 - [x] Phase 3.1: Guided Tutorial Engine ("Your First Rack" reactive tracking)
 - [x] Phase 3.2: Certifications & Achievements (Rubrik-themed Mission HUD & Port Refinement)
 
+## Phase 4: Enhanced Terminal Realism
+- [x] Phase 4.1: Physical Console Simulation (Node-specific auto-attachment)
+- [x] Phase 4.2: Advanced CLI Utilities (`top`, `health`, `config`)
+
+## Phase 5: Service Deployment & Virtualization
+- [x] Phase 5.1: Application Catalog (WordPress, PostgreSQL, K8s blueprints)
+- [x] Phase 5.2: 3D Holographic Service Indicators
+- [x] Phase 5.3: Visual Dependency Mapping (Data Threads between tiers)
+- [/] Phase 5.4: Monitoring Dashboards & Metrics (In Progress)
+
