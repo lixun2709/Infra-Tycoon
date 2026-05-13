@@ -13,7 +13,7 @@ export function TopNav({
   onToggleNOC,
   onToggleTerminal,
   onOpenHandbook,
-  isTerminalOpen
+  isTerminalOpen,
 }: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
   

@@ -181,6 +181,14 @@ export interface Blueprint {
   createdAt: number
 }
 
+export type ApplicationDeployment = {
+  id: string
+  appId: string
+  nodeId: string
+  status: 'deploying' | 'running' | 'error'
+  progress: number
+}
+
 type InfraState = {
   nodes: InfraNode[]
   connections: Connection[]
@@ -214,6 +222,9 @@ type InfraState = {
   postMortems: PostMortem[]
   blueprints: Blueprint[]
   previewBlueprintId: string | null
+  
+  // v5.0 Service Layer
+  applications: ApplicationDeployment[]
   
   // Day 6: Enterprise Management Console
   terminalStates: Record<string, {
@@ -261,7 +272,7 @@ type InfraState = {
   
   // Terminal Actions
   updateTerminalLayout: (layout: Partial<{ width: number; height: number; x: number; y: number; isMaximized: boolean }>) => void
-  addTerminalSession: (title?: string) => void
+  addTerminalSession: (title?: string, initialContext?: { mode: 'global' | 'ssh' | 'nano' | 'top', targetId: string | null }) => void
   closeTerminalSession: (sessionId: string) => void
   setActiveSession: (sessionId: string) => void
   splitTerminalPane: (direction: 'vertical' | 'horizontal') => void
@@ -270,6 +281,10 @@ type InfraState = {
   setTerminalAlias: (name: string, command: string) => void
   setTerminalEnvVar: (name: string, value: string) => void
   writeTerminalFile: (path: string, content: string) => void
+  
+  // v5.0 Service Layer Actions
+  deployApplication: (appId: string, nodeId: string) => void
+  removeApplication: (id: string) => void
   
   // Infrastructure Core Actions
   processTick: () => void
@@ -419,7 +434,9 @@ export const useInfraStore = create<InfraState>()(
       capacityUnits: 0,
       blueprints: [],
       previewBlueprintId: null,
-      assistantTargetId: null,
+      applications: [],
+      
+      // Day 6: Enterprise Management Console
       isGlobalMapOpen: false,
       isChaosMode: false,
 
@@ -653,7 +670,7 @@ export const useInfraStore = create<InfraState>()(
         }))
       },
 
-      addTerminalSession: (title = 'New Session') => {
+      addTerminalSession: (title = 'New Session', initialContext?: { mode: 'global' | 'ssh' | 'nano' | 'top', targetId: string | null }) => {
         const siteId = get().currentSiteId
         const state = get().terminalStates[siteId]
         if (!state) return
@@ -667,7 +684,7 @@ export const useInfraStore = create<InfraState>()(
             logs: [`Session ${title} started.`], 
             history: [], 
             cwd: '/', 
-            context: { mode: 'global', targetId: null } 
+            context: initialContext || { mode: 'global', targetId: null } 
           }],
           activePaneId: paneId,
           layout: 'single'
@@ -1059,6 +1076,59 @@ export const useInfraStore = create<InfraState>()(
             get().syncNtp(newContext.targetId)
             output.push("[[GREEN]]NTP: Clock synchronized with Stratum-2 source. Offset: 0.12ms[[RESET]]")
           } else output.push("[[RED]]sync-ntp: must be connected to a node.[[RESET]]")
+        } else if (cmdLower === 'health') {
+          if (targetNode && targetNode.componentHealth) {
+            output.push(`--- [[BLUE]]HARDWARE TELEMETRY: ${targetNode.hostname || targetNode.id.slice(0,8)}[[RESET]] ---`)
+            output.push(`OVERALL STATUS: ${targetNode.healthStatus === 'healthy' ? '[[GREEN]]OPTIMAL[[RESET]]' : '[[RED]]' + targetNode.healthStatus.toUpperCase() + '[[RESET]]'}`)
+            output.push("")
+            output.push("COMPONENT          STATUS       DESCRIPTION")
+            output.push("---------          ------       -----------")
+            
+            targetNode.componentHealth.cpu.forEach((s, i) => {
+              const color = s === 'healthy' ? '[[GREEN]]' : '[[RED]]'
+              output.push(`CPU_${i}`.padEnd(19) + `${color}${s.toUpperCase()}[[RESET]]`.padEnd(21) + (s === 'healthy' ? 'Executing instructions at 3.2GHz' : 'Thermal throttling detected'))
+            })
+            
+            targetNode.componentHealth.ram.forEach((s, i) => {
+              const color = s === 'healthy' ? '[[GREEN]]' : '[[RED]]'
+              if (i < 4) // Show only first 4 to avoid clutter
+                output.push(`DIMM_${i}`.padEnd(19) + `${color}${s.toUpperCase()}[[RESET]]`.padEnd(21) + (s === 'healthy' ? 'ECC verified' : 'Parity error'))
+            })
+            
+            targetNode.componentHealth.drives.forEach((s, i) => {
+              const color = s === 'healthy' ? '[[GREEN]]' : '[[RED]]'
+              if (i < 4) // Show only first 4
+                output.push(`DRIVE_${i}`.padEnd(19) + `${color}${s.toUpperCase()}[[RESET]]`.padEnd(21) + (s === 'healthy' ? 'S.M.A.R.T. OK' : 'Reallocation event'))
+            })
+          } else {
+            output.push("[[RED]]health: command only available on physical hardware consoles.[[RESET]]")
+          }
+        } else if (cmdLower === 'config') {
+          if (targetNode) {
+            const subCmd = args[1]
+            if (subCmd === 'ip') {
+              const ip = args[2]
+              const mask = args[3] || '255.255.255.0'
+              if (!ip) output.push("usage: config ip [IP] [MASK]")
+              else {
+                updateNode(targetNode.id, { managementIP: ip })
+                output.push(`[[GREEN]]Interface config updated. IP set to ${ip}/${mask}[[RESET]]`)
+              }
+            } else if (subCmd === 'vlan') {
+              const vlanId = parseInt(args[2])
+              if (isNaN(vlanId)) output.push("usage: config vlan [ID]")
+              else {
+                // Update first network port VLAN for simplicity in simulation
+                const newPorts = targetNode.ports.map(p => p.type === 'network' ? { ...p, vlan: vlanId } : p)
+                updateNode(targetNode.id, { ports: newPorts })
+                output.push(`[[GREEN]]Native VLAN updated to ${vlanId} on all network interfaces.[[RESET]]`)
+              }
+            } else {
+              output.push("usage: config [ip|vlan] ...")
+            }
+          } else {
+            output.push("[[RED]]config: command only available on physical hardware consoles.[[RESET]]")
+          }
         } else if (cmdLower === 'cat') {
           const path = args[1]
           if (siteState.storedFiles[path]) output.push(...siteState.storedFiles[path].split('\n'))
@@ -1847,9 +1917,45 @@ export const useInfraStore = create<InfraState>()(
         })
       },
 
+      deployApplication: (appId, nodeId) => {
+        const { nodes, pushAlert } = get()
+        const node = nodes.find(n => n.id === nodeId)
+        if (!node) return
+
+        const id = `app-${Math.random().toString(36).substr(2, 9)}`
+        const newApp: ApplicationDeployment = {
+          id,
+          appId,
+          nodeId,
+          status: 'deploying',
+          progress: 0
+        }
+
+        set(state => ({ applications: [...state.applications, newApp] }))
+        pushAlert('info', `Deployment started: ${appId} on ${node.name}`, nodeId)
+      },
+
+      removeApplication: (id) => {
+        set(state => ({ applications: state.applications.filter(a => a.id !== id) }))
+      },
+
       processTick: () => {
-        const { nodes } = get()
+        const { nodes, applications } = get()
         
+        // Process Application Deployments
+        if (applications.length > 0) {
+          const updatedApps = applications.map(app => {
+            if (app.status === 'deploying') {
+              const newProgress = app.progress + 5
+              if (newProgress >= 100) {
+                return { ...app, progress: 100, status: 'running' as const }
+              }
+              return { ...app, progress: newProgress }
+            }
+            return app
+          })
+          set({ applications: updatedApps })
+        }
         // 1. Recalculate Facilities (Power/Thermal)
         recalculateRoomStats()
         

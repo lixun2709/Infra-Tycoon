@@ -6,7 +6,7 @@ import { CheckCircle2, Circle, Target, Trophy, ChevronRight, Activity, Zap } fro
 
 export const MissionHUD: React.FC = () => {
   const { missions, activeMissionId } = useMissionStore()
-  const selectedNodeId = useInfraStore(s => s.selectedNodeId)
+  const [isCollapsed, setIsCollapsed] = React.useState(false)
   const activeMission = missions.find(m => m.id === activeMissionId)
 
   if (!activeMission) return null
@@ -15,20 +15,29 @@ export const MissionHUD: React.FC = () => {
   const totalCount = activeMission.objectives.length
   const progressPercent = (completedCount / totalCount) * 100
 
-  // Dynamic positioning to avoid Inspector overlap
-  const horizontalOffset = selectedNodeId ? 430 : 24
-
   return (
-    <div className="fixed z-50 pointer-events-none transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1)" 
-         style={{ top: '100px', right: `${horizontalOffset}px`, width: '340px' }}>
+    <div className="fixed z-50 left-8 bottom-8 pointer-events-none flex flex-col items-start gap-4">
+      {/* Toggle Button */}
+      <button 
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="pointer-events-auto p-3 rounded-xl border border-white/10 bg-slate-950/80 backdrop-blur-xl text-teal-400 hover:text-teal-300 hover:bg-slate-900 transition-all flex items-center gap-3 shadow-2xl"
+      >
+        <div className="p-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20">
+          <Target size={18} className={isCollapsed ? 'animate-pulse' : ''} />
+        </div>
+        <span className="text-[10px] font-black uppercase tracking-[0.2em]">{isCollapsed ? 'Maximize Objectives' : 'Minimize HUD'}</span>
+        <ChevronRight size={16} className={`transition-transform duration-300 ${isCollapsed ? 'rotate-0' : 'rotate-90'}`} />
+      </button>
+
       <AnimatePresence mode="wait">
-        <motion.div
-          key={activeMission.id}
-          initial={{ opacity: 0, x: 100, filter: 'blur(10px)' }}
-          animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
-          exit={{ opacity: 0, x: 100, filter: 'blur(10px)' }}
-          className="pointer-events-auto overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 backdrop-blur-3xl shadow-[0_32px_64px_rgba(0,0,0,0.8)]"
-        >
+        {!isCollapsed && (
+          <motion.div
+            key={activeMission.id}
+            initial={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(10px)' }}
+            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(10px)' }}
+            className="pointer-events-auto w-[340px] overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 backdrop-blur-3xl shadow-[0_32px_64px_rgba(0,0,0,0.8)]"
+          >
           {/* Rubrik-Style Header */}
           <div className="relative px-6 py-5 bg-gradient-to-br from-slate-900/50 to-slate-950/50">
             <div className="flex items-start justify-between mb-2">
@@ -154,7 +163,8 @@ export const MissionHUD: React.FC = () => {
               </div>
             </div>
           )}
-        </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   )

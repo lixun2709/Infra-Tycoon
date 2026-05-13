@@ -5,6 +5,7 @@ import { X, Plus, Maximize2, Minimize2, Terminal as TerminalIcon, GripHorizontal
 
 export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
+  const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const siteState = useInfraStore(s => s.terminalStates[currentSiteId])
   const nodes = useInfraStore(s => s.nodes)
   
@@ -50,6 +51,22 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       })
     }
   }, [currentSiteId])
+
+  // Auto-attach to selected node
+  useEffect(() => {
+    if (selectedNodeId) {
+      const node = nodes.find(n => n.id === selectedNodeId)
+      if (node && node.type !== 'rack') {
+        const existingSession = sessions.find(s => s.panes.some(p => p.context.targetId === selectedNodeId))
+        if (existingSession) {
+          setActiveSession(existingSession.id)
+        } else {
+          // Add a new dedicated session for this node
+          addTerminalSession(`${node.hostname || node.name} CONSOLE`, { mode: 'ssh', targetId: selectedNodeId })
+        }
+      }
+    }
+  }, [selectedNodeId])
 
   // Auto-scroll logic
   useEffect(() => {
@@ -211,8 +228,10 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     )
   }
 
-  const TopMonitor: React.FC = () => {
+  const TopMonitor: React.FC<{ nodeId?: string | null }> = ({ nodeId }) => {
     const [, setTick] = useState(0)
+    const targetNode = nodeId ? nodes.find(n => n.id === nodeId) : null
+
     useEffect(() => {
       const interval = setInterval(() => setTick(t => t + 1), 1000)
       const handleGlobalKey = (e: KeyboardEvent) => {
@@ -236,11 +255,17 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       )
     }
 
+    // Simulate metrics based on node type and status
+    const cpuBase = targetNode ? (targetNode.systemState === 'running' ? 15 : 0) : 5
+    const memBase = targetNode ? (targetNode.systemState === 'running' ? 40 : 0) : 10
+
     return (
       <div className="flex-1 bg-black p-8 font-mono text-[10px] space-y-4 overflow-hidden selection:bg-teal-500/20">
         <div className="flex justify-between items-start border-b border-white/10 pb-4">
           <div>
-            <div className="text-teal-400 font-black text-xs mb-1">PROD-INFRA-TOP - v1.3.4</div>
+            <div className="text-teal-400 font-black text-xs mb-1">
+              {targetNode ? `${targetNode.hostname || targetNode.id.slice(0,8)}` : 'PROD-INFRA'} - TOP MONITOR v1.4
+            </div>
             <div className="text-slate-500 uppercase tracking-widest text-[9px]">Uptime: 42 days, 14:22:01</div>
           </div>
           <div className="text-right">
@@ -252,15 +277,11 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         <div className="space-y-2">
            <div className="flex items-center gap-4">
               <span className="w-12 text-slate-500 uppercase">CPU:</span>
-              {renderBar(Math.random() * 20 + 5, 'text-emerald-400')}
+              {renderBar(Math.random() * 10 + cpuBase, 'text-emerald-400')}
            </div>
            <div className="flex items-center gap-4">
               <span className="w-12 text-slate-500 uppercase">MEM:</span>
-              {renderBar(Math.random() * 15 + 40, 'text-teal-400')}
-           </div>
-           <div className="flex items-center gap-4">
-              <span className="w-12 text-slate-500 uppercase">SWP:</span>
-              {renderBar(Math.random() * 2, 'text-rose-400')}
+              {renderBar(Math.random() * 5 + memBase, 'text-teal-400')}
            </div>
         </div>
 
@@ -269,27 +290,33 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
              <tr className="text-slate-500 border-b border-white/5 uppercase text-[9px]">
                <th className="py-2">PID</th>
                <th>USER</th>
-               <th>PR</th>
-               <th>VIRT</th>
-               <th>RES</th>
                <th>%CPU</th>
                <th>%MEM</th>
                <th>COMMAND</th>
              </tr>
            </thead>
            <tbody>
-             {nodes.filter(n => n.siteId === currentSiteId).slice(0, 12).map((n, i) => (
-               <tr key={n.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                 <td className="py-1.5">{1000 + i}</td>
-                 <td>root</td>
-                 <td>20</td>
-                 <td>1.2g</td>
-                 <td>{(Math.random()*256+128).toFixed(0)}m</td>
-                 <td className="text-emerald-400 font-bold">{(Math.random()*12).toFixed(1)}</td>
-                 <td>{(Math.random()*5).toFixed(1)}</td>
-                 <td className="text-teal-500">{n.name}</td>
-               </tr>
-             ))}
+             {targetNode ? (
+               targetNode.services.map((s, i) => (
+                 <tr key={s.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                   <td className="py-1.5">{1000 + i}</td>
+                   <td>root</td>
+                   <td className="text-emerald-400 font-bold">{(Math.random()*5 + (s.status === 'running' ? 2 : 0)).toFixed(1)}</td>
+                   <td>{(Math.random()*2 + 1).toFixed(1)}</td>
+                   <td className="text-teal-500">{s.type.toLowerCase()}d</td>
+                 </tr>
+               ))
+             ) : (
+               nodes.filter(n => n.siteId === currentSiteId).slice(0, 12).map((n, i) => (
+                 <tr key={n.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                   <td className="py-1.5">{2000 + i}</td>
+                   <td>system</td>
+                   <td className="text-emerald-400 font-bold">{(Math.random()*12).toFixed(1)}</td>
+                   <td>{(Math.random()*5).toFixed(1)}</td>
+                   <td className="text-teal-500">{n.name}</td>
+                 </tr>
+               ))
+             )}
            </tbody>
         </table>
       </div>
@@ -300,7 +327,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     const paneNode = pane.context.targetId ? nodes.find(n => n.id === pane.context.targetId) : null
     
     if (pane.context.mode === 'nano') return <NanoEditor pane={pane} />
-    if (pane.context.mode === 'top') return <TopMonitor />
+    if (pane.context.mode === 'top') return <TopMonitor nodeId={pane.context.targetId} />
 
     return (
       <div 
@@ -331,7 +358,9 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             >
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-teal-400 font-black text-xs uppercase tracking-tighter">root@infra</span>
+                  <span className="text-teal-400 font-black text-xs uppercase tracking-tighter">
+                    {paneNode ? `root@${paneNode.hostname || paneNode.id.slice(0,8)}` : 'root@infra'}
+                  </span>
                   <span className="text-slate-500 text-xs">:</span>
                   <span className="text-amber-400 text-xs font-black">{pane.cwd}</span>
                   <span className="text-emerald-500 font-black text-[10px] animate-pulse">●</span>
@@ -452,6 +481,12 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
          </div>
       </div>
+
+      {/* CRT Overlay Effects */}
+      <div className="absolute inset-0 pointer-events-none z-[110] overflow-hidden opacity-[0.03]">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
+      </div>
+      <div className="absolute inset-0 pointer-events-none z-[110] bg-white/5 opacity-[0.01] animate-pulse" />
 
       {/* Resize Handle */}
       {!layout.isMaximized && (

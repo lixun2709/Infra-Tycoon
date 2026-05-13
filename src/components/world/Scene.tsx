@@ -2,6 +2,7 @@ import { Edges, Line, OrbitControls, Text, Grid, Float, Billboard } from '@react
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { useMemo, useState, useEffect, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
+import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import type { InfraNode } from '../../store/useInfraStore'
 import { useInfraStore } from '../../store/useInfraStore'
@@ -169,19 +170,8 @@ function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSele
           const isSource = activePatchSource?.nodeId === node.id && activePatchSource?.portId === port.id
           const isPlugged = port.connectedTo !== null || isSource
 
-          // Containment Boundaries (Only show if selected)
-          const showBoundary = isSelected && (idx % (isHighDensity ? 12 : 4) === 0)
-          const boundaryWidth = isHighDensity ? spacingX * 11.5 : spacingX * 3.5
-
           return (
             <group key={port.id} position={[x, y, 0]}>
-              {showBoundary && (
-                <mesh position={[boundaryWidth / 2 - spacingX * 0.2, 0, -0.002]}>
-                  <planeGeometry args={[boundaryWidth + spacingX * 0.8, spacingY * 1.2]} />
-                  <meshStandardMaterial color={scheme.boundary} transparent opacity={0.3} />
-                </mesh>
-              )}
-
               {/* Port Outer Housing - Only 1 mesh instead of 2 for optimization */}
               <mesh position={[0, 0, -0.003]}>
                 <boxGeometry args={[portSize * 1.2, portSize * 1.2, 0.006]} />
@@ -447,6 +437,22 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
         </group>
       )}
 
+      {/* Boot Sequence Overlay */}
+      {node.systemState === 'booting' && (
+        <group position={[0, h / 2 + 0.15, 0.45]}>
+          <Text fontSize={0.03} color="#4AF626" outlineColor="#064e3b" outlineWidth={0.005}>
+            {node.bootProgress < 30 ? '> POST: MEMORY CHECK' :
+             node.bootProgress < 60 ? '> LOAD: KERNEL IMAGE' :
+             node.bootProgress < 90 ? '> INIT: SYSTEM SERVICES' :
+             '> BOOT: SUCCESS'}
+          </Text>
+          <pointLight color="#4AF626" distance={0.5} intensity={1} />
+        </group>
+      )}
+
+      {/* Service Holograms */}
+      <ServiceHolograms node={node} h={h} />
+
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
       </Text>
@@ -624,6 +630,104 @@ function Rack({ node, isSelected, onSelect, children }: { node: InfraNode; isSel
   )
 }
 
+function ServiceHolograms({ node, h }: { node: InfraNode, h: number }) {
+  const allApplications = useInfraStore(s => s.applications)
+  const applications = useMemo(() => allApplications.filter(a => a.nodeId === node.id), [allApplications, node.id])
+  
+  if (applications.length === 0) return null
+
+  return (
+    <Billboard position={[0.65, 0, 0.45]}>
+      {applications.map((app, i) => {
+        const appInfo = APPLICATION_CATALOG[app.appId]
+        if (!appInfo) return null
+
+        return (
+          <group key={app.id} position={[0, (i - (applications.length - 1) / 2) * 0.12, 0]}>
+            <Text 
+              fontSize={0.08} 
+              color={app.status === 'deploying' ? '#94a3b8' : appInfo.color} 
+              outlineColor="#000000" 
+              outlineWidth={0.005}
+            >
+              {appInfo.icon}
+            </Text>
+            <pointLight color={appInfo.color} distance={0.3} intensity={app.status === 'running' ? 0.8 : 0.2} />
+          </group>
+        )
+      })}
+    </Billboard>
+  )
+}
+
+function DataThreads() {
+  const nodes = useInfraStore(s => s.nodes)
+  const applications = useInfraStore(s => s.applications)
+  const selectedNodeId = useInfraStore(s => s.selectedNodeId)
+
+  const threads = useMemo(() => {
+    if (!selectedNodeId) return []
+    const selectedApps = applications.filter(a => a.nodeId === selectedNodeId)
+    
+    const links: Array<{ start: THREE.Vector3; end: THREE.Vector3; color: string }> = []
+    
+    selectedApps.forEach(app => {
+      const appInfo = APPLICATION_CATALOG[app.appId]
+      if (!appInfo) return
+
+      if (appInfo.category === 'web') {
+        const dbApps = applications.filter(a => APPLICATION_CATALOG[a.appId]?.category === 'database')
+        dbApps.forEach(dbApp => {
+          const startNode = nodes.find(n => n.id === app.nodeId)
+          const endNode = nodes.find(n => n.id === dbApp.nodeId)
+          if (startNode && endNode && startNode.id !== endNode.id) {
+            const getPos = (n: InfraNode) => {
+              const p = n.position.clone()
+              if (n.parentRackId) {
+                const rack = nodes.find(rk => rk.id === n.parentRackId)
+                if (rack) {
+                   const yOffset = -RACK_HEIGHT / 2 + (RACK_HEIGHT / 42) * ((n.slotIndex ?? 1) - 1 + n.uHeight / 2)
+                   p.set(rack.position.x, rack.position.y + RACK_HEIGHT / 2 + yOffset, rack.position.z)
+                }
+              }
+              return p
+            }
+            links.push({
+              start: getPos(startNode),
+              end: getPos(endNode),
+              color: appInfo.color
+            })
+          }
+        })
+      }
+    })
+    return links
+  }, [selectedNodeId, applications, nodes])
+
+  return (
+    <group>
+      {threads.map((link, i) => (
+        <DataThread key={i} start={link.start} end={link.end} color={link.color} />
+      ))}
+    </group>
+  )
+}
+
+function DataThread({ start, end, color }: { start: THREE.Vector3; end: THREE.Vector3; color: string }) {
+  const curve = useMemo(() => {
+    const mid = new THREE.Vector3().lerpVectors(start, end, 0.5)
+    mid.y += 1.5
+    return new THREE.QuadraticBezierCurve3(start, mid, end)
+  }, [start, end])
+
+  return (
+    <mesh>
+      <tubeGeometry args={[curve, 20, 0.005, 8, false]} />
+      <meshBasicMaterial color={color} transparent opacity={0.4} />
+    </mesh>
+  )
+}
+
 function Floor() {
   const { placementMode, setPlacementMode, addNode, currentSiteId } = useInfraStore()
   const [ghostPos, setGhostPos] = useState<THREE.Vector3 | null>(null)
@@ -636,7 +740,6 @@ function Floor() {
         receiveShadow
         onPointerMove={(e) => {
           if (!placementMode) return
-          // snap to nearest 1 unit
           const x = Math.round(e.point.x)
           const z = Math.round(e.point.z)
           setGhostPos(new THREE.Vector3(x, 0, z))

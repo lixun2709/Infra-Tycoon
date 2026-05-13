@@ -11,6 +11,8 @@ import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
 import { MissionLogic } from './components/world/MissionLogic'
+import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
+import { Rocket, X } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -60,6 +62,7 @@ function App() {
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [isHandbookOpen, setIsHandbookOpen] = useState(false)
+  const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -142,6 +145,25 @@ function App() {
         isTerminalOpen={isTerminalOpen}
       />
 
+      {/* Enterprise Catalog Toggle (Rocket) */}
+      <div className="fixed bottom-8 right-32 z-[200]">
+        <button 
+          onClick={() => setIsAppBrowserOpen(!isAppBrowserOpen)}
+          className={`relative w-20 h-20 rounded-[2.5rem] flex items-center justify-center transition-all shadow-2xl ${isAppBrowserOpen ? 'bg-slate-800 rotate-90' : 'bg-blue-600 hover:bg-blue-500'}`}
+        >
+          {isAppBrowserOpen ? (
+            <X className="text-white w-8 h-8" />
+          ) : (
+            <Rocket className="text-white w-8 h-8" />
+          )}
+          {!isAppBrowserOpen && (
+             <span className="absolute -top-10 right-0 bg-slate-900 text-white text-[10px] px-3 py-1 rounded-full border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-black uppercase tracking-widest">
+               App Catalog
+             </span>
+          )}
+        </button>
+      </div>
+
       {/* Secondary Header Overlay: Site Toggle & Statistics */}
       <div className="fixed top-16 left-0 right-0 z-40 pointer-events-none">
         <div className="max-w-[1600px] mx-auto px-8 py-4 flex items-start justify-between">
@@ -192,6 +214,7 @@ function App() {
       <MissionLogic />
 
       <Inspector />
+      <ApplicationBrowser isOpen={isAppBrowserOpen} onClose={() => setIsAppBrowserOpen(false)} />
       
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
       {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
