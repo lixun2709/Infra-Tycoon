@@ -7,6 +7,8 @@ import {
   type PortType,
 } from '../physics/hardwareLibrary'
 
+import { type ActiveContract, CONTRACT_CATALOG } from '../physics/contractLibrary'
+
 export {
   HARDWARE_CATALOG,
   type HardwareCatalogKey,
@@ -17,6 +19,7 @@ import { findFirstEmptySlot } from '../physics/snapping'
 import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine'
 import { useMissionStore } from './useMissionStore'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
+import { audioManager } from '../utils/AudioManager'
 
 export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer' | 'security' | 'identity' | 'facility'
 export type RackStatus = 'online' | 'power_overload'
@@ -242,6 +245,20 @@ type InfraState = {
     storedFiles: Record<string, string>
   }>
   
+  // v6.0 Economy & Progression
+  balance: number
+  reputation: number
+  activeContracts: ActiveContract[]
+  acceptContract: (blueprintId: string) => void
+  cancelContract: (id: string) => void
+  
+  // v7.0 Global & Hybrid
+  isGlobalMapOpen: boolean
+  toggleGlobalMap: () => void
+  cloudBurstingActive: boolean
+  activeCloudInstances: number
+  setCloudBursting: (active: boolean) => void
+  
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
   isHeatMapVisible: boolean
@@ -331,6 +348,7 @@ type InfraState = {
   updateTerminalLogs: (sessionId: string, paneId: string, logs: string[]) => void
   finalRemoveNode: (id: string) => void
   visualizePath: (startId: string, endId: string) => void
+  fixState: () => void
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
@@ -359,6 +377,18 @@ const catalogDisplayName: Record<HardwareCatalogKey, string> = {
   ENV_SENSOR: 'Environmental Sensor',
   IN_ROW_CRAC_4U: 'In-Row CRAC (4U)',
   RACK_42U: 'Server Rack (42U)',
+}
+
+function calculateGeoLatency(siteA: Site, siteB: Site): number {
+  if (siteA.id === siteB.id) return 1 // Intra-site latency
+  
+  // Haversine-ish simplified distance
+  const dLat = Math.abs(siteA.geoCoords.lat - siteB.geoCoords.lat)
+  const dLng = Math.abs(siteA.geoCoords.lng - siteB.geoCoords.lng)
+  const distance = Math.sqrt(dLat * dLat + dLng * dLng)
+  
+  // Rule of thumb: ~1ms per 100km round trip + processing overhead
+  return Math.round(distance * 5) + 20 
 }
 
 function createPortsForCatalog(nodeId: string, key: HardwareCatalogKey): HardwarePort[] {
@@ -408,7 +438,8 @@ export const useInfraStore = create<InfraState>()(
       activePatchSource: null,
       mousePosition: null,
       sites: [
-        { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } }
+        { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
+        { id: 'site-2', name: 'DR-Site', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 40.71, lng: -74.00 } }
       ],
       currentSiteId: 'site-1',
       placementMode: false,
@@ -425,6 +456,12 @@ export const useInfraStore = create<InfraState>()(
       deploymentQueue: [],
       isHeatMapVisible: false,
       simulationCycle: 0,
+      balance: 1000000,
+      reputation: 85,
+      activeContracts: [],
+      isGlobalMapOpen: false,
+      cloudBurstingActive: false,
+      activeCloudInstances: 0,
       dnsRecords: [],
       dhcpLeases: [],
       availableIPPool: Array.from({ length: 154 }, (_, i) => `10.0.0.${101 + i}`),
@@ -437,7 +474,6 @@ export const useInfraStore = create<InfraState>()(
       applications: [],
       
       // Day 6: Enterprise Management Console
-      isGlobalMapOpen: false,
       isChaosMode: false,
 
 
@@ -448,6 +484,9 @@ export const useInfraStore = create<InfraState>()(
       toggleHeatMap: () => set(state => ({ isHeatMapVisible: !state.isHeatMapVisible })),
 
       pushAlert: (severity, message, nodeId) => {
+        if (severity === 'critical') audioManager.playEffect('error')
+        else if (severity === 'warning') audioManager.playEffect('alert')
+        
         set((state) => ({
           alerts: [{ id: crypto.randomUUID(), timestamp: Date.now(), severity, message, isAcknowledged: false, nodeId }, ...state.alerts].slice(0, 100)
         }))
@@ -1389,6 +1428,8 @@ export const useInfraStore = create<InfraState>()(
  
       handlePortClick: (nodeId, portId) => {
         const { patchingActive, activePatchSource, nodes } = get()
+        audioManager.playEffect('click')
+        
         if (!patchingActive) set({ patchingActive: true, activePatchSource: { nodeId, portId } })
         else {
           if (activePatchSource?.nodeId === nodeId && activePatchSource?.portId === portId) {
@@ -1636,6 +1677,16 @@ export const useInfraStore = create<InfraState>()(
       },
 
       patchConnection: (sNodeId, sPortId, tNodeId, tPortId) => {
+        const { nodes, sites } = get()
+        const sNode = nodes.find(n => n.id === sNodeId)
+        const tNode = nodes.find(n => n.id === tNodeId)
+        if (!sNode || !tNode) return
+
+        const sSite = sites.find(s => s.id === sNode.siteId)
+        const tSite = sites.find(s => s.id === tNode.siteId)
+        
+        const latency = (sSite && tSite) ? calculateGeoLatency(sSite, tSite) : 0.1
+
         const id = `conn-${Math.random().toString(36).substr(2, 9)}`
         const newConn: Connection = {
           id,
@@ -1645,9 +1696,9 @@ export const useInfraStore = create<InfraState>()(
           endPortId: tPortId,
           bandwidthGbps: 100,
           throughputGbps: 0,
-          latencyMs: 0.1,
+          latencyMs: latency,
           status: 'active',
-          type: get().nodes.find(n => n.id === sNodeId)?.ports.find(p => p.id === sPortId)?.type
+          type: sNode.ports.find(p => p.id === sPortId)?.type
         }
         set(state => ({ connections: [...state.connections, newConn] }))
         useMissionStore.getState().completeObjective('m2', 'm2_obj1')
@@ -1874,6 +1925,7 @@ export const useInfraStore = create<InfraState>()(
       },
 
       toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
+      setCloudBursting: (active) => set({ cloudBurstingActive: active }),
 
       updateTerminalLogs: (sessionId: string, paneId: string, logs: string[]) => set(state => {
         const siteId = state.currentSiteId
@@ -1892,6 +1944,20 @@ export const useInfraStore = create<InfraState>()(
             }
           }
         }
+      }),
+
+      fixState: () => set(state => {
+        const requiredSites = [
+          { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
+          { id: 'site-2', name: 'DR-Site', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 40.71, lng: -74.00 } }
+        ]
+        const updatedSites = [...state.sites]
+        requiredSites.forEach(rs => {
+          if (!updatedSites.find(s => s.id === rs.id)) {
+            updatedSites.push(rs)
+          }
+        })
+        return { sites: updatedSites }
       }),
 
       resetState: () => {
@@ -1935,18 +2001,50 @@ export const useInfraStore = create<InfraState>()(
         pushAlert('info', `Deployment started: ${appId} on ${node.name}`, nodeId)
       },
 
-      removeApplication: (id) => {
-        set(state => ({ applications: state.applications.filter(a => a.id !== id) }))
+      removeApplication: (id) => set(state => ({
+        applications: state.applications.filter(a => a.id !== id)
+      })),
+
+      acceptContract: (blueprintId) => {
+        const { balance, reputation, pushAlert } = get()
+        const blueprint = CONTRACT_CATALOG[blueprintId]
+        if (!blueprint) return
+
+        if (reputation < blueprint.minReputation) {
+          pushAlert('warning', `Reputation too low for ${blueprint.name}. Required: ${blueprint.minReputation}`)
+          return
+        }
+
+        const newContract: ActiveContract = {
+          id: `con-${Math.random().toString(36).substr(2, 9)}`,
+          blueprintId,
+          startDate: get().simulationCycle,
+          uptimeTicks: 0,
+          totalTicks: 0,
+          currentStatus: 'healthy',
+          accumulatedPenalty: 0
+        }
+
+        set(state => ({ activeContracts: [...state.activeContracts, newContract] }))
+        audioManager.playEffect('success')
+        pushAlert('success', `CONTRACT SIGNED: ${blueprint.name} is now active.`)
+      },
+
+      cancelContract: (id) => {
+        set(state => ({
+          activeContracts: state.activeContracts.filter(c => c.id !== id)
+        }))
+        get().pushAlert('info', 'Contract cancelled by operator.')
       },
 
       processTick: () => {
-        const { nodes, applications } = get()
+        const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
         
-        // Process Application Deployments
+        // 1. Process Application Deployments
         if (applications.length > 0) {
           const updatedApps = applications.map(app => {
             if (app.status === 'deploying') {
-              const newProgress = app.progress + 5
+              const newProgress = app.progress + 10 // Faster for Phase 6 testing
               if (newProgress >= 100) {
                 return { ...app, progress: 100, status: 'running' as const }
               }
@@ -1956,23 +2054,78 @@ export const useInfraStore = create<InfraState>()(
           })
           set({ applications: updatedApps })
         }
-        // 1. Recalculate Facilities (Power/Thermal)
-        recalculateRoomStats()
-        
-        // 2. Refresh Racks
-        nodes.filter(n => n.type === 'rack').forEach(r => calculateRackPower(r.id))
-        
-        // 3. Health & SLA Telemetry
-        const degradedCount = nodes.filter(n => (n.degradation ?? 0) > 50).length
-        if (degradedCount > 0 && Math.random() > 0.8) {
-          get().pushAlert('warning', `INFRA HEALTH: ${degradedCount} nodes are operating outside normal thermal/wear parameters.`)
+
+        // 2. SLA & Contract Management
+        const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0
+        let monthlyRevenue = 0
+        let monthlyPenalty = 0
+
+        const updatedContracts = activeContracts.map(contract => {
+          const blueprint = CONTRACT_CATALOG[contract.blueprintId]
+          if (!blueprint) return contract
+
+          // Check requirements
+          let isHealthy = true
+          blueprint.requirements.forEach(req => {
+            const runningApps = applications.filter(a => a.appId === req.appId && a.status === 'running')
+            if (runningApps.length < req.count) isHealthy = false
+          })
+
+          const newAccumulatedPenalty = isHealthy 
+            ? contract.accumulatedPenalty 
+            : contract.accumulatedPenalty + blueprint.penaltyPerTick
+
+          if (isMonthEnd) {
+            monthlyRevenue += blueprint.monthlyMRR
+            monthlyPenalty += newAccumulatedPenalty
+          }
+
+          return {
+            ...contract,
+            totalTicks: contract.totalTicks + 1,
+            uptimeTicks: isHealthy ? contract.uptimeTicks + 1 : contract.uptimeTicks,
+            currentStatus: isHealthy ? 'healthy' as const : 'violating' as const,
+            accumulatedPenalty: isMonthEnd ? 0 : newAccumulatedPenalty
+          }
+        })
+
+        // 3. Operational Expenses
+        const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
+        const powerCost = totalPowerKW * 0.12 // $0.12 per kWh equivalent per tick
+        const rackRent = nodes.filter(n => n.type === 'rack').length * 50 // $50 per rack per tick
+
+        // Hybrid Cloud Expenses
+        const cloudCost = get().cloudBurstingActive ? (get().activeCloudInstances * 5) : 0
+        const egressCost = get().cloudEgressGB * 0.1 // $0.10 per GB
+
+        const totalExpenses = powerCost + rackRent + cloudCost + egressCost
+        let newBalance = balance - totalExpenses
+
+        if (isMonthEnd) {
+          const netPayout = monthlyRevenue - monthlyPenalty
+          newBalance += netPayout
+          
+          // Reputation adjustment
+          const avgUptime = updatedContracts.length > 0 
+            ? updatedContracts.reduce((sum, c) => sum + (c.uptimeTicks / c.totalTicks), 0) / updatedContracts.length 
+            : 1.0
+          
+          const repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
+          set({ reputation: Math.max(0, Math.min(100, reputation + repChange)) })
+
+          get().pushAlert('success', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, Penalties: -$${monthlyPenalty})`)
         }
-        
-        // 4. Site-Specific Budget Ops
-        set(state => ({ 
-          simulationCycle: state.simulationCycle + 1,
-          operationalBudget: state.operationalBudget - (nodes.length * 2) // Basic OpEx
-        }))
+
+        // 4. State Update
+        set({ 
+          activeContracts: updatedContracts,
+          balance: newBalance,
+          simulationCycle: simulationCycle + 1
+        })
+
+        // Recalculate Facilities
+        recalculateRoomStats()
+        nodes.filter(n => n.type === 'rack').forEach(r => calculateRackPower(r.id))
       },
 
       visualizePath: (startId, endId) => {

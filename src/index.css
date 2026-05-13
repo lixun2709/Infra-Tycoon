@@ -4,6 +4,45 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-200 overflow-hidden;
+    @apply bg-[#0f172a] text-slate-200 overflow-hidden;
   }
+}
+
+@layer components {
+  .glass-dark {
+    @apply bg-[#0d1117]/80 backdrop-blur-2xl border border-white/10 shadow-2xl;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.02);
+  }
+  
+  .glass-teal {
+    @apply bg-[#2dd4bf]/5 backdrop-blur-xl border border-[#2dd4bf]/20;
+    box-shadow: 0 0 20px rgba(45, 212, 191, 0.05), inset 0 0 10px rgba(45, 212, 191, 0.05);
+  }
+
+  .neo-glow-teal {
+    box-shadow: 0 0 15px rgba(45, 212, 191, 0.4);
+  }
+
+  .neo-glow-orange {
+    box-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+  }
+}
+
+@keyframes scan { 0% { top: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { top: 100%; opacity: 0; } }
+@keyframes scan-horizontal { 0% { left: 0; opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { left: 100%; opacity: 0; } }
+.animate-scan { animation: scan 4s linear infinite; }
+.animate-scan-horizontal { animation: scan-horizontal 8s linear infinite; }
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(45, 212, 191, 0.2);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(45, 212, 191, 0.4);
 }

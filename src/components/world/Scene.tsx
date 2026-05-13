@@ -9,6 +9,7 @@ import { useInfraStore } from '../../store/useInfraStore'
 import { Assistant } from './Assistant'
 import { HeatMapOverlay } from './HeatMapOverlay'
 import { CableSystem } from './CableSystem'
+import { audioManager } from '../../utils/AudioManager'
 
 export const RACK_HEIGHT = 2.1
 const RACK_U = 42
@@ -178,7 +179,7 @@ function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSele
                 <meshStandardMaterial color="#000000" metalness={0.9} roughness={0.1} />
               </mesh>
 
-              {/* Port Inner Core */}
+              {/* Port Inner Core (Gold-Plated Contacts) */}
               <mesh 
                 onPointerOver={() => setHoveredPortId(port.id)}
                 onPointerOut={() => setHoveredPortId(null)}
@@ -187,10 +188,10 @@ function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSele
               >
                 <boxGeometry args={[portSize, portSize, 0.004]} />
                 <meshStandardMaterial 
-                  color={isPlugged ? "#00f2ff" : "#ffffff"} 
-                  metalness={1} roughness={0.0} 
-                  emissive={isPlugged ? "#00f2ff" : "#ffffff"}
-                  emissiveIntensity={isPlugged ? 4.0 : 1.5}
+                  color={isPlugged ? "#00f2ff" : "#f59e0b"} 
+                  metalness={1} roughness={0.1} 
+                  emissive={isPlugged ? "#00f2ff" : "#f59e0b"}
+                  emissiveIntensity={isPlugged ? 5.0 : 0.8}
                 />
               </mesh>
               
@@ -385,6 +386,7 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
             emissiveIntensity={emissiveIntensity}
             transparent={opacity < 1}
             opacity={opacity}
+            depthWrite={!isSelected} // Fix for internal module visibility
           />
           <Edges color={isSelected ? '#00f2ff' : '#f7fafc'} threshold={20} lineWidth={isSelected ? 3 : 1} />
         </mesh>
@@ -524,6 +526,77 @@ function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
         ))}
       </group>
 
+      {/* Cooling Fans */}
+      <group position={[0, 0, 0.35]}>
+        <CoolingFan position={[-0.3, 0, 0]} node={node} h={h} />
+        <CoolingFan position={[0.3, 0, 0]} node={node} h={h} />
+      </group>
+
+    </group>
+  )
+}
+
+function CoolingFan({ position, node, h }: { position: [number, number, number], node: InfraNode, h: number }) {
+  const meshRef = useRef<THREE.Group>(null)
+  const powerFactor = (node.currentPowerKW || 0) / (node.maxPowerKW || 1)
+  const speed = 15 + (powerFactor * 60) // Even higher base RPM
+  const fanSize = h * 0.4
+  
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return
+    // Rapid rotation with slight mechanical vibration
+    meshRef.current.rotation.z += clock.getDelta() * speed * 1.5
+    meshRef.current.position.x = Math.sin(clock.elapsedTime * 50) * 0.0005
+    meshRef.current.position.y = Math.cos(clock.elapsedTime * 45) * 0.0005
+  })
+
+  return (
+    <group position={position}>
+      {/* Outer Ring / Shroud (See-through) */}
+      <mesh>
+        <torusGeometry args={[fanSize, 0.01, 8, 32]} />
+        <meshStandardMaterial color="#475569" metalness={1} roughness={0.1} />
+      </mesh>
+      
+      {/* Protective Grill (Faint wireframe) */}
+      <mesh position={[0, 0, 0.01]}>
+        <circleGeometry args={[fanSize, 12]} />
+        <meshStandardMaterial color="#94a3b8" wireframe transparent opacity={0.3} />
+      </mesh>
+
+      {/* Spinning Blades (Thicker and brighter) */}
+      <group ref={meshRef}>
+        {[0, 1, 2, 3, 4, 5].map(i => (
+          <mesh key={i} rotation={[0, 0, (i * Math.PI) / 3]}>
+            <planeGeometry args={[fanSize * 0.4, fanSize * 1.6]} />
+            <meshStandardMaterial 
+              color="#64748b" 
+              metalness={1} 
+              roughness={0.2} 
+              emissive="#334155"
+              emissiveIntensity={0.8}
+              side={THREE.DoubleSide} 
+            />
+          </mesh>
+        ))}
+      </group>
+
+      {/* High-Tech Center Hub */}
+      <mesh position={[0, 0, 0.015]}>
+        <cylinderGeometry args={[fanSize * 0.2, fanSize * 0.25, 0.02, 16]} rotation={[Math.PI / 2, 0, 0]} />
+        <meshStandardMaterial color="#94a3b8" metalness={1} roughness={0.1} />
+      </mesh>
+
+      {/* Active Power LED (Neon Glow) */}
+      <mesh position={[fanSize * 0.6, fanSize * 0.6, 0.02]}>
+        <sphereGeometry args={[0.008, 12, 12]} />
+        <meshStandardMaterial 
+          color="#22c55e" 
+          emissive="#22c55e" 
+          emissiveIntensity={4} 
+        />
+        <pointLight color="#22c55e" distance={0.1} intensity={1} />
+      </mesh>
     </group>
   )
 }
@@ -960,6 +1033,12 @@ function World() {
   const { nodes, selectedNodeId, setSelectedNode, totalRoomBTU, currentSiteId } = useInfraStore()
   const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
   const isHot = totalRoomBTU > 50000
+
+  const { camera } = useThree()
+
+  useEffect(() => {
+    audioManager.init(camera)
+  }, [camera])
 
   return (
     <>

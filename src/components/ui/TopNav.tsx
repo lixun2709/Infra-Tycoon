@@ -4,6 +4,8 @@ interface TopNavProps {
   onOpenNetwork: () => void
   onToggleNOC: () => void
   onToggleTerminal: () => void
+  onToggleEconomy: () => void
+  onToggleGlobalMap: () => void
   onOpenHandbook: () => void
   isTerminalOpen: boolean
 }
@@ -12,10 +14,14 @@ export function TopNav({
   onOpenNetwork, 
   onToggleNOC,
   onToggleTerminal,
+  onToggleEconomy,
+  onToggleGlobalMap,
   onOpenHandbook,
   isTerminalOpen,
 }: TopNavProps) {
   const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
+  const cloudBurstingActive = useInfraStore(s => s.cloudBurstingActive)
+  const activeCloudInstances = useInfraStore(s => s.activeCloudInstances)
   
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] h-16 bg-[#020617]/90 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-8 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
@@ -34,13 +40,16 @@ export function TopNav({
       <nav className="flex items-center gap-2">
         {[
           { id: 'noc', label: 'NOC DASHBOARD', icon: '📡', active: false, onClick: onToggleNOC },
+          { id: 'global_map', label: 'GLOBAL MAP', icon: '🌍', active: false, onClick: onToggleGlobalMap },
           { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
+          { id: 'economy', label: 'FINANCIALS', icon: '💰', active: false, onClick: onToggleEconomy },
           { id: 'terminal', label: 'GLOBAL TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
           { id: 'handbook', label: 'HANDBOOK', icon: '📖', active: false, onClick: (onOpenHandbook as any) },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={tab.onClick}
+            aria-label={tab.label}
             className={`px-6 py-2 rounded-xl text-[10px] font-black tracking-widest transition-all flex items-center gap-3 border ${tab.active ? 'bg-teal-500/10 border-teal-500 text-teal-400 shadow-[0_0_15px_rgba(20,184,166,0.2)]' : 'border-transparent text-slate-400 hover:text-white hover:bg-white/5 hover:border-white/10'}`}
           >
             <span className="text-lg">{tab.icon}</span>
@@ -51,15 +60,6 @@ export function TopNav({
 
       {/* System Status & Performance */}
       <div className="flex items-center gap-8">
-        <div className="flex flex-col items-end">
-          <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest mb-0.5">Network Load</p>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-black tracking-tight text-teal-400">
-              NOMINAL
-            </span>
-          </div>
-        </div>
-        
         <div className="h-8 w-px bg-white/10" />
         
         <div className="flex flex-col items-end">

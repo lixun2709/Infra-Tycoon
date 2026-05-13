@@ -12,7 +12,9 @@ import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
 import { MissionLogic } from './components/world/MissionLogic'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
-import { Rocket, X } from 'lucide-react'
+import { EconomyDashboard } from './components/ui/EconomyDashboard'
+import { GlobalMap } from './components/ui/GlobalMap'
+import { Rocket, X, DollarSign, TrendingUp, Award } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 
 function EmergencyToasts() {
@@ -63,9 +65,21 @@ function App() {
   const [isTerminalOpen, setIsTerminalOpen] = useState(false)
   const [isHandbookOpen, setIsHandbookOpen] = useState(false)
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
+  const [isEconomyOpen, setIsEconomyOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
+  const balance = useInfraStore(s => s.balance)
+  const reputation = useInfraStore(s => s.reputation)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
+  const toggleGlobalMap = useInfraStore(s => s.toggleGlobalMap)
+  const isGlobalMapOpen = useInfraStore(s => s.isGlobalMapOpen)
+
+  const fixState = useInfraStore(s => s.fixState)
+
+  useEffect(() => {
+    fixState()
+  }, [fixState])
+
   const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
 
   const placeCatalogHardware = useInfraStore((s) => s.placeCatalogHardware)
@@ -78,6 +92,8 @@ function App() {
   const processAutoBackups = useInfraStore((s) => s.processAutoBackups)
   const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
   const pendingType = useInfraStore(s => s.pendingRackType)
+  const cloudBurstingActive = useInfraStore(s => s.cloudBurstingActive)
+  const activeCloudInstances = useInfraStore(s => s.activeCloudInstances)
 
   useEffect(() => {
 
@@ -91,7 +107,7 @@ function App() {
 
     const interval = setInterval(() => {
       useInfraStore.getState().processTick()
-    }, 10000)
+    }, 2000)
     return () => {
       clearInterval(interval)
       window.removeEventListener('keydown', handleKeyPress)
@@ -141,14 +157,70 @@ function App() {
         onOpenNetwork={() => setNetworkManagerOpen(true)}
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
         onToggleTerminal={() => setIsTerminalOpen(!isTerminalOpen)}
+        onToggleEconomy={() => setIsEconomyOpen(!isEconomyOpen)}
+        onToggleGlobalMap={toggleGlobalMap}
         onOpenHandbook={() => setIsHandbookOpen(true)}
         isTerminalOpen={isTerminalOpen}
       />
+      
+      <GlobalMap />
+
+      {/* Secondary Header Overlay: Combined Metrics */}
+      <div className="fixed top-20 left-8 z-40 pointer-events-none">
+        <div className={`pointer-events-auto bg-[#0a1536]/90 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-2xl transition-all w-[340px] ${selectedNodeId ? 'translate-x-[-360px] opacity-0' : 'translate-x-0 opacity-100'}`}>
+          
+          {/* Financials Section */}
+          <div className="flex gap-3 mb-6 pb-6 border-b border-white/5">
+            <div className="flex-1 bg-white/5 rounded-2xl p-3 border border-white/5">
+              <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Balance</p>
+              <p className="text-sm font-black text-emerald-400">${balance.toLocaleString()}</p>
+            </div>
+            <div className="flex-1 bg-white/5 rounded-2xl p-3 border border-white/5">
+              <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Reputation</p>
+              <p className="text-sm font-black text-amber-400">{reputation}%</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-400 flex items-center gap-2">
+              <TrendingUp className="w-3 h-3" /> Facility Metrics
+            </p>
+            <div className="w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_5px_teal]" />
+          </div>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Load</span>
+              <span className="text-sm font-black text-white">{totalPowerKW.toFixed(1)} kW</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thermal</span>
+              <span className="text-sm font-black text-white">{totalRoomBTU.toLocaleString()} <span className="text-[8px] text-slate-500">BTU/H</span></span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerts</span>
+              <span className={`text-sm font-black ${overloadedRackCount > 0 ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`}>
+                {overloadedRackCount > 0 ? `${overloadedRackCount} OVERLOAD` : 'NOMINAL'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between pt-4 border-t border-white/5">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hybrid Bursting</span>
+              <div className="flex items-center gap-2">
+                <div className={`w-1.5 h-1.5 rounded-full ${cloudBurstingActive ? 'bg-orange-500 shadow-[0_0_8px_#f97316]' : 'bg-slate-700'}`} />
+                <span className={`text-xs font-black uppercase ${cloudBurstingActive ? 'text-orange-400' : 'text-slate-500'}`}>
+                  {cloudBurstingActive ? `${activeCloudInstances} Cloud Nodes` : 'Standby'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Enterprise Catalog Toggle (Rocket) */}
       <div className="fixed bottom-8 right-32 z-[200]">
         <button 
           onClick={() => setIsAppBrowserOpen(!isAppBrowserOpen)}
+          aria-label={isAppBrowserOpen ? "Close Application Browser" : "Open Application Browser"}
           className={`relative w-20 h-20 rounded-[2.5rem] flex items-center justify-center transition-all shadow-2xl ${isAppBrowserOpen ? 'bg-slate-800 rotate-90' : 'bg-blue-600 hover:bg-blue-500'}`}
         >
           {isAppBrowserOpen ? (
@@ -156,46 +228,7 @@ function App() {
           ) : (
             <Rocket className="text-white w-8 h-8" />
           )}
-          {!isAppBrowserOpen && (
-             <span className="absolute -top-10 right-0 bg-slate-900 text-white text-[10px] px-3 py-1 rounded-full border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-black uppercase tracking-widest">
-               App Catalog
-             </span>
-          )}
         </button>
-      </div>
-
-      {/* Secondary Header Overlay: Site Toggle & Statistics */}
-      <div className="fixed top-16 left-0 right-0 z-40 pointer-events-none">
-        <div className="max-w-[1600px] mx-auto px-8 py-4 flex items-start justify-between">
-          
-
-          {/* Room Statistics */}
-          <div className={`pointer-events-auto bg-[#0a1536]/80 backdrop-blur-md border border-white/10 rounded-xl p-5 shadow-2xl transition-all w-[320px] ${selectedNodeId ? 'translate-x-[-340px]' : ''}`}>
-            <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/5">
-              <p className="text-[9px] font-black uppercase tracking-[0.2em] text-teal-400">
-                Facility Metrics
-              </p>
-              <div className="w-1.5 h-1.5 rounded-full bg-teal-500 shadow-[0_0_5px_teal]" />
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Load</span>
-                <span className="text-sm font-black text-white">{totalPowerKW.toFixed(1)} kW</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Thermal</span>
-                <span className="text-sm font-black text-white">{totalRoomBTU.toLocaleString()} <span className="text-[8px] text-slate-500">BTU/H</span></span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerts</span>
-                <span className={`text-sm font-black ${overloadedRackCount > 0 ? 'text-red-500 animate-pulse' : 'text-emerald-500'}`}>
-                  {overloadedRackCount > 0 ? `${overloadedRackCount} OVERLOAD` : 'NOMINAL'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Procurement System (Floating & Modal) */}
@@ -214,8 +247,15 @@ function App() {
       <MissionLogic />
 
       <Inspector />
-      <ApplicationBrowser isOpen={isAppBrowserOpen} onClose={() => setIsAppBrowserOpen(false)} />
-      
+      <ApplicationBrowser 
+        isOpen={isAppBrowserOpen}
+        onClose={() => setIsAppBrowserOpen(false)}
+      />
+
+      <EconomyDashboard 
+        isOpen={isEconomyOpen}
+        onClose={() => setIsEconomyOpen(false)}
+      />
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
       {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
 

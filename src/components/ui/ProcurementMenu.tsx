@@ -132,7 +132,9 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
               <div className="p-10 border-b border-slate-800 bg-slate-900/10 flex justify-between items-center">
                 <div>
                   <h2 className="text-3xl font-black tracking-tighter uppercase text-white">Asset Catalog</h2>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em] mt-2">Primary Provisioning Manifest • v1.6 Clean Slate</p>
+                  <p className="text-[10px] text-teal-400 font-black uppercase tracking-[0.3em] mt-2">
+                    Current Site: {useInfraStore.getState().sites.find(s => s.id === useInfraStore.getState().currentSiteId)?.name}
+                  </p>
                 </div>
                 <button 
                   onClick={onAddRack}
