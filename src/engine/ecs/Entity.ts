@@ -1,3 +1,5 @@
+import { globalEventBus } from '../events/EventBus';
+
 export type EntityId = string;
 
 export interface Entity {
@@ -13,6 +15,7 @@ export class EntityManager {
     const id = crypto.randomUUID();
     const entity = { id, name, type };
     this.entities.set(id, entity);
+    globalEventBus.publish('entity:created', { id });
     return entity;
   }
 
@@ -21,7 +24,10 @@ export class EntityManager {
   }
 
   removeEntity(id: EntityId): void {
-    this.entities.delete(id);
+    if (this.entities.has(id)) {
+      this.entities.delete(id);
+      globalEventBus.publish('entity:destroyed', { id });
+    }
   }
 
   getAllEntities(): Entity[] {

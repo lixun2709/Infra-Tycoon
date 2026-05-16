@@ -1,16 +1,17 @@
 import type { EntityId } from './Entity';
 
-export interface Component {
+export interface Component<T = unknown> {
   entityId: EntityId;
   type: string;
+  data: T;
 }
 
-export type ComponentConstructor<T extends Component> = new (...args: any[]) => T;
+export type ComponentConstructor<T extends Component> = new (...args: unknown[]) => T;
 
 export class ComponentManager {
   private components: Map<string, Map<EntityId, Component>> = new Map();
 
-  addComponent<T extends Component>(entityId: EntityId, component: T): void {
+  addComponent(entityId: EntityId, component: Component): void {
     const type = component.type;
     if (!this.components.has(type)) {
       this.components.set(type, new Map());
@@ -18,8 +19,8 @@ export class ComponentManager {
     this.components.get(type)!.set(entityId, component);
   }
 
-  getComponent<T extends Component>(entityId: EntityId, type: string): T | undefined {
-    return this.components.get(type)?.get(entityId) as T;
+  getComponent<T>(entityId: EntityId, type: string): Component<T> | undefined {
+    return this.components.get(type)?.get(entityId) as Component<T> | undefined;
   }
 
   removeComponent(entityId: EntityId, type: string): void {

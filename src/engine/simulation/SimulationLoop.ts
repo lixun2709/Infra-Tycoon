@@ -48,7 +48,6 @@ export class SimulationLoop {
   };
 
   setTickRate(rate: number) {
-    this.tickRate = rate;
     this.fixedDeltaTime = 1000 / rate;
   }
 }

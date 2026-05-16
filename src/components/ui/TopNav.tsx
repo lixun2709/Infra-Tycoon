@@ -21,9 +21,6 @@ export function TopNav({
   onToggleSaveManager,
   isTerminalOpen,
 }: TopNavProps) {
-  const isNetworkManagerOpen = useInfraStore(s => s.isNetworkManagerOpen)
-  const cloudBurstingActive = useInfraStore(s => s.cloudBurstingActive)
-  const activeCloudInstances = useInfraStore(s => s.activeCloudInstances)
   
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] h-16 bg-[#020617]/90 backdrop-blur-2xl border-b border-white/10 flex items-center justify-between px-8 shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
@@ -43,7 +40,7 @@ export function TopNav({
         {[
           { id: 'noc', label: 'NOC DASHBOARD', icon: '📡', active: false, onClick: onToggleNOC },
           { id: 'global_map', label: 'GLOBAL MAP', icon: '🌍', active: false, onClick: onToggleGlobalMap },
-          { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
+          { id: 'network', label: 'GLOBAL NETWORK', icon: '🌐', active: useInfraStore(s => s.isNetworkManagerOpen), onClick: onOpenNetwork },
           { id: 'economy', label: 'FINANCIALS', icon: '💰', active: false, onClick: onToggleEconomy },
           { id: 'terminal', label: 'GLOBAL TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
           { id: 'handbook', label: 'HANDBOOK', icon: '📖', active: false, onClick: onOpenHandbook },

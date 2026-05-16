@@ -112,6 +112,7 @@ type InfraState = {
   isGlobalMapOpen: boolean
   toggleGlobalMap: () => void
   assistantTargetId: string | null
+  isAutoPilot: boolean
   
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
@@ -138,7 +139,7 @@ type InfraState = {
   toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
   // Day 30 Actions
   processCommand: (text: string) => void
-  generateFinalReport: () => { score: number, grade: string, breakdown: any }
+  generateFinalReport: () => { score: number, grade: string, breakdown: unknown }
   
   // Terminal Actions
   updateTerminalLayout: (layout: Partial<{ width: number; height: number; x: number; y: number; isMaximized: boolean }>) => void
@@ -193,9 +194,6 @@ type InfraState = {
   resetState: () => void
 
   // v2.0 Management Plane Additions
-  isAutoPilot: boolean
-  assistantTargetId: string | null
-  isGlobalMapOpen: boolean
   isChaosMode: boolean
   validateReplication: (linkId: string) => boolean
   addReplicationLink: (sourceId: string, targetId: string) => void
@@ -209,6 +207,8 @@ type InfraState = {
   saveGame: (slotId: string) => void
   loadGame: (slotId: string) => void
   getAvailableSaves: () => SaveMetadata[]
+  isSaveManagerOpen: boolean
+  updateSite: (id: string, updates: Partial<Site>) => void
 }
 
 const catalogDisplayName: Record<HardwareCatalogKey, string> = {
@@ -300,7 +300,7 @@ export const useInfraStore = create<InfraState>()(
       sites: [
         { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
         { id: 'site-2', name: 'DR-Site', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 40.71, lng: -74.00 } }
-      ],
+      ] as Site[],
       currentSiteId: 'site-1',
       placementMode: false,
       pendingRackType: null,
@@ -315,6 +315,7 @@ export const useInfraStore = create<InfraState>()(
       incidentCounter: 400,
       isAutoPilot: false,
       assistantTargetId: null,
+      isSaveManagerOpen: false,
       terminalStates: INITIAL_TERMINAL_STATE,
       deploymentQueue: [],
       isHeatMapVisible: false,
@@ -788,7 +789,7 @@ export const useInfraStore = create<InfraState>()(
 
         let output: string[] = [] 
         let newContext = { ...activePane.context }
-        let newCwd = activePane.cwd
+        const newCwd = activePane.cwd
         let forceClear = false
 
         // --- 5. CORE COMMAND LOGIC ---
@@ -983,7 +984,7 @@ export const useInfraStore = create<InfraState>()(
         } else if (cmdLower === 'health') {
           if (targetNode && targetNode.componentHealth) {
             output.push(`--- [[BLUE]]HARDWARE TELEMETRY: ${targetNode.hostname || targetNode.id.slice(0,8)}[[RESET]] ---`)
-            output.push(`OVERALL STATUS: ${targetNode.healthStatus === 'healthy' ? '[[GREEN]]OPTIMAL[[RESET]]' : '[[RED]]' + targetNode.healthStatus.toUpperCase() + '[[RESET]]'}`)
+            output.push(`OVERALL STATUS: ${targetNode.healthStatus === 'healthy' ? '[[GREEN]]OPTIMAL[[RESET]]' : '[[RED]]' + (targetNode.healthStatus || 'unknown').toUpperCase() + '[[RESET]]'}`)
             output.push("")
             output.push("COMPONENT          STATUS       DESCRIPTION")
             output.push("---------          ------       -----------")
@@ -1220,8 +1221,8 @@ export const useInfraStore = create<InfraState>()(
         const spec = HARDWARE_CATALOG[key]
 
         // Blade Logic: Blade Servers can only be placed inside a Blade Chassis
-        if ((spec as any).isBlade) {
-          const hasChassis = nodes.some(n => n.parentRackId === targetRackId && (HARDWARE_CATALOG[n.catalogKey as HardwareCatalogKey] as any).isBladeChassis)
+        if ('isBlade' in spec && spec.isBlade) {
+          const hasChassis = nodes.some(n => n.parentRackId === targetRackId && n.catalogKey && 'isBladeChassis' in HARDWARE_CATALOG[n.catalogKey] && (HARDWARE_CATALOG[n.catalogKey] as { isBladeChassis?: boolean }).isBladeChassis)
           if (!hasChassis) {
             get().pushAlert('warning', 'Blade Servers require a Blade Chassis for installation.')
             return false
@@ -1231,7 +1232,7 @@ export const useInfraStore = create<InfraState>()(
         const targetNodes = nodes.filter(n => n.id === targetRackId || n.parentRackId === targetRackId)
         
         let placement;
-        if ((spec as any).isBlade) {
+        if ('isBlade' in spec && spec.isBlade) {
           // Blade servers reside inside the chassis and don't occupy U slots
           placement = { rackId: targetRackId, slotIndex: -1 }
         } else {
@@ -1252,7 +1253,7 @@ export const useInfraStore = create<InfraState>()(
           position: new Vector3(targetRack.position.x, targetRack.position.y, targetRack.position.z),
           uHeight: spec.uHeight,
           wattage: spec.wattage,
-          btuOutput: (spec as any).btuOutput !== undefined ? (spec as any).btuOutput : spec.wattage * 3.41,
+          btuOutput: (spec as { btuOutput?: number }).btuOutput !== undefined ? (spec as { btuOutput?: number }).btuOutput! : spec.wattage * 3.41,
           totalStorageTB: spec.storageTB,
           usedStorageTB: spec.storageTB > 0 ? Math.floor(Math.random() * (spec.storageTB * 0.7) + (spec.storageTB * 0.3)) : 0,
           parentRackId: targetRackId,
@@ -1359,7 +1360,7 @@ export const useInfraStore = create<InfraState>()(
         }
       },
 
-      replaceComponent: (nodeId, type, index) => {
+      replaceComponent: (nodeId: string, type: string, index: number) => {
         set(state => ({
           nodes: state.nodes.map(n => n.id === nodeId && n.componentHealth ? {
             ...n,
@@ -1452,7 +1453,7 @@ export const useInfraStore = create<InfraState>()(
         }
       },
 
-      updatePort: (nodeId, portId, updates) => {
+      updatePort: (nodeId: string, portId: string, updates: Partial<HardwarePort>) => {
         set(state => ({
           nodes: state.nodes.map(n => n.id === nodeId ? {
             ...n,
@@ -1788,9 +1789,7 @@ export const useInfraStore = create<InfraState>()(
       checkAllCompliance: () => {
         // Implementation for global compliance audit
       },
-
-      toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
-      setCloudBursting: (active) => set({ cloudBurstingActive: active }),
+      setCloudBursting: (active: boolean) => set({ cloudBurstingActive: active }),
 
       updateTerminalLogs: (sessionId: string, paneId: string, logs: string[]) => set(state => {
         const siteId = state.currentSiteId
@@ -1815,7 +1814,7 @@ export const useInfraStore = create<InfraState>()(
         const requiredSites = [
           { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
           { id: 'site-2', name: 'DR-Site', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 40.71, lng: -74.00 } }
-        ]
+        ] as Site[]
         const updatedSites = [...state.sites]
         requiredSites.forEach(rs => {
           if (!updatedSites.find(s => s.id === rs.id)) {
@@ -1824,6 +1823,12 @@ export const useInfraStore = create<InfraState>()(
         })
         return { sites: updatedSites }
       }),
+
+      updateSite: (id: string, updates: Partial<Site>) => {
+        set(state => ({
+          sites: state.sites.map(s => s.id === id ? { ...s, ...updates } : s)
+        }))
+      },
 
       resetState: () => {
         set({
@@ -1840,7 +1845,7 @@ export const useInfraStore = create<InfraState>()(
           postMortems: [],
           operationalBudget: 1000000,
           capacityUnits: 0,
-          terminalStates: INITIAL_TERMINAL_STATE as any,
+          terminalStates: INITIAL_TERMINAL_STATE,
           isAutoPilot: false,
           isGlobalMapOpen: false,
           isChaosMode: false,
@@ -1871,7 +1876,7 @@ export const useInfraStore = create<InfraState>()(
       })),
 
       acceptContract: (blueprintId) => {
-        const { balance, reputation, pushAlert } = get()
+        const { reputation, pushAlert } = get()
         const blueprint = CONTRACT_CATALOG[blueprintId]
         if (!blueprint) return
 
@@ -1892,7 +1897,7 @@ export const useInfraStore = create<InfraState>()(
 
         set(state => ({ activeContracts: [...state.activeContracts, newContract] }))
         audioManager.playEffect('success')
-        pushAlert('success', `CONTRACT SIGNED: ${blueprint.name} is now active.`)
+        pushAlert('info', `CONTRACT SIGNED: ${blueprint.name} is now active.`)
       },
 
       cancelContract: (id) => {
@@ -1978,7 +1983,7 @@ export const useInfraStore = create<InfraState>()(
           const repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
           set({ reputation: Math.max(0, Math.min(100, reputation + repChange)) })
 
-          get().pushAlert('success', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, Penalties: -$${monthlyPenalty})`)
+          get().pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, Penalties: -$${monthlyPenalty})`)
         }
 
         // 4. State Update
@@ -2045,7 +2050,7 @@ export const useInfraStore = create<InfraState>()(
         const newMeta = [meta, ...existingMeta.filter(m => m.id !== slotId)].slice(0, 10)
         localStorage.setItem('infra-tycoon-saves-meta', JSON.stringify(newMeta))
         
-        get().pushAlert('success', `Game saved to Slot ${slotId}`)
+        get().pushAlert('info', `Game saved to Slot ${slotId}`)
       },
 
       loadGame: (slotId) => {
@@ -2058,10 +2063,10 @@ export const useInfraStore = create<InfraState>()(
         try {
           const { state } = JSON.parse(saveData)
           set(state)
-          get().pushAlert('success', `Game loaded from Slot ${slotId}`)
+          get().pushAlert('info', `Game loaded from Slot ${slotId}`)
           // Force a small delay then fix state
           setTimeout(() => get().fixState(), 100)
-        } catch (e) {
+        } catch {
           get().pushAlert('critical', `Failed to load Slot ${slotId}: Data corruption.`)
         }
       },
@@ -2097,10 +2102,10 @@ export const useInfraStore = create<InfraState>()(
                     ...sess,
                     panes: [{ 
                       id: pId, 
-                      logs: (sess as any).logs || ['Session Migrated to v1.3.'],
-                      history: (sess as any).history || [],
-                      cwd: (sess as any).cwd || '/',
-                      context: (sess as any).context || { mode: 'global', targetId: null }
+                      logs: (sess as { logs?: string[] }).logs || ['Session Migrated to v1.3.'],
+                      history: (sess as { history?: string[] }).history || [],
+                      cwd: (sess as { cwd?: string }).cwd || '/',
+                      context: (sess as { context?: unknown }).context || { mode: 'global', targetId: null }
                     }],
                     activePaneId: pId,
                     layout: 'single'
@@ -2120,7 +2125,7 @@ export const useInfraStore = create<InfraState>()(
               sites: [
                 { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
                 { id: 'site-2', name: 'DR-Site', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 39.04, lng: -77.49 } }
-              ],
+              ] as Site[],
               currentSiteId: s.currentSiteId || 'site-1'
             })
           }

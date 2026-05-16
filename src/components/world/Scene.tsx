@@ -231,7 +231,6 @@ function StatusLED({ portId, nodeId }: { portId: string, nodeId: string }) {
   const conn = connections.find(c => (c.startNodeId === nodeId && c.startPortId === portId) || (c.endNodeId === nodeId && c.endPortId === portId))
   
   const matRef = useRef<THREE.MeshStandardMaterial>(null)
-  const lightRef = useRef<THREE.PointLight>(null)
 
   const otherNodeId = conn ? (conn.startNodeId === nodeId ? conn.endNodeId : conn.startNodeId) : null
   const otherNodeExists = nodes.some(n => n.id === otherNodeId)
@@ -452,7 +451,7 @@ function MountedUnit({ node, isSelected, onSelect }: { node: InfraNode, isSelect
       )}
 
       {/* Service Holograms */}
-      <ServiceHolograms node={node} h={h} />
+      <ServiceHolograms node={node} />
 
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
@@ -581,8 +580,8 @@ function CoolingFan({ position, node, h }: { position: [number, number, number],
       </group>
 
       {/* High-Tech Center Hub */}
-      <mesh position={[0, 0, 0.015]}>
-        <cylinderGeometry args={[fanSize * 0.2, fanSize * 0.25, 0.02, 16]} rotation={[Math.PI / 2, 0, 0]} />
+      <mesh position={[0, 0, 0.015]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[fanSize * 0.2, fanSize * 0.25, 0.02, 16]} />
         <meshStandardMaterial color="#94a3b8" metalness={1} roughness={0.1} />
       </mesh>
 
@@ -702,7 +701,7 @@ function Rack({ node, isSelected, onSelect, children }: { node: InfraNode; isSel
   )
 }
 
-function ServiceHolograms({ node, h }: { node: InfraNode, h: number }) {
+function ServiceHolograms({ node }: { node: InfraNode }) {
   const allApplications = useInfraStore(s => s.applications)
   const applications = useMemo(() => allApplications.filter(a => a.nodeId === node.id), [allApplications, node.id])
   
@@ -732,73 +731,7 @@ function ServiceHolograms({ node, h }: { node: InfraNode, h: number }) {
   )
 }
 
-function DataThreads() {
-  const nodes = useInfraStore(s => s.nodes)
-  const applications = useInfraStore(s => s.applications)
-  const selectedNodeId = useInfraStore(s => s.selectedNodeId)
 
-  const threads = useMemo(() => {
-    if (!selectedNodeId) return []
-    const selectedApps = applications.filter(a => a.nodeId === selectedNodeId)
-    
-    const links: Array<{ start: THREE.Vector3; end: THREE.Vector3; color: string }> = []
-    
-    selectedApps.forEach(app => {
-      const appInfo = APPLICATION_CATALOG[app.appId]
-      if (!appInfo) return
-
-      if (appInfo.category === 'web') {
-        const dbApps = applications.filter(a => APPLICATION_CATALOG[a.appId]?.category === 'database')
-        dbApps.forEach(dbApp => {
-          const startNode = nodes.find(n => n.id === app.nodeId)
-          const endNode = nodes.find(n => n.id === dbApp.nodeId)
-          if (startNode && endNode && startNode.id !== endNode.id) {
-            const getPos = (n: InfraNode) => {
-              const p = n.position.clone()
-              if (n.parentRackId) {
-                const rack = nodes.find(rk => rk.id === n.parentRackId)
-                if (rack) {
-                   const yOffset = -RACK_HEIGHT / 2 + (RACK_HEIGHT / 42) * ((n.slotIndex ?? 1) - 1 + n.uHeight / 2)
-                   p.set(rack.position.x, rack.position.y + RACK_HEIGHT / 2 + yOffset, rack.position.z)
-                }
-              }
-              return p
-            }
-            links.push({
-              start: getPos(startNode),
-              end: getPos(endNode),
-              color: appInfo.color
-            })
-          }
-        })
-      }
-    })
-    return links
-  }, [selectedNodeId, applications, nodes])
-
-  return (
-    <group>
-      {threads.map((link, i) => (
-        <DataThread key={i} start={link.start} end={link.end} color={link.color} />
-      ))}
-    </group>
-  )
-}
-
-function DataThread({ start, end, color }: { start: THREE.Vector3; end: THREE.Vector3; color: string }) {
-  const curve = useMemo(() => {
-    const mid = new THREE.Vector3().lerpVectors(start, end, 0.5)
-    mid.y += 1.5
-    return new THREE.QuadraticBezierCurve3(start, mid, end)
-  }, [start, end])
-
-  return (
-    <mesh>
-      <tubeGeometry args={[curve, 20, 0.005, 8, false]} />
-      <meshBasicMaterial color={color} transparent opacity={0.4} />
-    </mesh>
-  )
-}
 
 function Floor() {
   const { placementMode, setPlacementMode, addNode, currentSiteId } = useInfraStore()
@@ -1009,7 +942,7 @@ function CameraAnimator() {
     const selectedNode = nodes.find(n => n.id === selectedNodeId)
     if (!selectedNode) return
 
-    let targetPos = new THREE.Vector3(selectedNode.position.x, selectedNode.position.y, selectedNode.position.z)
+    const targetPos = new THREE.Vector3(selectedNode.position.x, selectedNode.position.y, selectedNode.position.z)
 
     if (selectedNode.parentRackId) {
       const rack = nodes.find(n => n.id === selectedNode.parentRackId)

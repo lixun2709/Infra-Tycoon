@@ -1,7 +1,6 @@
 import React, { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import type { InfraNode } from '../../store/useInfraStore'
 
 interface CoolingFanProps {
   position: [number, number, number]
@@ -56,8 +55,8 @@ function CoolingFanComponent({ position, currentPowerKW, maxPowerKW, h }: Coolin
       </group>
 
       {/* Center Hub */}
-      <mesh position={[0, 0, 0.015]}>
-        <cylinderGeometry args={[fanSize * 0.2, fanSize * 0.25, 0.02, 16]} rotation={[Math.PI / 2, 0, 0]} />
+      <mesh position={[0, 0, 0.015]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[fanSize * 0.2, fanSize * 0.25, 0.02, 16]} />
         <meshStandardMaterial color="#94a3b8" metalness={1} roughness={0.1} />
       </mesh>
 

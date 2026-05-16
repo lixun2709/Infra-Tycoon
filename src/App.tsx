@@ -14,7 +14,7 @@ import { MissionLogic } from './components/world/MissionLogic'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
-import { Rocket, X, DollarSign, TrendingUp, Award } from 'lucide-react'
+import { Rocket, X, TrendingUp } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
 
@@ -34,13 +34,14 @@ function EmergencyToasts() {
       }, 6000)
       return () => clearTimeout(timer)
     }
+    return undefined
   }, [alerts])
 
   if (!activeAlert) return null
 
   const isCritical = activeAlert.severity === 'critical'
   const isInfo = activeAlert.severity === 'info'
-  const isSuccess = activeAlert.severity === 'success'
+  const isSuccess = activeAlert.severity === 'info' // Map old success to info
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
@@ -79,7 +80,6 @@ function App() {
   const reputation = useInfraStore(s => s.reputation)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const toggleGlobalMap = useInfraStore(s => s.toggleGlobalMap)
-  const isGlobalMapOpen = useInfraStore(s => s.isGlobalMapOpen)
 
   const fixState = useInfraStore(s => s.fixState)
 
@@ -103,8 +103,6 @@ function App() {
   const overloadedRackCount = useInfraStore((s) => s.overloadedRackCount)
   const {
     selectedNodeId,
-    setSelectedNode,
-    currentSiteId: siteId,
     setIsTerminalOpen,
     isTerminalOpen,
     addTerminalSession,

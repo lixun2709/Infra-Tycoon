@@ -1,12 +1,11 @@
-import React from 'react'
+import { useState } from 'react'
 import { useMissionStore } from '../../store/useMissionStore'
-import { useInfraStore } from '../../store/useInfraStore'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CheckCircle2, Circle, Target, Trophy, ChevronRight, Activity, Zap } from 'lucide-react'
+import { CheckCircle2, Target, Trophy, ChevronRight, Activity, Zap } from 'lucide-react'
 
-export const MissionHUD: React.FC = () => {
+export const MissionHUD = () => {
   const { missions, activeMissionId } = useMissionStore()
-  const [isCollapsed, setIsCollapsed] = React.useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const activeMission = missions.find(m => m.id === activeMissionId)
 
   if (!activeMission) return null

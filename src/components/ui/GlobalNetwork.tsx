@@ -592,7 +592,7 @@ export function GlobalNetwork() {
                         const host = (document.getElementById('dns-host') as HTMLInputElement).value
                         const ip = (document.getElementById('dns-ip') as HTMLInputElement).value
                         if (host && ip) {
-                          addDnsRecord({ hostname: host, ip, ttl: 3600 })
+                          addDnsRecord({ hostname: host, ip, type: 'A' })
                           ;(document.getElementById('dns-host') as HTMLInputElement).value = ''
                           ;(document.getElementById('dns-ip') as HTMLInputElement).value = ''
                         }

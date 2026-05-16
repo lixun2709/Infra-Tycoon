@@ -18,15 +18,7 @@ export abstract class System {
 
 export class SystemManager {
   private systems: System[] = [];
-  private entityManager: EntityManager;
-  private componentManager: ComponentManager;
-
-  constructor(
-    entityManager: EntityManager,
-    componentManager: ComponentManager
-  ) {
-    this.entityManager = entityManager;
-    this.componentManager = componentManager;
+  constructor() {
   }
 
   addSystem(system: System): void {

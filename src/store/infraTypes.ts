@@ -1,6 +1,5 @@
 import type { Vector3 } from 'three'
 import type { HardwareCatalogKey, PortType } from '../physics/hardwareLibrary'
-import type { TerminalPane, TerminalSession } from './terminalTypes'
 
 export type ContractTier = 'SME' | 'Enterprise' | 'Government' | 'Research'
 
@@ -158,6 +157,27 @@ export interface Blueprint {
   nodes: InfraNode[]
   connections: Connection[]
   createdAt: number
+}
+
+export interface DnsRecord {
+  id: string
+  hostname: string
+  ip: string
+  type: 'A' | 'CNAME' | 'MX'
+}
+
+export interface DhcpLease {
+  id: string
+  nodeId: string
+  ip: string
+  expires: number
+}
+
+export interface NtpSyncStatus {
+  nodeId: string
+  stratum: number
+  offsetMs: number
+  status: 'synced' | 'unsynced' | 'error'
 }
 
 export interface SaveMetadata {

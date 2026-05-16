@@ -6,7 +6,6 @@ export function useHotkeys() {
     terminalStates, 
     currentSiteId, 
     addTerminalSession, 
-    closeTerminalSession,
     nodes,
     selectedNodeId,
     setSelectedNode,
@@ -37,7 +36,7 @@ export function useHotkeys() {
           }
           break
 
-        case 'r':
+        case 'r': {
           // Cycle Racks
           const racks = nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
           if (racks.length > 0) {
@@ -46,6 +45,7 @@ export function useHotkeys() {
             setSelectedNode(racks[nextIndex].id)
           }
           break
+        }
 
         case 'tab':
           // Cycle Hardware in selected rack
@@ -87,5 +87,5 @@ export function useHotkeys() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [terminalStates, currentSiteId, nodes, selectedNodeId])
+  }, [terminalStates, currentSiteId, nodes, selectedNodeId, addTerminalSession, isTerminalOpen, setIsTerminalOpen, setSelectedNode, siteTerminal?.sessions.length])
 }

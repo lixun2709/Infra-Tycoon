@@ -1,12 +1,9 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges, Text } from '@react-three/drei'
-import * as THREE from 'three'
 import { useInfraStore, type InfraNode } from '../../store/useInfraStore'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import { RACK_HEIGHT, U_WORLD } from './Scene'
-import { CoolingFan } from './CoolingFan'
-import { StatusLED } from './StatusLED'
 
 interface MountedUnitProps {
   node: InfraNode

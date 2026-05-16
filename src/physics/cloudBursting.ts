@@ -1,4 +1,3 @@
-import { useInfraStore } from '../store/useInfraStore'
 
 export interface CloudProvider {
   id: string

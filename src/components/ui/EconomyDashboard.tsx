@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   DollarSign, 
@@ -10,9 +10,7 @@ import {
   CheckCircle2, 
   AlertCircle,
   BarChart3,
-  Globe,
-  Building2,
-  ShieldCheck
+  Globe
 } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
@@ -23,7 +21,7 @@ interface EconomyDashboardProps {
 }
 
 export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
-  const { balance, reputation, activeContracts, acceptContract, cancelContract, simulationCycle, nodes } = useInfraStore()
+  const { balance, reputation, activeContracts, acceptContract, cancelContract, nodes } = useInfraStore()
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active'>('overview')
 
   // Calculate MRR and MRE
@@ -244,7 +242,6 @@ function ExpenseItem({ label, amount, sub }: any) {
 }
 
 function ContractCard({ bp, isLocked, isOwned, onAccept }: { bp: ContractBlueprint, isLocked: boolean, isOwned: boolean, onAccept: () => void }) {
-  const icon = bp.tier === 'Enterprise' ? Building2 : bp.tier === 'Government' ? ShieldCheck : Briefcase
 
   return (
     <div className={`relative bg-slate-900/40 border border-slate-800 rounded-3xl p-8 flex flex-col justify-between transition-all ${isLocked ? 'grayscale opacity-50' : 'hover:border-teal-500/30'}`}>

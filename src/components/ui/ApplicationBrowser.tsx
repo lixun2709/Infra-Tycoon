@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Layout, Rocket, X, Server, Database, Globe, Zap, Cpu, Shield } from 'lucide-react'
+import { Layout, Rocket, X, Server, Database, Zap, Cpu } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
-import { APPLICATION_CATALOG, type Application } from '../../physics/applicationLibrary'
+import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
 
 interface ApplicationBrowserProps {
   isOpen: boolean

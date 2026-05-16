@@ -68,7 +68,7 @@ const INITIAL_MISSIONS: Mission[] = [
 
 export const useMissionStore = create<MissionState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       missions: INITIAL_MISSIONS,
       activeMissionId: 'm1',
 

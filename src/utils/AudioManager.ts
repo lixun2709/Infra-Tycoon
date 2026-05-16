@@ -2,8 +2,6 @@ import * as THREE from 'three'
 
 class AudioManager {
   private listener: THREE.AudioListener | null = null
-  private sounds: Map<string, THREE.Audio | THREE.PositionalAudio> = new Map()
-  private ambientHum: THREE.Audio | null = null
   private isMuted: boolean = false
 
   init(camera: THREE.Camera) {
@@ -46,7 +44,6 @@ class AudioManager {
     audio.setNodeSource(gain)
     
     oscillator.start()
-    this.ambientHum = audio
   }
 
   playEffect(type: 'click' | 'alert' | 'error' | 'success') {
