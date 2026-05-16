@@ -2,15 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* Colors */
+  --primary: #2dd4bf;
+  --primary-glow: rgba(45, 212, 191, 0.4);
+  --accent: #f97316;
+  --accent-glow: rgba(249, 115, 22, 0.4);
+  
+  --bg-dark: #0f172a;
+  --bg-deep: #020617;
+  --surface: rgba(13, 17, 23, 0.8);
+  --surface-light: rgba(30, 41, 59, 0.5);
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  
+  --border: rgba(255, 255, 255, 0.1);
+  --border-active: rgba(45, 212, 191, 0.5);
+  
+  /* Effects */
+  --glass-blur: blur(24px);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glow: 0 0 15px var(--primary-glow);
+}
+
 @layer base {
   body {
-    @apply bg-[#0f172a] text-slate-200 overflow-hidden;
+    @apply bg-slate-950 text-slate-200 overflow-hidden font-sans;
+    background-color: var(--bg-deep);
   }
 }
 
 @layer components {
   .glass-dark {
-    @apply bg-[#0d1117]/80 backdrop-blur-2xl border border-white/10 shadow-2xl;
+    background-color: var(--surface);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--border);
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.02);
   }
   
@@ -20,11 +48,28 @@
   }
 
   .neo-glow-teal {
-    box-shadow: 0 0 15px rgba(45, 212, 191, 0.4);
+    box-shadow: 0 0 15px var(--primary-glow);
   }
 
   .neo-glow-orange {
-    box-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+    box-shadow: 0 0 15px var(--accent-glow);
+  }
+
+  .btn-base {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 active:scale-95;
+  }
+
+  .btn-primary {
+    @apply btn-base bg-teal-500/10 text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/50;
+    box-shadow: 0 0 15px rgba(45, 212, 191, 0.1);
+  }
+
+  .btn-ghost {
+    @apply btn-base text-slate-400 hover:text-slate-100 hover:bg-white/5;
+  }
+
+  .btn-danger {
+    @apply btn-base bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-500/50;
   }
 }
 
