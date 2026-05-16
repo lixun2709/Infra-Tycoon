@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
-import { Activity, Cpu, Database, Zap, Clock } from 'lucide-react'
+import { Activity, Cpu, Database, Zap, Clock, ShieldAlert } from 'lucide-react'
 
 export const PerformanceOverlay: React.FC = () => {
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
@@ -29,6 +29,15 @@ export const PerformanceOverlay: React.FC = () => {
 
   if (!isVisible) return null
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'online': return 'text-emerald-400'
+      case 'restarting': return 'text-amber-400'
+      case 'failed': return 'text-rose-400'
+      default: return 'text-slate-500'
+    }
+  }
+
   return (
     <div className="fixed top-20 right-4 z-[100] w-64 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-lg p-4 font-mono text-xs text-slate-300 shadow-2xl pointer-events-none">
       <div className="flex items-center gap-2 mb-4 border-b border-slate-700 pb-2">
@@ -53,15 +62,37 @@ export const PerformanceOverlay: React.FC = () => {
         <section className="space-y-2">
           <div className="flex justify-between items-center mb-1">
             <span className="text-slate-500">Sim Worker</span>
-            <span className="text-blue-400 font-bold">{metrics.simTickTime.toFixed(3)}ms</span>
+            <span className={`font-bold ${getStatusColor(metrics.workerStatus)}`}>
+              {metrics.workerStatus.toUpperCase()}
+            </span>
           </div>
+          
           <div className="flex justify-between items-center text-[10px]">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3 opacity-50" />
+              <span>Tick Time</span>
+            </div>
+            <span className="text-blue-400">{metrics.simTickTime.toFixed(3)}ms</span>
+          </div>
+
+          <div className="flex justify-between items-center text-[10px]">
+            <div className="flex items-center gap-1">
+              <Zap className="w-3 h-3 opacity-50" />
               <span>Latency</span>
             </div>
             <span>{metrics.workerLatency.toFixed(1)}ms</span>
           </div>
+
+          {metrics.restartCount > 0 && (
+            <div className="flex justify-between items-center text-[10px]">
+              <div className="flex items-center gap-1">
+                <ShieldAlert className="w-3 h-3 text-amber-500" />
+                <span>Restarts</span>
+              </div>
+              <span className="text-amber-500">{metrics.restartCount}</span>
+            </div>
+          )}
+
           <div className="flex justify-between items-center text-[10px]">
             <div className="flex items-center gap-1">
               <Database className="w-3 h-3 opacity-50" />
@@ -95,7 +126,7 @@ export const PerformanceOverlay: React.FC = () => {
           </div>
         </section>
 
-        <div className="pt-2 border-t border-slate-800 text-[9px] text-slate-600 flex justify-between">
+        <div className="pt-2 border-t border-slate-800 text-[9px] text-slate-600 flex justify-between items-center">
           <span>Simulation Stable</span>
           <Zap className="w-3 h-3" />
         </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useInfraStore, type SaveMetadata } from '../../store/useInfraStore'
+import { useInfraStore } from '../../store/useInfraStore'
+import type { SaveMetadata } from '../../store/infraTypes'
 import { Save, FolderOpen, Trash2, X, Clock, Server } from 'lucide-react'
 import { ConfirmDialog } from './ConfirmDialog'
 

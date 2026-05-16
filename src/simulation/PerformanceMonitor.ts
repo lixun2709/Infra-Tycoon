@@ -3,11 +3,15 @@
  * Collects and aggregates performance metrics from simulation and rendering.
  */
 
+export type WorkerStatus = 'online' | 'offline' | 'restarting' | 'failed'
+
 export interface PerformanceMetrics {
   fps: number
   frameTime: number
   simTickTime: number
   workerLatency: number
+  workerStatus: WorkerStatus
+  restartCount: number
   entityCount: number
   systemTimings: Record<string, number>
   lastUpdate: number
@@ -19,6 +23,8 @@ class PerformanceMonitor {
     frameTime: 0,
     simTickTime: 0,
     workerLatency: 0,
+    workerStatus: 'offline',
+    restartCount: 0,
     entityCount: 0,
     systemTimings: {},
     lastUpdate: Date.now()
@@ -52,7 +58,9 @@ class PerformanceMonitor {
 
     // Calculate FPS every second
     setInterval(() => {
-      const avgFrameTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length
+      const avgFrameTime = this.frameTimes.length > 0 
+        ? this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length
+        : 16.6
       this.metrics.fps = Math.round(1000 / avgFrameTime)
       this.metrics.frameTime = avgFrameTime
       this.frameCount = 0
@@ -64,10 +72,18 @@ class PerformanceMonitor {
     this.metrics.entityCount = entityCount
     this.metrics.systemTimings = systemTimings
     this.metrics.lastUpdate = Date.now()
+    this.metrics.workerStatus = 'online'
   }
 
   public updateWorkerLatency(latency: number) {
     this.metrics.workerLatency = latency
+  }
+
+  public setWorkerStatus(status: WorkerStatus) {
+    this.metrics.workerStatus = status
+    if (status === 'restarting') {
+      this.metrics.restartCount++
+    }
   }
 
   public getMetrics(): PerformanceMetrics {

@@ -1,4 +1,4 @@
-import type { ServiceType } from '../store/useInfraStore'
+import type { ServiceType } from '../store/infraTypes'
 
 export interface ApplicationRequirement {
   minRAMGB: number

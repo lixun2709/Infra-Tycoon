@@ -6,6 +6,8 @@ export type SimMessageType =
   | 'SYNC_INPUT' 
   | 'SYNC_OUTPUT' 
   | 'TELEMETRY'
+  | 'PING'
+  | 'PONG'
 
 export interface SimMessage {
   type: SimMessageType

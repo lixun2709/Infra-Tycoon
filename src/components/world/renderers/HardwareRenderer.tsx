@@ -2,7 +2,8 @@ import { useMemo, useRef } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { useInfraStore, type InfraNode } from '../../../store/useInfraStore'
+import { useInfraStore } from '../../../store/useInfraStore'
+import type { InfraNode } from '../../../store/infraTypes'
 import { APPLICATION_CATALOG } from '../../../physics/applicationLibrary'
 import { CoolingFan } from '../CoolingFan'
 
@@ -160,7 +161,7 @@ export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
   return (
     <group position={[0, -0.02, 0.05]}>
       {/* Dual CPU Heatsinks */}
-      {health.cpu.map((status, i) => (
+      {health.cpu.map((status: string, i: number) => (
         <group key={`cpu-${i}`} position={[i === 0 ? -0.15 : 0.15, 0, 0]}>
           <mesh>
             <boxGeometry args={[0.22, h * 0.85, 0.22]} />
@@ -181,7 +182,7 @@ export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
       
       {/* RAM Banks */}
       <group position={[0, 0, 0.2]}>
-        {health.ram.map((status, i) => (
+        {health.ram.map((status: string, i: number) => (
           <group key={`ram-${i}`} position={[i * 0.04 - (health.ram.length * 0.02), 0, 0]}>
             <mesh>
               <boxGeometry args={[0.015, h * 0.75, 0.18]} />
@@ -198,7 +199,7 @@ export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
       
       {/* HDD/SSD Drive Array */}
       <group position={[0, 0, -0.3]}>
-        {health.drives.slice(0, 6).map((status, i) => (
+        {health.drives.slice(0, 6).map((status: string, i: number) => (
           <group key={`drive-${i}`} position={[i * 0.12 - 0.3, 0, 0]}>
             <mesh>
               <boxGeometry args={[0.11, h * 0.95, 0.28]} />

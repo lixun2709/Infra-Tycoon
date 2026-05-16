@@ -14,5 +14,5 @@ export type TerminalSession = {
   title: string
   panes: TerminalPane[]
   activePaneId: string
-  layout: 'single' | 'vertical' | 'horizontal'
+  layout: 'single' | 'vertical' | 'horizontal' | 'split-v' | 'split-h'
 }

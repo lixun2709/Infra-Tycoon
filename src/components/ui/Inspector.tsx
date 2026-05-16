@@ -1,5 +1,6 @@
 import React from 'react'
-import { useInfraStore, type DataCategory } from '../../store/useInfraStore'
+import { useInfraStore } from '../../store/useInfraStore'
+import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Card } from './base/Card'
 import { Button } from './base/Button'
@@ -10,7 +11,6 @@ export function Inspector() {
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
-
   if (!selectedNode) return null
 
   const nodeSite = sites.find(s => s.id === selectedNode.siteId)

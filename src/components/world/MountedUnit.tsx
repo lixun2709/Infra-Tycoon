@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges, Text } from '@react-three/drei'
-import { useInfraStore, type InfraNode } from '../../store/useInfraStore'
+import { useInfraStore } from '../../store/useInfraStore'
+import type { InfraNode } from '../../store/infraTypes'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
 import { PortVisuals, StorageBar, PIIShield, MaintenanceIcon, InternalHardware, ServiceHolograms } from './renderers/HardwareRenderer'
@@ -66,9 +67,9 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
   })
 
   const isAnyNodeSelected = !!selectedNodeId
-  const color = (node.catalogKey != null && HARDWARE_CATALOG[node.catalogKey]) 
-    ? HARDWARE_CATALOG[node.catalogKey].color 
-    : TYPE_ACCENT[node.type] ?? '#718096'
+  const color = (node.catalogKey && HARDWARE_CATALOG[node.catalogKey as keyof typeof HARDWARE_CATALOG]) 
+    ? (HARDWARE_CATALOG[node.catalogKey as keyof typeof HARDWARE_CATALOG] as any).color 
+    : (TYPE_ACCENT as any)[node.type] ?? '#718096'
 
   const h = node.uHeight * U_WORLD
   const y = rackHardwareCenterY(node.slotIndex, node.uHeight)

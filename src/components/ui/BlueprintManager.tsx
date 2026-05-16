@@ -7,7 +7,7 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
   const [pendingDeployId, setPendingDeployId] = useState<string | null>(null)
 
   const compliance = useMemo(() => {
-    return runComplianceCheck(currentSiteId)
+    return runComplianceCheck()
   }, [currentSiteId, runComplianceCheck])
 
   if (!isOpen && !pendingDeployId) return null
@@ -29,7 +29,7 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
   }
 
   const handleExportTerraform = (blueprint: any) => {
-    const hcl = exportToTerraform(blueprint.id)
+    const hcl = exportToTerraform()
     const blob = new Blob([hcl], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

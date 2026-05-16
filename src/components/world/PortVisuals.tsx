@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Text, Billboard } from '@react-three/drei'
-import { useInfraStore, type InfraNode } from '../../store/useInfraStore'
+import { useInfraStore } from '../../store/useInfraStore'
+import type { InfraNode } from '../../store/infraTypes'
 import { StatusLED } from './StatusLED'
 
 interface PortVisualsProps {

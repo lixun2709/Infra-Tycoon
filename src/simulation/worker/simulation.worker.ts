@@ -33,7 +33,15 @@ self.onmessage = (event: MessageEvent<SimMessage>) => {
       engine.update(1.0)
       sendSyncOutput()
       break
+
+    case 'PING':
+      self.postMessage({ type: 'PONG' })
+      break
   }
+}
+
+self.onerror = (e) => {
+  console.error('[[Worker Thread]] Critical Error:', e)
 }
 
 function handleSyncInput(payload: SimSyncInputPayload) {

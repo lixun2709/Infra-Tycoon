@@ -138,6 +138,8 @@ export interface InfraNode {
   failureProbability?: number
   isImmutable?: boolean
   isInfected?: boolean
+  lastMaintenance?: number
+  provisioningProgress?: number
   activeMigration?: { targetNodeId: string; progress: number }
   ipmiConfig?: {
     ip?: string

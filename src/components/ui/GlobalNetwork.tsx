@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useInfraStore, type ServiceType } from '../../store/useInfraStore'
+import { useInfraStore } from '../../store/useInfraStore'
+import type { ServiceType } from '../../store/infraTypes'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 
 export function GlobalNetwork() {

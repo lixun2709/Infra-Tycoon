@@ -1,7 +1,9 @@
 import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
-import { useInfraStore, type InfraNode, type Connection, type PortType } from '../../store/useInfraStore'
+import { useInfraStore } from '../../store/useInfraStore'
+import type { InfraNode, Connection } from '../../store/infraTypes'
+import type { PortType } from '../../physics/hardwareLibrary'
 import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
 
 const CABLE_COLORS: Record<PortType, string> = {

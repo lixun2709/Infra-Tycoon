@@ -1,4 +1,4 @@
-import type { InfraNode } from '../store/useInfraStore'
+import type { InfraNode } from '../store/infraTypes'
 
 const RACK_U = 42
 
