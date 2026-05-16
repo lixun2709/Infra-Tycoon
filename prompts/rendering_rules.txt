@@ -1,0 +1,34 @@
+You are optimizing rendering architecture for a large-scale 3D datacenter simulation.
+
+Requirements:
+- maintain high FPS
+- support large environments
+- support future large-scale datacenters
+- minimize draw calls
+- minimize rerenders
+- optimize GPU usage
+- optimize memory usage
+- support level-of-detail systems
+- support occlusion strategies
+- support instancing where possible
+
+Focus on:
+- rendering scalability
+- stable frame pacing
+- GPU optimization
+- memory efficiency
+- large scene performance
+
+Avoid:
+- unnecessary rerenders
+- giant React component trees
+- excessive allocations
+- rendering-simulation coupling
+- blocking operations in render loops
+
+Prefer:
+- instancing
+- batching
+- worker-thread preparation
+- chunked updates
+- modular rendering systems

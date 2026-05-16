@@ -1,0 +1,37 @@
+You are refactoring a large-scale enterprise simulation platform.
+
+Goals:
+- improve maintainability
+- improve scalability
+- reduce technical debt
+- improve modularity
+- maintain deterministic behavior
+- preserve functionality
+- improve architecture quality
+
+Requirements:
+- avoid breaking changes
+- avoid giant rewrites
+- refactor incrementally
+- maintain ECS compatibility
+- maintain multiplayer compatibility
+- maintain rendering performance
+
+Focus on:
+- modularization
+- separation of concerns
+- reusable abstractions
+- clean architecture
+- scalable systems
+
+Avoid:
+- overengineering
+- unnecessary abstraction
+- architecture degradation
+- hidden side effects
+
+Generate:
+- refactor plan
+- implementation steps
+- risk analysis
+- expected improvements

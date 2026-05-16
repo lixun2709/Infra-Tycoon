@@ -1,33 +1,6 @@
-export type ContractTier = 'SME' | 'Enterprise' | 'Government' | 'Research'
+import type { ContractTier, ContractRequirement, ContractBlueprint, ActiveContract } from '../store/infraTypes'
 
-export interface ContractRequirement {
-  appId: string
-  count: number
-  redundant?: boolean // Must be on different racks
-}
-
-export interface ContractBlueprint {
-  id: string
-  name: string
-  tier: ContractTier
-  description: string
-  monthlyMRR: number
-  slaTarget: number // 0-100 (e.g. 99.9)
-  penaltyPerTick: number // Deducted from payout if requirements not met
-  requirements: ContractRequirement[]
-  minReputation: number
-  color: string
-}
-
-export interface ActiveContract {
-  id: string
-  blueprintId: string
-  startDate: number
-  uptimeTicks: number
-  totalTicks: number
-  currentStatus: 'healthy' | 'violating'
-  accumulatedPenalty: number
-}
+export type { ContractTier, ContractRequirement, ContractBlueprint, ActiveContract }
 
 export const CONTRACT_CATALOG: Record<string, ContractBlueprint> = {
   sme_starter: {

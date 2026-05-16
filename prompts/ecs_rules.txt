@@ -1,0 +1,32 @@
+You are designing systems for a scalable ECS-compatible architecture.
+
+Requirements:
+- systems must remain decoupled
+- components must remain lightweight
+- avoid monolithic managers
+- avoid tight coupling
+- systems must support worker-thread execution
+- systems must support future multiplayer synchronization
+- avoid excessive object mutation
+- prefer data-oriented design
+- avoid unnecessary inheritance
+- optimize cache locality where possible
+
+Focus on:
+- scalability
+- maintainability
+- deterministic simulation
+- reusable systems
+- modular architecture
+
+Never:
+- tightly couple rendering with simulation
+- create giant systems
+- introduce hidden dependencies
+- bypass architecture boundaries
+
+Prefer:
+- event-driven systems
+- modular processing pipelines
+- reusable components
+- clear separation of responsibilities

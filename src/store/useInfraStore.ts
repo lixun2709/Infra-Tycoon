@@ -7,7 +7,7 @@ import {
   type PortType,
 } from '../physics/hardwareLibrary'
 
-import { type ActiveContract, CONTRACT_CATALOG } from '../physics/contractLibrary'
+import { CONTRACT_CATALOG } from '../physics/contractLibrary'
 
 export {
   HARDWARE_CATALOG,
@@ -21,183 +21,29 @@ import { useMissionStore } from './useMissionStore'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
 import { audioManager } from '../utils/AudioManager'
 
-export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer' | 'security' | 'identity' | 'facility'
-export type RackStatus = 'online' | 'power_overload'
-export type HealthStatus = 'healthy' | 'degraded' | 'critical'
-export type AlertSeverity = 'info' | 'warning' | 'critical'
-export type BackupStatus = 'protected' | 'unprotected' | 'backing_up'
-export type DataCategory = 'Public' | 'Internal' | 'PII'
-export type SystemState = 'off' | 'booting' | 'running'
+export type * from './infraTypes'
+import type { 
+  InfraNode, 
+  Connection, 
+  CloudLink, 
+  Site, 
+  InfraAlert, 
+  AuditLog, 
+  DnsRecord, 
+  DhcpLease, 
+  NtpSyncStatus, 
+  PostMortem, 
+  Blueprint, 
+  ApplicationDeployment,
+  ServiceType,
+  ServiceStatus,
+  SaveMetadata,
+  HardwarePort,
+  ComponentHealth,
+  ActiveContract,
+  NodeService
+} from './infraTypes'
 
-export type InfraAlert = {
-  id: string
-  timestamp: number
-  severity: AlertSeverity
-  message: string
-  isAcknowledged: boolean
-  nodeId?: string
-}
-
-export type AuditLog = {
-  id: string
-  timestamp: number
-  type: 'SovereigntyViolation' | 'ComplianceCheck' | 'LifecycleEvent'
-  message: string
-  sourceNodeId: string
-  targetNodeId: string
-  status: 'Blocked' | 'Allowed' | 'Info'
-}
-
-export type Site = {
-  id: string
-  name: string
-  isDisaster: boolean
-  region: string
-  energySource: 'Renewable' | 'Grid'
-  geoCoords: { lat: number; lng: number }
-}
-
-export type HardwarePort = {
-  id: string
-  type: PortType
-  label: string
-  connectedTo: null | string
-  status: 'up' | 'down' | 'negotiating'
-  ip?: string
-  mask?: string
-  speedMbps?: number
-  vlan?: number
-}
-
-export type ComponentHealth = {
-  cpu: HealthStatus[]
-  ram: HealthStatus[]
-  drives: HealthStatus[]
-}
-
-
-export type ServiceType = 'web' | 'storage' | 'backup' | 'DHCP' | 'DNS' | 'NTP'
-export type ServiceStatus = 'running' | 'stopped' | 'degraded'
-
-export type NodeService = {
-  id: string
-  type: ServiceType
-  status: ServiceStatus
-  port: number
-}
-
-
-export type DnsRecord = { id: string; hostname: string; ip: string; ttl: number }
-export type DhcpLease = { id: string; nodeId: string; ip: string; expires: number }
-export type NtpSyncStatus = { nodeId: string; stratum: number; offsetMs: number; status: 'synced' | 'unsynced' }
-
-
-
-export interface InfraNode {
-  id: string
-  type: InfraNodeType
-  siteId: string
-  position: Vector3
-  name: string
-  uHeight: number
-  wattage: number
-  btuOutput: number
-  parentRackId?: string
-  slotIndex?: number
-  catalogKey?: HardwareCatalogKey
-  maxPowerKW?: number
-  currentPowerKW?: number
-  status?: RackStatus
-  healthStatus?: HealthStatus
-  backupStatus?: BackupStatus
-  totalStorageTB?: number
-  usedStorageTB?: number
-  
-  // v2.0 SDDC Orchestration
-  systemState: SystemState
-  bootProgress: number
-  
-  // Logical Identity
-  hostname?: string
-  managementIP?: string
-  macAddress?: string
-  provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'decommissioning'
-  isConfigured?: boolean
-  vlan?: number
-  
-  ports: HardwarePort[]
-  services: NodeService[]
-  assetTag?: string
-  serialNumber?: string
-  dataCategory?: DataCategory
-
-  installDate: number // Simulation cycle index
-  installTimestamp?: number // Real-world timestamp for animations
-  degradation: number // 0-100
-  temperature?: number
-  isRefreshing?: boolean
-  componentHealth?: ComponentHealth
-  failureProbability?: number
-  isImmutable?: boolean
-  isInfected?: boolean
-  activeMigration?: { targetNodeId: string; progress: number }
-}
-
-export interface CloudLink {
-  id: string
-  nodeId: string
-  tieredTB: number
-}
-
-export interface Connection {
-  id: string
-  startNodeId: string
-  startPortId: string
-  endNodeId: string
-  endPortId: string
-  bandwidthGbps: number
-  throughputGbps: number
-  latencyMs: number
-  isBlockedByCompliance?: boolean
-  status?: 'active' | 'blocked'
-  syncProgress?: number
-  type?: PortType
-  highlightTime?: number
-}
-
-export interface PostMortem {
-  id: string
-  incidentNumber: number
-  timestamp: number
-  nodeName: string
-  nodeId: string
-  rca: string
-  mitigation: string
-  impact: string
-}
-
-export interface Blueprint {
-  id: string
-  name: string
-  nodes: InfraNode[]
-  connections: Connection[]
-  createdAt: number
-}
-
-export interface SaveMetadata {
-  id: string
-  timestamp: number
-  siteName: string
-  nodeCount: number
-}
-
-export type ApplicationDeployment = {
-  id: string
-  appId: string
-  nodeId: string
-  status: 'deploying' | 'running' | 'error'
-  progress: number
-}
 
 type InfraState = {
   nodes: InfraNode[]
@@ -260,17 +106,17 @@ type InfraState = {
   cancelContract: (id: string) => void
   
   // v7.0 Global & Hybrid
-  isGlobalMapOpen: boolean
-  toggleGlobalMap: () => void
   cloudBurstingActive: boolean
   activeCloudInstances: number
   setCloudBursting: (active: boolean) => void
+  isGlobalMapOpen: boolean
+  toggleGlobalMap: () => void
+  assistantTargetId: string | null
   
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
   isHeatMapVisible: boolean
   toggleHeatMap: () => void
-  toggleGlobalMap: () => void
   saveSiteAsBlueprint: (name: string) => void
   applyBlueprint: (id: string) => void
   
@@ -468,6 +314,7 @@ export const useInfraStore = create<InfraState>()(
       postMortems: [],
       incidentCounter: 400,
       isAutoPilot: false,
+      assistantTargetId: null,
       terminalStates: INITIAL_TERMINAL_STATE,
       deploymentQueue: [],
       isHeatMapVisible: false,
@@ -498,6 +345,7 @@ export const useInfraStore = create<InfraState>()(
       setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
       setMousePosition: (pos) => set({ mousePosition: pos }),
       toggleHeatMap: () => set(state => ({ isHeatMapVisible: !state.isHeatMapVisible })),
+      toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
 
       pushAlert: (severity, message, nodeId) => {
         if (severity === 'critical') audioManager.playEffect('error')

@@ -1,0 +1,37 @@
+You are performing enterprise-grade software engineering code review.
+
+Review:
+- architecture quality
+- scalability
+- readability
+- maintainability
+- technical debt
+- performance
+- ECS compatibility
+- multiplayer compatibility
+- rendering efficiency
+- simulation determinism
+
+Identify:
+- anti-patterns
+- tight coupling
+- giant files
+- dead code
+- duplicated logic
+- performance risks
+- scalability risks
+- maintainability risks
+
+Focus on:
+- long-term sustainability
+- clean abstractions
+- modular systems
+- enterprise-grade quality
+
+Generate:
+1. critical issues
+2. improvement suggestions
+3. scalability concerns
+4. architecture concerns
+5. performance concerns
+6. maintainability concerns

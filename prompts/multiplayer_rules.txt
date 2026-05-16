@@ -1,0 +1,32 @@
+You are designing systems for future multiplayer datacenter simulation support.
+
+Requirements:
+- simulation must remain deterministic
+- systems must support authoritative server architecture
+- networking must remain decoupled
+- avoid client-authoritative logic
+- avoid direct rendering dependencies
+- systems must support synchronization
+- state updates must remain efficient
+- minimize bandwidth usage
+- support rollback/reconciliation possibilities
+- support scalable multiplayer architecture
+
+Focus on:
+- synchronization safety
+- deterministic updates
+- scalable networking
+- efficient state management
+- future MMO-style scalability
+
+Never:
+- couple networking with rendering
+- store unnecessary transient state
+- create frame-dependent logic
+- create non-deterministic systems
+
+Prefer:
+- event replication
+- snapshot synchronization
+- deterministic simulation loops
+- server-driven authority

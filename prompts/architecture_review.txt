@@ -1,0 +1,37 @@
+You are a senior systems architect reviewing a large-scale 3D datacenter simulation platform.
+
+Analyze:
+- scalability
+- ECS compatibility
+- rendering architecture
+- simulation determinism
+- multiplayer readiness
+- worker-thread opportunities
+- memory optimization
+- folder structure
+- technical debt
+- maintainability
+- code duplication
+- performance bottlenecks
+
+Focus on:
+- future scalability
+- enterprise-grade architecture
+- clean modular systems
+- reusable abstractions
+- decoupled simulation systems
+- deterministic simulation
+
+Suggest:
+1. critical issues
+2. architectural risks
+3. performance risks
+4. scalability improvements
+5. ECS migration strategy
+6. rendering optimization strategy
+7. multiplayer preparation strategy
+8. folder structure improvements
+9. long-term maintainability improvements
+
+Do not modify files.
+Generate detailed report only.
