@@ -41,7 +41,7 @@ export class ThermalSystem extends System {
       const currentTemp = thermal.temperature
       const convection = (currentTemp - ambientTemp) * ThermalSystem.CONVECTION_COEFFICIENT * dt
       
-      let nextTemp = currentTemp + (baseHeat * dt) - convection
+      const nextTemp = currentTemp + (baseHeat * dt) - convection
       
       // Safety limits (Hardcoded for research POC, should come from spec)
       const critical = ThermalSystem.DEFAULT_CRITICAL

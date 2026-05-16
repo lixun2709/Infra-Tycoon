@@ -39,7 +39,7 @@ export class ThermalManager {
       const currentTemp = node.temperature ?? ambientTemp
       const convection = (currentTemp - ambientTemp) * this.CONVECTION_COEFFICIENT * dt
       
-      let nextTemp = currentTemp + (baseHeat * dt) - convection
+      const nextTemp = currentTemp + (baseHeat * dt) - convection
       
       const critical = spec?.maxOperatingTemp ?? this.DEFAULT_CRITICAL
       const throttle = spec?.throttleTemp ?? this.DEFAULT_THROTTLE

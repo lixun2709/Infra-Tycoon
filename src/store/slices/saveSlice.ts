@@ -47,7 +47,7 @@ export const createSaveSlice: StateCreator<InfraState, [], [], SaveSlice> = (set
       const snapshot = JSON.parse(data)
       set({ ...snapshot })
       get().pushAlert('info', `Game loaded from slot ${slotId}`)
-    } catch (e) {
+    } catch {
       get().pushAlert('critical', `Failed to load save ${slotId}`)
     }
   },

@@ -1,9 +1,10 @@
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
+import type { TerminalSession, TerminalPane, TerminalStateRecord } from '../terminalTypes'
 
 export interface TerminalSlice {
-  updateTerminalLayout: (layout: any) => void
-  addTerminalSession: (title?: string, initialContext?: any) => void
+  updateTerminalLayout: (layout: Partial<TerminalStateRecord['layout']>) => void
+  addTerminalSession: (title?: string, initialContext?: TerminalPane['context']) => void
   closeTerminalSession: (sessionId: string) => void
   setActiveSession: (sessionId: string) => void
   splitTerminalPane: (direction: 'vertical' | 'horizontal') => void
@@ -32,7 +33,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
     const id = `s-${crypto.randomUUID()}`
     const paneId = `p-${crypto.randomUUID()}`
     
-    const newSession = {
+    const newSession: TerminalSession = {
       id,
       title,
       panes: [{ id: paneId, logs: [`Session ${title} initialized.`], history: [], cwd: '/', context: initialContext || { mode: 'global' as const, targetId: null } }],
@@ -85,7 +86,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
     const newPaneId = `p-${crypto.randomUUID()}`
     const activePane = session.panes.find(p => p.id === session.activePaneId) || session.panes[0]
     
-    const newPane = { ...activePane, id: newPaneId, logs: [`Pane split ${direction}.`] }
+    const newPane: TerminalPane = { ...activePane, id: newPaneId, logs: [`Pane split ${direction}.`] }
     
     set({
       terminalStates: {

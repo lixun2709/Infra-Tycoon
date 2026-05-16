@@ -1,4 +1,5 @@
 import type { StateCreator } from 'zustand'
+import { Vector3 } from 'three'
 import type { InfraState } from '../infraStoreTypes'
 import { audioManager } from '../../utils/AudioManager'
 
@@ -6,7 +7,7 @@ export interface UISlice {
   setNetworkLoad: (load: number) => void
   setNetworkManagerOpen: (open: boolean) => void
   setCurrentSiteId: (siteId: string) => void
-  setMousePosition: (pos: any) => void
+  setMousePosition: (pos: Vector3 | null) => void
   toggleHeatMap: () => void
   toggleGlobalMap: () => void
   pushAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId?: string) => void

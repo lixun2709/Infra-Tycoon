@@ -1,4 +1,4 @@
-import type { InfraNode, ApplicationDeployment } from '../../store/infraTypes'
+import type { InfraNode, ApplicationDeployment, SystemState } from '../../store/infraTypes'
 
 export type SimMessageType = 
   | 'INIT' 
@@ -8,11 +8,6 @@ export type SimMessageType =
   | 'TELEMETRY'
   | 'PING'
   | 'PONG'
-
-export interface SimMessage {
-  type: SimMessageType
-  payload?: any
-}
 
 export interface SimInitPayload {
   nodes: InfraNode[]
@@ -31,7 +26,7 @@ export interface SimSyncOutputPayload {
     isThrottled: boolean
     currentPowerKW: number
     bootProgress: number
-    systemState: string
+    systemState: SystemState
   }>
   applications: Array<{
     id: string
@@ -46,3 +41,12 @@ export interface SimTelemetryPayload {
   lastTickTime: number
   systemTimings: Record<string, number>
 }
+
+export type SimMessage = 
+  | { type: 'INIT'; payload: SimInitPayload }
+  | { type: 'SYNC_INPUT'; payload: SimSyncInputPayload }
+  | { type: 'TICK'; payload?: undefined }
+  | { type: 'SYNC_OUTPUT'; payload: SimSyncOutputPayload }
+  | { type: 'TELEMETRY'; payload: SimTelemetryPayload }
+  | { type: 'PING'; payload?: undefined }
+  | { type: 'PONG'; payload?: undefined }

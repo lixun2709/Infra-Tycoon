@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
-import { HARDWARE_CATALOG, type HardwareCatalogKey } from '../../physics/hardwareLibrary'
+import { HARDWARE_CATALOG, type HardwareCatalogKey, type HardwareCatalogSpec } from '../../physics/hardwareLibrary'
+import type { LucideIcon } from 'lucide-react'
 import { 
   Server, 
   Database, 
@@ -26,12 +27,14 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
   const [showQueueList, setShowQueueList] = useState(false)
   const { 
     deploymentQueue,
-    setPlacementMode
+    setPlacementMode,
+    sites,
+    currentSiteId
   } = useInfraStore()
 
   const [activeCategory, setActiveCategory] = useState<Category>('compute')
 
-  const categories: { id: Category; label: string; icon: any }[] = [
+  const categories: { id: Category; label: string; icon: LucideIcon }[] = [
     { id: 'compute', label: 'Compute', icon: Server },
     { id: 'storage', label: 'Storage', icon: Database },
     { id: 'network', label: 'Network', icon: Network },
@@ -49,6 +52,8 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
       deploymentQueue: [...state.deploymentQueue, key]
     }))
   }
+
+  const currentSiteName = sites.find(s => s.id === currentSiteId)?.name
 
   return (
     <div className="fixed bottom-8 right-8 z-[200]">
@@ -70,24 +75,27 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Staging</span>
               </div>
               <div className="space-y-2 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                {deploymentQueue.map((key, idx) => (
-                  <button
-                    key={`${key}-${idx}`}
-                    onClick={() => {
-                      setPlacementMode(true, key)
-                      setShowQueueList(false)
-                    }}
-                    className="w-full group p-4 bg-white/5 hover:bg-teal-500/10 border border-white/5 hover:border-teal-500/30 rounded-2xl transition-all flex items-center gap-4"
-                  >
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-teal-500/10 text-teal-400 group-hover:bg-teal-500 group-hover:text-[#020617] transition-all">
-                      <Plus size={18} />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-[11px] font-black text-white uppercase tracking-tight leading-none mb-1">{HARDWARE_CATALOG[key].name || key}</p>
-                      <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">{HARDWARE_CATALOG[key].uHeight}U • {HARDWARE_CATALOG[key].type}</p>
-                    </div>
-                  </button>
-                ))}
+                {deploymentQueue.map((key, idx) => {
+                  const spec = HARDWARE_CATALOG[key]
+                  return (
+                    <button
+                      key={`${key}-${idx}`}
+                      onClick={() => {
+                        setPlacementMode(true, key)
+                        setShowQueueList(false)
+                      }}
+                      className="w-full group p-4 bg-white/5 hover:bg-teal-500/10 border border-white/5 hover:border-teal-500/30 rounded-2xl transition-all flex items-center gap-4"
+                    >
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl bg-teal-500/10 text-teal-400 group-hover:bg-teal-500 group-hover:text-[#020617] transition-all">
+                        <Plus size={18} />
+                      </div>
+                      <div className="text-left">
+                        <p className="text-[11px] font-black text-white uppercase tracking-tight leading-none mb-1">{spec.name || key}</p>
+                        <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">{spec.uHeight}U • {spec.type}</p>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -133,7 +141,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                 <div>
                   <h2 className="text-3xl font-black tracking-tighter uppercase text-white">Asset Catalog</h2>
                   <p className="text-[10px] text-teal-400 font-black uppercase tracking-[0.3em] mt-2">
-                    Current Site: {useInfraStore.getState().sites.find(s => s.id === useInfraStore.getState().currentSiteId)?.name}
+                    Current Site: {currentSiteName}
                   </p>
                 </div>
                 <button 
@@ -146,7 +154,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
               </div>
 
               <div className="flex-1 overflow-y-auto p-10 grid grid-cols-2 gap-8 bg-slate-900/5 custom-scrollbar">
-                {items.map((item: any) => (
+                {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => (
                   <button
                     key={item.key}
                     onClick={() => stageAsset(item.key)}

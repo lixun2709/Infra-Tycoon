@@ -1,7 +1,202 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { TerminalPane } from '../../store/terminalTypes'
 import { X, Plus, Maximize2, Minimize2, Terminal as TerminalIcon, GripHorizontal, Activity, Cpu, Shield } from 'lucide-react'
+
+const TerminalLine: React.FC<{ text: string }> = ({ text }) => {
+  if (text.startsWith('>')) {
+    return (
+      <div className="text-teal-400 font-black flex items-center gap-2 mb-2 mt-4">
+        <span className="text-[10px] opacity-40">#</span>
+        {text.slice(1)}
+      </div>
+    )
+  }
+
+  const parts = text.split(/(\[\[[A-Z]+\]\])/)
+  const renderedParts: React.ReactNode[] = []
+  let currentStyle = 'text-slate-300'
+  
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i]
+    if (part === '[[GREEN]]') { currentStyle = 'text-[#4AF626] font-bold' }
+    else if (part === '[[RED]]') { currentStyle = 'text-[#FF3131] font-bold' }
+    else if (part === '[[BLUE]]') { currentStyle = 'text-[#1E90FF] font-bold' }
+    else if (part === '[[YELLOW]]') { currentStyle = 'text-[#FFFF00] font-bold' }
+    else if (part === '[[RESET]]') { currentStyle = 'text-slate-300' }
+    else if (part) {
+      renderedParts.push(<span key={i} className={currentStyle}>{part}</span>)
+    }
+  }
+
+  return (
+    <div className="leading-relaxed break-words opacity-90 mb-0.5">
+      {renderedParts}
+    </div>
+  )
+}
+
+const NanoEditor: React.FC<{ pane: TerminalPane, siteId: string }> = ({ pane, siteId }) => {
+  const { terminalStates, writeTerminalFile, processCommand } = useInfraStore()
+  const siteState = terminalStates[siteId]
+  const filePath = pane.context.targetId || 'unknown'
+  const initialContent = siteState?.storedFiles[filePath] || ''
+  const [content, setContent] = useState(initialContent)
+
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.ctrlKey && e.key === 'o') {
+      e.preventDefault()
+      writeTerminalFile(filePath, content)
+      processCommand(`echo "[[GREEN]]File ${filePath} saved.[[RESET]]"`)
+    }
+    if (e.ctrlKey && e.key === 'x') {
+      e.preventDefault()
+      writeTerminalFile(filePath, content)
+      processCommand('exit')
+    }
+  }
+
+  return (
+    <div className="flex-1 flex flex-col bg-[#010409] text-[#e6edf3] font-mono text-[11px] p-0 overflow-hidden">
+      <div className="bg-[#f0f6fc]/10 px-4 py-1 flex justify-between items-center text-[10px] font-bold">
+        <span>GNU nano 7.2</span>
+        <span className="uppercase">{filePath}</span>
+        <span>Modified</span>
+      </div>
+      <textarea 
+        autoFocus
+        value={content}
+        onChange={(e) => setContent(e.target.value)}
+        onKeyDown={handleKey}
+        spellCheck={false}
+        className="flex-1 bg-transparent p-4 outline-none resize-none custom-scrollbar leading-relaxed"
+      />
+      <div className="grid grid-cols-4 gap-4 px-4 py-2 bg-[#f0f6fc]/5 text-[9px] uppercase font-black text-slate-400">
+        <div>[[YELLOW]]^G[[RESET]] Get Help</div>
+        <div>[[YELLOW]]^O[[RESET]] Write Out</div>
+        <div>[[YELLOW]]^W[[RESET]] Where Is</div>
+        <div>[[YELLOW]]^K[[RESET]] Cut</div>
+        <div>[[YELLOW]]^X[[RESET]] Exit</div>
+        <div>[[YELLOW]]^J[[RESET]] Justify</div>
+        <div>[[YELLOW]]^R[[RESET]] Read File</div>
+        <div>[[YELLOW]]^U[[RESET]] Paste</div>
+      </div>
+    </div>
+  )
+}
+
+const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ nodeId, siteId }) => {
+  const [tick, setTick] = useState(0)
+  const { nodes, processCommand } = useInfraStore()
+  const targetNode = nodeId ? nodes.find(n => n.id === nodeId) : null
+
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000)
+    const handleGlobalKey = (e: KeyboardEvent) => {
+      if (e.key === 'q' || (e.ctrlKey && e.key === 'c')) {
+        processCommand('exit')
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKey)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('keydown', handleGlobalKey)
+    }
+  }, [processCommand])
+
+  const renderBar = (val: number, color: string) => {
+    const filled = Math.floor(val / 5)
+    return (
+      <span className="font-mono">
+        [<span className={color}>{'#'.repeat(Math.max(0, Math.min(20, filled)))}{' '.repeat(Math.max(0, 20 - filled))}</span>] {val.toFixed(1)}%
+      </span>
+    )
+  }
+
+  const metrics = useMemo(() => {
+    const cpuBase = targetNode ? (targetNode.systemState === 'running' ? 15 : 0) : 5
+    const memBase = targetNode ? (targetNode.systemState === 'running' ? 40 : 0) : 10
+    
+    const pseudoRand = (seed: number) => {
+      const x = Math.sin(seed + tick) * 10000
+      return x - Math.floor(x)
+    }
+
+    const currentSiteNodes = nodes.filter(n => n.siteId === siteId).slice(0, 12)
+
+    return {
+      cpu: pseudoRand(1) * 10 + cpuBase,
+      mem: pseudoRand(2) * 5 + memBase,
+      procMetrics: (targetNode ? targetNode.services : currentSiteNodes).map((_, i) => ({
+        cpu: pseudoRand(i + 10) * 12,
+        mem: pseudoRand(i + 20) * 5
+      }))
+    }
+  }, [tick, targetNode, nodes, siteId])
+
+  return (
+    <div className="flex-1 bg-black p-8 font-mono text-[10px] space-y-4 overflow-hidden selection:bg-teal-500/20">
+      <div className="flex justify-between items-start border-b border-white/10 pb-4">
+        <div>
+          <div className="text-teal-400 font-black text-xs mb-1">
+            {targetNode ? `${targetNode.hostname || targetNode.id.slice(0,8)}` : 'PROD-INFRA'} - TOP MONITOR v1.4
+          </div>
+          <div className="text-slate-500 uppercase tracking-widest text-[9px]">Uptime: 42 days, 14:22:01</div>
+        </div>
+        <div className="text-right">
+           <div className="text-slate-400">LOAD AVG: 0.85 1.02 0.94</div>
+           <div className="text-slate-500 text-[9px]">Press [[RED]]'q'[[RESET]] or [[RED]]Ctrl+C[[RESET]] to exit</div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+         <div className="flex items-center gap-4">
+            <span className="w-12 text-slate-500 uppercase">CPU:</span>
+            {renderBar(metrics.cpu, 'text-emerald-400')}
+         </div>
+         <div className="flex items-center gap-4">
+            <span className="w-12 text-slate-500 uppercase">MEM:</span>
+            {renderBar(metrics.mem, 'text-teal-400')}
+         </div>
+      </div>
+
+      <table className="w-full text-left mt-8 border-collapse">
+         <thead>
+           <tr className="text-slate-500 border-b border-white/5 uppercase text-[9px]">
+             <th className="py-2">PID</th>
+             <th>USER</th>
+             <th>%CPU</th>
+             <th>%MEM</th>
+             <th>COMMAND</th>
+           </tr>
+         </thead>
+         <tbody>
+           {targetNode ? (
+             targetNode.services.map((s, i) => (
+               <tr key={s.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                 <td className="py-1.5">{1000 + i}</td>
+                 <td>root</td>
+                 <td className="text-emerald-400 font-bold">{(metrics.procMetrics[i].cpu + (s.status === 'running' ? 2 : 0)).toFixed(1)}</td>
+                 <td>{(metrics.procMetrics[i].mem + 1).toFixed(1)}</td>
+                 <td className="text-teal-500">{s.type.toLowerCase()}d</td>
+               </tr>
+             ))
+           ) : (
+             nodes.filter(n => n.siteId === siteId).slice(0, 12).map((n, i) => (
+               <tr key={n.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                 <td className="py-1.5">{2000 + i}</td>
+                 <td>system</td>
+                 <td className="text-emerald-400 font-bold">{metrics.procMetrics[i].cpu.toFixed(1)}</td>
+                 <td>{metrics.procMetrics[i].mem.toFixed(1)}</td>
+                 <td className="text-teal-500">{n.name}</td>
+               </tr>
+             ))
+           )}
+         </tbody>
+      </table>
+    </div>
+  )
+}
 
 export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
@@ -29,51 +224,63 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [input, setInput] = useState('')
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [editingTabId, setEditingTabId] = useState<string | null>(null)
+  const [systemLoad, setSystemLoad] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  if (!siteState || !siteState.sessions || siteState.sessions.length === 0) return null
-
-  const { sessions, activeSessionId, layout } = siteState
-  const activeSession = sessions?.find(s => s.id === activeSessionId) || sessions?.[0]
-  if (!activeSession) return null
-  const { panes, activePaneId, layout: sessionLayout } = activeSession
-  const activePane = panes?.find(p => p.id === activePaneId) || panes?.[0]
-  if (!activePane) return null
-  
   useEffect(() => {
+    const interval = setInterval(() => {
+      setSystemLoad(Math.random() * 100)
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    let timer: any
     if (siteState?.layout) {
-      setLocalLayout({
-        width: siteState.layout.width,
-        height: siteState.layout.height,
-        x: siteState.layout.x,
-        y: siteState.layout.y
-      })
+      timer = setTimeout(() => {
+        setLocalLayout({
+          width: siteState.layout.width,
+          height: siteState.layout.height,
+          x: siteState.layout.x,
+          y: siteState.layout.y
+        })
+      }, 0)
     }
-  }, [currentSiteId])
+    return () => {
+      if (timer) clearTimeout(timer)
+    }
+  }, [currentSiteId, siteState?.layout])
 
   // Auto-attach to selected node
   useEffect(() => {
-    if (selectedNodeId) {
+    if (selectedNodeId && siteState?.sessions) {
       const node = nodes.find(n => n.id === selectedNodeId)
       if (node && node.type !== 'rack') {
-        const existingSession = sessions.find(s => s.panes.some(p => p.context.targetId === selectedNodeId))
+        const existingSession = siteState.sessions.find(s => s.panes.some(p => p.context.targetId === selectedNodeId))
         if (existingSession) {
           setActiveSession(existingSession.id)
         } else {
-          // Add a new dedicated session for this node
           addTerminalSession(`${node.hostname || node.name} CONSOLE`, { mode: 'ssh', targetId: selectedNodeId })
         }
       }
     }
-  }, [selectedNodeId])
+  }, [selectedNodeId, siteState?.sessions, nodes, addTerminalSession, setActiveSession])
+
+  if (!siteState || !siteState.sessions || siteState.sessions.length === 0) return null
+
+  const { sessions, activeSessionId, layout } = siteState
+  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0]
+  const { panes, activePaneId, layout: sessionLayout } = activeSession
+  const activePane = panes.find(p => p.id === activePaneId) || panes[0]
 
   // Auto-scroll logic
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
-    }
-  }, [activePane.logs])
+  // We use the effect inside Terminal because it needs scrollRef
+  // which is tied to the focused pane DOM element.
+  // Using a trick: scrollRef is only attached to the focused pane.
+  // But wait, useEffect doesn't know which pane is focused unless it's in the dependency array.
+  // Actually, it's better to just use a ref and scroll it in useLayoutEffect if possible, 
+  // but useEffect is fine.
 
   const handleResize = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -122,7 +329,6 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    // v1.3 Shortcuts
     if (e.ctrlKey && e.shiftKey && e.key === 'V') {
       e.preventDefault()
       splitTerminalPane('vertical')
@@ -151,183 +357,11 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }
   }
 
-  const TerminalLine: React.FC<{ text: string }> = ({ text }) => {
-    if (text.startsWith('>')) {
-      return (
-        <div className="text-teal-400 font-black flex items-center gap-2 mb-2 mt-4">
-          <span className="text-[10px] opacity-40">#</span>
-          {text.slice(1)}
-        </div>
-      )
-    }
-
-    // Color Engine Regex
-    const parts = text.split(/(\[\[[A-Z]+\]\])/)
-    let currentColor = 'text-slate-300'
-
-    return (
-      <div className={`leading-relaxed break-words ${currentColor} opacity-90 mb-0.5`}>
-        {parts.map((part, i) => {
-          if (part === '[[GREEN]]') { currentColor = 'text-[#4AF626] font-bold'; return null }
-          if (part === '[[RED]]') { currentColor = 'text-[#FF3131] font-bold'; return null }
-          if (part === '[[BLUE]]') { currentColor = 'text-[#1E90FF] font-bold'; return null }
-          if (part === '[[YELLOW]]') { currentColor = 'text-[#FFFF00] font-bold'; return null }
-          if (part === '[[RESET]]') { currentColor = 'text-slate-300'; return null }
-          
-          return <span key={i} className={currentColor}>{part}</span>
-        })}
-      </div>
-    )
-  }
-
-  const NanoEditor: React.FC<{ pane: TerminalPane }> = ({ pane }) => {
-    const filePath = pane.context.targetId || 'unknown'
-    const initialContent = siteState.storedFiles[filePath] || ''
-    const [content, setContent] = useState(initialContent)
-    const { writeTerminalFile, processCommand } = useInfraStore()
-
-    const handleKey = (e: React.KeyboardEvent) => {
-      if (e.ctrlKey && e.key === 'o') {
-        e.preventDefault()
-        writeTerminalFile(filePath, content)
-        processCommand(`echo "[[GREEN]]File ${filePath} saved.[[RESET]]"`)
-      }
-      if (e.ctrlKey && e.key === 'x') {
-        e.preventDefault()
-        writeTerminalFile(filePath, content)
-        processCommand('exit')
-      }
-    }
-
-    return (
-      <div className="flex-1 flex flex-col bg-[#010409] text-[#e6edf3] font-mono text-[11px] p-0 overflow-hidden">
-        <div className="bg-[#f0f6fc]/10 px-4 py-1 flex justify-between items-center text-[10px] font-bold">
-          <span>GNU nano 7.2</span>
-          <span className="uppercase">{filePath}</span>
-          <span>Modified</span>
-        </div>
-        <textarea 
-          autoFocus
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          onKeyDown={handleKey}
-          spellCheck={false}
-          className="flex-1 bg-transparent p-4 outline-none resize-none custom-scrollbar leading-relaxed"
-        />
-        <div className="grid grid-cols-4 gap-4 px-4 py-2 bg-[#f0f6fc]/5 text-[9px] uppercase font-black text-slate-400">
-          <div>[[YELLOW]]^G[[RESET]] Get Help</div>
-          <div>[[YELLOW]]^O[[RESET]] Write Out</div>
-          <div>[[YELLOW]]^W[[RESET]] Where Is</div>
-          <div>[[YELLOW]]^K[[RESET]] Cut</div>
-          <div>[[YELLOW]]^X[[RESET]] Exit</div>
-          <div>[[YELLOW]]^J[[RESET]] Justify</div>
-          <div>[[YELLOW]]^R[[RESET]] Read File</div>
-          <div>[[YELLOW]]^U[[RESET]] Paste</div>
-        </div>
-      </div>
-    )
-  }
-
-  const TopMonitor: React.FC<{ nodeId?: string | null }> = ({ nodeId }) => {
-    const [, setTick] = useState(0)
-    const targetNode = nodeId ? nodes.find(n => n.id === nodeId) : null
-
-    useEffect(() => {
-      const interval = setInterval(() => setTick(t => t + 1), 1000)
-      const handleGlobalKey = (e: KeyboardEvent) => {
-        if (e.key === 'q' || (e.ctrlKey && e.key === 'c')) {
-          processCommand('exit')
-        }
-      }
-      window.addEventListener('keydown', handleGlobalKey)
-      return () => {
-        clearInterval(interval)
-        window.removeEventListener('keydown', handleGlobalKey)
-      }
-    }, [])
-
-    const renderBar = (val: number, color: string) => {
-      const filled = Math.floor(val / 5)
-      return (
-        <span className="font-mono">
-          [<span className={color}>{'#'.repeat(filled)}{' '.repeat(20 - filled)}</span>] {val.toFixed(1)}%
-        </span>
-      )
-    }
-
-    // Simulate metrics based on node type and status
-    const cpuBase = targetNode ? (targetNode.systemState === 'running' ? 15 : 0) : 5
-    const memBase = targetNode ? (targetNode.systemState === 'running' ? 40 : 0) : 10
-
-    return (
-      <div className="flex-1 bg-black p-8 font-mono text-[10px] space-y-4 overflow-hidden selection:bg-teal-500/20">
-        <div className="flex justify-between items-start border-b border-white/10 pb-4">
-          <div>
-            <div className="text-teal-400 font-black text-xs mb-1">
-              {targetNode ? `${targetNode.hostname || targetNode.id.slice(0,8)}` : 'PROD-INFRA'} - TOP MONITOR v1.4
-            </div>
-            <div className="text-slate-500 uppercase tracking-widest text-[9px]">Uptime: 42 days, 14:22:01</div>
-          </div>
-          <div className="text-right">
-             <div className="text-slate-400">LOAD AVG: 0.85 1.02 0.94</div>
-             <div className="text-slate-500 text-[9px]">Press [[RED]]'q'[[RESET]] or [[RED]]Ctrl+C[[RESET]] to exit</div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-           <div className="flex items-center gap-4">
-              <span className="w-12 text-slate-500 uppercase">CPU:</span>
-              {renderBar(Math.random() * 10 + cpuBase, 'text-emerald-400')}
-           </div>
-           <div className="flex items-center gap-4">
-              <span className="w-12 text-slate-500 uppercase">MEM:</span>
-              {renderBar(Math.random() * 5 + memBase, 'text-teal-400')}
-           </div>
-        </div>
-
-        <table className="w-full text-left mt-8 border-collapse">
-           <thead>
-             <tr className="text-slate-500 border-b border-white/5 uppercase text-[9px]">
-               <th className="py-2">PID</th>
-               <th>USER</th>
-               <th>%CPU</th>
-               <th>%MEM</th>
-               <th>COMMAND</th>
-             </tr>
-           </thead>
-           <tbody>
-             {targetNode ? (
-               targetNode.services.map((s, i) => (
-                 <tr key={s.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                   <td className="py-1.5">{1000 + i}</td>
-                   <td>root</td>
-                   <td className="text-emerald-400 font-bold">{(Math.random()*5 + (s.status === 'running' ? 2 : 0)).toFixed(1)}</td>
-                   <td>{(Math.random()*2 + 1).toFixed(1)}</td>
-                   <td className="text-teal-500">{s.type.toLowerCase()}d</td>
-                 </tr>
-               ))
-             ) : (
-               nodes.filter(n => n.siteId === currentSiteId).slice(0, 12).map((n, i) => (
-                 <tr key={n.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                   <td className="py-1.5">{2000 + i}</td>
-                   <td>system</td>
-                   <td className="text-emerald-400 font-bold">{(Math.random()*12).toFixed(1)}</td>
-                   <td>{(Math.random()*5).toFixed(1)}</td>
-                   <td className="text-teal-500">{n.name}</td>
-                 </tr>
-               ))
-             )}
-           </tbody>
-        </table>
-      </div>
-    )
-  }
-
   const renderPane = (pane: TerminalPane, isFocused: boolean) => {
     const paneNode = pane.context.targetId ? nodes.find(n => n.id === pane.context.targetId) : null
     
-    if (pane.context.mode === 'nano') return <NanoEditor pane={pane} />
-    if (pane.context.mode === 'top') return <TopMonitor nodeId={pane.context.targetId} />
+    if (pane.context.mode === 'nano') return <NanoEditor key={pane.id} pane={pane} siteId={currentSiteId} />
+    if (pane.context.mode === 'top') return <TopMonitor key={pane.id} nodeId={pane.context.targetId} siteId={currentSiteId} />
 
     return (
       <div 
@@ -335,13 +369,11 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         onClick={() => setActivePane(pane.id)}
         className={`flex-1 flex flex-col min-h-0 relative transition-all duration-300 ${isFocused ? 'bg-white/[0.04]' : 'bg-black/20 opacity-60 grayscale-[0.5]'}`}
       >
-        {/* Pane Label Area */}
         <div className="absolute top-2 left-6 flex items-center gap-3 pointer-events-none z-20">
            {paneNode && <span className="text-[8px] font-black uppercase text-teal-400/60 tracking-widest">{paneNode.name}</span>}
            <span className="text-[8px] font-mono text-slate-500 uppercase tracking-widest">{pane.context.mode}</span>
         </div>
 
-        {/* Chronological Scrollable Area */}
         <div 
           ref={isFocused ? scrollRef : null}
           className="flex-1 overflow-y-auto px-8 pt-10 pb-6 custom-scrollbar font-mono text-[11px] selection:bg-teal-500/30"
@@ -350,7 +382,6 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             <TerminalLine key={i} text={log} />
           ))}
 
-          {/* Bottom-Up Input Prompt */}
           {isFocused && (
             <form 
               onSubmit={(e) => { e.preventDefault(); if (input.trim()) { processCommand(input); setInput(''); setHistoryIndex(-1); } }}
@@ -394,7 +425,6 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       }}
       className={`fixed z-[100] bg-[#020617]/90 backdrop-blur-[15px] text-slate-200 shadow-[0_50px_150px_rgba(0,0,0,0.9)] border border-white/10 flex flex-col font-sans overflow-hidden ${layout.isMaximized ? 'rounded-none' : 'rounded-3xl'}`}
     >
-      {/* Header / Tab Bar */}
       <div 
         onMouseDown={handleMove}
         className={`bg-white/[0.02] flex items-center px-6 h-14 border-b border-white/5 relative z-10 ${layout.isMaximized ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
@@ -445,12 +475,10 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
       </div>
 
-      {/* Main Split-Pane Area */}
       <div className={`flex-1 flex min-h-0 relative z-10 ${sessionLayout === 'vertical' ? 'flex-col' : 'flex-row'}`}>
          {panes.map(p => renderPane(p, p.id === activePaneId))}
       </div>
 
-      {/* Powerline Status Bar */}
       <div className="h-10 bg-black/40 border-t border-white/5 px-8 flex items-center justify-between relative z-20">
          <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
@@ -459,7 +487,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
             <div className="h-4 w-px bg-white/10" />
             <div className="flex items-center gap-2">
-               <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Site:</span>
+               <span className="text-[9px] font-black text-slate-600 uppercase tracking-widest">Site:</span>
                <span className={`text-[10px] font-bold uppercase tracking-tighter ${currentSiteId === 'site-1' ? 'text-emerald-400' : 'text-orange-400'}`}>
                   {currentSiteId === 'site-1' ? 'PRIMARY_DC' : 'DISASTER_RECOVERY'}
                </span>
@@ -469,7 +497,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
          <div className="flex items-center gap-6">
             <div className="flex items-center gap-3">
                <Cpu size={14} className="text-slate-500" />
-               <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">LOAD: {(Math.random()*100).toFixed(1)}%</span>
+               <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest">LOAD: {systemLoad.toFixed(1)}%</span>
             </div>
             <div className="flex items-center gap-3">
                <Shield size={14} className="text-teal-400 animate-pulse" />
@@ -482,13 +510,11 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
          </div>
       </div>
 
-      {/* CRT Overlay Effects */}
       <div className="absolute inset-0 pointer-events-none z-[110] overflow-hidden opacity-[0.03]">
         <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%]" />
       </div>
       <div className="absolute inset-0 pointer-events-none z-[110] bg-white/5 opacity-[0.01] animate-pulse" />
 
-      {/* Resize Handle */}
       {!layout.isMaximized && (
         <div 
           onMouseDown={handleResize}

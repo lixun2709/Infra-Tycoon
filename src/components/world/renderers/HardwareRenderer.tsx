@@ -29,9 +29,9 @@ export function StorageBar({ used, total, color, h }: { used: number, total: num
 
 export function PIIShield({ h }: { h: number }) {
   const meshRef = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }: { clock: THREE.Clock }) => {
+  useFrame(({ clock }) => {
     if (!meshRef.current) return
-    meshRef.current.rotation.y = clock.elapsedTime * 2
+    meshRef.current.rotation.y = clock.getElapsedTime() * 2
   })
   return (
     <group position={[0, -h / 2 + 0.05, 0]}>
@@ -46,10 +46,10 @@ export function PIIShield({ h }: { h: number }) {
 
 export function MaintenanceIcon() {
   const meshRef = useRef<THREE.Mesh>(null)
-  useFrame(({ clock }: { clock: THREE.Clock }) => {
+  useFrame(({ clock }) => {
     if (!meshRef.current) return
-    meshRef.current.rotation.z = clock.elapsedTime * 4
-    meshRef.current.position.y = Math.sin(clock.elapsedTime * 10) * 0.05
+    meshRef.current.rotation.z = clock.getElapsedTime() * 4
+    meshRef.current.position.y = Math.sin(clock.getElapsedTime() * 10) * 0.05
   })
   return (
     <group position={[0, 0, 0]}>
@@ -127,8 +127,6 @@ export function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number,
           return (
             <group key={port.id} position={[x, y, 0]}>
               <mesh 
-                onPointerOver={() => {}}
-                onPointerOut={() => {}}
                 onClick={(e) => { e.stopPropagation(); handlePortClick(node.id, port.id); }}
                 position={[0, 0, 0.001]}
               >
@@ -151,6 +149,7 @@ export function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number,
     </group>
   )
 }
+
 export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
   const health = node.componentHealth || { 
     cpu: ['healthy'], 
@@ -172,7 +171,7 @@ export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
               emissiveIntensity={status === 'healthy' ? 0.2 : 0.8} 
             />
           </mesh>
-          <Billboard position={[0, h * 0.425 + 0.02, 0]} follow={true}>
+          <Billboard position={[0, h * 0.425 + 0.02, 0]}>
             <Text fontSize={0.04} color="#ffffff" anchorY="middle" outlineColor="#000000" outlineWidth={0.005}>
               CPU {i} {status !== 'healthy' && `(${status.toUpperCase()})`}
             </Text>
@@ -210,7 +209,7 @@ export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
                 emissiveIntensity={status === 'healthy' ? 0.05 : 0.5} 
               />
             </mesh>
-            <Billboard position={[0, h * 0.475 + 0.02, 0]} follow={true}>
+            <Billboard position={[0, h * 0.475 + 0.02, 0]}>
               <Text fontSize={0.02} color="#ffffff" anchorY="middle" outlineColor="#000000" outlineWidth={0.005}>
                 DRIVE {i}
               </Text>

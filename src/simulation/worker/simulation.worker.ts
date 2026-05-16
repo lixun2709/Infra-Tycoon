@@ -16,17 +16,17 @@ console.log('[[Worker Thread]] Simulation Worker Online')
  * Runs the ECS engine in a background thread.
  */
 self.onmessage = (event: MessageEvent<SimMessage>) => {
-  const { type, payload } = event.data
+  const data = event.data
 
-  switch (type) {
+  switch (data.type) {
     case 'INIT':
       console.log('[[Worker Thread]] Received INIT command')
-      handleSyncInput(payload as SimInitPayload)
+      handleSyncInput(data.payload)
       break
 
     case 'SYNC_INPUT':
       // console.log('[[Worker Thread]] Received SYNC_INPUT')
-      handleSyncInput(payload as SimSyncInputPayload)
+      handleSyncInput(data.payload)
       break
 
     case 'TICK':
@@ -44,7 +44,7 @@ self.onerror = (e) => {
   console.error('[[Worker Thread]] Critical Error:', e)
 }
 
-function handleSyncInput(payload: SimSyncInputPayload) {
+function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const world = engine.getWorld()
   const { nodes, applications } = payload
 
@@ -87,7 +87,7 @@ function handleSyncInput(payload: SimSyncInputPayload) {
     world.addComponent('application', {
       entityId: app.id,
       appId: app.appId,
-      status: app.status as any,
+      status: app.status,
       progress: app.progress
     } as ApplicationComponent)
     

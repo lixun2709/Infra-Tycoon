@@ -5,7 +5,8 @@ import {
   Scale, 
   LayoutDashboard,
   X,
-  Zap
+  Zap,
+  type LucideIcon
 } from 'lucide-react'
 import { Card } from './base/Card'
 import { Button } from './base/Button'
@@ -47,11 +48,11 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
     return () => clearInterval(interval)
   }, [networkLoad])
 
-  const tabs = [
+  const tabs: { id: 'overview' | 'events' | 'audit'; label: string; icon: LucideIcon }[] = [
     { id: 'overview', label: 'OVERVIEW', icon: LayoutDashboard },
     { id: 'events', label: 'EVENTS', icon: AlertCircle },
     { id: 'audit', label: 'AUDIT LOGS', icon: Scale },
-  ] as const
+  ]
 
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md" onClick={onClose}>

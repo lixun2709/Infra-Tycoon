@@ -237,7 +237,8 @@ export function Inspector() {
                 <div className="space-y-6">
                   <div className="flex flex-col gap-4">
                     {(['unboxed', 'racked', 'patched', 'bootstrapped', 'provisioned'] as const).map((state, i) => {
-                      const isPast = ['unboxed', 'racked', 'patched', 'bootstrapped', 'provisioned'].indexOf(selectedNode.provisioningState) >= i
+                      const states = ['unboxed', 'racked', 'patched', 'bootstrapped', 'provisioned']
+                      const isPast = states.indexOf(selectedNode.provisioningState) >= i
                       const isCurrent = selectedNode.provisioningState === state
                       return (
                         <div key={state} className="flex items-center gap-4">

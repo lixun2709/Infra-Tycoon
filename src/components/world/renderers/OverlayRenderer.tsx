@@ -11,7 +11,7 @@ export function OverlayRenderer() {
   useFrame(({ clock }) => {
     if (!meshRef.current || !isChaosMode) return
     const mat = meshRef.current.material as THREE.MeshBasicMaterial
-    mat.opacity = 0.02 + Math.sin(clock.elapsedTime * 8) * 0.015 + Math.random() * 0.01
+    mat.opacity = 0.02 + Math.sin(clock.elapsedTime * 8) * 0.015 + (Math.sin(clock.elapsedTime * 50) * 0.5 + 0.5) * 0.01
   })
 
   if (!isChaosMode) return null

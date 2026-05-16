@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { audioManager } from '../../utils/AudioManager'
+import type { DnsRecord, Site, Blueprint } from '../infraTypes'
 
 export interface MiscSlice {
   processAging: () => void
@@ -9,7 +10,7 @@ export interface MiscSlice {
   setCloudBursting: (active: boolean) => void
   saveSiteAsBlueprint: (name: string) => void
   applyBlueprint: (id: string) => void
-  addDnsRecord: (record: any) => void
+  addDnsRecord: (record: Omit<DnsRecord, 'id'>) => void
   removeDnsRecord: (id: string) => void
   autoPatchRack: (rackId: string) => void
   syncNtp: (nodeId: string) => void
@@ -19,7 +20,7 @@ export interface MiscSlice {
   checkNetworkPath: (startId: string, endId: string) => boolean
   resetState: () => void
   fixState: () => void
-  updateSite: (id: string, updates: any) => void
+  updateSite: (id: string, updates: Partial<Site>) => void
   processAutoBackups: () => void
   simulateRandomFailure: () => void
   simulateDataCorruption: () => void
@@ -37,7 +38,8 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     const { nodes } = get()
     const updatedNodes = nodes.map(node => {
       if (node.type === 'rack') return node
-      const age = (Date.now() - (node.lastMaintenance || Date.now())) / (1000 * 60 * 60) // hours
+      const lastMaint = node.lastMaintenance || Date.now()
+      const age = (Date.now() - lastMaint) / (1000 * 60 * 60) // hours
       const newDegradation = Math.min(100, (node.degradation || 0) + (age * 0.1))
       return { ...node, degradation: newDegradation }
     })
@@ -76,13 +78,14 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   saveSiteAsBlueprint: (name) => {
     const { nodes, connections, blueprints } = get()
-    const newBlueprint = {
+    const newBlueprint: Blueprint = {
       id: crypto.randomUUID(),
       name,
       nodes: JSON.parse(JSON.stringify(nodes)),
-      connections: JSON.parse(JSON.stringify(connections))
+      connections: JSON.parse(JSON.stringify(connections)),
+      createdAt: Date.now()
     }
-    set({ blueprints: [...blueprints, newBlueprint as any] })
+    set({ blueprints: [...blueprints, newBlueprint] })
     get().pushAlert('info', `Site saved as blueprint: ${name}`)
   },
 
@@ -148,6 +151,14 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     
     let progress = 0
     const interval = setInterval(() => {
+      // Check if node still exists and is booting
+      const currentNodes = get().nodes
+      const node = currentNodes.find(n => n.id === nodeId)
+      if (!node || node.systemState !== 'booting') {
+        clearInterval(interval)
+        return
+      }
+
       progress += 10
       updateNode(nodeId, { bootProgress: progress })
       if (progress >= 100) {
@@ -173,7 +184,8 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
         }
         return port
       })
-      return { ...node, ports: newPorts, managementIP: node.managementIP || availableIPPool[poolIdx++] }
+      const mIP = node.managementIP || (poolIdx < availableIPPool.length ? availableIPPool[poolIdx++] : undefined)
+      return { ...node, ports: newPorts, managementIP: mIP }
     })
     set({ nodes: updatedNodes })
   },

@@ -14,7 +14,7 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
     const spec = APPLICATION_CATALOG[appId]
     if (!spec) return
 
-    const deploymentCost = (spec as any).deploymentCost || 0
+    const deploymentCost = spec.deploymentCost || 0
     if (balance < deploymentCost) {
       pushAlert('warning', `Insufficient funds to deploy ${spec.name}`)
       return

@@ -15,7 +15,7 @@ export class SimulationWorkerManager {
   private lastTickRequestTime = 0
   
   private lastHeartbeatTime = 0
-  private heartbeatInterval: any = null
+  private heartbeatInterval: number | null = null
   private lastNodes: InfraNode[] = []
   private lastApps: ApplicationDeployment[] = []
   
@@ -52,18 +52,20 @@ export class SimulationWorkerManager {
           if (Math.random() > 0.9) console.log('[[WorkerManager]] Heartbeat PONG received (sampled)')
           break
 
-        case 'SYNC_OUTPUT':
+        case 'SYNC_OUTPUT': {
           this.isProcessingTick = false
           const latency = performance.now() - this.lastTickRequestTime
           performanceMonitor.updateWorkerLatency(latency)
-          if (this.onOutputCallback) this.onOutputCallback(payload)
+          if (this.onOutputCallback) this.onOutputCallback(payload as SimSyncOutputPayload)
           break
+        }
 
-        case 'TELEMETRY':
+        case 'TELEMETRY': {
           const t = payload as SimTelemetryPayload
           performanceMonitor.updateSimMetrics(t.tickDurationMs, t.entityCount, t.systemTimings)
           if (this.onTelemetryCallback) this.onTelemetryCallback(t)
           break
+        }
       }
     }
 
@@ -147,7 +149,7 @@ export class SimulationWorkerManager {
     this.onTelemetryCallback = callback
   }
 
-  private send(type: any, payload?: any) {
+  private send(type: SimMessage['type'], payload?: SimMessage['payload']) {
     if (this.worker) {
       this.worker.postMessage({ type, payload })
     }

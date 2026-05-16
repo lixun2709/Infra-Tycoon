@@ -2,7 +2,7 @@ import type { StateCreator } from 'zustand'
 import { Vector3 } from 'three'
 import type { InfraState } from '../infraStoreTypes'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
-import type { HardwareCatalogKey } from '../../physics/hardwareLibrary'
+import type { HardwareCatalogKey, HardwareCatalogSpec } from '../../physics/hardwareLibrary'
 import { createPortsForCatalog } from '../infraInitialState'
 import type { InfraNode, ServiceType, ServiceStatus } from '../infraTypes'
 import { findFirstEmptySlot } from '../../physics/snapping'
@@ -51,7 +51,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
   placeCatalogHardware: (key, targetRackId) => {
     const { nodes, balance, pushAlert } = get()
-    const spec = HARDWARE_CATALOG[key]
+    const spec = HARDWARE_CATALOG[key] as HardwareCatalogSpec
     if (!spec) return false
 
     if (balance < spec.purchasePrice) {
@@ -72,14 +72,14 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const newNode: InfraNode = {
       id: crypto.randomUUID(),
       name: `${spec.name} ${nodes.length + 1}`,
-      type: spec.type as any,
+      type: spec.type,
       siteId: rack.siteId,
       position: new Vector3(0, 0, 0), // Placeholder, UI handles positioning
       parentRackId: targetRackId,
       slotIndex: slot.slotIndex,
       uHeight: spec.uHeight,
       wattage: spec.wattage,
-      btuOutput: (spec as any).btuOutput || (spec.wattage * 3.41),
+      btuOutput: spec.btuOutput || (spec.wattage * 3.41),
       provisioningState: 'unboxed',
       systemState: 'off',
       healthStatus: 'healthy',
@@ -127,8 +127,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       id: crypto.randomUUID(),
       type,
       status: 'running' as const,
-      port: 80,
-      config: {}
+      port: 80
     }
 
     updateNode(nodeId, { services: [...(node.services || []), newService] })

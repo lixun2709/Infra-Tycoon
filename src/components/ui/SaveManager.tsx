@@ -28,7 +28,10 @@ export function SaveManager({ onClose }: SaveManagerProps) {
   })
 
   useEffect(() => {
-    setSaves(getAvailableSaves())
+    const timer = setTimeout(() => {
+      setSaves(getAvailableSaves())
+    }, 0)
+    return () => clearTimeout(timer)
   }, [getAvailableSaves])
 
   const handleSave = (slotId: string) => {

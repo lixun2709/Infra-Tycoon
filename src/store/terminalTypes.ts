@@ -16,3 +16,18 @@ export type TerminalSession = {
   activePaneId: string
   layout: 'single' | 'vertical' | 'horizontal' | 'split-v' | 'split-h'
 }
+
+export type TerminalStateRecord = {
+  sessions: TerminalSession[]
+  activeSessionId: string
+  layout: {
+    width: number
+    height: number
+    x: number
+    y: number
+    isMaximized: boolean
+  }
+  aliases: Record<string, string>
+  envVars: Record<string, string>
+  storedFiles: Record<string, string>
+}

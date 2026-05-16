@@ -1,8 +1,13 @@
 import type { InfraState } from './infraStoreTypes'
 import { performanceMonitor } from '../simulation/PerformanceMonitor'
 import { TECHNICAL_MANUALS } from '../physics/Manuals'
+import type { TerminalSession, TerminalPane } from './terminalTypes'
 
-export function handleCommand(get: () => InfraState, set: (s: any) => void, text: string): void {
+export function handleCommand(
+  get: () => InfraState, 
+  set: (fn: (s: InfraState) => Partial<InfraState>) => void, 
+  text: string
+): void {
   const siteId = get().currentSiteId
   const siteState = get().terminalStates[siteId]
   if (!siteState) return
@@ -29,7 +34,6 @@ export function handleCommand(get: () => InfraState, set: (s: any) => void, text
   processedCmd = processedCmd.replace(/\$(\w+)/g, (_, name) => siteState.envVars[name] || '')
 
   // --- 3. REDIRECTION ---
-  // Redirection skipped for now to avoid unused var in logic move
   if (processedCmd.includes('>')) {
     const parts = processedCmd.split('>')
     processedCmd = parts[0].trim()
@@ -41,7 +45,7 @@ export function handleCommand(get: () => InfraState, set: (s: any) => void, text
   const args = baseCmd.split(/\s+/)
   const cmdLower = args[0].toLowerCase()
 
-  let output: string[] = [] 
+  const output: string[] = [] 
   let newContext = { ...activePane.context }
   const newCwd = activePane.cwd
   let forceClear = false
@@ -62,11 +66,11 @@ export function handleCommand(get: () => InfraState, set: (s: any) => void, text
       output.push(`[[RED]]ERROR: No Serial/OOB connection to [${targetNode.hostname || targetNode.id.slice(0,8)}].[[RESET]]`)
       output.push("Verify physical Top-of-Rack patching to Management Switch.")
       
-      set((s: any) => {
+      set((s: InfraState) => {
         const cs = s.terminalStates[siteId]
-        const ns = cs.sessions.map((sess: any) => sess.id === activeSession.id ? {
+        const ns = cs.sessions.map((sess: TerminalSession) => sess.id === activeSession.id ? {
           ...sess,
-          panes: sess.panes.map((p: any) => p.id === activePane.id ? { ...p, logs: [...p.logs, `> ${text}`, ...output].slice(-200) } : p)
+          panes: sess.panes.map((p: TerminalPane) => p.id === activePane.id ? { ...p, logs: [...p.logs, `> ${text}`, ...output].slice(-200) } : p)
         } : sess)
         return { terminalStates: { ...s.terminalStates, [siteId]: { ...cs, sessions: ns } } }
       })
@@ -131,8 +135,9 @@ export function handleCommand(get: () => InfraState, set: (s: any) => void, text
     output.push("---------       ----------      ------                --------")
     nodes.filter(n => n.siteId === siteId && n.type !== 'rack').forEach(n => {
       const ip = n.managementIP || 'unassigned'
-      const statusColor = n.systemState === 'running' ? '[[GREEN]]' : n.systemState === 'booting' ? '[[YELLOW]]' : '[[RED]]'
-      const status = `${statusColor}${n.systemState.toUpperCase()}[[RESET]]`
+      const state = n.systemState as string
+      const statusColor = state === 'running' ? '[[GREEN]]' : state === 'booting' ? '[[YELLOW]]' : '[[RED]]'
+      const status = `${statusColor}${state.toUpperCase()}[[RESET]]`
       output.push(`${n.hostname || n.id.slice(0,8)}`.padEnd(15) + `${ip.padEnd(15)} ${status.padEnd(30)}`)
     })
   } else if (cmdLower === 'ping') {
@@ -156,8 +161,12 @@ export function handleCommand(get: () => InfraState, set: (s: any) => void, text
     forceClear = true
   } else if (cmdLower === 'ecs-stats') {
     const telemetry = get().getSimulationTelemetry()
-    output.push("--- [[BLUE]]ECS TELEMETRY[[RESET]] ---")
-    output.push(`Tick: ${telemetry.tickDurationMs.toFixed(4)}ms | Entities: ${telemetry.entityCount}`)
+    if (telemetry) {
+      output.push("--- [[BLUE]]ECS TELEMETRY[[RESET]] ---")
+      output.push(`Tick: ${telemetry.tickDurationMs.toFixed(4)}ms | Entities: ${telemetry.entityCount}`)
+    } else {
+      output.push("[[RED]]Telemetry unavailable.[[RESET]]")
+    }
   } else if (cmdLower === 'sim-diagnostics') {
     output.push("--- [[YELLOW]]DIAGNOSTICS[[RESET]] ---")
     output.push(`FPS: ${performanceMonitor.getMetrics().fps} | Latency: ${performanceMonitor.getMetrics().workerLatency.toFixed(2)}ms`)
@@ -170,13 +179,13 @@ export function handleCommand(get: () => InfraState, set: (s: any) => void, text
   }
 
   // --- 7. FINAL UPDATE ---
-  set((s: any) => {
+  set((s: InfraState) => {
     const cs = s.terminalStates[siteId]
-    const finalSessions = cs.sessions.map((sess: any) => {
+    const finalSessions = cs.sessions.map((sess: TerminalSession) => {
       if (sess.id !== activeSession.id) return sess
       return {
         ...sess,
-        panes: sess.panes.map((p: any) => {
+        panes: sess.panes.map((p: TerminalPane) => {
           if (p.id !== activePane.id) return p
           return {
             ...p,

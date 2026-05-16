@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useInfraStore } from '../store/useInfraStore'
+import * as THREE from 'three'
 
 describe('v1.3 Terminal Kernel - Store & Persistence', () => {
   beforeEach(() => {
@@ -16,7 +17,7 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
       systemState: 'running',
       bootProgress: 100,
       provisioningState: 'bootstrapped',
-      position: { x: 0, y: 0, z: 0 } as any,
+      position: new THREE.Vector3(0, 0, 0),
       uHeight: 1,
       wattage: 300,
       btuOutput: 1000,

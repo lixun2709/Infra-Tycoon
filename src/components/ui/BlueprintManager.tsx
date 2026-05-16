@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import type { Blueprint } from '../../store/infraTypes'
 
 export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { blueprints, currentSiteId, saveSiteAsBlueprint, applyBlueprint, exportToTerraform, runComplianceCheck, setPreviewBlueprint } = useInfraStore()
+  const { blueprints, saveSiteAsBlueprint, applyBlueprint, exportToTerraform, runComplianceCheck, setPreviewBlueprint } = useInfraStore()
   const [blueprintName, setBlueprintName] = useState('')
   const [pendingDeployId, setPendingDeployId] = useState<string | null>(null)
 
   const compliance = useMemo(() => {
     return runComplianceCheck()
-  }, [currentSiteId, runComplianceCheck])
+  }, [runComplianceCheck])
 
   if (!isOpen && !pendingDeployId) return null
 
@@ -18,7 +19,7 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
     setBlueprintName('')
   }
 
-  const handleDownloadJSON = (blueprint: any) => {
+  const handleDownloadJSON = (blueprint: Blueprint) => {
     const data = JSON.stringify(blueprint, null, 2)
     const blob = new Blob([data], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -28,7 +29,7 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
     a.click()
   }
 
-  const handleExportTerraform = (blueprint: any) => {
+  const handleExportTerraform = (blueprint: Blueprint) => {
     const hcl = exportToTerraform()
     const blob = new Blob([hcl], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)

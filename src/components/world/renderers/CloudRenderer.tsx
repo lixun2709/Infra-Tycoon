@@ -6,6 +6,13 @@ import { useInfraStore } from '../../../store/useInfraStore'
 
 const CLOUD_GATEWAY_POS = new THREE.Vector3(18, 3, 0)
 
+// Fixed random-ish positions to ensure render purity
+const CLOUD_POSITIONS: [number, number, number][] = [
+  [-1.2, 0.8, 1.5], [1.5, 1.2, -1.0], [-0.8, 0.5, -1.8], [0.9, 2.1, 0.7],
+  [-2.1, 1.5, 0.2], [1.8, 0.6, 1.9], [-1.5, 2.3, -0.5], [0.4, 0.9, -2.2],
+  [2.2, 1.8, -0.1], [-0.3, 2.5, 1.2], [1.1, 0.4, 0.8], [-1.9, 1.1, -1.4]
+]
+
 function CloudParticle({ offset }: { offset: number }) {
   const ref = useRef<THREE.Mesh>(null)
 
@@ -15,7 +22,8 @@ function CloudParticle({ offset }: { offset: number }) {
     ref.current.position.y = Math.sin(t * 0.8) * 0.3
     ref.current.position.x = Math.cos(t * 0.5 + offset) * 0.4
     ref.current.position.z = Math.sin(t * 0.6 + offset * 2) * 0.4
-      ; (ref.current.material as any).opacity = 0.4 + Math.sin(t * 1.5) * 0.3
+    const mat = ref.current.material as THREE.MeshBasicMaterial
+    mat.opacity = 0.4 + Math.sin(t * 1.5) * 0.3
   })
 
   return (
@@ -71,8 +79,8 @@ export function CloudRenderer() {
         </group>
       </Float>
 
-      {Array.from({ length: 12 }).map((_, i) => (
-        <group key={i} position={[(Math.random() - 0.5) * 4, (Math.random() - 0.5) * 2 + 0.5, (Math.random() - 0.5) * 4]}>
+      {CLOUD_POSITIONS.map((pos, i) => (
+        <group key={i} position={pos}>
           <CloudParticle offset={i * 1.3} />
         </group>
       ))}

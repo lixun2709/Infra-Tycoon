@@ -6,7 +6,7 @@ import type { Entity, Component, ComponentMap } from './types'
  */
 export class World {
   private entities: Set<Entity> = new Set()
-  private components: Map<string, ComponentMap<any>> = new Map()
+  private components: Map<string, ComponentMap<Component>> = new Map()
 
   public registerEntity(id: Entity) {
     this.entities.add(id)
@@ -25,7 +25,7 @@ export class World {
   }
 
   public getComponent<T extends Component>(componentName: string, entityId: Entity): T | undefined {
-    return this.components.get(componentName)?.get(entityId)
+    return this.components.get(componentName)?.get(entityId) as T | undefined
   }
 
   public getComponentMap<T extends Component>(componentName: string): ComponentMap<T> {

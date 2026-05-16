@@ -18,8 +18,8 @@ import type {
   ActiveContract
 } from './infraTypes'
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
-import type { TerminalSession } from './terminalTypes'
-import type { SimSyncOutputPayload } from '../simulation/worker/workerTypes'
+import type { TerminalStateRecord } from './terminalTypes'
+import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -59,20 +59,7 @@ export type InfraState = {
   applications: ApplicationDeployment[]
   
   // Day 6: Enterprise Management Console
-  terminalStates: Record<string, {
-    sessions: TerminalSession[]
-    activeSessionId: string
-    layout: {
-      width: number
-      height: number
-      x: number
-      y: number
-      isMaximized: boolean
-    }
-    aliases: Record<string, string>
-    envVars: Record<string, string>
-    storedFiles: Record<string, string>
-  }>
+  terminalStates: Record<string, TerminalStateRecord>
   
   // v6.0 Economy & Progression
   balance: number
@@ -171,7 +158,7 @@ export type InfraState = {
   resetState: () => void
 
   // ECS Sync
-  getSimulationTelemetry: () => any
+  getSimulationTelemetry: () => SimTelemetryPayload | null
   initializeSimulation: () => void
   handleWorkerOutput: (payload: SimSyncOutputPayload) => void
 

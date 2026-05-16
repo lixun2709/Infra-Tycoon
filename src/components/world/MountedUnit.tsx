@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges, Text } from '@react-three/drei'
+import * as THREE from 'three'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { InfraNode } from '../../store/infraTypes'
-import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
+import { HARDWARE_CATALOG, type HardwareCatalogSpec } from '../../physics/hardwareLibrary'
 import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
 import { PortVisuals, StorageBar, PIIShield, MaintenanceIcon, InternalHardware, ServiceHolograms } from './renderers/HardwareRenderer'
 
@@ -25,58 +26,64 @@ function rackHardwareCenterY(slotIndex: number, uHeight: number): number {
 }
 
 function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) {
-  if (node.slotIndex == null || node.parentRackId == null) return null
-
   const updateNode = useInfraStore(s => s.updateNode)
   const finalRemoveNode = useInfraStore(s => s.finalRemoveNode)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   
+  const groupRef = useRef<THREE.Group>(null)
   const isDecommissioning = node.provisioningState === 'decommissioning'
-  const isBrandNew = node.provisioningState === 'racked' && (Date.now() - (node.installTimestamp || 0) < 10000)
   
-  const [isSeated, setIsSeated] = useState(!isBrandNew && !isDecommissioning)
-  const progress = useRef(isSeated ? 1 : 0)
-  const zOffset = useRef(isSeated ? 0 : -1.2)
+  // Use lazy state initialization to keep render pure
+  const [isBrandNew] = useState(() => {
+    return node.provisioningState === 'racked' && (Date.now() - (node.installTimestamp || 0) < 10000)
+  })
+  
+  const isSeatedInitial = !isBrandNew && !isDecommissioning
+  const isSeated = useRef(isSeatedInitial)
+  const progress = useRef(isSeatedInitial ? 1 : 0)
 
   useEffect(() => {
     if (isDecommissioning) {
-      setIsSeated(false)
+      isSeated.current = false
       progress.current = 1
     }
   }, [isDecommissioning])
   
   useFrame((_, delta) => {
+    if (!groupRef.current || node.slotIndex == null || node.parentRackId == null) return
+
     if (isDecommissioning) {
       progress.current -= delta * 0.15 
       const t = Math.max(0, progress.current)
-      zOffset.current = -1.2 * (1 - t)
+      groupRef.current.position.z = -1.2 * (1 - t)
       if (t <= 0) finalRemoveNode(node.id)
       return
     }
 
-    if (!isSeated) {
+    if (!isSeated.current) {
       progress.current += delta * 0.125 
       const t = Math.min(1, progress.current)
-      zOffset.current = -1.2 * (1 - t)
+      groupRef.current.position.z = -1.2 * (1 - t)
       if (t >= 1) {
-        zOffset.current = 0
-        setIsSeated(true)
+        groupRef.current.position.z = 0
+        isSeated.current = true
         updateNode(node.id, { provisioningState: 'bootstrapped' })
       }
     }
   })
 
+  if (node.slotIndex == null || node.parentRackId == null) return null
+
   const isAnyNodeSelected = !!selectedNodeId
-  const color = (node.catalogKey && HARDWARE_CATALOG[node.catalogKey as keyof typeof HARDWARE_CATALOG]) 
-    ? (HARDWARE_CATALOG[node.catalogKey as keyof typeof HARDWARE_CATALOG] as any).color 
-    : (TYPE_ACCENT as any)[node.type] ?? '#718096'
+  const spec = (node.catalogKey ? HARDWARE_CATALOG[node.catalogKey] : null) as HardwareCatalogSpec | null
+  const color = spec ? spec.color : (TYPE_ACCENT[node.type] ?? '#718096')
 
   const h = node.uHeight * U_WORLD
   const y = rackHardwareCenterY(node.slotIndex, node.uHeight)
   const opacity = isSelected ? 0.15 : (isAnyNodeSelected ? 0.4 : 1.0)
 
   return (
-    <group position={[0, y, zOffset.current]}>
+    <group ref={groupRef} position={[0, y, isBrandNew || isDecommissioning ? -1.2 : 0]}>
       <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
         <boxGeometry args={[0.92, h, 0.9]} />
         <meshStandardMaterial
@@ -113,4 +120,4 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
   )
 }
 
-export const MountedUnit = React.memo(MountedUnitComponent)
+export const MountedUnit = (MountedUnitComponent)

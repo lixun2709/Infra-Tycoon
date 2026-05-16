@@ -18,22 +18,30 @@ import { PerformanceOverlay } from './components/ui/PerformanceOverlay'
 import { Rocket, X, TrendingUp } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
+import type { InfraAlert } from './store/infraTypes'
 
 function EmergencyToasts() {
   const alerts = useInfraStore(s => s.alerts)
-  const [activeAlert, setActiveAlert] = useState<typeof alerts[0] | null>(null)
+  const [activeAlert, setActiveAlert] = useState<InfraAlert | null>(null)
 
   useEffect(() => {
-    const popups = alerts.filter(a => a.severity === 'critical' || a.severity === 'warning' || a.severity === 'info' || a.severity === 'success')
-    if (popups.length === 0) return
+    if (alerts.length === 0) return
 
-    const latest = popups[popups.length - 1] // Show most recent
+    const latest = alerts[alerts.length - 1]
     if (Date.now() - latest.timestamp < 6000) {
-      setActiveAlert(latest)
-      const timer = setTimeout(() => {
+      // Async update to satisfy React purity/cascading rules
+      const timerId = setTimeout(() => {
+        setActiveAlert(latest)
+      }, 0)
+      
+      const clearTimer = setTimeout(() => {
         setActiveAlert(null)
       }, 6000)
-      return () => clearTimeout(timer)
+      
+      return () => {
+        clearTimeout(timerId)
+        clearTimeout(clearTimer)
+      }
     }
     return undefined
   }, [alerts])
@@ -41,18 +49,17 @@ function EmergencyToasts() {
   if (!activeAlert) return null
 
   const isCritical = activeAlert.severity === 'critical'
-  const isInfo = activeAlert.severity === 'info'
-  const isSuccess = activeAlert.severity === 'info' // Map old success to info
+  const isWarning = activeAlert.severity === 'warning'
 
   return (
     <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
-      <div className={`bg-[#0a1536]/95 backdrop-blur-xl border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : (isSuccess ? 'border-emerald-500 ring-emerald-900/30' : (isInfo ? 'border-teal-500 ring-teal-900/30' : 'border-amber-500 ring-amber-900/30'))}`}>
-        <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : (isSuccess ? '✅' : (isInfo ? '💾' : '⚠️'))}</div>
+      <div className={`bg-[#0a1536]/95 backdrop-blur-xl border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : (isWarning ? 'border-amber-500 ring-amber-900/30' : 'border-teal-500 ring-teal-900/30')}`}>
+        <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : (isWarning ? '⚠️' : '💾')}</div>
         <div className="flex-1">
-          <h2 className={`text-sm font-black tracking-widest uppercase mb-1 drop-shadow-sm ${isCritical ? 'text-red-500' : (isSuccess ? 'text-emerald-400' : (isInfo ? 'text-teal-400' : 'text-amber-500'))}`}>
-            {isCritical ? 'Critical Failure' : (isSuccess ? 'Operation Success' : (isInfo ? 'System Sync' : 'Action Denied'))}
+          <h2 className={`text-sm font-black tracking-widest uppercase mb-1 drop-shadow-sm ${isCritical ? 'text-red-500' : (isWarning ? 'text-amber-500' : 'text-teal-400')}`}>
+            {isCritical ? 'Critical Failure' : (isWarning ? 'Action Denied' : 'System Sync')}
           </h2>
-          <p className={`font-semibold text-sm leading-snug ${isCritical ? 'text-red-100' : (isSuccess ? 'text-emerald-50' : (isInfo ? 'text-teal-100' : 'text-amber-100'))}`}>
+          <p className={`font-semibold text-sm leading-snug ${isCritical ? 'text-red-100' : (isWarning ? 'text-amber-100' : 'text-teal-100')}`}>
             {activeAlert.message}
           </p>
         </div>
@@ -60,8 +67,6 @@ function EmergencyToasts() {
     </div>
   )
 }
-
-
 
 import { SaveManager } from './components/ui/SaveManager'
 
@@ -119,7 +124,6 @@ function App() {
   const activeCloudInstances = useInfraStore(s => s.activeCloudInstances)
 
   useEffect(() => {
-
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 't' && (e.target as HTMLElement).tagName !== 'INPUT') {
         setIsTerminalOpen(!isTerminalOpen)
@@ -144,20 +148,20 @@ function App() {
     return () => clearInterval(interval)
   }, [processAutoBackups])
 
-  // Sync store placement mode with local placement state for modal compatibility
-  
   useEffect(() => {
     if (placementMode && pendingType && pendingType !== 'RACK_42U') {
-      setHardwareToAdd(pendingType as HardwareCatalogKey)
+      const timer = setTimeout(() => setHardwareToAdd(pendingType as HardwareCatalogKey), 0)
+      return () => clearTimeout(timer)
     } else if (!placementMode) {
-      setHardwareToAdd(null)
+      const timer = setTimeout(() => setHardwareToAdd(null), 0)
+      return () => clearTimeout(timer)
     }
+    return undefined
   }, [placementMode, pendingType])
 
   const handleAddRack = () => {
     setPlacementMode(true, 'RACK_42U')
   }
-
 
   const handleConfirmPlacement = (rackId: string) => {
     if (!hardwareToAdd) return
@@ -183,7 +187,7 @@ function App() {
         onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
         onToggleTerminal={() => {
            setIsTerminalOpen(!isTerminalOpen)
-           if (siteTerminal?.sessions.length === 0) {
+           if (siteTerminal && siteTerminal.sessions.length === 0) {
               addTerminalSession('Main Console')
            }
         }}
@@ -200,11 +204,9 @@ function App() {
       
       <GlobalMap />
 
-      {/* Professional Control Center: Ultra-Compact & Informative */}
+      {/* Professional Control Center */}
       <div className="fixed top-20 left-8 z-40 pointer-events-none">
         <div className={`pointer-events-auto bg-[#0a1536]/90 backdrop-blur-2xl border border-white/10 rounded-[1.5rem] p-4 shadow-2xl transition-all w-[250px] ${selectedNodeId ? 'translate-x-[-300px] opacity-0' : 'translate-x-0 opacity-100'}`}>
-          
-          {/* Header Area */}
           <div className="flex items-center justify-between mb-4 px-1">
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.15em] text-teal-400 flex items-center gap-1.5">
@@ -218,7 +220,6 @@ function App() {
             </div>
           </div>
 
-          {/* Financials */}
           <div className="grid grid-cols-2 gap-2 mb-4">
             <div className="bg-white/5 rounded-xl p-2 border border-white/5">
               <p className="text-[6px] text-slate-500 font-black uppercase tracking-widest leading-none mb-1">Capital</p>
@@ -230,7 +231,6 @@ function App() {
             </div>
           </div>
           
-          {/* Metrics List */}
           <div className="space-y-2.5 px-1 mb-4">
             <div className="flex items-center justify-between">
               <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tight">Load</span>
@@ -248,7 +248,6 @@ function App() {
             </div>
           </div>
 
-          {/* Infrastructure Context */}
           {cloudBurstingActive && (
             <div className="mb-4 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl flex items-center justify-between">
               <div>
@@ -259,7 +258,6 @@ function App() {
             </div>
           )}
 
-          {/* Legend: Hotkey Shortcuts */}
           <div className="pt-4 border-t border-white/5">
             <p className="text-[7px] text-slate-500 font-black uppercase tracking-[0.2em] mb-3 text-center">Quick Access Links</p>
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
@@ -281,7 +279,6 @@ function App() {
         </div>
       </div>
 
-      {/* Enterprise Catalog Toggle (Rocket) */}
       <div className="fixed bottom-8 right-32 z-[200]">
         <button 
           onClick={() => setIsAppBrowserOpen(!isAppBrowserOpen)}
@@ -296,8 +293,6 @@ function App() {
         </button>
       </div>
 
-      {/* Procurement System (Floating & Modal) */}
-      {/* Procurement System (Floating) */}
       <ProcurementMenu 
         onAddRack={handleAddRack}
         isOpen={isProcurementOpen}
@@ -305,7 +300,6 @@ function App() {
       />
       <PerformanceOverlay />
 
-      {/* Overlays & Managers */}
       <EmergencyToasts />
       {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
       <GlobalNetwork />
@@ -325,14 +319,12 @@ function App() {
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
       {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
 
-      {/* Placement Tooltip */}
       {placementMode && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-teal-500 text-[#020617] px-8 py-4 rounded-2xl border-2 border-white/20 shadow-[0_20px_50px_rgba(20,184,166,0.3)] backdrop-blur-md font-black text-xs uppercase tracking-widest animate-bounce">
           Select target location on grid to deploy rack
         </div>
       )}
 
-      {/* Thermal Alert Overlay */}
       {totalRoomBTU > 50000 && (
         <div className="fixed bottom-24 left-8 z-40 bg-red-600/20 border border-red-500/50 text-red-500 px-6 py-4 rounded-2xl shadow-[0_0_30px_rgba(239,68,68,0.3)] backdrop-blur-md font-black text-xs uppercase tracking-[0.2em] animate-pulse flex items-center gap-4">
           <span className="text-2xl">⚠️</span>
@@ -343,7 +335,6 @@ function App() {
         </div>
       )}
 
-      {/* Hardware Target Rack Selection Modal */}
       {hardwareToAdd && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#020617]/90 backdrop-blur-xl p-4">
           <div className="bg-[#0a1536] border border-white/10 p-8 rounded-3xl shadow-[0_30px_100px_rgba(0,0,0,0.8)] max-w-md w-full">

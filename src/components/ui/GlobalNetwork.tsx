@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { ServiceType } from '../../store/infraTypes'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
@@ -30,10 +30,17 @@ export function GlobalNetwork() {
   const [dstNodeId, setDstNodeId] = useState('')
   const [dstPortId, setDstPortId] = useState('')
 
+  const [tick, setTick] = useState(0)
+
   const { dnsRecords, addDnsRecord, removeDnsRecord, autoPatchRack } = useInfraStore()
 
-  if (!isNetworkManagerOpen) return null
+  useEffect(() => {
+    if (!isNetworkManagerOpen) return undefined
+    const interval = setInterval(() => setTick(t => t + 1), 2000)
+    return () => clearInterval(interval)
+  }, [isNetworkManagerOpen])
 
+  if (!isNetworkManagerOpen) return null
 
   const toggleRackSelection = (id: string) => {
     const next = new Set(selectedRackIds)
@@ -384,7 +391,7 @@ export function GlobalNetwork() {
            ].map(st => (
              <button
                key={st.id}
-               onClick={() => setServiceSubTab(st.id as any)}
+               onClick={() => setServiceSubTab(st.id as 'overview' | 'DHCP' | 'DNS' | 'NTP')}
                className={`w-full px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center gap-4 transition-all ${serviceSubTab === st.id ? 'bg-teal-500/10 text-teal-400 border border-teal-500/30' : 'text-slate-500 hover:text-white hover:bg-white/5 border border-transparent'}`}
              >
                <span className="text-lg">{st.icon}</span>
@@ -541,6 +548,9 @@ export function GlobalNetwork() {
   }
 
   const renderConfigPanel = (type: ServiceType) => {
+    // Pure jitter generation for NTP
+    const ntpJitter = Math.sin(tick) * 0.05
+
     return (
       <div className="flex-1 bg-slate-900/50 rounded-[3rem] border border-teal-500/20 flex flex-col overflow-hidden">
          <div className="p-8 border-b border-white/5 bg-slate-800/20 flex justify-between items-center">
@@ -648,7 +658,7 @@ export function GlobalNetwork() {
                             </div>
                          </div>
                          <div className="text-right">
-                            <div className="text-[11px] font-mono text-teal-400 font-black">+{(Math.random() * 0.05).toFixed(4)}ms</div>
+                            <div className="text-[11px] font-mono text-teal-400 font-black">+{Math.abs(ntpJitter).toFixed(4)}ms</div>
                             <div className="text-[8px] text-slate-700 font-bold uppercase tracking-tighter">Jitter: 0.001ms</div>
                          </div>
                       </div>
@@ -700,7 +710,7 @@ export function GlobalNetwork() {
           ].map(tab => (
             <button 
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id as any); setConfiguringService(null); }}
+              onClick={() => { setActiveTab(tab.id as 'topology' | 'patching' | 'services'); setConfiguringService(null); }}
               className={`px-6 py-2.5 rounded-xl text-[9px] font-black transition-all flex items-center gap-2 uppercase tracking-[0.1em] ${activeTab === tab.id ? 'bg-teal-500 text-slate-950 shadow-[0_10px_30px_rgba(45,212,191,0.2)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
             >
               <span className="text-base">{tab.icon}</span>

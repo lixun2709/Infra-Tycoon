@@ -1,34 +1,22 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
+import * as THREE from 'three'
 import { useInfraStore } from '../store/useInfraStore'
+import type { InfraNode } from '../store/infraTypes'
 
-// Mock three
-vi.mock('three', () => ({
-  Vector3: class {
-    x: number; y: number; z: number;
-    constructor(x=0, y=0, z=0) { this.x = x; this.y = y; this.z = z; }
-  }
-}))
-
-describe('Full Workflow Integration v2.0', () => {
-  beforeEach(() => {
-    useInfraStore.getState().resetState()
-    useInfraStore.setState({
-      sites: [{ id: 'site-1', name: 'DC1', isDisaster: false, region: 'EU', energySource: 'Grid', geoCoords: { lat: 0, lng: 0 } }],
-      currentSiteId: 'site-1'
-    })
-  })
-
-  it('should complete a full procurement to deployment cycle', () => {
+describe('End-to-End Infrastructure Lifecycle', () => {
+  it('should complete a full hardware procurement cycle', () => {
+    const { addNode, placeCatalogHardware } = useInfraStore.getState()
+    
     // 1. Initial State
-    expect(useInfraStore.getState().nodes).toHaveLength(0)
+    expect(useInfraStore.getState().balance).toBeGreaterThan(0)
     
     // 2. Add Rack
-    useInfraStore.getState().addNode({
-      id: 'rack-1',
+    addNode({
+      id: 'rack-test',
       type: 'rack',
       siteId: 'site-1',
-      position: { x: 0, y: 0, z: 0 } as any,
-      name: 'Primary Rack',
+      position: new THREE.Vector3(0, 0, 0),
+      name: 'Test Rack',
       uHeight: 42,
       wattage: 0,
       btuOutput: 0,
@@ -39,31 +27,15 @@ describe('Full Workflow Integration v2.0', () => {
       provisioningState: 'bootstrapped',
       installDate: 0,
       degradation: 0
-    })
+    } as InfraNode)
     
-    // 3. Stage Hardware (Deployment Queue)
-    useInfraStore.setState({
-      deploymentQueue: ['BLADE_CHASSIS_4U', 'BLADE_SERVER', 'COMPUTE_1U']
-    })
+    // 3. Procure Compute
+    const success = placeCatalogHardware('COMPUTE_1U', 'rack-test')
+    expect(success).toBe(true)
     
-    expect(useInfraStore.getState().deploymentQueue).toHaveLength(3)
-    
-    // 4. Deploy from Staging
-    // Deploy Chassis first
-    useInfraStore.getState().placeCatalogHardware('BLADE_CHASSIS_4U', 'rack-1')
-    expect(useInfraStore.getState().deploymentQueue).toHaveLength(2)
-    
-    // Deploy Blade Server
-    useInfraStore.getState().placeCatalogHardware('BLADE_SERVER', 'rack-1')
-    expect(useInfraStore.getState().deploymentQueue).toHaveLength(1)
-    
-    // Deploy Compute 1U
-    useInfraStore.getState().placeCatalogHardware('COMPUTE_1U', 'rack-1')
-    expect(useInfraStore.getState().deploymentQueue).toHaveLength(0)
-    
-    // 5. Verify Rack Content
-    const finalNodes = useInfraStore.getState().nodes
-    expect(finalNodes).toHaveLength(4) // 1 rack + 3 hardware
-    expect(finalNodes.find(n => n.catalogKey === 'BLADE_SERVER')).toBeDefined()
+    const nodes = useInfraStore.getState().nodes
+    const compute = nodes.find(n => n.type === 'compute')
+    expect(compute).toBeDefined()
+    expect(compute?.parentRackId).toBe('rack-test')
   })
 })

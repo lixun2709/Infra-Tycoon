@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useInfraStore } from '../useInfraStore'
+import { Vector3 } from 'three'
 
 // Mock three
 vi.mock('three', () => ({
@@ -44,7 +45,7 @@ describe('useInfraStore v2.0', () => {
       id: 'rack-1',
       type: 'rack',
       siteId: 'site-1',
-      position: { x: 0, y: 0, z: 0 } as any,
+      position: new Vector3(0, 0, 0),
       name: 'Rack 1',
       uHeight: 42,
       wattage: 0,
@@ -79,7 +80,7 @@ describe('useInfraStore v2.0', () => {
       id: 'rack-1', 
       type: 'rack', 
       siteId: 'site-1', 
-      position: { x: 0, y: 0, z: 0 } as any, 
+      position: new Vector3(0, 0, 0), 
       name: 'Rack 1', 
       uHeight: 42, 
       wattage: 0, 

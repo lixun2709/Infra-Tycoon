@@ -15,6 +15,7 @@ export interface Application {
   requirements: ApplicationRequirement
   icon: string // For holographic representation
   color: string
+  deploymentCost: number
 }
 
 export const APPLICATION_CATALOG: Record<string, Application> = {
@@ -30,7 +31,8 @@ export const APPLICATION_CATALOG: Record<string, Application> = {
       requiredServices: ['DNS']
     },
     icon: '🌐',
-    color: '#21759b'
+    color: '#21759b',
+    deploymentCost: 1500
   },
   postgres: {
     id: 'postgres',
@@ -44,7 +46,8 @@ export const APPLICATION_CATALOG: Record<string, Application> = {
       requiredServices: []
     },
     icon: '💾',
-    color: '#336791'
+    color: '#336791',
+    deploymentCost: 5000
   },
   redis: {
     id: 'redis',
@@ -58,7 +61,8 @@ export const APPLICATION_CATALOG: Record<string, Application> = {
       requiredServices: []
     },
     icon: '⚡',
-    color: '#d82c20'
+    color: '#d82c20',
+    deploymentCost: 3000
   },
   k8s_master: {
     id: 'k8s_master',
@@ -72,6 +76,7 @@ export const APPLICATION_CATALOG: Record<string, Application> = {
       requiredServices: ['DNS', 'NTP']
     },
     icon: '☸️',
-    color: '#326ce5'
+    color: '#326ce5',
+    deploymentCost: 2500
   }
 }

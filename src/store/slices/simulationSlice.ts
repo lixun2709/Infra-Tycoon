@@ -3,22 +3,19 @@ import type { InfraState } from '../infraStoreTypes'
 import { simWorkerManager } from '../../simulation/SimulationWorkerManager'
 import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
 import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEngine'
+import type { InfraNode, ApplicationDeployment } from '../infraTypes'
+import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
 
 export interface SimulationSlice {
   processTick: () => void
   initializeSimulation: () => void
-  handleWorkerOutput: (payload: any) => void
-  getSimulationTelemetry: () => any
+  handleWorkerOutput: (payload: SimSyncOutputPayload) => void
+  getSimulationTelemetry: () => SimTelemetryPayload | null
 }
 
 export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationSlice> = (set, get) => ({
   getSimulationTelemetry: () => {
-    return (get() as any)._lastTelemetry || {
-      tickDurationMs: 0,
-      entityCount: 0,
-      lastTickTime: Date.now(),
-      systemTimings: {}
-    }
+    return (get() as InfraState & { _lastTelemetry?: SimTelemetryPayload })._lastTelemetry || null
   },
 
   handleWorkerOutput: (payload) => {
@@ -26,18 +23,18 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     
     // Update nodes with telemetry data
     const updatedNodes = nodes.map(node => {
-      const update = payload.nodes.find((n: any) => n.id === node.id)
+      const update = payload.nodes.find(n => n.id === node.id)
       if (update) {
-        return { ...node, ...update }
+        return { ...node, ...update } as InfraNode
       }
       return node
     })
 
     // Update applications with status data
     const updatedApps = applications.map(app => {
-      const update = payload.applications.find((a: any) => a.id === app.id)
+      const update = payload.applications.find(a => a.id === app.id)
       if (update) {
-        return { ...app, ...update }
+        return { ...app, ...update as ApplicationDeployment }
       }
       return app
     })
@@ -52,7 +49,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     console.log('[[Store]] Initializing Simulation Worker integration...')
     simWorkerManager.onOutput((payload) => get().handleWorkerOutput(payload))
     simWorkerManager.onTelemetry((telemetry) => {
-      set({ _lastTelemetry: telemetry } as any)
+      set({ _lastTelemetry: telemetry } as Partial<InfraState>)
     })
     
     const { nodes, applications } = get()
@@ -101,7 +98,6 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     })
 
     // 3. Operational Expenses
-    // Fix: Pass nodes to calculateRackPower
     const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
     const powerCost = totalPowerKW * 0.12 // $0.12 per kWh equivalent per tick
     const rackRent = nodes.filter(n => n.type === 'rack').length * 50 // $50 per rack per tick

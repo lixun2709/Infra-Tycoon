@@ -1,14 +1,14 @@
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { audioManager } from '../../utils/AudioManager'
-import type { Connection } from '../infraTypes'
+import type { Connection, ServiceType } from '../infraTypes'
 
 export interface NetworkingSlice {
   handlePortClick: (nodeId: string, portId: string) => void
   removeConnection: (id: string) => void
   patchConnection: (sNodeId: string, sPortId: string, tNodeId: string, tPortId: string) => void
-  verifyService: (nodeId: string, type: any) => boolean
-  getServiceStatus: (type: any) => 'green' | 'red'
+  verifyService: (nodeId: string, type: ServiceType) => boolean
+  getServiceStatus: (type: ServiceType) => 'green' | 'red'
   ping: (sourceId: string, targetIp: string) => { success: boolean; message: string }
   addReplicationLink: (sourceId: string) => void
   validateReplication: (linkId: string) => boolean

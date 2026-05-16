@@ -1,10 +1,11 @@
 import { Grid, OrbitControls } from '@react-three/drei'
 import { useThree, useFrame } from '@react-three/fiber'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
 import { audioManager } from '../../../utils/AudioManager'
 import { RACK_HEIGHT, U_WORLD } from '../../../physics/dimensions'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 export function EnvironmentRenderer() {
   const { totalRoomBTU, isGlobalMapOpen, currentSiteId, nodes, selectedNodeId } = useInfraStore()
@@ -13,8 +14,7 @@ export function EnvironmentRenderer() {
   
   const prevSiteId = useRef(currentSiteId)
   const prevMapState = useRef(isGlobalMapOpen)
-  const [isManualOverride, setIsManualOverride] = useState(false)
-  const prevSelectedId = useRef(selectedNodeId)
+  const isManualOverride = useRef(false)
 
   // Initialize Audio
   useEffect(() => {
@@ -23,24 +23,25 @@ export function EnvironmentRenderer() {
 
   // Camera Animation Logic
   useEffect(() => {
-    setIsManualOverride(false)
-    prevSelectedId.current = selectedNodeId
+    isManualOverride.current = false
   }, [selectedNodeId, currentSiteId])
 
   useEffect(() => {
     if (!controls) return
-    const handleStart = () => setIsManualOverride(true)
-    ;(controls as any).addEventListener('start', handleStart)
-    return () => (controls as any).removeEventListener('start', handleStart)
+    const orbitControls = controls as unknown as OrbitControlsImpl
+    const handleStart = () => { isManualOverride.current = true }
+    orbitControls.addEventListener('start', handleStart)
+    return () => orbitControls.removeEventListener('start', handleStart)
   }, [controls])
 
   useFrame((_, delta) => {
     if (!controls) return
+    const orbitControls = controls as unknown as OrbitControlsImpl
 
     // Site switch transition: snap to site default view
     if (prevSiteId.current !== currentSiteId) {
       camera.position.lerp(new THREE.Vector3(5, 4, 5), 0.1)
-      ;(controls as any).target.lerp(new THREE.Vector3(0, 0, 0), 0.1)
+      orbitControls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1)
       if (camera.position.distanceTo(new THREE.Vector3(5, 4, 5)) < 0.1) {
         prevSiteId.current = currentSiteId
       }
@@ -59,7 +60,7 @@ export function EnvironmentRenderer() {
       }
     }
 
-    if (!selectedNodeId || isManualOverride) return
+    if (!selectedNodeId || isManualOverride.current) return
 
     const selectedNode = nodes.find(n => n.id === selectedNodeId)
     if (!selectedNode) return
@@ -77,8 +78,8 @@ export function EnvironmentRenderer() {
       targetPos.y += RACK_HEIGHT / 2
     }
 
-    (controls as any).target.lerp(targetPos, delta * 12)
-    ;(controls as any).update()
+    orbitControls.target.lerp(targetPos, delta * 12)
+    orbitControls.update()
   })
 
   return (

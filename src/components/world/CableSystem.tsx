@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
@@ -137,6 +137,9 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
   const startNode = allNodes.find(n => n.id === connection.startNodeId)
   const endNode = allNodes.find(n => n.id === connection.endNodeId)
 
+  // Pure session start time for time-based logic in effects/frames
+  const [sessionStartTime] = useState(() => Date.now())
+
   const { curve, startPos, endPos } = useMemo(() => {
     if (!startNode || !endNode) return { curve: null, startPos: null, endPos: null }
     const start = getPortWorldPosition(startNode, connection.startPortId, allNodes)
@@ -188,9 +191,11 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
   }, [connection.type, connection.status])
 
   useFrame(({ clock }) => {
-    if (material) {
-      material.uniforms.uTime.value = clock.elapsedTime
-      material.uniforms.uHighlight.value = (connection.highlightTime && connection.highlightTime > Date.now()) ? 1.0 : 0.0
+    if (meshRef.current) {
+      const mat = meshRef.current.material as THREE.ShaderMaterial
+      mat.uniforms.uTime.value = clock.elapsedTime
+      const now = sessionStartTime + clock.elapsedTime * 1000
+      mat.uniforms.uHighlight.value = (connection.highlightTime && connection.highlightTime > now) ? 1.0 : 0.0
     }
   })
 

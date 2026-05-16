@@ -203,7 +203,14 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
   )
 }
 
-function TabButton({ active, onClick, icon: Icon, label }: any) {
+interface TabButtonProps {
+  active: boolean
+  onClick: () => void
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+}
+
+function TabButton({ active, onClick, icon: Icon, label }: TabButtonProps) {
   return (
     <button 
       onClick={onClick}
@@ -215,7 +222,15 @@ function TabButton({ active, onClick, icon: Icon, label }: any) {
   )
 }
 
-function MetricCard({ label, value, trend, icon: Icon, color }: any) {
+interface MetricCardProps {
+  label: string
+  value: string
+  trend: 'up' | 'down' | 'neutral'
+  icon: React.ComponentType<{ size?: number; className?: string }>
+  color: string
+}
+
+function MetricCard({ label, value, trend, icon: Icon, color }: MetricCardProps) {
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 relative overflow-hidden group">
       <div className="absolute -top-4 -right-4 p-8 opacity-5 group-hover:scale-110 transition-transform">
@@ -232,7 +247,13 @@ function MetricCard({ label, value, trend, icon: Icon, color }: any) {
   )
 }
 
-function ExpenseItem({ label, amount, sub }: any) {
+interface ExpenseItemProps {
+  label: string
+  amount: number
+  sub: string
+}
+
+function ExpenseItem({ label, amount, sub }: ExpenseItemProps) {
   return (
     <div className="flex items-center justify-between">
       <div>
