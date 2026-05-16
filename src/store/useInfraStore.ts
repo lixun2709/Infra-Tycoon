@@ -20,8 +20,8 @@ import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine
 import { useMissionStore } from './useMissionStore'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
 import { audioManager } from '../utils/AudioManager'
-import { simEngine } from '../simulation/SimulationEngine'
-import type { ThermalComponent, PowerComponent, TransformComponent, ProvisioningComponent, ApplicationComponent } from '../simulation/ecs/types'
+import { simWorkerManager } from '../simulation/SimulationWorkerManager'
+import type { SimSyncOutputPayload } from '../simulation/worker/workerTypes'
 
 export type * from './infraTypes'
 import type { 
@@ -197,8 +197,9 @@ type InfraState = {
   resetState: () => void
 
   // ECS Sync
-  syncWorldToECS: () => void
   getSimulationTelemetry: () => any
+  initializeSimulation: () => void
+  handleWorkerOutput: (payload: SimSyncOutputPayload) => void
 
   // v2.0 Management Plane Additions
   isChaosMode: boolean
@@ -1997,68 +1998,14 @@ export const useInfraStore = create<InfraState>()(
       },
 
       processTick: () => {
-        // 0. ECS Sync & Run
-        get().syncWorldToECS()
-        simEngine.update(1.0)
+        // 0. Request Worker Tick (Asynchronous)
+        simWorkerManager.syncInput(get().nodes, get().applications)
+        simWorkerManager.requestTick()
         
         const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
 
-        // 0.1 Sync ECS Results back to Store
-        const world = simEngine.getWorld()
-        const updatedNodes = nodes.map(node => {
-          const thermal = world.getComponent<ThermalComponent>('thermal', node.id)
-          const power = world.getComponent<PowerComponent>('power', node.id)
-          const prov = world.getComponent<ProvisioningComponent>('provisioning', node.id)
-          
-          let newNode = { ...node }
-          if (thermal) {
-            newNode.temperature = thermal.temperature
-            newNode.isThrottled = thermal.isThrottled
-          }
-          if (power) {
-            newNode.currentPowerKW = power.load
-          }
-          if (prov) {
-            newNode.bootProgress = prov.bootProgress
-            if (prov.bootProgress >= 100 && newNode.systemState === 'booting') {
-               newNode.systemState = 'running'
-            }
-          }
-          return newNode
-        })
-
-        const updatedApps = applications.map(app => {
-          const ecsApp = world.getComponent<ApplicationComponent>('application', app.id)
-          if (ecsApp) {
-            return {
-              ...app,
-              progress: ecsApp.progress,
-              status: ecsApp.status
-            } as ApplicationDeployment
-          }
-          return app
-        })
+        // Remove old sync-back logic (now handled by handleWorkerOutput callback)
         
-        // Update store with synced data
-        set({ nodes: updatedNodes, applications: updatedApps })
-        
-        // Remove old application processing (now handled by ECS)
-        /*
-        if (applications.length > 0) {
-          const updatedApps = applications.map(app => {
-            if (app.status === 'deploying') {
-              const newProgress = app.progress + 10 // Faster for Phase 6 testing
-              if (newProgress >= 100) {
-                return { ...app, progress: 100, status: 'running' as const }
-              }
-              return { ...app, progress: newProgress }
-            }
-            return app
-          })
-          set({ applications: updatedApps })
-        }
-        */
-
         // 2. SLA & Contract Management
         const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0
         let monthlyRevenue = 0
@@ -2217,67 +2164,52 @@ export const useInfraStore = create<InfraState>()(
         return JSON.parse(localStorage.getItem('infra-tycoon-saves-meta') || '[]') as SaveMetadata[]
       },
 
-      syncWorldToECS: () => {
-        const { nodes, applications } = get()
-        const world = simEngine.getWorld()
-        
-        nodes.forEach(node => {
-          world.registerEntity(node.id)
-          
-          // Add Transform
-          world.addComponent('transform', {
-            entityId: node.id,
-            siteId: node.siteId,
-            parentRackId: node.parentRackId,
-            slotIndex: node.slotIndex,
-            type: node.type
-          } as TransformComponent)
-
-          // Add Thermal
-          world.addComponent('thermal', {
-            entityId: node.id,
-            temperature: node.temperature ?? 22.0,
-            isThrottled: node.isThrottled ?? false,
-            btuOutput: node.btuOutput,
-            lastUpdate: Date.now()
-          } as ThermalComponent)
-
-          // Add Power
-          world.addComponent('power', {
-            entityId: node.id,
-            wattage: node.wattage,
-            load: node.currentPowerKW || 0,
-            isPowered: node.systemState !== 'off',
-            efficiency: 0.9
-          } as PowerComponent)
-
-          // Add Provisioning
-          world.addComponent('provisioning', {
-            entityId: node.id,
-            state: node.provisioningState,
-            bootProgress: node.bootProgress
-          } as ProvisioningComponent)
-        })
-
-        // Sync Applications as Entities
-        applications.forEach(app => {
-          world.registerEntity(app.id)
-          world.addComponent('application', {
-            entityId: app.id,
-            appId: app.appId,
-            status: app.status,
-            progress: app.progress
-          } as ApplicationComponent)
-          
-          // Link App to Node via Power component (optional for logic)
-          const nodePower = world.getComponent<PowerComponent>('power', app.nodeId)
-          if (nodePower) {
-             world.addComponent('power', { ...nodePower, entityId: app.id })
-          }
-        })
+      getSimulationTelemetry: () => {
+         // Telemetry is now updated asynchronously via callback
+         return (get() as any)._lastTelemetry || { tickDurationMs: 0, entityCount: 0, lastTickTime: Date.now() }
       },
 
-      getSimulationTelemetry: () => simEngine.getTelemetry()
+      initializeSimulation: () => {
+        console.log('[[Store]] Initializing Simulation Worker integration...')
+        simWorkerManager.onOutput((payload) => get().handleWorkerOutput(payload))
+        simWorkerManager.onTelemetry((telemetry) => {
+          set({ _lastTelemetry: telemetry } as any)
+        })
+        simWorkerManager.init(get().nodes, get().applications)
+      },
+
+      handleWorkerOutput: (payload: SimSyncOutputPayload) => {
+        const { nodes, applications } = get()
+        
+        const updatedNodes = nodes.map(node => {
+          const workerData = payload.nodes.find(n => n.id === node.id)
+          if (workerData) {
+            return {
+              ...node,
+              temperature: workerData.temperature,
+              isThrottled: workerData.isThrottled,
+              currentPowerKW: workerData.currentPowerKW,
+              bootProgress: workerData.bootProgress,
+              systemState: workerData.systemState as any
+            }
+          }
+          return node
+        })
+
+        const updatedApps = applications.map(app => {
+          const workerApp = payload.applications.find(a => a.id === app.id)
+          if (workerApp) {
+            return {
+              ...app,
+              status: workerApp.status as any,
+              progress: workerApp.progress
+            }
+          }
+          return app
+        })
+
+        set({ nodes: updatedNodes, applications: updatedApps })
+      }
     }),
     {
       name: 'infra-tycoon-state',

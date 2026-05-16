@@ -85,6 +85,7 @@ function App() {
 
   useEffect(() => {
     fixState()
+    useInfraStore.getState().initializeSimulation()
   }, [fixState])
 
   // Phase 10.2: Auto-Save System
