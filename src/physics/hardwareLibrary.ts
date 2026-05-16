@@ -11,6 +11,9 @@ export type HardwareCatalogSpec = {
   isBlade?: boolean
   isBladeChassis?: boolean
   useCase: string
+  maxOperatingTemp?: number
+  throttleTemp?: number
+  heatEfficiency?: number // 0-1, how much power becomes heat.
 }
 
 export type PortType = 'power' | 'network' | 'fc' | 'sas'
@@ -61,6 +64,9 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 3500,
     storageTB: 4,
     useCase: 'Specialized for AI/ML workloads and heavy graphical processing tasks.',
+    maxOperatingTemp: 95,
+    throttleTemp: 85,
+    heatEfficiency: 0.95,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 4, labelPrefix: 'eth' },
@@ -75,6 +81,9 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 500,
     storageTB: 2,
     useCase: 'General purpose application server for web, database, or API services.',
+    maxOperatingTemp: 80,
+    throttleTemp: 70,
+    heatEfficiency: 0.8,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 3, labelPrefix: 'eth' },
@@ -278,6 +287,9 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 5000,
     storageTB: 0,
     useCase: 'High-capacity cooling unit. Reduces rack temperature by neutralizing BTU load.',
+    maxOperatingTemp: 60,
+    throttleTemp: 50,
+    heatEfficiency: 0.2, // Low heat generation itself
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
     ],

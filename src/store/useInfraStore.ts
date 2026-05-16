@@ -20,6 +20,8 @@ import { calculateRackPower, recalculateRoomStats } from '../physics/powerEngine
 import { useMissionStore } from './useMissionStore'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
 import { audioManager } from '../utils/AudioManager'
+import { simEngine } from '../simulation/SimulationEngine'
+import type { ThermalComponent, PowerComponent, TransformComponent, ProvisioningComponent, ApplicationComponent } from '../simulation/ecs/types'
 
 export type * from './infraTypes'
 import type { 
@@ -170,6 +172,7 @@ type InfraState = {
   removeConnection: (id: string) => void
   removeNode: (id: string) => void
   updateNode: (id: string, updates: Partial<InfraNode>) => void
+  advanceProvisioningState: (id: string) => void
   
   // Day 7: Logical Networking
   verifyService: (nodeId: string, type: ServiceType) => boolean
@@ -192,6 +195,10 @@ type InfraState = {
   assignNetworkDetails: () => void
   checkNetworkPath: (startId: string, endId: string) => boolean
   resetState: () => void
+
+  // ECS Sync
+  syncWorldToECS: () => void
+  getSimulationTelemetry: () => any
 
   // v2.0 Management Plane Additions
   isChaosMode: boolean
@@ -826,10 +833,12 @@ export const useInfraStore = create<InfraState>()(
         if (cmdLower === 'help') {
           output.push("--- [[GREEN]]v1.6 BOOTSTRAP KERNEL[[RESET]] ---")
           output.push("BOOTSTRAP: [[YELLOW]]poweron[[RESET]], [[YELLOW]]hostname [n][[RESET]], [[YELLOW]]ip setup [ip] [gw] [dns][[RESET]]")
+          output.push("OPS: [[BLUE]]lifecycle advance[[RESET]], [[BLUE]]ipmi status[[RESET]], [[BLUE]]ipmi power [on|off|cycle][[RESET]]")
           output.push("CORE: [[BLUE]]ls -la[[RESET]], [[BLUE]]cd[[RESET]], [[BLUE]]pwd[[RESET]], [[RED]]clear[[RESET]], [[BLUE]]man [topic][[RESET]]")
           output.push("NET: [[GREEN]]ping [target][[RESET]], [[GREEN]]show ip brief[[RESET]], [[GREEN]]traceroute[[RESET]]")
           output.push("ORCH: [[BLUE]]apt install[[RESET]], [[BLUE]]systemctl start[[RESET]], [[BLUE]]sync-ntp[[RESET]]")
           output.push("NAV: [[YELLOW]]scan console[[RESET]], [[YELLOW]]connect console [id][[RESET]], [[YELLOW]]exit[[RESET]]")
+          output.push("SIM: [[BLUE]]ecs-stats[[RESET]], [[BLUE]]sim-telemetry[[RESET]]")
         } else if (targetNode && targetNode.systemState === 'off' && !['poweron', 'exit', 'help'].includes(cmdLower)) {
           output.push("[[RED]]SYSTEM ERROR: Node is logically powered down.[[RESET]]")
           output.push("Required: '[[YELLOW]]poweron[[RESET]]' to initialize CPU/RAM.")
@@ -967,15 +976,47 @@ export const useInfraStore = create<InfraState>()(
           } else {
             output.push(`[[GREEN]]Job for ${svcName}.service started successfully.[[RESET]]`)
           }
-        } else if (cmdLower === 'ipmi' && args[1] === 'set-ip') {
-          const ip = args[2]
-          if (newContext.mode === 'ssh' && targetNode) {
-            if (!ip) output.push("usage: ipmi set-ip [IP]")
-            else {
-              updateNode(targetNode.id, { managementIP: ip, isConfigured: true })
-              output.push(`[[GREEN]]IPMI: Static IP assigned to out-of-band interface: ${ip}[[RESET]]`)
+        } else if (cmdLower === 'lifecycle' && args[1] === 'advance') {
+          if (newContext.targetId) {
+            get().advanceProvisioningState(newContext.targetId)
+            output.push("[[GREEN]]Lifecycle: Triggering state transition...[[RESET]]")
+          } else output.push("[[RED]]lifecycle: must be connected to a node.[[RESET]]")
+        } else if (cmdLower === 'ipmi') {
+          if (!newContext.targetId || !targetNode) {
+             output.push("[[RED]]ipmi: must be connected to a node serial console.[[RESET]]")
+          } else {
+            const sub = args[1]?.toLowerCase()
+            if (sub === 'status') {
+              output.push(`--- [[BLUE]]IPMI v2.0 - ${targetNode.hostname || targetNode.id.slice(0,8)}[[RESET]] ---`)
+              output.push(`Power Status   : ${targetNode.systemState.toUpperCase()}`)
+              output.push(`Temperature    : [[YELLOW]]${targetNode.temperature?.toFixed(2) || '??'}°C[[RESET]] (ECS-Calculated)`)
+              output.push(`Fan Speed      : ${targetNode.systemState === 'running' ? '4500 RPM' : '0 RPM'}`)
+              output.push(`Provisioning   : ${targetNode.provisioningState.toUpperCase()}`)
+              output.push(`Throttling     : ${targetNode.isThrottled ? '[[RED]]ACTIVE[[RESET]]' : '[[GREEN]]OFF[[RESET]]'}`)
+            } else if (sub === 'power') {
+              const action = args[2]?.toLowerCase()
+              if (action === 'on') {
+                get().powerOnNode(targetNode.id)
+                output.push("[[GREEN]]IPMI: Power-on signal sent.[[RESET]]")
+              } else if (action === 'off') {
+                updateNode(targetNode.id, { systemState: 'off', bootProgress: 0 })
+                output.push("[[YELLOW]]IPMI: Graceful shutdown initiated.[[RESET]]")
+              } else if (action === 'cycle') {
+                updateNode(targetNode.id, { systemState: 'off', bootProgress: 0 })
+                setTimeout(() => get().powerOnNode(targetNode.id), 2000)
+                output.push("[[BLUE]]IPMI: Power cycle triggered (Hard Reset).[[RESET]]")
+              } else output.push("usage: ipmi power [on|off|cycle]")
+            } else if (sub === 'set-ip') {
+              const ip = args[2]
+              if (!ip) output.push("usage: ipmi set-ip [IP]")
+              else {
+                updateNode(targetNode.id, { managementIP: ip, isConfigured: true })
+                output.push(`[[GREEN]]IPMI: Static IP assigned to out-of-band interface: ${ip}[[RESET]]`)
+              }
+            } else {
+              output.push("usage: ipmi [status | power | set-ip]")
             }
-          } else output.push("[[RED]]ipmi: must be connected to a node serial console.[[RESET]]")
+          }
         } else if (cmdLower === 'sync-ntp') {
           if (newContext.targetId) {
             get().syncNtp(newContext.targetId)
@@ -1087,6 +1128,14 @@ export const useInfraStore = create<InfraState>()(
             })
             output.push(`[[BLUE]]Executing shell script: ${path}[[RESET]]`)
           } else output.push(`[[RED]]sh: ${path}: No such file[[RESET]]`)
+        } else if (cmdLower === 'ecs-stats' || cmdLower === 'sim-telemetry') {
+          const telemetry = get().getSimulationTelemetry()
+          output.push("--- [[BLUE]]ECS SIMULATION TELEMETRY (Day 7 Full Foundation)[[RESET]] ---")
+          output.push(`Tick Duration : [[GREEN]]${telemetry.tickDurationMs.toFixed(4)}ms[[RESET]]`)
+          output.push(`Entities      : [[YELLOW]]${telemetry.entityCount}[[RESET]]`)
+          output.push(`Active Systems: Thermal, Power, Provisioning, Applications`)
+          output.push(`Engine State  : [[GREEN]]STABLE[[RESET]]`)
+          output.push(`Last Sync     : ${new Date(telemetry.lastTickTime).toLocaleTimeString()}`)
         } else {
           output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
         }
@@ -1663,10 +1712,50 @@ export const useInfraStore = create<InfraState>()(
         return { ntpSyncStatus: [...state.ntpSyncStatus, newSync] }
       }),
 
+      advanceProvisioningState: (id: string) => {
+        const { nodes, connections, updateNode, pushAlert } = get()
+        const node = nodes.find(n => n.id === id)
+        if (!node) return
+
+        let nextState = node.provisioningState
+        let error = ''
+
+        switch (node.provisioningState) {
+          case 'unboxed':
+            if (node.parentRackId) nextState = 'racked'
+            else error = 'Hardware must be installed in a rack first.'
+            break
+          case 'racked':
+            const isPatched = connections.some(c => c.startNodeId === id || c.endNodeId === id)
+            if (isPatched) nextState = 'patched'
+            else error = 'Hardware requires physical network patching (Ethernet/FC).'
+            break
+          case 'patched':
+            nextState = 'bootstrapped'
+            break
+          case 'bootstrapped':
+            if (node.systemState === 'running') nextState = 'provisioned'
+            else error = 'System must be powered on and operational for final provisioning.'
+            break
+        }
+
+        if (error) {
+          pushAlert('warning', `Provisioning Error: ${error}`, id)
+        } else if (nextState !== node.provisioningState) {
+          updateNode(id, { provisioningState: nextState })
+          pushAlert('info', `Asset ${node.hostname || node.id.slice(0,6)} advanced to ${nextState.toUpperCase()}.`, id)
+        }
+      },
+
       powerOnNode: (nodeId) => {
         const { nodes, updateNode, pushAlert } = get()
         const node = nodes.find(n => n.id === nodeId)
         if (!node || node.systemState !== 'off') return
+
+        if (node.provisioningState === 'unboxed' || node.provisioningState === 'racked') {
+          pushAlert('critical', `BOOT FAILURE: Node ${node.id.slice(0,6)} lacks physical connectivity/patching.`, nodeId)
+          return
+        }
 
         updateNode(nodeId, { systemState: 'booting', bootProgress: 0 })
         pushAlert('info', `POWER_ON: Asset ${node.hostname || node.id.slice(0,8)} initializing POST sequence.`, nodeId)
@@ -1908,9 +1997,53 @@ export const useInfraStore = create<InfraState>()(
       },
 
       processTick: () => {
-        const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
+        // 0. ECS Sync & Run
+        get().syncWorldToECS()
+        simEngine.update(1.0)
         
-        // 1. Process Application Deployments
+        const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
+
+        // 0.1 Sync ECS Results back to Store
+        const world = simEngine.getWorld()
+        const updatedNodes = nodes.map(node => {
+          const thermal = world.getComponent<ThermalComponent>('thermal', node.id)
+          const power = world.getComponent<PowerComponent>('power', node.id)
+          const prov = world.getComponent<ProvisioningComponent>('provisioning', node.id)
+          
+          let newNode = { ...node }
+          if (thermal) {
+            newNode.temperature = thermal.temperature
+            newNode.isThrottled = thermal.isThrottled
+          }
+          if (power) {
+            newNode.currentPowerKW = power.load
+          }
+          if (prov) {
+            newNode.bootProgress = prov.bootProgress
+            if (prov.bootProgress >= 100 && newNode.systemState === 'booting') {
+               newNode.systemState = 'running'
+            }
+          }
+          return newNode
+        })
+
+        const updatedApps = applications.map(app => {
+          const ecsApp = world.getComponent<ApplicationComponent>('application', app.id)
+          if (ecsApp) {
+            return {
+              ...app,
+              progress: ecsApp.progress,
+              status: ecsApp.status
+            } as ApplicationDeployment
+          }
+          return app
+        })
+        
+        // Update store with synced data
+        set({ nodes: updatedNodes, applications: updatedApps })
+        
+        // Remove old application processing (now handled by ECS)
+        /*
         if (applications.length > 0) {
           const updatedApps = applications.map(app => {
             if (app.status === 'deploying') {
@@ -1924,6 +2057,7 @@ export const useInfraStore = create<InfraState>()(
           })
           set({ applications: updatedApps })
         }
+        */
 
         // 2. SLA & Contract Management
         const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0
@@ -1964,11 +2098,19 @@ export const useInfraStore = create<InfraState>()(
         const powerCost = totalPowerKW * 0.12 // $0.12 per kWh equivalent per tick
         const rackRent = nodes.filter(n => n.type === 'rack').length * 50 // $50 per rack per tick
 
+        const maintenanceCost = nodes.reduce((sum, n) => {
+          if (n.type === 'rack') return sum
+          const base = 10 // $10 base maintenance per node
+          const stressMultiplier = n.isThrottled ? 2.5 : 1.0
+          const ageMultiplier = 1 + (n.degradation / 100)
+          return sum + (base * stressMultiplier * ageMultiplier)
+        }, 0)
+
         // Hybrid Cloud Expenses
         const cloudCost = get().cloudBurstingActive ? (get().activeCloudInstances * 5) : 0
         const egressCost = get().cloudEgressGB * 0.1 // $0.10 per GB
 
-        const totalExpenses = powerCost + rackRent + cloudCost + egressCost
+        const totalExpenses = powerCost + rackRent + cloudCost + egressCost + maintenanceCost
         let newBalance = balance - totalExpenses
 
         if (isMonthEnd) {
@@ -2073,7 +2215,69 @@ export const useInfraStore = create<InfraState>()(
 
       getAvailableSaves: () => {
         return JSON.parse(localStorage.getItem('infra-tycoon-saves-meta') || '[]') as SaveMetadata[]
-      }
+      },
+
+      syncWorldToECS: () => {
+        const { nodes, applications } = get()
+        const world = simEngine.getWorld()
+        
+        nodes.forEach(node => {
+          world.registerEntity(node.id)
+          
+          // Add Transform
+          world.addComponent('transform', {
+            entityId: node.id,
+            siteId: node.siteId,
+            parentRackId: node.parentRackId,
+            slotIndex: node.slotIndex,
+            type: node.type
+          } as TransformComponent)
+
+          // Add Thermal
+          world.addComponent('thermal', {
+            entityId: node.id,
+            temperature: node.temperature ?? 22.0,
+            isThrottled: node.isThrottled ?? false,
+            btuOutput: node.btuOutput,
+            lastUpdate: Date.now()
+          } as ThermalComponent)
+
+          // Add Power
+          world.addComponent('power', {
+            entityId: node.id,
+            wattage: node.wattage,
+            load: node.currentPowerKW || 0,
+            isPowered: node.systemState !== 'off',
+            efficiency: 0.9
+          } as PowerComponent)
+
+          // Add Provisioning
+          world.addComponent('provisioning', {
+            entityId: node.id,
+            state: node.provisioningState,
+            bootProgress: node.bootProgress
+          } as ProvisioningComponent)
+        })
+
+        // Sync Applications as Entities
+        applications.forEach(app => {
+          world.registerEntity(app.id)
+          world.addComponent('application', {
+            entityId: app.id,
+            appId: app.appId,
+            status: app.status,
+            progress: app.progress
+          } as ApplicationComponent)
+          
+          // Link App to Node via Power component (optional for logic)
+          const nodePower = world.getComponent<PowerComponent>('power', app.nodeId)
+          if (nodePower) {
+             world.addComponent('power', { ...nodePower, entityId: app.id })
+          }
+        })
+      },
+
+      getSimulationTelemetry: () => simEngine.getTelemetry()
     }),
     {
       name: 'infra-tycoon-state',

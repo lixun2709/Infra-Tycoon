@@ -6,9 +6,9 @@ import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 
 export function Inspector() {
-  const { nodes, connections, selectedNodeId, activePatchSource, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService } = useInfraStore()
+  const { nodes, connections, selectedNodeId, activePatchSource, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService, advanceProvisioningState, powerOnNode } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
-  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'performance' | 'services'>('details')
+  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
 
   if (!selectedNode) return null
@@ -64,12 +64,12 @@ export function Inspector() {
         </div>
 
         {/* Tabs */}
-        <div className="flex px-2 bg-black/20">
-          {(['details', 'performance', 'services', 'alerts'] as const).map(tab => (
+        <div className="flex px-2 bg-black/20 overflow-x-auto no-scrollbar">
+          {(['details', 'thermal', 'services', 'lifecycle', 'alerts'] as const).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-3 text-[9px] uppercase tracking-[0.2em] font-black transition-all border-b-2 ${
+              className={`flex-1 min-w-[70px] py-3 text-[9px] uppercase tracking-[0.2em] font-black transition-all border-b-2 ${
                 activeTab === tab 
                   ? 'text-teal-400 border-teal-500 bg-teal-500/5' 
                   : 'text-slate-500 border-transparent hover:text-slate-300'
@@ -192,27 +192,105 @@ export function Inspector() {
             </>
           )}
 
-          {activeTab === 'performance' && (
+          {activeTab === 'thermal' && (
             <div className="space-y-4">
-              {connections.filter(c => c.startNodeId === selectedNode.id || c.endNodeId === selectedNode.id).map(conn => {
-                const util = Math.min(100, (conn.throughputGbps / conn.bandwidthGbps) * 100)
-                return (
-                  <Card key={conn.id} title={`LINK: ${conn.id.slice(0, 8)}`} subtitle={`LATENCY: ${conn.latencyMs}ms`}>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-[10px] font-mono">
-                        <span className="text-slate-500 uppercase font-black">Utilization</span>
-                        <span className="text-teal-400">{util.toFixed(1)}%</span>
+              <Card title="Thermodynamics" subtitle="Real-time Thermal Telemetry">
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Current Temperature</span>
+                    <span className={`text-xl font-black ${selectedNode.temperature && selectedNode.temperature > 70 ? 'text-rose-400 animate-pulse' : 'text-teal-400'}`}>
+                      {selectedNode.temperature?.toFixed(1) || '22.0'}°C
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Throttle Status</span>
+                    <Badge variant={selectedNode.isThrottled ? 'warning' : 'ghost'} glow={selectedNode.isThrottled}>
+                      {selectedNode.isThrottled ? 'THROTTLED' : 'NOMINAL'}
+                    </Badge>
+                  </div>
+                </div>
+              </Card>
+
+              {selectedNode.type !== 'rack' && (
+                <Card title="Silicon Health">
+                   <div className="space-y-2">
+                      <div className="flex justify-between text-[9px] uppercase font-black text-slate-500">
+                         <span>Operating Window</span>
+                         <span>20°C - 85°C</span>
                       </div>
-                      <div className="w-full bg-slate-950 rounded-full h-1 overflow-hidden">
-                        <div
-                          className={`h-full transition-all duration-300 ${util > 80 ? 'bg-rose-500' : 'bg-teal-500'}`}
-                          style={{ width: `${util}%` }}
-                        />
+                      <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden relative">
+                         <div className="absolute inset-0 bg-gradient-to-r from-teal-500 via-yellow-500 to-rose-500 opacity-20" />
+                         <div 
+                           className="h-full bg-teal-500 transition-all duration-1000"
+                           style={{ width: `${Math.min(100, (selectedNode.temperature || 20) / 0.85)}%` }}
+                         />
                       </div>
+                   </div>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'lifecycle' && (
+            <div className="space-y-4">
+              <Card title="Provisioning State" subtitle="Enterprise Lifecycle Engine">
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4">
+                    {(['unboxed', 'racked', 'patched', 'bootstrapped', 'provisioned'] as const).map((state, i) => {
+                      const isPast = ['unboxed', 'racked', 'patched', 'bootstrapped', 'provisioned'].indexOf(selectedNode.provisioningState) >= i
+                      const isCurrent = selectedNode.provisioningState === state
+                      return (
+                        <div key={state} className="flex items-center gap-4">
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black ${isPast ? 'bg-teal-500 text-[#020617]' : 'bg-slate-800 text-slate-500'}`}>
+                            {isPast ? '✓' : i + 1}
+                          </div>
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${isCurrent ? 'text-white' : isPast ? 'text-teal-400/60' : 'text-slate-600'}`}>
+                            {state}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  
+                  <Button 
+                    variant="primary" 
+                    className="w-full justify-center h-10 text-[10px] font-black tracking-widest"
+                    onClick={() => advanceProvisioningState(selectedNode.id)}
+                    disabled={selectedNode.provisioningState === 'provisioned'}
+                  >
+                    ADVANCE LIFECYCLE
+                  </Button>
+                </div>
+              </Card>
+
+              <Card title="Remote Management" subtitle="IPMI / OOB Interface">
+                 <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                       <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Power State</span>
+                       <Badge variant={selectedNode.systemState === 'running' ? 'success' : selectedNode.systemState === 'off' ? 'ghost' : 'warning'}>
+                          {selectedNode.systemState.toUpperCase()}
+                       </Badge>
                     </div>
-                  </Card>
-                )
-              })}
+                    <div className="flex gap-2">
+                       <Button 
+                         variant="ghost" 
+                         className="flex-1 py-1 h-8 text-[9px]"
+                         onClick={() => powerOnNode(selectedNode.id)}
+                         disabled={selectedNode.systemState !== 'off'}
+                       >
+                         POWER ON
+                       </Button>
+                       <Button 
+                         variant="danger" 
+                         className="flex-1 py-1 h-8 text-[9px]"
+                         onClick={() => updateNode(selectedNode.id, { systemState: 'off', bootProgress: 0 })}
+                         disabled={selectedNode.systemState === 'off'}
+                       >
+                         FORCE OFF
+                       </Button>
+                    </div>
+                 </div>
+              </Card>
             </div>
           )}
 

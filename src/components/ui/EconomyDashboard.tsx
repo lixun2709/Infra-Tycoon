@@ -102,6 +102,11 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                       <div className="space-y-4">
                         <ExpenseItem label="Energy & Power Usage" amount={-(totalPowerKW * 0.12 * 30)} sub={`${totalPowerKW.toFixed(2)} KW Average Load`} />
                         <ExpenseItem label="Colocation Rack Rental" amount={-(nodes.filter(n => n.type === 'rack').length * 50 * 30)} sub={`${nodes.filter(n => n.type === 'rack').length} Active Racks`} />
+                        <ExpenseItem 
+                          label="Hardware Maintenance & Stress" 
+                          amount={-nodes.filter(n => n.type !== 'rack').reduce((sum, n) => sum + (10 * (n.isThrottled ? 2.5 : 1.0) * (1 + (n.degradation / 100))), 0) * 30} 
+                          sub={`${nodes.filter(n => n.isThrottled).length} Nodes Throttled`} 
+                        />
                         <div className="h-px bg-slate-800 my-4" />
                         <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-4">Hybrid Cloud Metrics</p>
                         <div className="flex items-center justify-between mb-4">

@@ -120,7 +120,7 @@ export interface InfraNode {
   hostname?: string
   managementIP?: string
   macAddress?: string
-  provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'decommissioning'
+  provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'provisioned' | 'decommissioning'
   isConfigured?: boolean
   vlan?: number
   ports: HardwarePort[]
@@ -132,12 +132,19 @@ export interface InfraNode {
   installTimestamp?: number
   degradation: number
   temperature?: number
+  isThrottled?: boolean
   isRefreshing?: boolean
   componentHealth?: ComponentHealth
   failureProbability?: number
   isImmutable?: boolean
   isInfected?: boolean
   activeMigration?: { targetNodeId: string; progress: number }
+  ipmiConfig?: {
+    ip?: string
+    username?: string
+    password?: string
+    powerStatus: 'on' | 'off'
+  }
 }
 
 export interface PostMortem {
