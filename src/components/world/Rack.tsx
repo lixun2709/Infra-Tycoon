@@ -1,6 +1,6 @@
-import React, { useMemo, type ReactNode } from 'react'
-import { Text, Line, Edges } from '@react-three/drei'
-import { RACK_HEIGHT, U_WORLD } from './Scene'
+import React, { type ReactNode } from 'react'
+import { Text, Edges, Line } from '@react-three/drei'
+import { RACK_HEIGHT, U_WORLD, RACK_U } from '../../physics/dimensions'
 
 interface RackProps {
   id: string
@@ -15,9 +15,8 @@ interface RackProps {
 }
 
 function USlotLines() {
-  const segments = useMemo(() => {
+  const segments = React.useMemo(() => {
     const out: { key: number; y: number }[] = []
-    const RACK_U = 42
     for (let j = 1; j <= RACK_U; j++) {
       const y = -RACK_HEIGHT / 2 + j * U_WORLD
       out.push({ key: j, y })

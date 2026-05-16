@@ -9,7 +9,8 @@ export interface EventRegistry {
 export type EventCallback<K extends keyof EventRegistry> = (payload: EventRegistry[K]) => void;
 
 export class EventBus {
-  private listeners: Map<keyof EventRegistry, Set<EventCallback<keyof EventRegistry>>> = new Map();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private listeners: Map<keyof EventRegistry, Set<EventCallback<any>>> = new Map();
 
   subscribe<K extends keyof EventRegistry>(event: K, callback: EventCallback<K>): () => void {
     if (!this.listeners.has(event)) {

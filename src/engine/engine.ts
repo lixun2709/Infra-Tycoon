@@ -14,7 +14,7 @@ export class Engine {
   constructor() {
     this.entityManager = new EntityManager();
     this.componentManager = new ComponentManager();
-    this.systemManager = new SystemManager(this.entityManager, this.componentManager);
+    this.systemManager = new SystemManager();
     this.simulationLoop = new SimulationLoop((dt, total) => this.update(dt, total));
   }
 

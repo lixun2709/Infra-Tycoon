@@ -3,7 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Edges, Text } from '@react-three/drei'
 import { useInfraStore, type InfraNode } from '../../store/useInfraStore'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
-import { RACK_HEIGHT, U_WORLD } from './Scene'
+import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
+import { PortVisuals, StorageBar, PIIShield, MaintenanceIcon, InternalHardware, ServiceHolograms } from './renderers/HardwareRenderer'
 
 interface MountedUnitProps {
   node: InfraNode
@@ -88,8 +89,22 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
         <Edges color={isSelected ? '#00f2ff' : '#f7fafc'} threshold={20} lineWidth={isSelected ? 3 : 1} />
       </mesh>
       
-      {/* Port visuals and other internal components would go here */}
-      {/* We'll pass them as children or keep them integrated for now */}
+      {/* Front Panel Features */}
+      <PortVisuals node={node} h={h} onSelect={onSelect} />
+      
+      {node.type === 'storage' && node.totalStorageTB && (
+        <StorageBar used={node.usedStorageTB || 0} total={node.totalStorageTB} color={color} h={h} />
+      )}
+
+      {node.dataCategory === 'PII' && <PIIShield h={h} />}
+      {node.provisioningState === 'decommissioning' && <MaintenanceIcon />}
+
+      {/* Internal Modules (Visible when node is selected/transparent) */}
+      {isSelected && <InternalHardware node={node} h={h} />}
+      
+      {/* Service Holograms */}
+      <ServiceHolograms node={node} />
+
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
       </Text>

@@ -2,7 +2,7 @@ import { useRef, useMemo } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useInfraStore, type InfraNode, type Connection, type PortType } from '../../store/useInfraStore'
-import { RACK_HEIGHT, U_WORLD } from './Scene'
+import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
 
 const CABLE_COLORS: Record<PortType, string> = {
   network: '#00f2ff', // Vibrant Cyan (Fiber optic look)
