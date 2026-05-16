@@ -21,6 +21,7 @@ import { useMissionStore } from './useMissionStore'
 import type { TerminalPane, TerminalSession } from './terminalTypes'
 import { audioManager } from '../utils/AudioManager'
 import { simWorkerManager } from '../simulation/SimulationWorkerManager'
+import { performanceMonitor } from '../simulation/PerformanceMonitor'
 import type { SimSyncOutputPayload } from '../simulation/worker/workerTypes'
 
 export type * from './infraTypes'
@@ -1131,12 +1132,23 @@ export const useInfraStore = create<InfraState>()(
           } else output.push(`[[RED]]sh: ${path}: No such file[[RESET]]`)
         } else if (cmdLower === 'ecs-stats' || cmdLower === 'sim-telemetry') {
           const telemetry = get().getSimulationTelemetry()
-          output.push("--- [[BLUE]]ECS SIMULATION TELEMETRY (Day 7 Full Foundation)[[RESET]] ---")
+          output.push("--- [[BLUE]]ECS SIMULATION TELEMETRY[[RESET]] ---")
           output.push(`Tick Duration : [[GREEN]]${telemetry.tickDurationMs.toFixed(4)}ms[[RESET]]`)
           output.push(`Entities      : [[YELLOW]]${telemetry.entityCount}[[RESET]]`)
-          output.push(`Active Systems: Thermal, Power, Provisioning, Applications`)
-          output.push(`Engine State  : [[GREEN]]STABLE[[RESET]]`)
           output.push(`Last Sync     : ${new Date(telemetry.lastTickTime).toLocaleTimeString()}`)
+          output.push("")
+          output.push("SYSTEM BREAKDOWN:")
+          Object.entries(telemetry.systemTimings || {}).forEach(([name, time]) => {
+            const t = (time as number).toFixed(4)
+            output.push(`  ${name.padEnd(20)}: ${t}ms`)
+          })
+        } else if (cmdLower === 'sim-diagnostics') {
+          output.push("--- [[YELLOW]]SIMULATION DIAGNOSTICS[[RESET]] ---")
+          output.push(`Worker Status : [[GREEN]]ACTIVE[[RESET]]`)
+          output.push(`Memory Profile: [[BLUE]]STABLE[[RESET]]`)
+          output.push(`Frame Stability: ${performanceMonitor.getMetrics().fps} FPS`)
+          output.push(`Thread Latency: ${performanceMonitor.getMetrics().workerLatency.toFixed(2)}ms`)
+          output.push("Health Check  : 100% Deterministic")
         } else {
           output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
         }

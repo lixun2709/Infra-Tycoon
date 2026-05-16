@@ -58,4 +58,16 @@ export class World {
     this.entities.clear()
     this.components.clear()
   }
+
+  public getEntityCount(): number {
+    return this.entities.size
+  }
+
+  public getComponentStats(): Record<string, number> {
+    const stats: Record<string, number> = {}
+    this.components.forEach((map, name) => {
+      stats[name] = map.size
+    })
+    return stats
+  }
 }

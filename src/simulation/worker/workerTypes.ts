@@ -42,4 +42,5 @@ export interface SimTelemetryPayload {
   tickDurationMs: number
   entityCount: number
   lastTickTime: number
+  systemTimings: Record<string, number>
 }

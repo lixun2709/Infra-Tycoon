@@ -11,9 +11,10 @@ import { ApplicationSystem } from './ecs/systems/ApplicationSystem'
  */
 export class SimulationEngine {
   private world: World
-  private systems: System[] = []
+  private systems: System[]
   private lastTickTime: number = 0
   private tickDurationMs: number = 0
+  private systemTimings: Record<string, number> = {}
 
   constructor() {
     this.world = new World()
@@ -31,9 +32,12 @@ export class SimulationEngine {
 
   public update(dt: number) {
     const start = performance.now()
+    this.systemTimings = {}
     
     this.systems.forEach(system => {
+      const sysStart = performance.now()
       system.update(dt)
+      this.systemTimings[system.constructor.name] = performance.now() - sysStart
     })
     
     this.tickDurationMs = performance.now() - start
@@ -43,8 +47,9 @@ export class SimulationEngine {
   public getTelemetry() {
     return {
       tickDurationMs: this.tickDurationMs,
-      entityCount: this.world.getEntitiesWith([]).length,
-      lastTickTime: this.lastTickTime
+      entityCount: this.world.getEntityCount(),
+      lastTickTime: this.lastTickTime,
+      systemTimings: this.systemTimings
     }
   }
 }

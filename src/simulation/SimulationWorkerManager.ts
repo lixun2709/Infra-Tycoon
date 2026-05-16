@@ -1,5 +1,6 @@
 import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload } from './worker/workerTypes'
 import type { InfraNode, ApplicationDeployment } from '../store/infraTypes'
+import { performanceMonitor } from './PerformanceMonitor'
 
 
 /**
@@ -11,6 +12,7 @@ export class SimulationWorkerManager {
   private onOutputCallback: ((payload: SimSyncOutputPayload) => void) | null = null
   private onTelemetryCallback: ((payload: SimTelemetryPayload) => void) | null = null
   private isProcessingTick = false
+  private lastTickRequestTime = 0
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -30,9 +32,15 @@ export class SimulationWorkerManager {
         
         if (type === 'SYNC_OUTPUT') {
           this.isProcessingTick = false
+          const latency = performance.now() - this.lastTickRequestTime
+          performanceMonitor.updateWorkerLatency(latency)
+          
           if (this.onOutputCallback) this.onOutputCallback(payload)
         } else if (type === 'TELEMETRY') {
-          if (this.onTelemetryCallback) this.onTelemetryCallback(payload)
+          const t = payload as SimTelemetryPayload
+          performanceMonitor.updateSimMetrics(t.tickDurationMs, t.entityCount, t.systemTimings)
+          
+          if (this.onTelemetryCallback) this.onTelemetryCallback(t)
         }
       }
     } else {
@@ -51,7 +59,7 @@ export class SimulationWorkerManager {
   public requestTick() {
     if (this.isProcessingTick) return // Prevent congestion
     this.isProcessingTick = true
-    // console.log('[[Main Thread]] Requesting Simulation Tick')
+    this.lastTickRequestTime = performance.now()
     this.send('TICK')
   }
 

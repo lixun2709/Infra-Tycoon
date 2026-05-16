@@ -14,6 +14,7 @@ import { MissionLogic } from './components/world/MissionLogic'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
+import { PerformanceOverlay } from './components/ui/PerformanceOverlay'
 import { Rocket, X, TrendingUp } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
@@ -302,6 +303,7 @@ function App() {
         isOpen={isProcurementOpen}
         onToggle={setIsProcurementOpen}
       />
+      <PerformanceOverlay />
 
       {/* Overlays & Managers */}
       <EmergencyToasts />
