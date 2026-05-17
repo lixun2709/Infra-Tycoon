@@ -22,10 +22,10 @@ interface MountedUnitProps {
 }
 
 const TYPE_ACCENT: Record<string, string> = {
-  compute: '#4a5568',
-  storage: '#2b6cb0',
-  backup: '#805ad5',
-  network: '#2d3748',
+  compute: '#10b981',
+  storage: '#2563eb',
+  backup: '#8b5cf6',
+  network: '#f97316',
 }
 
 function rackHardwareCenterY(slotIndex: number, uHeight: number): number {
@@ -41,6 +41,7 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
   const updateNode = useInfraStore(s => s.updateNode)
   const finalRemoveNode = useInfraStore(s => s.finalRemoveNode)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
+  const nodes = useInfraStore(s => s.nodes)
   const renderQuality = useInfraStore(s => s.renderQuality)
   
   const groupRef = useRef<THREE.Group>(null)
@@ -119,13 +120,14 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
 
   if (node.slotIndex == null || node.parentRackId == null) return null
 
-  const isAnyNodeSelected = !!selectedNodeId
+  const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
+  const isAnyHardwareSelected = selectedNode ? selectedNode.type !== 'rack' : false
   const spec = (node.catalogKey ? HARDWARE_CATALOG[node.catalogKey] : null) as HardwareCatalogSpec | null
   const color = spec ? spec.color : (TYPE_ACCENT[node.type] ?? '#718096')
 
   const h = node.uHeight * U_WORLD
   const y = rackHardwareCenterY(node.slotIndex, node.uHeight)
-  const opacity = isSelected ? 0.15 : (isAnyNodeSelected ? 0.4 : 1.0)
+  const opacity = isSelected ? 0.15 : (isAnyHardwareSelected ? 0.4 : 1.0)
 
   // LOD Tier 2 (Low Detail) renders a bare chassis mesh with zero sub-geometries or lights
   if (lod === 2 && !isSelected) {

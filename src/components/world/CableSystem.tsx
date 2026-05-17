@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/immutability */
 import { useRef, useMemo, useState, useEffect } from 'react'
 import { THEMES } from '../../store/themeTypes'
 import * as THREE from 'three'

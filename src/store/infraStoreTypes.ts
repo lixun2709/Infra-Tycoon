@@ -21,6 +21,7 @@ import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
 import type { ThemeKey } from './themeTypes'
+import type { CameraSlice } from './slices/cameraSlice'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -183,4 +184,4 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-}
+} & CameraSlice

@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/immutability */
 import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -6,11 +5,13 @@ import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
 import { useInput } from '../../../contexts/InputContext'
 import { audioManager } from '../../../utils/AudioManager'
-import { RACK_HEIGHT, U_WORLD } from '../../../physics/dimensions'
+import { cameraTelemetry } from '../../../systems/camera/CameraTelemetry'
+import { 
+  computeRTSPlanarMove, 
+  computeSlotInspectionTarget, 
+  lerpCameraVec3 
+} from '../../../systems/camera/cameraModes'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
-
-// Camera State Machine Types
-export type CameraMode = 'GLOBAL_MAP' | 'SITE_DEFAULT' | 'INSPECT' | 'MANUAL_FREE'
 
 // Pre-allocate vectors to eliminate per-frame Garbage Collection spikes
 const V_TARGET_POS = new THREE.Vector3()
@@ -27,9 +28,13 @@ export function CameraController() {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const nodes = useInfraStore(s => s.nodes)
+  
+  const cameraMode = useInfraStore(s => s.cameraMode)
+  const cameraFocusNodeId = useInfraStore(s => s.cameraFocusNodeId)
+  const setCameraMode = useInfraStore(s => s.setCameraMode)
+  const focusOnNode = useInfraStore(s => s.focusOnNode)
+  
   const { isActionActive } = useInput()
-
-  const mode = useRef<CameraMode>('SITE_DEFAULT')
   const prevSiteId = useRef(currentSiteId)
 
   // Initialize Audio Listener on the primary camera
@@ -37,88 +42,97 @@ export function CameraController() {
     audioManager.init(camera)
   }, [camera])
 
-  // Input Abstraction: Detect when user manually interacts with controls
+  // Input Abstraction: Detect when user manually interacts with controls and switch to free roam
   useEffect(() => {
     if (!controls) return
     const orbitControls = controls as unknown as OrbitControlsImpl
     const handleStart = () => { 
-      mode.current = 'MANUAL_FREE'
+      if (cameraMode !== 'MANUAL_FREE') {
+        cameraTelemetry.log('mode_change', `User manually panned camera. Releasing to MANUAL_FREE from ${cameraMode}`)
+        setCameraMode('MANUAL_FREE')
+      }
     }
     orbitControls.addEventListener('start', handleStart)
     return () => orbitControls.removeEventListener('start', handleStart)
-  }, [controls])
+  }, [controls, cameraMode, setCameraMode])
 
-  // State Machine Evaluation
+  // Synchronize dynamic store states with Camera Subsystem modes
   useEffect(() => {
     if (isGlobalMapOpen) {
-      mode.current = 'GLOBAL_MAP'
+      if (cameraMode !== 'GLOBAL_MAP') {
+        cameraTelemetry.log('mode_change', 'Global map opened. Switching camera to GLOBAL_MAP preset.')
+        setCameraMode('GLOBAL_MAP')
+      }
       return
     }
     if (prevSiteId.current !== currentSiteId) {
-      mode.current = 'SITE_DEFAULT'
       prevSiteId.current = currentSiteId
+      cameraTelemetry.log('mode_change', `Site switched to ${currentSiteId}. Snapping to SITE_DEFAULT preset.`)
+      setCameraMode('SITE_DEFAULT')
       return
     }
     if (selectedNodeId) {
-      mode.current = 'INSPECT'
+      if (cameraFocusNodeId !== selectedNodeId) {
+        cameraTelemetry.log('focus_node', `Node ${selectedNodeId} selected. Focusing camera in INSPECT mode.`, { nodeId: selectedNodeId })
+        focusOnNode(selectedNodeId)
+      }
       return
     }
     
-    // Default fallback logic when deselected: Zoom back out to the room view
-    if (mode.current === 'INSPECT' && !selectedNodeId) {
-       mode.current = 'SITE_DEFAULT' 
+    // Auto-release focus when node is deselected
+    if (cameraMode === 'INSPECT' && !selectedNodeId) {
+      cameraTelemetry.log('mode_change', 'Selection cleared. Resetting camera back to SITE_DEFAULT.')
+      focusOnNode(null)
     }
-  }, [isGlobalMapOpen, currentSiteId, selectedNodeId])
+  }, [isGlobalMapOpen, currentSiteId, selectedNodeId, cameraMode, cameraFocusNodeId, setCameraMode, focusOnNode])
 
-  // High-performance Render Loop
+  // High-performance Render Loop utilising preallocated vector pools
   useFrame((_, delta) => {
     if (!controls) return
     const orbitControls = controls as unknown as OrbitControlsImpl
 
-    switch (mode.current) {
-      case 'GLOBAL_MAP':
-        camera.position.lerp(V_MAP_POS, 0.05)
-        orbitControls.target.lerp(V_ZERO, 0.05)
+    switch (cameraMode) {
+      case 'GLOBAL_MAP': {
+        lerpCameraVec3(camera.position, V_MAP_POS, 2.5, delta, camera.position)
+        lerpCameraVec3(orbitControls.target, V_ZERO, 2.5, delta, orbitControls.target)
         break
+      }
         
-      case 'SITE_DEFAULT':
-        camera.position.lerp(V_SITE_POS, 0.1)
-        orbitControls.target.lerp(V_ZERO, 0.1)
+      case 'SITE_DEFAULT': {
+        lerpCameraVec3(camera.position, V_SITE_POS, 5.0, delta, camera.position)
+        lerpCameraVec3(orbitControls.target, V_ZERO, 5.0, delta, orbitControls.target)
+        
         if (camera.position.distanceTo(V_SITE_POS) < 0.1) {
-          mode.current = 'MANUAL_FREE' // Release back to player after snapping
+          cameraTelemetry.log('mode_change', 'Default site snaps finished. Transitioning to MANUAL_FREE controls.')
+          setCameraMode('MANUAL_FREE')
         }
         break
+      }
 
-      case 'INSPECT':
-        if (selectedNodeId) {
-          const selectedNode = nodes.find(n => n.id === selectedNodeId)
+      case 'INSPECT': {
+        const inspectNodeId = cameraFocusNodeId || selectedNodeId
+        if (inspectNodeId) {
+          const selectedNode = nodes.find(n => n.id === inspectNodeId)
           if (selectedNode) {
-            // Re-use preallocated vector
-            V_TARGET_POS.set(selectedNode.position.x, selectedNode.position.y, selectedNode.position.z)
-            
-            // Compute specific sub-offsets
-            if (selectedNode.parentRackId) {
-              const rack = nodes.find(n => n.id === selectedNode.parentRackId)
-              if (rack) {
-                const yOffset = -RACK_HEIGHT / 2 + U_WORLD * ((selectedNode.slotIndex ?? 1) - 1 + selectedNode.uHeight / 2)
-                V_TARGET_POS.set(rack.position.x, rack.position.y + RACK_HEIGHT / 2 + yOffset, rack.position.z)
-              }
-            } else if (selectedNode.type === 'rack') {
-              V_TARGET_POS.y += RACK_HEIGHT / 2
-            }
+            const parentRack = selectedNode.parentRackId 
+              ? nodes.find(n => n.id === selectedNode.parentRackId) 
+              : undefined
 
-            // Smoothly pan the target
-            orbitControls.target.lerp(V_TARGET_POS, delta * 12)
+            // Delegate 3D coordinates calculation to decoupled math routines
+            computeSlotInspectionTarget(selectedNode, parentRack, V_TARGET_POS)
+
+            // Smoothly pan OrbitControls target to look at the focused slot position
+            lerpCameraVec3(orbitControls.target, V_TARGET_POS, 12, delta, orbitControls.target)
             
-            // Smoothly zoom the camera position in
+            // Smoothly zoom the camera position to maintain offset
             V_CAMERA_TARGET.copy(V_TARGET_POS).add(V_CAMERA_OFFSET)
-            camera.position.lerp(V_CAMERA_TARGET, delta * 5)
+            lerpCameraVec3(camera.position, V_CAMERA_TARGET, 5, delta, camera.position)
           }
         }
         break
+      }
 
       case 'MANUAL_FREE': {
-        // RTS-style planar WASD panning
         let moveX = 0
         let moveZ = 0
         
@@ -128,21 +142,14 @@ export function CameraController() {
         if (isActionActive('MOVE_RIGHT')) moveX += 1
         
         if (moveX !== 0 || moveZ !== 0) {
-          // Calculate movement relative to camera's current yaw angle
+          // Compute yaw angle relative to orbital rotation target
           const yaw = Math.atan2(
             camera.position.x - orbitControls.target.x,
             camera.position.z - orbitControls.target.z
           )
           
-          const speed = delta * 15 // units per second panning speed
-          
-          const worldMoveX = moveX * Math.cos(yaw) + moveZ * Math.sin(yaw)
-          const worldMoveZ = -moveX * Math.sin(yaw) + moveZ * Math.cos(yaw)
-          
-          orbitControls.target.x += worldMoveX * speed
-          orbitControls.target.z += worldMoveZ * speed
-          camera.position.x += worldMoveX * speed
-          camera.position.z += worldMoveZ * speed
+          // Delegate panning kinematics directly to cameraModes
+          computeRTSPlanarMove(yaw, moveX, moveZ, 15, delta, orbitControls.target, camera.position)
         }
         break
       }
@@ -151,7 +158,6 @@ export function CameraController() {
     orbitControls.update()
   })
 
-  // Future abstraction point: Replace OrbitControls with RTS/Spectator WASD controls based on state
   return (
     <OrbitControls
       makeDefault

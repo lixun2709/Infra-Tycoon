@@ -6,11 +6,11 @@ interface TooltipProps {
   children: React.ReactElement<{
     'aria-describedby'?: string
     tabIndex?: number
-    onMouseEnter?: React.MouseEventHandler<any>
-    onMouseLeave?: React.MouseEventHandler<any>
-    onFocus?: React.FocusEventHandler<any>
-    onBlur?: React.FocusEventHandler<any>
-    onKeyDown?: React.KeyboardEventHandler<any>
+    onMouseEnter?: React.MouseEventHandler<HTMLElement>
+    onMouseLeave?: React.MouseEventHandler<HTMLElement>
+    onFocus?: React.FocusEventHandler<HTMLElement>
+    onBlur?: React.FocusEventHandler<HTMLElement>
+    onKeyDown?: React.KeyboardEventHandler<HTMLElement>
   }>
   position?: 'top' | 'bottom' | 'left' | 'right'
   delay?: number

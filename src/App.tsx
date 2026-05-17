@@ -20,6 +20,7 @@ import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
 import type { InfraAlert } from './store/infraTypes'
 import { THEMES } from './store/themeTypes'
+import type { ThemeKey } from './store/themeTypes'
 import { ToastProvider } from './components/ui/base'
 import { audioManager } from './utils/AudioManager'
 
@@ -294,7 +295,7 @@ function App() {
               <select 
                 value={activeTheme}
                 onChange={(e) => {
-                  const newTheme = e.target.value as any
+                  const newTheme = e.target.value as ThemeKey
                   setTheme(newTheme)
                   audioManager.playEffect('click')
                 }}
