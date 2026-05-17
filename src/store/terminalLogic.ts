@@ -164,6 +164,10 @@ export function handleCommand(
     if (telemetry) {
       output.push("--- [[BLUE]]ECS TELEMETRY[[RESET]] ---")
       output.push(`Tick: ${telemetry.tickDurationMs.toFixed(4)}ms | Entities: ${telemetry.entityCount}`)
+      if (telemetry.queryTelemetry) {
+        const q = telemetry.queryTelemetry
+        output.push(`Queries: ${q.activeQueries} | Hits: ${q.queryHits} | Misses: ${q.queryMisses} | Hit Ratio: ${(q.cacheHitRatio * 100).toFixed(1)}%`)
+      }
     } else {
       output.push("[[RED]]Telemetry unavailable.[[RESET]]")
     }

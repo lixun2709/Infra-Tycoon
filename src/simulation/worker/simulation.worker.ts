@@ -11,45 +11,92 @@ import type {
 const engine = new SimulationEngine()
 console.log('[[Worker Thread]] Simulation Worker Online')
 
-/**
- * Simulation Worker
- * Runs the ECS engine in a background thread.
- */
+// FIFO Command Queue for transaction/state synchronization safety
+const commandQueue: SimMessage[] = []
+let isProcessingQueue = false
+
 self.onmessage = (event: MessageEvent<SimMessage>) => {
-  const data = event.data
+  const msg = event.data
 
-  switch (data.type) {
-    case 'INIT':
-      console.log('[[Worker Thread]] Received INIT command')
-      handleSyncInput(data.payload)
-      break
-
-    case 'SYNC_INPUT':
-      // console.log('[[Worker Thread]] Received SYNC_INPUT')
-      handleSyncInput(data.payload)
-      break
-
-    case 'TICK':
-      engine.update(1.0)
-      sendSyncOutput()
-      break
-
-    case 'PING':
-      self.postMessage({ type: 'PONG' })
-      break
+  // Heartbeat PING is resolved immediately with low-latency priority
+  if (msg.type === 'PING') {
+    self.postMessage({ type: 'PONG' })
+    return
   }
+
+  commandQueue.push(msg)
+  processQueue()
 }
 
 self.onerror = (e) => {
-  console.error('[[Worker Thread]] Critical Error:', e)
+  console.error('[[Worker Thread]] Critical Worker Error:', e)
 }
 
+function processQueue() {
+  if (isProcessingQueue || commandQueue.length === 0) return
+  isProcessingQueue = true
+
+  while (commandQueue.length > 0) {
+    const data = commandQueue.shift()!
+    try {
+      switch (data.type) {
+        case 'INIT':
+          console.log('[[Worker Thread]] Processing INIT command')
+          handleSyncInput(data.payload)
+          break
+
+        case 'SYNC_INPUT':
+          handleSyncInput(data.payload)
+          break
+
+        case 'TICK':
+          engine.update(1.0)
+          sendSyncOutput()
+          break
+      }
+    } catch (err) {
+      console.error('[[Worker Thread]] Error processing message in FIFO queue:', err)
+    }
+  }
+
+  isProcessingQueue = false
+}
+
+/**
+ * Sync Input Reconciler
+ * Parses compacted states, registers new entities, updates components, and prunes deleted entities to prevent leaks.
+ */
 function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const world = engine.getWorld()
   const { nodes, applications } = payload
 
+  // 1. Gather all active entity IDs in the incoming payload
+  const incomingIds = new Set<string>()
+  nodes.forEach(node => incomingIds.add(node.id))
+  applications.forEach(app => incomingIds.add(app.id))
+
+  // 2. Fetch all current entity IDs registered in the ECS World
+  const currentEntities = world.getEntitiesWith([])
+
+  // 3. Reconcile & Prune Leaks: expunge entities missing in the incoming payload
+  let prunedCount = 0
+  currentEntities.forEach(id => {
+    if (!incomingIds.has(id)) {
+      world.removeEntity(id)
+      prunedCount++
+    }
+  })
+
+  if (prunedCount > 0) {
+    console.log(`[[Worker Thread Reconciler]] Pruned ${prunedCount} deleted entities from simulation.`)
+  }
+
+  // 4. Update Node Components
   nodes.forEach(node => {
-    world.registerEntity(node.id)
+    // Only register entity if it is new to avoid console warnings
+    if (!world.hasComponent('transform', node.id)) {
+      world.registerEntity(node.id)
+    }
     
     world.addComponent('transform', {
       entityId: node.id,
@@ -82,8 +129,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
     } as ProvisioningComponent)
   })
 
+  // 5. Update Application Components
   applications.forEach(app => {
-    world.registerEntity(app.id)
+    if (!world.hasComponent('application', app.id)) {
+      world.registerEntity(app.id)
+    }
+
     world.addComponent('application', {
       entityId: app.id,
       appId: app.appId,

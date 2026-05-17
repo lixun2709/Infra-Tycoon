@@ -49,7 +49,8 @@ export class SimulationEngine {
       tickDurationMs: this.tickDurationMs,
       entityCount: this.world.getEntityCount(),
       lastTickTime: this.lastTickTime,
-      systemTimings: this.systemTimings
+      systemTimings: this.systemTimings,
+      queryTelemetry: this.world.getQueryTelemetry()
     }
   }
 }

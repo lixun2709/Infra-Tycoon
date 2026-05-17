@@ -1,4 +1,4 @@
-import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload } from './worker/workerTypes'
+import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload, SimInitPayload, SimSyncInputPayload } from './worker/workerTypes'
 import type { InfraNode, ApplicationDeployment } from '../store/infraTypes'
 import { performanceMonitor } from './PerformanceMonitor'
 
@@ -24,7 +24,7 @@ export class SimulationWorkerManager {
   private isRestarting = false
 
   constructor() {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof Worker !== 'undefined' && !(typeof process !== 'undefined' && process.env.VITEST)) {
       this.start()
     }
   }
@@ -121,17 +121,56 @@ export class SimulationWorkerManager {
     }
   }
 
+  private compactState(nodes: InfraNode[], applications: ApplicationDeployment[]) {
+    const start = performance.now()
+    const compactNodes = nodes.map(n => ({
+      id: n.id,
+      type: n.type,
+      siteId: n.siteId,
+      parentRackId: n.parentRackId,
+      slotIndex: n.slotIndex,
+      wattage: n.wattage ?? 0,
+      currentPowerKW: n.currentPowerKW,
+      systemState: n.systemState,
+      provisioningState: n.provisioningState,
+      bootProgress: n.bootProgress ?? 0,
+      temperature: n.temperature,
+      isThrottled: n.isThrottled,
+      btuOutput: n.btuOutput ?? 0
+    }))
+
+    const compactApps = applications.map(a => ({
+      id: a.id,
+      appId: a.appId,
+      nodeId: a.nodeId,
+      status: a.status,
+      progress: a.progress
+    }))
+
+    const compacted = { nodes: compactNodes, applications: compactApps }
+    const timeMs = performance.now() - start
+    const approxBytes = JSON.stringify(compacted).length
+
+    if (Math.random() > 0.95) {
+      console.log(`[[WorkerManager Telemetry]] Serialization Compaction: ${approxBytes} bytes in ${timeMs.toFixed(3)}ms`)
+    }
+
+    return compacted
+  }
+
   public init(nodes: InfraNode[], applications: ApplicationDeployment[]) {
     this.lastNodes = nodes
     this.lastApps = applications
-    this.send('INIT', { nodes, applications })
+    const compacted = this.compactState(nodes, applications)
+    this.send('INIT', compacted)
     this.restartAttempts = 0 // Reset on successful user-triggered init
   }
 
   public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[]) {
     this.lastNodes = nodes
     this.lastApps = applications
-    this.send('SYNC_INPUT', { nodes, applications })
+    const compacted = this.compactState(nodes, applications)
+    this.send('SYNC_INPUT', compacted)
   }
 
   public requestTick() {
@@ -149,7 +188,11 @@ export class SimulationWorkerManager {
     this.onTelemetryCallback = callback
   }
 
-  private send(type: SimMessage['type'], payload?: SimMessage['payload']) {
+  private send(type: 'INIT', payload: SimInitPayload): void
+  private send(type: 'SYNC_INPUT', payload: SimSyncInputPayload): void
+  private send(type: 'TICK'): void
+  private send(type: 'PING'): void
+  private send(type: string, payload?: unknown) {
     if (this.worker) {
       this.worker.postMessage({ type, payload })
     }

@@ -60,12 +60,28 @@ export class ThermalSystem extends System {
       thermal.lastUpdate = Date.now()
     })
 
-    // 3. Conduction between adjacent entities in the same rack
-    const racks = entities.filter(id => transformMap.get(id)?.type === 'rack')
+    // 3. Conduction between adjacent entities in the same rack (optimized O(N) single-pass grouping)
+    const rackChildrenMap = new Map<string, string[]>()
+    const racks: string[] = []
+
+    entities.forEach(id => {
+      const transform = transformMap.get(id)!
+      if (transform.type === 'rack') {
+        racks.push(id)
+      } else if (transform.parentRackId) {
+        if (!rackChildrenMap.has(transform.parentRackId)) {
+          rackChildrenMap.set(transform.parentRackId, [])
+        }
+        rackChildrenMap.get(transform.parentRackId)!.push(id)
+      }
+    })
+
     racks.forEach(rackId => {
-      const rackNodes = entities
-        .filter(id => transformMap.get(id)?.parentRackId === rackId)
-        .sort((a, b) => (transformMap.get(a)?.slotIndex ?? 0) - (transformMap.get(b)?.slotIndex ?? 0))
+      const rackNodes = rackChildrenMap.get(rackId)
+      if (!rackNodes || rackNodes.length < 2) return
+
+      // Sort only the local rack nodes
+      rackNodes.sort((a, b) => (transformMap.get(a)?.slotIndex ?? 0) - (transformMap.get(b)?.slotIndex ?? 0))
 
       for (let i = 0; i < rackNodes.length - 1; i++) {
         const idA = rackNodes[i]

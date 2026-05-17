@@ -1,4 +1,4 @@
-import type { InfraNode, ApplicationDeployment, SystemState } from '../../store/infraTypes'
+import type { SystemState } from '../../store/infraTypes'
 
 export type SimMessageType = 
   | 'INIT' 
@@ -9,14 +9,38 @@ export type SimMessageType =
   | 'PING'
   | 'PONG'
 
+export interface CompactNode {
+  id: string
+  type: string
+  siteId: string
+  parentRackId?: string
+  slotIndex?: number
+  wattage: number
+  currentPowerKW?: number
+  systemState: string
+  provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'provisioned' | 'decommissioning'
+  bootProgress: number
+  temperature?: number
+  isThrottled?: boolean
+  btuOutput: number
+}
+
+export interface CompactApplication {
+  id: string
+  appId: string
+  nodeId: string
+  status: 'deploying' | 'running' | 'error'
+  progress: number
+}
+
 export interface SimInitPayload {
-  nodes: InfraNode[]
-  applications: ApplicationDeployment[]
+  nodes: CompactNode[]
+  applications: CompactApplication[]
 }
 
 export interface SimSyncInputPayload {
-  nodes: InfraNode[]
-  applications: ApplicationDeployment[]
+  nodes: CompactNode[]
+  applications: CompactApplication[]
 }
 
 export interface SimSyncOutputPayload {
@@ -40,6 +64,12 @@ export interface SimTelemetryPayload {
   entityCount: number
   lastTickTime: number
   systemTimings: Record<string, number>
+  queryTelemetry?: {
+    activeQueries: number
+    queryHits: number
+    queryMisses: number
+    cacheHitRatio: number
+  }
 }
 
 export type SimMessage = 

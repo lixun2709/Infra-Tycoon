@@ -11,22 +11,35 @@ export class PowerSystem extends System {
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
     const entities = this.world.getEntitiesWith(['power', 'transform'])
 
-    // 1. Calculate Rack Power Loads
-    const racks = entities.filter(id => transformMap.get(id)?.type === 'rack')
-    
+    // 1. Calculate Rack Power Loads in O(N) single-pass summation
+    const rackLoads = new Map<string, number>()
+    const racks: string[] = []
+
+    entities.forEach(id => {
+      const transform = transformMap.get(id)!
+      if (transform.type === 'rack') {
+        racks.push(id)
+        rackLoads.set(id, 0)
+      }
+    })
+
+    entities.forEach(id => {
+      const transform = transformMap.get(id)!
+      if (transform.parentRackId && transform.type !== 'rack') {
+        const childPower = powerMap.get(id)
+        if (childPower && childPower.isPowered) {
+          const currentLoad = rackLoads.get(transform.parentRackId) ?? 0
+          rackLoads.set(transform.parentRackId, currentLoad + childPower.wattage)
+        }
+      }
+    })
+
     racks.forEach(rackId => {
       const rackPower = powerMap.get(rackId)!
-      const children = entities.filter(id => transformMap.get(id)?.parentRackId === rackId)
-      
-      let totalLoad = 0
-      children.forEach(childId => {
-        const childPower = powerMap.get(childId)!
-        if (childPower.isPowered) {
-          totalLoad += childPower.wattage
-        }
-      })
-
-      rackPower.load = totalLoad / 1000 // Convert to KW
+      if (rackPower) {
+        const totalLoad = rackLoads.get(rackId) ?? 0
+        rackPower.load = totalLoad / 1000 // Convert to kW
+      }
     })
   }
 }
