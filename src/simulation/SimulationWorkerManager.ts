@@ -24,7 +24,15 @@ export class SimulationWorkerManager {
   private isRestarting = false
 
   constructor() {
-    if (typeof window !== 'undefined' && typeof Worker !== 'undefined' && !(typeof process !== 'undefined' && process.env.VITEST)) {
+    interface GlobalWithProcess {
+      process?: {
+        env?: {
+          VITEST?: string
+        }
+      }
+    }
+    const isVitest = typeof globalThis !== 'undefined' && (globalThis as unknown as GlobalWithProcess).process?.env?.VITEST
+    if (typeof window !== 'undefined' && typeof Worker !== 'undefined' && !isVitest) {
       this.start()
     }
   }
@@ -62,7 +70,7 @@ export class SimulationWorkerManager {
 
         case 'TELEMETRY': {
           const t = payload as SimTelemetryPayload
-          performanceMonitor.updateSimMetrics(t.tickDurationMs, t.entityCount, t.systemTimings)
+          performanceMonitor.updateSimMetrics(t.tickDurationMs, t.entityCount, t.systemTimings, t.queryTelemetry)
           if (this.onTelemetryCallback) this.onTelemetryCallback(t)
           break
         }

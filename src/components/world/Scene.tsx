@@ -13,6 +13,8 @@ import { MountedUnit } from './MountedUnit'
 import { InteractionSystem } from '../../systems/InteractionSystem'
 import { useInput } from '../../contexts/InputContext'
 
+import { RenderStatsTracker } from './renderers/RenderStatsTracker'
+
 export function Scene() {
   const { nodes, selectedNodeId, currentSiteId } = useInfraStore()
   const { dispatchIntent } = useInput()
@@ -24,6 +26,7 @@ export function Scene() {
       camera={{ position: [5, 4, 5], fov: 45 }} 
       onPointerMissed={() => dispatchIntent({ type: 'DESELECT_NODE' })}
     >
+      <RenderStatsTracker />
       <InteractionSystem />
       <CameraController />
       <EnvironmentRenderer />
