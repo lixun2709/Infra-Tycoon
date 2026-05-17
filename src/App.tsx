@@ -157,12 +157,7 @@ function App() {
     }
 
     window.addEventListener('keydown', handleKeyPress)
-
-    const interval = setInterval(() => {
-      useInfraStore.getState().processTick()
-    }, 2000)
     return () => {
-      clearInterval(interval)
       window.removeEventListener('keydown', handleKeyPress)
     }
   }, [isTerminalOpen, setIsTerminalOpen])

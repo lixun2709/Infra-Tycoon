@@ -32,6 +32,14 @@ export interface PerformanceMetrics {
   // Multiplayer placeholders
   networkLatency: number
   packetLoss: number
+
+  // Advanced Telemetry (Day 27)
+  percentile99FrameTime: number
+  onePercentLowFps: number
+  frameJitter: number
+  droppedTicks: number
+  successfulTicks: number
+  backpressureRatio: number
 }
 
 export class PerformanceMonitor {
@@ -54,7 +62,13 @@ export class PerformanceMonitor {
     queryMisses: 0,
     cacheHitRatio: 0,
     networkLatency: 0,
-    packetLoss: 0
+    packetLoss: 0,
+    percentile99FrameTime: 0,
+    onePercentLowFps: 0,
+    frameJitter: 0,
+    droppedTicks: 0,
+    successfulTicks: 0,
+    backpressureRatio: 0
   }
 
   private frameCount = 0
@@ -91,6 +105,38 @@ export class PerformanceMonitor {
       this.metrics.fps = Math.round(1000 / avgFrameTime)
       this.metrics.frameTime = avgFrameTime
       this.frameCount = 0
+
+      // Calculate Percentiles & Jitter
+      if (this.frameTimes.length > 0) {
+        const sortedTimes = [...this.frameTimes].sort((a, b) => a - b)
+        
+        // 99th Percentile Frametime (slowest 1% boundary)
+        const p99Index = Math.floor(sortedTimes.length * 0.99)
+        this.metrics.percentile99FrameTime = sortedTimes[Math.min(p99Index, sortedTimes.length - 1)] ?? avgFrameTime
+
+        // 1% Low FPS (average of the slowest 1% of frames)
+        const onePercentCount = Math.max(1, Math.floor(sortedTimes.length * 0.01))
+        const slowestFrames = sortedTimes.slice(-onePercentCount)
+        const avgSlowestTime = slowestFrames.reduce((a, b) => a + b, 0) / slowestFrames.length
+        this.metrics.onePercentLowFps = Math.round(1000 / avgSlowestTime)
+
+        // Frame Jitter (average absolute difference between consecutive frames)
+        let totalDiff = 0
+        let diffCount = 0
+        for (let i = 1; i < this.frameTimes.length; i++) {
+          const prev = this.frameTimes[i - 1]
+          const curr = this.frameTimes[i]
+          if (prev !== undefined && curr !== undefined) {
+            totalDiff += Math.abs(curr - prev)
+            diffCount++
+          }
+        }
+        this.metrics.frameJitter = diffCount > 0 ? totalDiff / diffCount : 0
+      } else {
+        this.metrics.percentile99FrameTime = avgFrameTime
+        this.metrics.onePercentLowFps = this.metrics.fps
+        this.metrics.frameJitter = 0
+      }
 
       interface ChromiumPerformance extends Performance {
         memory?: {
@@ -157,6 +203,14 @@ export class PerformanceMonitor {
   public updateNetworkMetrics(networkLatency: number, packetLoss: number) {
     this.metrics.networkLatency = networkLatency
     this.metrics.packetLoss = packetLoss
+  }
+
+  public updateBackpressure(droppedTicks: number, successfulTicks: number) {
+    this.metrics.droppedTicks = droppedTicks
+    this.metrics.successfulTicks = successfulTicks
+    this.metrics.backpressureRatio = droppedTicks + successfulTicks > 0
+      ? droppedTicks / (droppedTicks + successfulTicks)
+      : 0
   }
 
   public getMetrics(): PerformanceMetrics {

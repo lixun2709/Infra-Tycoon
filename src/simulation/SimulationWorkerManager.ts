@@ -200,10 +200,12 @@ export class SimulationWorkerManager {
     if (!this.worker || this.isRestarting) return 
     if (this.isProcessingTick) {
       this.droppedTicksCount++
+      performanceMonitor.updateBackpressure(this.droppedTicksCount, this.successfulTicksCount)
       return
     }
     this.isProcessingTick = true
     this.successfulTicksCount++
+    performanceMonitor.updateBackpressure(this.droppedTicksCount, this.successfulTicksCount)
     this.lastTickRequestTime = performance.now()
     this.send('TICK')
   }

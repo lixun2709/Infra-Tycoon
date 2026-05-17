@@ -29,7 +29,7 @@ self.onmessage = (event: MessageEvent<SimMessage>) => {
     try {
       const decoder = new TextDecoder()
       const jsonStr = decoder.decode(new Uint8Array(msg.payload))
-      processedMsg = { ...msg, payload: JSON.parse(jsonStr) } as any as SimMessage
+      processedMsg = { ...msg, payload: JSON.parse(jsonStr) } as unknown as SimMessage
     } catch (err) {
       console.error('[[Worker Thread]] Failed to decode incoming transferable payload:', err)
     }

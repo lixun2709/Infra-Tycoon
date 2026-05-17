@@ -5,6 +5,7 @@ import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
 import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEngine'
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
+import { simulationCoordinator } from '../../simulation/SimulationCoordinator'
 
 export interface SimulationSlice {
   processTick: () => void
@@ -54,6 +55,9 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     
     const { nodes, applications } = get()
     simWorkerManager.init(nodes, applications)
+
+    // Start centralized non-React Simulation Engine run loop (Day 28)
+    simulationCoordinator.start(2000)
   },
 
   processTick: () => {

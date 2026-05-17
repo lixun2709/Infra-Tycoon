@@ -70,22 +70,29 @@ export const PerformanceOverlay: React.FC = () => {
       <div className="space-y-3.5">
         {/* Row 1: Core Host Metrics */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="bg-slate-900/50 border border-slate-900 rounded-lg p-2 flex flex-col justify-between h-14">
-            <span className="text-slate-500 text-[9px] uppercase tracking-wider">Main Thread</span>
-            <div className="flex justify-between items-baseline mt-1">
+          <div className="bg-slate-900/50 border border-slate-900 rounded-lg p-2 flex flex-col justify-between h-20">
+            <span className="text-slate-500 text-[9px] uppercase tracking-wider font-bold">Main Thread</span>
+            <div className="flex justify-between items-baseline mt-0.5">
               <span className={`${metrics.fps > 55 ? 'text-emerald-400' : 'text-amber-400'} text-base font-bold`}>{metrics.fps}</span>
               <span className="text-[9px] text-slate-500">FPS ({metrics.frameTime.toFixed(1)}ms)</span>
             </div>
+            <div className="flex justify-between text-[9px] text-slate-400/90 border-t border-slate-800/40 pt-1 mt-1">
+              <span>1% Low: <span className="font-bold text-amber-500">{metrics.onePercentLowFps ?? metrics.fps}</span></span>
+              <span>Jitter: <span className="font-bold text-sky-400">{metrics.frameJitter?.toFixed(1) ?? '0.0'}ms</span></span>
+            </div>
           </div>
 
-          <div className="bg-slate-900/50 border border-slate-900 rounded-lg p-2 flex flex-col justify-between h-14">
+          <div className="bg-slate-900/50 border border-slate-900 rounded-lg p-2 flex flex-col justify-between h-20">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 text-[9px] uppercase tracking-wider">JS Heap Memory</span>
+              <span className="text-slate-500 text-[9px] uppercase tracking-wider font-bold">JS Heap Memory</span>
               <HardDrive className="w-3 h-3 text-sky-400 opacity-60" />
             </div>
-            <div className="flex justify-between items-baseline mt-1">
+            <div className="flex justify-between items-baseline mt-0.5">
               <span className="text-sky-400 font-bold text-xs">{formatBytes(metrics.usedJSHeapSize)}</span>
               <span className="text-[8px] text-slate-500">of {formatBytes(metrics.totalJSHeapSize)}</span>
+            </div>
+            <div className="text-[8px] text-slate-500/85 border-t border-slate-800/40 pt-1 mt-1 text-right">
+              Limit: {formatBytes(metrics.jsHeapSizeLimit)}
             </div>
           </div>
         </div>
@@ -126,6 +133,24 @@ export const PerformanceOverlay: React.FC = () => {
                 <Database className="w-3 h-3 opacity-40" /> Total entities
               </span>
               <span className="text-slate-300 font-semibold">{metrics.entityCount}</span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 flex items-center gap-1">
+                <ShieldAlert className="w-3 h-3 opacity-40 text-rose-400" /> Dropped ticks
+              </span>
+              <span className={`font-semibold ${metrics.droppedTicks > 0 ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
+                {metrics.droppedTicks ?? 0}
+              </span>
+            </div>
+
+            <div className="flex justify-between items-center">
+              <span className="text-slate-500 flex items-center gap-1">
+                <Zap className="w-3 h-3 opacity-40 text-amber-400" /> Backpressure
+              </span>
+              <span className={`font-semibold ${metrics.backpressureRatio > 0.1 ? 'text-amber-400 font-bold' : 'text-slate-300'}`}>
+                {((metrics.backpressureRatio ?? 0) * 100).toFixed(1)}%
+              </span>
             </div>
 
             {metrics.restartCount > 0 && (
