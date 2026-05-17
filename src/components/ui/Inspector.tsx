@@ -2,9 +2,7 @@ import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
-import { Card } from './base/Card'
-import { Button } from './base/Button'
-import { Badge } from './base/Badge'
+import { Card, Button, Badge, Tabs } from './base'
 
 export function Inspector() {
   const { nodes, connections, selectedNodeId, activePatchSource, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService, advanceProvisioningState, powerOnNode } = useInfraStore()
@@ -64,21 +62,19 @@ export function Inspector() {
         </div>
 
         {/* Tabs */}
-        <div className="flex px-2 bg-black/20 overflow-x-auto no-scrollbar">
-          {(['details', 'thermal', 'services', 'lifecycle', 'alerts'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 min-w-[70px] py-3 text-[9px] uppercase tracking-[0.2em] font-black transition-all border-b-2 ${
-                activeTab === tab 
-                  ? 'text-teal-400 border-teal-500 bg-teal-500/5' 
-                  : 'text-slate-500 border-transparent hover:text-slate-300'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          tabs={[
+            { id: 'details', label: 'details' },
+            { id: 'thermal', label: 'thermal' },
+            { id: 'services', label: 'services' },
+            { id: 'lifecycle', label: 'lifecycle' },
+            { id: 'alerts', label: 'alerts' }
+          ]}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as typeof activeTab)}
+          variant="underline"
+          className="bg-black/20 px-2"
+        />
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">

@@ -25,6 +25,9 @@ function rackHardwareCenterY(slotIndex: number, uHeight: number): number {
   return -RACK_HEIGHT / 2 + U_WORLD * (slotIndex - 1 + uHeight / 2)
 }
 
+// Global Cached Resources
+const chassisGeometry = new THREE.BoxGeometry(0.92, 1, 0.9)
+
 function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) {
   const updateNode = useInfraStore(s => s.updateNode)
   const finalRemoveNode = useInfraStore(s => s.finalRemoveNode)
@@ -84,8 +87,7 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
 
   return (
     <group ref={groupRef} position={[0, y, isBrandNew || isDecommissioning ? -1.2 : 0]}>
-      <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
-        <boxGeometry args={[0.92, h, 0.9]} />
+      <mesh geometry={chassisGeometry} scale={[1, h, 1]} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
         <meshStandardMaterial
           color={node.isInfected ? '#4a044e' : color}
           metalness={0.4}

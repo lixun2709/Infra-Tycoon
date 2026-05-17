@@ -1,16 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { 
   AlertCircle, 
   Scale, 
   LayoutDashboard,
-  X,
-  Zap,
-  type LucideIcon
+  Zap
 } from 'lucide-react'
-import { Card } from './base/Card'
-import { Button } from './base/Button'
-import { Badge } from './base/Badge'
+import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 
 export function Dashboard({ onClose }: { onClose: () => void }) {
   const {
@@ -28,79 +24,42 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
   const globalHealthyCount = allHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
   const globalHealthIndex = allHardware.length > 0 ? Math.round((globalHealthyCount / allHardware.length) * 100) : 100
 
-  useEffect(() => {
-    if (networkLoad === 0) return
-    const interval = setInterval(() => {
-      useInfraStore.setState(state => {
-        const updatedConnections = state.connections.map(c => {
-          if (c.status === 'blocked') return { ...c, throughputGbps: 0 }
-          const targetThroughput = c.bandwidthGbps * networkLoad
-          const variance = targetThroughput * 0.2
-          const newThroughput = Math.max(0, Math.min(c.bandwidthGbps, targetThroughput + (Math.random() * variance * 2 - variance)))
-          const newSync = Math.min(100, (c.syncProgress ?? 0) + (newThroughput / c.bandwidthGbps) * 5)
-          return { ...c, throughputGbps: newThroughput, syncProgress: newSync }
-        })
-        return { connections: updatedConnections }
-      })
-      const store = useInfraStore.getState()
-      store.processAging()
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [networkLoad])
-
-  const tabs: { id: 'overview' | 'events' | 'audit'; label: string; icon: LucideIcon }[] = [
-    { id: 'overview', label: 'OVERVIEW', icon: LayoutDashboard },
-    { id: 'events', label: 'EVENTS', icon: AlertCircle },
-    { id: 'audit', label: 'AUDIT LOGS', icon: Scale },
+  const tabs: TabItem[] = [
+    { id: 'overview', label: 'OVERVIEW', icon: <LayoutDashboard size={14} /> },
+    { id: 'events', label: 'EVENTS', icon: <AlertCircle size={14} /> },
+    { id: 'audit', label: 'AUDIT LOGS', icon: <Scale size={14} /> },
   ]
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md" onClick={onClose}>
-      <div className="w-full max-w-7xl glass-dark rounded-[2.5rem] overflow-hidden flex flex-col h-[90vh]" onClick={(e) => e.stopPropagation()}>
-        
-        {/* Header */}
-        <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-8">
-            <div className="flex items-center gap-4">
-              <div className="bg-teal-500 p-2 rounded-xl shadow-[0_0_20px_var(--primary-glow)]">
-                <LayoutDashboard size={20} className="text-slate-900" />
-              </div>
-              <h2 className="font-black text-xl tracking-tighter uppercase">NOC Operations</h2>
-            </div>
-            
-            <nav className="flex items-center gap-2 bg-black/20 p-1 rounded-xl border border-white/5">
-              {tabs.map((tab) => {
-                const Icon = tab.icon
-                const isActive = activeTab === tab.id
-                return (
-                  <Button
-                    key={tab.id}
-                    variant={isActive ? 'primary' : 'ghost'}
-                    onClick={() => setActiveTab(tab.id)}
-                    icon={<Icon size={14} />}
-                    className="text-[10px] font-black tracking-widest px-4 h-9"
-                  >
-                    {tab.label}
-                  </Button>
-                )
-              })}
-            </nav>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            <Button 
-              variant={isHeatMapVisible ? 'primary' : 'ghost'} 
-              onClick={toggleHeatMap}
-              icon={<Zap size={14} className={isHeatMapVisible ? 'animate-pulse' : ''} />}
-              className="text-[10px] font-black"
-            >
-              THERMAL OVERLAY
-            </Button>
-            <Button variant="ghost" onClick={onClose} className="p-2">
-              <X size={20} />
-            </Button>
-          </div>
-        </div>
+    <Modal
+      isOpen={true}
+      onClose={onClose}
+      title="NOC Operations"
+      icon={<LayoutDashboard size={20} />}
+      width="xl"
+      zIndex="z-[150]"
+      headerExtra={
+        <>
+          <Badge variant="ghost" className="bg-white/5 border border-white/10 font-mono text-[10px] py-1 text-slate-400">
+            SIM_TICK: {simulationCycle}
+          </Badge>
+          <button 
+            onClick={toggleHeatMap}
+            className={`px-3 py-1 text-[10px] font-black uppercase rounded-lg border transition-all flex items-center gap-1.5 ${isHeatMapVisible ? 'bg-orange-500/20 text-orange-400 border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.2)]' : 'bg-slate-800 text-slate-400 border-transparent hover:text-white hover:bg-slate-700'}`}
+          >
+            <Zap size={12} /> Thermal Cam
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col h-[75vh]">
+        <Tabs 
+          tabs={tabs}
+          activeTab={activeTab}
+          onChange={(id) => setActiveTab(id as typeof activeTab)}
+          variant="underline"
+          className="bg-black/20"
+        />
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
           {activeTab === 'overview' && (
@@ -256,6 +215,6 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }

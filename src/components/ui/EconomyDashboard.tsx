@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Modal, Tabs, type TabItem } from './base'
 import { 
   DollarSign, 
   TrendingUp, 
   TrendingDown, 
   Briefcase, 
   Award, 
-  X, 
   CheckCircle2, 
   AlertCircle,
   BarChart3,
-  Globe
+  Globe,
+  X
 } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
@@ -35,49 +35,40 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
 
   const monthlyProfit = totalMRR - estimatedMRE
 
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-8 bg-slate-950/40 backdrop-blur-md"
-          onClick={onClose}
-        >
-          <motion.div 
-            className="w-full max-w-6xl h-[85vh] bg-slate-950 border border-slate-800 rounded-[2.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/20">
-              <div className="flex items-center gap-6">
-                <div className="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20">
-                  <BarChart3 className="w-8 h-8 text-emerald-400" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-black text-white uppercase tracking-tighter">Finance & Logistics</h1>
-                  <div className="flex items-center gap-4 mt-1">
-                    <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                      <Globe className="w-3 h-3" /> Site: Primary-DC
-                    </div>
-                    <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-black uppercase tracking-widest">
-                      <Award className="w-3 h-3 text-amber-400" /> Rep: {reputation}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+  const tabs: TabItem[] = [
+    { id: 'overview', label: 'Financial Overview', icon: <DollarSign size={20} /> },
+    { id: 'marketplace', label: 'Contract Market', icon: <Briefcase size={20} /> },
+    { id: 'active', label: 'Active Contracts', icon: <CheckCircle2 size={20} /> },
+  ]
 
-            <div className="flex flex-1 overflow-hidden">
-              {/* Sidebar Tabs */}
-              <div className="w-64 border-r border-slate-800 p-6 flex flex-col gap-2 bg-slate-900/10">
-                <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} icon={DollarSign} label="Financial Overview" />
-                <TabButton active={activeTab === 'marketplace'} onClick={() => setActiveTab('marketplace')} icon={Briefcase} label="Contract Market" />
-                <TabButton active={activeTab === 'active'} onClick={() => setActiveTab('active')} icon={CheckCircle2} label="Active Contracts" />
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Finance & Logistics"
+      icon={<BarChart3 size={32} />}
+      width="lg"
+      className="max-w-6xl !bg-slate-950 border-slate-800"
+      headerExtra={
+        <div className="flex items-center gap-4 mt-1 mr-4">
+          <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-black uppercase tracking-widest">
+            <Globe className="w-3 h-3" /> Site: Primary-DC
+          </div>
+          <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-black uppercase tracking-widest">
+            <Award className="w-3 h-3 text-amber-400" /> Rep: {reputation}
+          </div>
+        </div>
+      }
+    >
+      <div className="flex flex-1 overflow-hidden h-[75vh]">
+        {/* Sidebar Tabs */}
+        <div className="w-64 border-r border-slate-800 p-6 flex flex-col gap-2 bg-slate-900/10">
+          <Tabs
+            tabs={tabs}
+            activeTab={activeTab}
+            onChange={(id) => setActiveTab(id as typeof activeTab)}
+            variant="sidebar"
+          />
                 
                 <div className="mt-auto pt-6 border-t border-slate-800">
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
@@ -195,32 +186,11 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                   </div>
                 )}
               </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+      </div>
+    </Modal>
   )
 }
 
-interface TabButtonProps {
-  active: boolean
-  onClick: () => void
-  icon: React.ComponentType<{ className?: string }>
-  label: string
-}
-
-function TabButton({ active, onClick, icon: Icon, label }: TabButtonProps) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${active ? 'bg-teal-500 text-slate-950 shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-    >
-      <Icon className="w-5 h-5" />
-      <span className="text-xs font-black uppercase tracking-tight">{label}</span>
-    </button>
-  )
-}
 
 interface MetricCardProps {
   label: string

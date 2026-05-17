@@ -1,32 +1,29 @@
-import { Edges, Text, Line } from '@react-three/drei'
+import { Edges, Text } from '@react-three/drei'
 import type { ReactNode } from 'react'
 import type { InfraNode } from '../../../store/infraTypes'
+
+import * as THREE from 'three'
 
 export const RACK_HEIGHT = 2.1
 const RACK_U = 42
 export const U_WORLD = RACK_HEIGHT / RACK_U
 
-function USlotLines() {
-  const segments = []
-  for (let j = 1; j <= RACK_U; j++) {
-    const y = -RACK_HEIGHT / 2 + j * U_WORLD
-    segments.push({ key: j, y })
-  }
+// Global Cached Resources for Racks
+const rackChassisGeometry = new THREE.BoxGeometry(1, RACK_HEIGHT, 1)
 
-  return (
-    <>
-      {segments.map(({ key, y }) => (
-        <Line
-          key={key}
-          points={[[-0.501, y, 0.502], [0.501, y, 0.502]]}
-          color="#48afbb"
-          lineWidth={1}
-          opacity={0.3}
-          transparent
-        />
-      ))}
-    </>
-  )
+// U-Slot Lines Geometry
+const uSlotGeometry = new THREE.BufferGeometry()
+const slotPoints: number[] = []
+for (let j = 1; j <= RACK_U; j++) {
+  const y = -RACK_HEIGHT / 2 + j * U_WORLD
+  slotPoints.push(-0.501, y, 0.502)
+  slotPoints.push(0.501, y, 0.502)
+}
+uSlotGeometry.setAttribute('position', new THREE.Float32BufferAttribute(slotPoints, 3))
+const uSlotMaterial = new THREE.LineBasicMaterial({ color: '#48afbb', transparent: true, opacity: 0.3 })
+
+function USlotLines() {
+  return <lineSegments geometry={uSlotGeometry} material={uSlotMaterial} />
 }
 
 export function RackRenderer({ 
@@ -49,8 +46,7 @@ export function RackRenderer({
 
   return (
     <group position={[node.position.x, node.position.y + RACK_HEIGHT / 2, node.position.z]}>
-      <mesh onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
-        <boxGeometry args={[1, RACK_HEIGHT, 1]} />
+      <mesh geometry={rackChassisGeometry} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
         <meshStandardMaterial
           color={isOverload ? '#3b0a14' : '#2d3748'}
           emissive={isOverload ? '#ff0000' : '#000000'}

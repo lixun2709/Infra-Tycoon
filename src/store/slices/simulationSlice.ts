@@ -61,7 +61,22 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     simWorkerManager.syncInput(get().nodes, get().applications)
     simWorkerManager.requestTick()
     
-    const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
+    const { nodes, applications, activeContracts, simulationCycle, balance, reputation, networkLoad, connections } = get()
+
+    // 1. Core Simulation Updates (Decoupled from UI)
+    get().processAging()
+
+    if (networkLoad > 0) {
+      const updatedConnections = connections.map(c => {
+        if (c.status === 'blocked') return { ...c, throughputGbps: 0 }
+        const targetThroughput = c.bandwidthGbps * networkLoad
+        const variance = targetThroughput * 0.2
+        const newThroughput = Math.max(0, Math.min(c.bandwidthGbps, targetThroughput + (Math.random() * variance * 2 - variance)))
+        const newSync = Math.min(100, (c.syncProgress ?? 0) + (newThroughput / c.bandwidthGbps) * 10) // Scaled for 2s tick
+        return { ...c, throughputGbps: newThroughput, syncProgress: newSync }
+      })
+      set({ connections: updatedConnections })
+    }
 
     // 2. SLA & Contract Management
     const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0

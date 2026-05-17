@@ -236,7 +236,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, [])
 
   useEffect(() => {
-    let timer: any
+    let timer: ReturnType<typeof setTimeout> | undefined
     if (siteState?.layout) {
       timer = setTimeout(() => {
         setLocalLayout({

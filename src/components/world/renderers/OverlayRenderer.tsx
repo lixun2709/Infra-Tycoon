@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
@@ -56,37 +56,43 @@ export function BlueprintPreview() {
 }
 
 export function DeployWave() {
-  const [active, setActive] = useState(false)
-  const [scale, setScale] = useState(0)
+  const meshRef = useRef<THREE.Mesh>(null)
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null)
+  const active = useRef(false)
+  const scaleRef = useRef(0)
+  
   const prevNodesCount = useRef(0)
   const nodes = useInfraStore(s => s.nodes)
 
   useEffect(() => {
     if (nodes.length > prevNodesCount.current + 3) {
-      setActive(true)
-      setScale(0)
+      active.current = true
+      scaleRef.current = 0.1
+      if (meshRef.current) meshRef.current.visible = true
     }
     prevNodesCount.current = nodes.length
   }, [nodes.length])
 
   useFrame((_, delta) => {
-    if (active) {
-      setScale(s => {
-        if (s > 40) {
-          setActive(false)
-          return 0
-        }
-        return s + delta * 25
-      })
+    if (!active.current || !meshRef.current || !materialRef.current) return
+
+    scaleRef.current += delta * 25
+    
+    if (scaleRef.current > 40) {
+      active.current = false
+      meshRef.current.visible = false
+      return
     }
+
+    meshRef.current.scale.set(scaleRef.current, scaleRef.current, 1)
+    materialRef.current.opacity = 0.4 * (1 - scaleRef.current / 40)
   })
 
-  if (!active) return null
-
+  // Start with fixed args, scale via ref
   return (
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-      <ringGeometry args={[scale, scale + 2, 64]} />
-      <meshBasicMaterial color="#10b981" transparent opacity={0.4 * (1 - scale / 40)} />
+    <mesh ref={meshRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]} visible={false}>
+      <ringGeometry args={[1, 1.05, 64]} />
+      <meshBasicMaterial ref={materialRef} color="#10b981" transparent opacity={0.4} depthWrite={false} />
     </mesh>
   )
 }

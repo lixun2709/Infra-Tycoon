@@ -1,4 +1,5 @@
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
+import { Modal, Button } from './base'
 
 interface ConfirmDialogProps {
   isOpen: boolean
@@ -23,54 +24,50 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!isOpen) return null
 
-  const typeStyles = {
-    danger: 'bg-red-500 hover:bg-red-600 shadow-red-500/20 text-white border-red-400',
-    warning: 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20 text-white border-amber-400',
-    info: 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20 text-white border-blue-400'
+  // Ensure button variants map cleanly to our Design System Button component
+  const buttonVariantMap: Record<string, 'danger' | 'primary' | 'ghost'> = {
+    danger: 'danger',
+    warning: 'primary',
+    info: 'primary'
   }
 
   const iconStyles = {
-    danger: 'text-red-400 bg-red-400/10 border-red-500/30',
-    warning: 'text-amber-400 bg-amber-400/10 border-amber-500/30',
-    info: 'text-blue-400 bg-blue-400/10 border-blue-500/30'
+    danger: 'text-rose-400',
+    warning: 'text-amber-400',
+    info: 'text-teal-400'
   }
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-md bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200">
-        <div className="p-6 border-b border-white/5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border ${iconStyles[type]}`}>
-              <AlertTriangle size={20} />
-            </div>
-            <h3 className="text-lg font-black text-white tracking-tight uppercase">{title}</h3>
-          </div>
-          <button onClick={onCancel} className="text-slate-500 hover:text-white transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-        
-        <div className="p-8">
-          <p className="text-slate-300 text-sm font-medium leading-relaxed">
-            {message}
-          </p>
-        </div>
-
-        <div className="p-6 bg-slate-800/50 border-t border-white/5 flex gap-3">
-          <button 
-            onClick={onCancel}
-            className="flex-1 px-4 py-3 rounded-xl bg-slate-800 border border-white/5 text-slate-400 text-xs font-black uppercase hover:bg-slate-700 hover:text-white transition-all"
-          >
-            {cancelText}
-          </button>
-          <button 
-            onClick={onConfirm}
-            className={`flex-1 px-4 py-3 rounded-xl border text-xs font-black uppercase transition-all shadow-lg ${typeStyles[type]}`}
-          >
-            {confirmText}
-          </button>
-        </div>
+    <Modal
+      isOpen={isOpen}
+      onClose={onCancel}
+      width="sm"
+      zIndex="z-[2000]"
+      title={title}
+      icon={<AlertTriangle className={iconStyles[type]} size={20} />}
+    >
+      <div className="p-8">
+        <p className="text-slate-300 text-sm font-medium leading-relaxed">
+          {message}
+        </p>
       </div>
-    </div>
+
+      <div className="p-6 bg-slate-800/50 border-t border-white/5 flex gap-3">
+        <Button 
+          onClick={onCancel}
+          variant="ghost"
+          className="flex-1 justify-center bg-slate-800 border-white/5 shadow-none"
+        >
+          {cancelText}
+        </Button>
+        <Button 
+          onClick={onConfirm}
+          variant={buttonVariantMap[type]}
+          className="flex-1 justify-center shadow-lg"
+        >
+          {confirmText}
+        </Button>
+      </div>
+    </Modal>
   )
 }
