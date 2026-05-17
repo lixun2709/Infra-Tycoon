@@ -28,15 +28,19 @@ export const useTerminalStore = create<TerminalState>((set) => ({
   terminalStates: {},
 
   setIsTerminalOpen: (open) => set({ isTerminalOpen: open }),
-  updateTerminalLayout: (siteId, layout) => set((state) => ({
-    terminalStates: {
-      ...state.terminalStates,
-      [siteId]: {
-        ...state.terminalStates[siteId],
-        layout: { ...state.terminalStates[siteId].layout, ...layout }
+  updateTerminalLayout: (siteId, layout) => set((state) => {
+    const existing = state.terminalStates[siteId]
+    if (!existing) return {}
+    return {
+      terminalStates: {
+        ...state.terminalStates,
+        [siteId]: {
+          ...existing,
+          layout: { ...existing.layout, ...layout }
+        }
       }
     }
-  })),
+  }),
   setTerminalState: (siteId, siteState) => set((state) => ({
     terminalStates: {
       ...state.terminalStates,

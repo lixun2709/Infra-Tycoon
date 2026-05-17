@@ -121,6 +121,10 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     }
 
     const sw = switches[0]
+    if (!sw) {
+      pushAlert('warning', 'Auto-patching requires at least one switch inside the rack.')
+      return
+    }
     let patched = 0
     
     servers.forEach(srv => {
@@ -234,6 +238,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     if (hardware.length === 0) return
     
     const target = hardware[Math.floor(Math.random() * hardware.length)]
+    if (!target) return
     updateNode(target.id, { healthStatus: 'critical' })
     pushAlert('critical', `Hardware Failure: ${target.name} is in a critical state!`, target.id)
   },
@@ -244,6 +249,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     if (storages.length === 0) return
 
     const target = storages[Math.floor(Math.random() * storages.length)]
+    if (!target) return
     if (target.isImmutable) {
       pushAlert('info', `Threat blocked on ${target.name} by Immutable Snapshots.`)
     } else {
@@ -287,7 +293,8 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   fixState: () => {
     const { nodes, sites } = get()
     const fixedSites = sites.map((s, i) => ({ ...s, id: s.id || `site-${i + 1}` }))
-    const fixedNodes = nodes.map(n => ({ ...n, siteId: n.siteId || fixedSites[0].id }))
+    const defaultSiteId = fixedSites[0]?.id || 'site-1'
+    const fixedNodes = nodes.map(n => ({ ...n, siteId: n.siteId || defaultSiteId }))
     set({ sites: fixedSites, nodes: fixedNodes })
   },
 

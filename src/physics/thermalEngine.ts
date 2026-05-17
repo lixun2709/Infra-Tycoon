@@ -44,23 +44,24 @@ export class ThermalManager {
       const critical = spec?.maxOperatingTemp ?? this.DEFAULT_CRITICAL
       const throttle = spec?.throttleTemp ?? this.DEFAULT_THROTTLE
 
+      let finalNode = node
       if (nextTemp > critical) {
         if (node.systemState !== 'off') {
           useInfraStore.getState().pushAlert('critical', `OVERHEAT SHUTDOWN: ${node.name || node.id.slice(0,6)} reached ${nextTemp.toFixed(1)}°C!`, node.id)
-          updatedNodes[index] = { ...node, systemState: 'off', temperature: nextTemp, bootProgress: 0 }
+          finalNode = { ...node, systemState: 'off', temperature: nextTemp, bootProgress: 0 }
         }
       } else if (nextTemp > throttle) {
         if (!node.isThrottled) {
           useInfraStore.getState().pushAlert('warning', `THERMAL THROTTLING: ${node.name || node.id.slice(0,6)} is at ${nextTemp.toFixed(1)}°C.`, node.id)
-          updatedNodes[index] = { ...node, isThrottled: true, temperature: nextTemp }
+          finalNode = { ...node, isThrottled: true, temperature: nextTemp }
         }
       } else {
         if (node.isThrottled && nextTemp < throttle - 5) {
-          updatedNodes[index] = { ...node, isThrottled: false, temperature: nextTemp }
+          finalNode = { ...node, isThrottled: false, temperature: nextTemp }
         }
       }
       
-      updatedNodes[index] = { ...updatedNodes[index], temperature: Math.max(18.0, nextTemp) }
+      updatedNodes[index] = { ...finalNode, temperature: Math.max(18.0, nextTemp) }
     })
 
     // 3. Conduction between adjacent nodes in the same rack
@@ -71,6 +72,7 @@ export class ThermalManager {
       for (let i = 0; i < rackNodes.length - 1; i++) {
         const nodeA = rackNodes[i]
         const nodeB = rackNodes[i+1]
+        if (!nodeA || !nodeB) continue
         
         const tempA = nodeA.temperature || ambientTemp
         const tempB = nodeB.temperature || ambientTemp
@@ -81,8 +83,12 @@ export class ThermalManager {
         const idxB = updatedNodes.findIndex(n => n.id === nodeB.id)
         
         if (idxA !== -1 && idxB !== -1) {
-          updatedNodes[idxA].temperature = (updatedNodes[idxA].temperature || 0) - diff
-          updatedNodes[idxB].temperature = (updatedNodes[idxB].temperature || 0) + diff
+          const itemA = updatedNodes[idxA]
+          const itemB = updatedNodes[idxB]
+          if (itemA && itemB) {
+            updatedNodes[idxA] = { ...itemA, temperature: (itemA.temperature || 0) - diff }
+            updatedNodes[idxB] = { ...itemB, temperature: (itemB.temperature || 0) + diff }
+          }
         }
       }
     })

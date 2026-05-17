@@ -15,5 +15,6 @@ export const CLOUD_PROVIDERS: CloudProvider[] = [
 
 export function calculateCloudCosts(activeInstances: number, egressGB: number, providerId: string): number {
   const provider = CLOUD_PROVIDERS.find(p => p.id === providerId) || CLOUD_PROVIDERS[0]
+  if (!provider) return 0
   return (activeInstances * provider.instanceCostPerTick) + (egressGB * provider.egressCostPerGB)
 }

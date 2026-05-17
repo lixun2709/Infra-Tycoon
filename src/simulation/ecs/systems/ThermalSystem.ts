@@ -86,9 +86,11 @@ export class ThermalSystem extends System {
       for (let i = 0; i < rackNodes.length - 1; i++) {
         const idA = rackNodes[i]
         const idB = rackNodes[i+1]
+        if (!idA || !idB) continue
         
-        const thermalA = thermalMap.get(idA)!
-        const thermalB = thermalMap.get(idB)!
+        const thermalA = thermalMap.get(idA)
+        const thermalB = thermalMap.get(idB)
+        if (!thermalA || !thermalB) continue
         
         const diff = (thermalA.temperature - thermalB.temperature) * ThermalSystem.CONDUCTION_COEFFICIENT * dt
         

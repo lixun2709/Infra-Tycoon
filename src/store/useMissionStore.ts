@@ -79,8 +79,11 @@ export const useMissionStore = create<MissionState>()(
         if (missionIndex === -1) return {}
 
         const mission = state.missions[missionIndex]
+        if (!mission) return {}
+        
         const objectiveIndex = mission.objectives.findIndex(o => o.id === objectiveId)
-        if (objectiveIndex === -1 || mission.objectives[objectiveIndex].isComplete) return {}
+        const objective = mission.objectives[objectiveIndex]
+        if (!objective || objective.isComplete) return {}
 
         // Create new objectives array
         const newObjectives = mission.objectives.map(obj => 
@@ -88,7 +91,7 @@ export const useMissionStore = create<MissionState>()(
         )
 
         const allComplete = newObjectives.every(o => o.isComplete)
-        const updatedMission = { 
+        const updatedMission: Mission = { 
           ...mission, 
           objectives: newObjectives, 
           status: (allComplete ? 'completed' : mission.status) as 'active' | 'completed' | 'locked'
@@ -100,7 +103,7 @@ export const useMissionStore = create<MissionState>()(
         // Auto-unlock next mission if current is completed
         if (allComplete && missionIndex < newMissions.length - 1) {
           const nextMission = newMissions[missionIndex + 1]
-          if (nextMission.status === 'locked') {
+          if (nextMission && nextMission.status === 'locked') {
             newMissions[missionIndex + 1] = { ...nextMission, status: 'active' }
           }
         }

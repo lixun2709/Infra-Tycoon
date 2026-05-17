@@ -193,9 +193,14 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
   useFrame(({ clock }) => {
     if (meshRef.current) {
       const mat = meshRef.current.material as THREE.ShaderMaterial
-      mat.uniforms.uTime.value = clock.elapsedTime
-      const now = sessionStartTime + clock.elapsedTime * 1000
-      mat.uniforms.uHighlight.value = (connection.highlightTime && connection.highlightTime > now) ? 1.0 : 0.0
+      const uTime = mat.uniforms.uTime
+      if (uTime) uTime.value = clock.elapsedTime
+      
+      const uHighlight = mat.uniforms.uHighlight
+      if (uHighlight) {
+        const now = sessionStartTime + clock.elapsedTime * 1000
+        uHighlight.value = (connection.highlightTime && connection.highlightTime > now) ? 1.0 : 0.0
+      }
     }
   })
 

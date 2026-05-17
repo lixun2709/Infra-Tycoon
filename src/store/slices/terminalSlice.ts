@@ -19,10 +19,12 @@ export interface TerminalSlice {
 export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice> = (set, get) => ({
   updateTerminalLayout: (layout) => {
     const { currentSiteId, terminalStates } = get()
+    const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     set({
       terminalStates: {
         ...terminalStates,
-        [currentSiteId]: { ...terminalStates[currentSiteId], layout: { ...terminalStates[currentSiteId].layout, ...layout } }
+        [currentSiteId]: { ...siteState, layout: { ...siteState.layout, ...layout } }
       }
     })
   },
@@ -30,6 +32,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   addTerminalSession: (title = 'New Session', initialContext) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     const id = `s-${crypto.randomUUID()}`
     const paneId = `p-${crypto.randomUUID()}`
     
@@ -52,6 +55,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   closeTerminalSession: (sessionId) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     const filtered = siteState.sessions.filter(s => s.id !== sessionId)
     if (filtered.length === 0) return // Keep at least one
 
@@ -61,7 +65,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
         [currentSiteId]: { 
           ...siteState, 
           sessions: filtered, 
-          activeSessionId: siteState.activeSessionId === sessionId ? filtered[0].id : siteState.activeSessionId 
+          activeSessionId: siteState.activeSessionId === sessionId ? (filtered[0]?.id || '') : siteState.activeSessionId 
         }
       }
     })
@@ -69,10 +73,12 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
 
   setActiveSession: (sessionId) => {
     const { currentSiteId, terminalStates } = get()
+    const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     set({
       terminalStates: {
         ...terminalStates,
-        [currentSiteId]: { ...terminalStates[currentSiteId], activeSessionId: sessionId }
+        [currentSiteId]: { ...siteState, activeSessionId: sessionId }
       }
     })
   },
@@ -80,11 +86,13 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   splitTerminalPane: (direction) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     const session = siteState.sessions.find(s => s.id === siteState.activeSessionId)
     if (!session) return
 
     const newPaneId = `p-${crypto.randomUUID()}`
     const activePane = session.panes.find(p => p.id === session.activePaneId) || session.panes[0]
+    if (!activePane) return
     
     const newPane: TerminalPane = { ...activePane, id: newPaneId, logs: [`Pane split ${direction}.`] }
     
@@ -107,6 +115,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   setActivePane: (paneId) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     set({
       terminalStates: {
         ...terminalStates,
@@ -121,6 +130,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   closeTerminalPane: (paneId) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     const session = siteState.sessions.find(s => s.id === siteState.activeSessionId)
     if (!session || session.panes.length <= 1) return
 
@@ -133,7 +143,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
           sessions: siteState.sessions.map(s => s.id === session.id ? {
             ...s,
             panes: filtered,
-            activePaneId: session.activePaneId === paneId ? filtered[0].id : session.activePaneId,
+            activePaneId: session.activePaneId === paneId ? (filtered[0]?.id || '') : session.activePaneId,
             layout: 'single' as const
           } : s)
         }
@@ -144,6 +154,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   setTerminalAlias: (name, command) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     set({
       terminalStates: {
         ...terminalStates,
@@ -155,6 +166,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   setTerminalEnvVar: (name, value) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     set({
       terminalStates: {
         ...terminalStates,
@@ -166,6 +178,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
   writeTerminalFile: (path, content) => {
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
+    if (!siteState) return
     set({
       terminalStates: {
         ...terminalStates,

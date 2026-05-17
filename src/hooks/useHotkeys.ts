@@ -42,7 +42,10 @@ export function useHotkeys() {
           if (racks.length > 0) {
             const currentIndex = racks.findIndex(r => r.id === selectedNodeId)
             const nextIndex = (currentIndex + 1) % racks.length
-            setSelectedNode(racks[nextIndex].id)
+            const nextRack = racks[nextIndex]
+            if (nextRack) {
+              setSelectedNode(nextRack.id)
+            }
           }
           break
         }
@@ -55,13 +58,19 @@ export function useHotkeys() {
               const children = nodes.filter(n => n.parentRackId === selectedNodeId)
               if (children.length > 0) {
                 // Select first child
-                setSelectedNode(children[0].id)
+                const firstChild = children[0]
+                if (firstChild) {
+                  setSelectedNode(firstChild.id)
+                }
               }
             } else if (selectedNode?.parentRackId) {
               const siblings = nodes.filter(n => n.parentRackId === selectedNode.parentRackId)
               const currentIndex = siblings.findIndex(s => s.id === selectedNodeId)
               const nextIndex = (currentIndex + 1) % siblings.length
-              setSelectedNode(siblings[nextIndex].id)
+              const sibling = siblings[nextIndex]
+              if (sibling) {
+                setSelectedNode(sibling.id)
+              }
             }
           }
           e.preventDefault()

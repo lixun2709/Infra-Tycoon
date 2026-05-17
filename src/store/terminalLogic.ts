@@ -15,6 +15,7 @@ export function handleCommand(
   const activeSession = siteState.sessions.find(s => s.id === siteState.activeSessionId)
   if (!activeSession) return
   const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId) || activeSession.panes[0]
+  if (!activePane) return
 
   const { nodes, updateNode, dnsRecords } = get()
   
@@ -25,9 +26,9 @@ export function handleCommand(
   
   // --- 1. ALIAS SUBSTITUTION ---
   let processedCmd = text.trim()
-  const firstWord = processedCmd.split(/\s+/)[0]
-  if (siteState.aliases[firstWord]) {
-     processedCmd = siteState.aliases[firstWord] + processedCmd.slice(firstWord.length)
+  const firstWord = processedCmd.split(/\s+/)[0] || ""
+  if (firstWord && siteState.aliases[firstWord]) {
+     processedCmd = (siteState.aliases[firstWord] || "") + processedCmd.slice(firstWord.length)
   }
 
   // --- 2. ENV VAR SUBSTITUTION ---
@@ -36,14 +37,14 @@ export function handleCommand(
   // --- 3. REDIRECTION ---
   if (processedCmd.includes('>')) {
     const parts = processedCmd.split('>')
-    processedCmd = parts[0].trim()
+    processedCmd = (parts[0] || "").trim()
   }
 
   // --- 4. PIPING SETUP ---
   const pipeParts = processedCmd.split('|').map(s => s.trim())
-  const baseCmd = pipeParts[0]
+  const baseCmd = pipeParts[0] || ""
   const args = baseCmd.split(/\s+/)
-  const cmdLower = args[0].toLowerCase()
+  const cmdLower = (args[0] || "").toLowerCase()
 
   const output: string[] = [] 
   let newContext = { ...activePane.context }
@@ -68,6 +69,7 @@ export function handleCommand(
       
       set((s: InfraState) => {
         const cs = s.terminalStates[siteId]
+        if (!cs) return {}
         const ns = cs.sessions.map((sess: TerminalSession) => sess.id === activeSession.id ? {
           ...sess,
           panes: sess.panes.map((p: TerminalPane) => p.id === activePane.id ? { ...p, logs: [...p.logs, `> ${text}`, ...output].slice(-200) } : p)
@@ -176,8 +178,40 @@ export function handleCommand(
     output.push(`FPS: ${performanceMonitor.getMetrics().fps} | Latency: ${performanceMonitor.getMetrics().workerLatency.toFixed(2)}ms`)
   } else if (cmdLower === 'man') {
     const topic = args[1]
-    if (TECHNICAL_MANUALS[topic]) output.push(...TECHNICAL_MANUALS[topic])
-    else output.push(`[[RED]]No manual entry for ${topic}[[RESET]]`)
+    if (topic && TECHNICAL_MANUALS[topic]) output.push(...TECHNICAL_MANUALS[topic])
+    else output.push(`[[RED]]No manual entry for ${topic || ''}[[RESET]]`)
+  } else if (cmdLower === 'export') {
+    const expr = args[1]
+    if (!expr) {
+      Object.entries(siteState.envVars).forEach(([k, v]) => output.push(`${k}=${v}`))
+    } else {
+      const eqIdx = expr.indexOf('=')
+      if (eqIdx === -1) {
+        output.push("usage: export KEY=VALUE")
+      } else {
+        const key = expr.slice(0, eqIdx).trim()
+        const val = expr.slice(eqIdx + 1).trim()
+        
+        // Update the env vars in the site terminal state!
+        set((s: InfraState) => {
+          const cs = s.terminalStates[siteId]
+          if (!cs) return {}
+          return {
+            terminalStates: {
+              ...s.terminalStates,
+              [siteId]: {
+                ...cs,
+                envVars: {
+                  ...cs.envVars,
+                  [key]: val
+                }
+              }
+            }
+          }
+        })
+        output.push(`[[GREEN]]env set: ${key} = ${val}[[RESET]]`)
+      }
+    }
   } else {
     output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
   }
@@ -185,12 +219,13 @@ export function handleCommand(
   // --- 7. FINAL UPDATE ---
   set((s: InfraState) => {
     const cs = s.terminalStates[siteId]
+    if (!cs) return {}
     const finalSessions = cs.sessions.map((sess: TerminalSession) => {
       if (sess.id !== activeSession.id) return sess
       return {
         ...sess,
         panes: sess.panes.map((p: TerminalPane) => {
-          if (p.id !== activePane.id) return p
+          if (!activePane || p.id !== activePane.id) return p
           return {
             ...p,
             logs: forceClear ? [] : [...p.logs, `> ${text}`, ...output].slice(-200),

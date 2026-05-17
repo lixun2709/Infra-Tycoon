@@ -28,6 +28,7 @@ function EmergencyToasts() {
     if (alerts.length === 0) return
 
     const latest = alerts[alerts.length - 1]
+    if (!latest) return
     if (Date.now() - latest.timestamp < 6000) {
       // Async update to satisfy React purity/cascading rules
       const timerId = setTimeout(() => {

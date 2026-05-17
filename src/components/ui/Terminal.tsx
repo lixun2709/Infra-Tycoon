@@ -172,25 +172,35 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
          </thead>
          <tbody>
            {targetNode ? (
-             targetNode.services.map((s, i) => (
-               <tr key={s.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                 <td className="py-1.5">{1000 + i}</td>
-                 <td>root</td>
-                 <td className="text-emerald-400 font-bold">{(metrics.procMetrics[i].cpu + (s.status === 'running' ? 2 : 0)).toFixed(1)}</td>
-                 <td>{(metrics.procMetrics[i].mem + 1).toFixed(1)}</td>
-                 <td className="text-teal-500">{s.type.toLowerCase()}d</td>
-               </tr>
-             ))
+             targetNode.services.map((s, i) => {
+               const metric = metrics.procMetrics[i]
+               const cpuVal = metric ? metric.cpu : 0
+               const memVal = metric ? metric.mem : 0
+               return (
+                 <tr key={s.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                   <td className="py-1.5">{1000 + i}</td>
+                   <td>root</td>
+                   <td className="text-emerald-400 font-bold">{(cpuVal + (s.status === 'running' ? 2 : 0)).toFixed(1)}</td>
+                   <td>{(memVal + 1).toFixed(1)}</td>
+                   <td className="text-teal-500">{s.type.toLowerCase()}d</td>
+                 </tr>
+               )
+             })
            ) : (
-             nodes.filter(n => n.siteId === siteId).slice(0, 12).map((n, i) => (
-               <tr key={n.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
-                 <td className="py-1.5">{2000 + i}</td>
-                 <td>system</td>
-                 <td className="text-emerald-400 font-bold">{metrics.procMetrics[i].cpu.toFixed(1)}</td>
-                 <td>{metrics.procMetrics[i].mem.toFixed(1)}</td>
-                 <td className="text-teal-500">{n.name}</td>
-               </tr>
-             ))
+             nodes.filter(n => n.siteId === siteId).slice(0, 12).map((n, i) => {
+               const metric = metrics.procMetrics[i]
+               const cpuVal = metric ? metric.cpu : 0
+               const memVal = metric ? metric.mem : 0
+               return (
+                 <tr key={n.id} className="text-slate-300 border-b border-white/[0.02] hover:bg-white/[0.02] transition-colors">
+                   <td className="py-1.5">{2000 + i}</td>
+                   <td>system</td>
+                   <td className="text-emerald-400 font-bold">{cpuVal.toFixed(1)}</td>
+                   <td>{memVal.toFixed(1)}</td>
+                   <td className="text-teal-500">{n.name}</td>
+                 </tr>
+               )
+             })
            )}
          </tbody>
       </table>
@@ -270,9 +280,13 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   if (!siteState || !siteState.sessions || siteState.sessions.length === 0) return null
 
   const { sessions, activeSessionId, layout } = siteState
-  const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0]
+  const firstSession = sessions[0]
+  if (!firstSession) return null
+  const activeSession = sessions.find(s => s.id === activeSessionId) || firstSession
   const { panes, activePaneId, layout: sessionLayout } = activeSession
-  const activePane = panes.find(p => p.id === activePaneId) || panes[0]
+  const firstPane = panes[0]
+  if (!firstPane) return null
+  const activePane = panes.find(p => p.id === activePaneId) || firstPane
 
   // Auto-scroll logic
   // We use the effect inside Terminal because it needs scrollRef
@@ -352,7 +366,10 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       if (activePane.history.length > 0) {
         const newIndex = historyIndex === -1 ? activePane.history.length - 1 : Math.max(0, historyIndex - 1)
         setHistoryIndex(newIndex)
-        setInput(activePane.history[newIndex])
+        const historyCommand = activePane.history[newIndex]
+        if (historyCommand !== undefined) {
+          setInput(historyCommand)
+        }
       }
     }
   }

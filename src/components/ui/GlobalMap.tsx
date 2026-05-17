@@ -23,11 +23,11 @@ export function GlobalMap() {
   useEffect(() => {
     if (!isOpen) return
     
-    const logs = [
+    const logs: { id: string, msg: string, time: string, type: 'info' | 'warn' | 'success' }[] = [
       { id: '1', msg: 'NEURAL FABRIC INITIALIZED', time: '0.00ms', type: 'info' },
       { id: '2', msg: 'CROSS-REGION TUNNELS ENCRYPTED', time: '12.4ms', type: 'success' },
       { id: '3', msg: 'LATENCY OPTIMIZATION ACTIVE', time: '42.1ms', type: 'info' },
-    ] as const
+    ]
     const timer = setTimeout(() => {
       setEventLogs([...logs])
     }, 0)
@@ -36,11 +36,13 @@ export function GlobalMap() {
       const events = ['SYNCING DATA...', 'LATENCY SPIKE DETECTED', 'OPTIMIZING PATHS', 'HEARTBEAT NOMINAL', 'SECURITY SCAN COMPLETE']
       const types = ['info', 'warn', 'info', 'success', 'info'] as const
       const idx = Math.floor(Math.random() * events.length)
+      const eventMsg = events[idx] || 'HEARTBEAT NOMINAL'
+      const eventType = types[idx] || 'info'
       setEventLogs(prev => [{ 
         id: Math.random().toString(), 
-        msg: events[idx], 
+        msg: eventMsg, 
         time: `${(Math.random() * 50).toFixed(1)}ms`,
-        type: types[idx] 
+        type: eventType 
       }, ...prev].slice(0, 8))
     }, 4000)
     return () => {

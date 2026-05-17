@@ -32,7 +32,8 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     store.processCommand('pwd')
     
     const siteState = useInfraStore.getState().terminalStates['site-1']
-    const activeSession = siteState.sessions.find(s => s.id === siteState.activeSessionId)!
+    expect(siteState).toBeDefined()
+    const activeSession = siteState!.sessions.find(s => s.id === siteState!.activeSessionId)!
     const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId)!
     
     expect(activePane.history).toContain('ls')
@@ -48,12 +49,14 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     addTerminalSession('Tab 3')
     
     const state = useInfraStore.getState().terminalStates['site-1']
-    expect(state.sessions.length).toBe(3)
+    expect(state).toBeDefined()
+    expect(state!.sessions.length).toBe(3)
     
     // Split pane in active tab
     splitTerminalPane('vertical')
     const stateWithSplit = useInfraStore.getState().terminalStates['site-1']
-    const activeSession = stateWithSplit.sessions.find(s => s.id === stateWithSplit.activeSessionId)!
+    expect(stateWithSplit).toBeDefined()
+    const activeSession = stateWithSplit!.sessions.find(s => s.id === stateWithSplit!.activeSessionId)!
     expect(activeSession.panes.length).toBe(2)
     
     // Verify independent history
@@ -62,17 +65,25 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     useInfraStore.getState().processCommand('echo session_active')
     
     // Switch to first session (sessions[0])
-    const firstSessionId = stateWithSplit.sessions[0].id
+    const firstSession = stateWithSplit!.sessions[0]
+    expect(firstSession).toBeDefined()
+    const firstSessionId = firstSession!.id
     setActiveSession(firstSessionId)
     useInfraStore.getState().processCommand('echo session_first')
     
     const finalState = useInfraStore.getState().terminalStates['site-1']
-    const session2 = finalState.sessions[2]
-    const activePaneInS2 = session2.panes.find(p => p.id === session2.activePaneId)!
+    expect(finalState).toBeDefined()
+    const session2 = finalState!.sessions[2]
+    expect(session2).toBeDefined()
+    const activePaneInS2 = session2!.panes.find(p => p.id === session2!.activePaneId)!
     
     expect(activePaneInS2.history).toContain('echo session_active')
-    expect(finalState.sessions[0].panes[0].history).toContain('echo session_first')
-    expect(finalState.sessions[0].panes[0].history).not.toContain('echo session_active')
+    const finalSession0 = finalState!.sessions[0]
+    expect(finalSession0).toBeDefined()
+    const finalPane0 = finalSession0!.panes[0]
+    expect(finalPane0).toBeDefined()
+    expect(finalPane0!.history).toContain('echo session_first')
+    expect(finalPane0!.history).not.toContain('echo session_active')
   })
 
   it('should support environment variables in command execution', async () => {
@@ -81,6 +92,7 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     await new Promise(r => setTimeout(r, 50))
     
     const state = useInfraStore.getState().terminalStates['site-1']
-    expect(state.envVars['TEST_VAR']).toBe('infra_123')
+    expect(state).toBeDefined()
+    expect(state!.envVars['TEST_VAR']).toBe('infra_123')
   })
 })

@@ -62,11 +62,23 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const rack = nodes.find(n => n.id === targetRackId)
     if (!rack || rack.type !== 'rack') return false
 
-    // Find empty slot (using snapping helper)
-    const slot = findFirstEmptySlot(nodes, spec.uHeight)
-    if (!slot || slot.rackId !== targetRackId) {
-       pushAlert('warning', `No available ${spec.uHeight}U slot in target rack.`)
-       return false
+    let slotIndex: number
+
+    if (spec.isBlade) {
+      const chassis = nodes.find(n => n.parentRackId === targetRackId && n.catalogKey === 'BLADE_CHASSIS_4U')
+      if (!chassis) {
+        pushAlert('warning', `Blade servers require a Blade Chassis to be placed in the rack.`)
+        return false
+      }
+      slotIndex = chassis.slotIndex || 1
+    } else {
+      // Find empty slot (using snapping helper)
+      const slot = findFirstEmptySlot(nodes, spec.uHeight)
+      if (!slot || slot.rackId !== targetRackId) {
+         pushAlert('warning', `No available ${spec.uHeight}U slot in target rack.`)
+         return false
+      }
+      slotIndex = slot.slotIndex
     }
 
     const newNode: InfraNode = {
@@ -76,10 +88,11 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       siteId: rack.siteId,
       position: new Vector3(0, 0, 0), // Placeholder, UI handles positioning
       parentRackId: targetRackId,
-      slotIndex: slot.slotIndex,
+      slotIndex,
       uHeight: spec.uHeight,
       wattage: spec.wattage,
       btuOutput: spec.btuOutput || (spec.wattage * 3.41),
+      catalogKey: key,
       provisioningState: 'unboxed',
       systemState: 'off',
       healthStatus: 'healthy',

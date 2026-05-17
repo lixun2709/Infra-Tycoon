@@ -120,7 +120,10 @@ export const MissionHUD = () => {
                 onClick={() => {
                   const currentIndex = missions.findIndex(m => m.id === activeMissionId)
                   if (currentIndex < missions.length - 1) {
-                    startMission(missions[currentIndex + 1].id)
+                    const nextMission = missions[currentIndex + 1]
+                    if (nextMission) {
+                      startMission(nextMission.id)
+                    }
                   }
                 }}
                 icon={<Trophy size={14} />}

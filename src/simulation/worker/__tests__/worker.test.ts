@@ -66,7 +66,9 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     manager.init(richNodes, richApps)
 
     expect(mockPostMessage).toHaveBeenCalledTimes(1)
-    const message = mockPostMessage.mock.calls[0][0]
+    const firstCall = mockPostMessage.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const message = firstCall![0]
 
     expect(message.type).toBe('INIT')
     
