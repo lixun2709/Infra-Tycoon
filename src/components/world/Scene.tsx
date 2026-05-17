@@ -1,6 +1,7 @@
 import { Canvas } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
 import { EnvironmentRenderer } from './renderers/EnvironmentRenderer'
+import { CameraController } from './renderers/CameraController'
 import { FloorRenderer } from './renderers/FloorRenderer'
 import { CloudRenderer } from './renderers/CloudRenderer'
 import { OverlayRenderer, BlueprintPreview, DeployWave } from './renderers/OverlayRenderer'
@@ -19,6 +20,7 @@ export function Scene() {
       camera={{ position: [5, 4, 5], fov: 45 }} 
       onPointerMissed={() => useInfraStore.getState().setSelectedNode(null)}
     >
+      <CameraController />
       <EnvironmentRenderer />
       <FloorRenderer />
       <CloudRenderer />

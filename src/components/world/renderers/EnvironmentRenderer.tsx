@@ -1,86 +1,9 @@
-import { Grid, OrbitControls } from '@react-three/drei'
-import { useThree, useFrame } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
-import * as THREE from 'three'
+import { Grid } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
-import { audioManager } from '../../../utils/AudioManager'
-import { RACK_HEIGHT, U_WORLD } from '../../../physics/dimensions'
-import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 export function EnvironmentRenderer() {
-  const { totalRoomBTU, isGlobalMapOpen, currentSiteId, nodes, selectedNodeId } = useInfraStore()
+  const { totalRoomBTU } = useInfraStore()
   const isHot = totalRoomBTU > 50000
-  const { camera, controls } = useThree()
-  
-  const prevSiteId = useRef(currentSiteId)
-  const prevMapState = useRef(isGlobalMapOpen)
-  const isManualOverride = useRef(false)
-
-  // Initialize Audio
-  useEffect(() => {
-    audioManager.init(camera)
-  }, [camera])
-
-  // Camera Animation Logic
-  useEffect(() => {
-    isManualOverride.current = false
-  }, [selectedNodeId, currentSiteId])
-
-  useEffect(() => {
-    if (!controls) return
-    const orbitControls = controls as unknown as OrbitControlsImpl
-    const handleStart = () => { isManualOverride.current = true }
-    orbitControls.addEventListener('start', handleStart)
-    return () => orbitControls.removeEventListener('start', handleStart)
-  }, [controls])
-
-  useFrame((_, delta) => {
-    if (!controls) return
-    const orbitControls = controls as unknown as OrbitControlsImpl
-
-    // Site switch transition: snap to site default view
-    if (prevSiteId.current !== currentSiteId) {
-      camera.position.lerp(new THREE.Vector3(5, 4, 5), 0.1)
-      orbitControls.target.lerp(new THREE.Vector3(0, 0, 0), 0.1)
-      if (camera.position.distanceTo(new THREE.Vector3(5, 4, 5)) < 0.1) {
-        prevSiteId.current = currentSiteId
-      }
-      return
-    }
-
-    if (prevMapState.current !== isGlobalMapOpen) {
-      // Zoom out when map opens
-      if (isGlobalMapOpen) {
-        camera.position.lerp(new THREE.Vector3(15, 12, 15), 0.05)
-      } else {
-        camera.position.lerp(new THREE.Vector3(5, 4, 5), 0.05)
-      }
-      if (camera.position.distanceTo(isGlobalMapOpen ? new THREE.Vector3(15, 12, 15) : new THREE.Vector3(5, 4, 5)) < 0.2) {
-        prevMapState.current = isGlobalMapOpen
-      }
-    }
-
-    if (!selectedNodeId || isManualOverride.current) return
-
-    const selectedNode = nodes.find(n => n.id === selectedNodeId)
-    if (!selectedNode) return
-
-    const targetPos = new THREE.Vector3(selectedNode.position.x, selectedNode.position.y, selectedNode.position.z)
-
-    // Handle nested node position calculation
-    if (selectedNode.parentRackId) {
-      const rack = nodes.find(n => n.id === selectedNode.parentRackId)
-      if (rack) {
-        const yOffset = -RACK_HEIGHT / 2 + U_WORLD * ((selectedNode.slotIndex ?? 1) - 1 + selectedNode.uHeight / 2)
-        targetPos.set(rack.position.x, rack.position.y + RACK_HEIGHT / 2 + yOffset, rack.position.z)
-      }
-    } else if (selectedNode.type === 'rack') {
-      targetPos.y += RACK_HEIGHT / 2
-    }
-
-    orbitControls.target.lerp(targetPos, delta * 12)
-    orbitControls.update()
-  })
 
   return (
     <>
@@ -98,18 +21,6 @@ export function EnvironmentRenderer() {
         sectionColor="#48afbb"
         fadeDistance={25}
         fadeStrength={1.5}
-      />
-
-      <OrbitControls
-        makeDefault
-        enableDamping={true}
-        dampingFactor={0.05}
-        rotateSpeed={0.5}
-        zoomSpeed={1.5}
-        minDistance={0.5}
-        maxDistance={100}
-        enablePan={true}
-        screenSpacePanning={true}
       />
     </>
   )
