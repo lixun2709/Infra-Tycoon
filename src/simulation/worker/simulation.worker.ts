@@ -24,7 +24,18 @@ self.onmessage = (event: MessageEvent<SimMessage>) => {
     return
   }
 
-  commandQueue.push(msg)
+  let processedMsg: SimMessage = msg
+  if (msg.payload instanceof ArrayBuffer) {
+    try {
+      const decoder = new TextDecoder()
+      const jsonStr = decoder.decode(new Uint8Array(msg.payload))
+      processedMsg = { ...msg, payload: JSON.parse(jsonStr) } as any as SimMessage
+    } catch (err) {
+      console.error('[[Worker Thread]] Failed to decode incoming transferable payload:', err)
+    }
+  }
+
+  commandQueue.push(processedMsg)
   processQueue()
 }
 
@@ -187,6 +198,17 @@ function sendSyncOutput() {
     })
   })
 
-  self.postMessage({ type: 'SYNC_OUTPUT', payload: output })
-  self.postMessage({ type: 'TELEMETRY', payload: telemetry })
+  postMessageTransferable({ type: 'SYNC_OUTPUT', payload: output })
+  postMessageTransferable({ type: 'TELEMETRY', payload: telemetry })
+}
+
+function postMessageTransferable(msg: { type: string; payload: unknown }) {
+  try {
+    const jsonStr = JSON.stringify(msg.payload)
+    const encoder = new TextEncoder()
+    const buffer = encoder.encode(jsonStr).buffer
+    ;(self as unknown as Worker).postMessage({ type: msg.type, payload: buffer }, [buffer])
+  } catch {
+    self.postMessage(msg)
+  }
 }

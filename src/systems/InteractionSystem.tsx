@@ -2,23 +2,34 @@ import { useEffect } from 'react'
 import * as THREE from 'three'
 import { useInfraStore } from '../store/useInfraStore'
 import { useInput } from '../contexts/InputContext'
+import { InputProcessor } from './interaction/InputProcessor'
+import { InteractionController } from '../components/world/renderers/InteractionController'
 
 export function InteractionSystem() {
   const { subscribeToIntent } = useInput()
-  const { setSelectedNode, placementMode, addNode, currentSiteId, setPlacementMode } = useInfraStore()
 
   useEffect(() => {
     const unsubscribe = subscribeToIntent((intent) => {
       switch (intent.type) {
         case 'SELECT_NODE':
-          setSelectedNode(intent.payload.nodeId)
+          InputProcessor.getInstance().enqueueIntent({
+            type: 'SELECT_NODE',
+            payload: { nodeId: intent.payload.nodeId, nodeType: 'NODE' }
+          })
           break
         case 'DESELECT_NODE':
-          setSelectedNode(null)
+          InputProcessor.getInstance().enqueueIntent({ type: 'DESELECT_NODE' })
           break
-        case 'PLACE_NODE':
-          if (!placementMode) break
-          addNode({
+        case 'PLACE_NODE': {
+          const store = useInfraStore.getState()
+          if (!store.placementMode) break
+          
+          InputProcessor.getInstance().enqueueIntent({
+            type: 'PLACE_HARDWARE',
+            payload: { key: store.pendingRackType || 'RACK_42U', rackId: 'rack-direct' }
+          })
+
+          store.addNode({
             id: crypto.randomUUID(),
             type: 'rack',
             position: new THREE.Vector3(intent.payload.position.x, intent.payload.position.y, intent.payload.position.z),
@@ -31,22 +42,24 @@ export function InteractionSystem() {
             status: 'online',
             catalogKey: 'RACK_42U',
             ports: [],
-            siteId: currentSiteId,
+            siteId: store.currentSiteId,
             services: [],
             systemState: 'running',
             bootProgress: 100,
             provisioningState: 'bootstrapped',
-            installDate: useInfraStore.getState().simulationCycle,
+            installDate: store.simulationCycle,
             degradation: 0,
             temperature: 22
           })
-          setPlacementMode(false, null)
+          store.setPlacementMode(false, null)
           break
+        }
       }
     })
 
     return unsubscribe
-  }, [subscribeToIntent, setSelectedNode, placementMode, addNode, currentSiteId, setPlacementMode])
+  }, [subscribeToIntent])
 
-  return null
+  return <InteractionController />
 }
+

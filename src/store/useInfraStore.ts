@@ -12,6 +12,7 @@ import { createMiscSlice } from './slices/miscSlice'
 import { createNetworkingSlice } from './slices/networkingSlice'
 import { createAppSlice } from './slices/appSlice'
 import { createCameraSlice } from './slices/cameraSlice'
+import { createInteractionSlice } from './slices/interactionSlice'
 import { handleCommand } from './terminalLogic'
 
 export const useInfraStore = create<InfraState>()(
@@ -78,6 +79,7 @@ export const useInfraStore = create<InfraState>()(
       ...createNetworkingSlice(set, get, api),
       ...createAppSlice(set, get, api),
       ...createCameraSlice(set, get, api),
+      ...createInteractionSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
       processCommand: (text) => handleCommand(get, set, text)

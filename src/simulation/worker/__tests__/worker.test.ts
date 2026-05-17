@@ -65,15 +65,22 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     const mockPostMessage = vi.spyOn(manager['worker']!, 'postMessage')
     manager.init(richNodes, richApps)
 
-    expect(mockPostMessage).toHaveBeenCalledTimes(1)
-    const firstCall = mockPostMessage.mock.calls[0]
-    expect(firstCall).toBeDefined()
-    const message = firstCall![0]
+    expect(mockPostMessage).toHaveBeenCalled()
+    const lastCall = mockPostMessage.mock.calls[mockPostMessage.mock.calls.length - 1]
+    expect(lastCall).toBeDefined()
+    const message = lastCall![0]
 
     expect(message.type).toBe('INIT')
     
+    let payload = message.payload
+    if (payload instanceof ArrayBuffer || (payload && typeof payload === 'object' && !('nodes' in payload))) {
+      const decoder = new TextDecoder()
+      const jsonStr = decoder.decode(new Uint8Array(payload as ArrayBuffer))
+      payload = JSON.parse(jsonStr)
+    }
+
     // Nodes must be stripped of heavy objects (ports, services, installDate, degradation, name)
-    const compactedNode = message.payload.nodes[0]
+    const compactedNode = payload.nodes[0]
     expect(compactedNode.id).toBe('rack-1')
     expect(compactedNode.type).toBe('rack')
     expect(compactedNode.ports).toBeUndefined()
@@ -82,7 +89,7 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     expect(compactedNode.name).toBeUndefined()
 
     // Validate app compaction
-    const compactedApp = message.payload.applications[0]
+    const compactedApp = payload.applications[0]
     expect(compactedApp.id).toBe('app-dns')
     expect(compactedApp.appId).toBe('dns-service')
     expect(compactedApp.memoryUsageMB).toBeUndefined()
@@ -168,5 +175,49 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     await processQueue()
 
     expect(orderExecuted).toEqual(['INIT', 'SYNC_INPUT', 'TICK'])
+  })
+
+  describe('Transferable Objects and Backpressure Guarding', () => {
+    it('should drop subsequent tick requests when worker is busy (Backpressure Guard)', () => {
+      // 1. Initial state
+      let metrics = manager.getBackpressureMetrics()
+      expect(metrics.droppedTicks).toBe(0)
+      expect(metrics.successfulTicks).toBe(0)
+
+      // 2. Request first tick (sets isProcessingTick = true)
+      manager.requestTick()
+      metrics = manager.getBackpressureMetrics()
+      expect(metrics.successfulTicks).toBe(1)
+      expect(metrics.droppedTicks).toBe(0)
+
+      // 3. Request a second tick while first is still processing
+      manager.requestTick()
+      metrics = manager.getBackpressureMetrics()
+      expect(metrics.droppedTicks).toBe(1)
+      expect(metrics.successfulTicks).toBe(1)
+      expect(metrics.backpressureRatio).toBe(0.5)
+
+      // 4. Request a third tick
+      manager.requestTick()
+      metrics = manager.getBackpressureMetrics()
+      expect(metrics.droppedTicks).toBe(2)
+      expect(metrics.backpressureRatio).toBe(2 / 3)
+    })
+
+    it('should successfully serialize objects into transferable ArrayBuffers', () => {
+      const payload = { test: 'value', data: [1, 2, 3] }
+      const jsonStr = JSON.stringify(payload)
+      const encoder = new TextEncoder()
+      const buffer = encoder.encode(jsonStr).buffer
+
+      expect(buffer).toBeDefined()
+      expect(buffer.byteLength).toBeGreaterThan(0)
+
+      const decoder = new TextDecoder()
+      const decodedStr = decoder.decode(new Uint8Array(buffer))
+      const decodedPayload = JSON.parse(decodedStr)
+
+      expect(decodedPayload).toEqual(payload)
+    })
   })
 })

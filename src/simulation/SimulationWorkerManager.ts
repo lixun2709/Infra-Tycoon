@@ -23,6 +23,10 @@ export class SimulationWorkerManager {
   private maxRestartAttempts = 5
   private isRestarting = false
 
+  // Backpressure Metrics
+  private droppedTicksCount = 0
+  private successfulTicksCount = 0
+
   constructor() {
     interface GlobalWithProcess {
       process?: {
@@ -52,7 +56,18 @@ export class SimulationWorkerManager {
     if (!this.worker) return
 
     this.worker.onmessage = (event: MessageEvent<SimMessage>) => {
-      const { type, payload } = event.data
+      let msgData = event.data
+      if (msgData.payload instanceof ArrayBuffer) {
+        try {
+          const decoder = new TextDecoder()
+          const jsonStr = decoder.decode(new Uint8Array(msgData.payload))
+          msgData = { ...msgData, payload: JSON.parse(jsonStr) }
+        } catch (err) {
+          console.error('[[WorkerManager]] Error decoding transferable payload:', err)
+        }
+      }
+
+      const { type, payload } = msgData
       
       switch (type) {
         case 'PONG':
@@ -170,7 +185,7 @@ export class SimulationWorkerManager {
     this.lastNodes = nodes
     this.lastApps = applications
     const compacted = this.compactState(nodes, applications)
-    this.send('INIT', compacted)
+    this.sendTransferable('INIT', compacted)
     this.restartAttempts = 0 // Reset on successful user-triggered init
   }
 
@@ -178,14 +193,29 @@ export class SimulationWorkerManager {
     this.lastNodes = nodes
     this.lastApps = applications
     const compacted = this.compactState(nodes, applications)
-    this.send('SYNC_INPUT', compacted)
+    this.sendTransferable('SYNC_INPUT', compacted)
   }
 
   public requestTick() {
-    if (this.isProcessingTick || !this.worker || this.isRestarting) return 
+    if (!this.worker || this.isRestarting) return 
+    if (this.isProcessingTick) {
+      this.droppedTicksCount++
+      return
+    }
     this.isProcessingTick = true
+    this.successfulTicksCount++
     this.lastTickRequestTime = performance.now()
     this.send('TICK')
+  }
+
+  public getBackpressureMetrics() {
+    return {
+      droppedTicks: this.droppedTicksCount,
+      successfulTicks: this.successfulTicksCount,
+      backpressureRatio: this.droppedTicksCount + this.successfulTicksCount > 0
+        ? this.droppedTicksCount / (this.droppedTicksCount + this.successfulTicksCount)
+        : 0
+    }
   }
 
   public onOutput(callback: (payload: SimSyncOutputPayload) => void) {
@@ -202,6 +232,20 @@ export class SimulationWorkerManager {
   private send(type: 'PING'): void
   private send(type: string, payload?: unknown) {
     if (this.worker) {
+      this.worker.postMessage({ type, payload })
+    }
+  }
+
+  private sendTransferable(type: string, payload: unknown) {
+    if (!this.worker) return
+    try {
+      const jsonStr = JSON.stringify(payload)
+      const encoder = new TextEncoder()
+      const uint8 = encoder.encode(jsonStr)
+      const buffer = uint8.buffer
+      this.worker.postMessage({ type, payload: buffer }, [buffer])
+    } catch (err) {
+      console.warn('[[WorkerManager]] Fallback to structural clone for send:', err)
       this.worker.postMessage({ type, payload })
     }
   }
