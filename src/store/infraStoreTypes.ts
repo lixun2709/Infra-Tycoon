@@ -20,6 +20,7 @@ import type {
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
+import type { ThemeKey } from './themeTypes'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -76,6 +77,10 @@ export type InfraState = {
   toggleGlobalMap: () => void
   assistantTargetId: string | null
   isAutoPilot: boolean
+  renderQuality: 'ultra' | 'auto' | 'low'
+  setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
+  activeTheme: ThemeKey
+  setTheme: (theme: ThemeKey) => void
   
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]

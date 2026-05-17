@@ -15,10 +15,13 @@ import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { PerformanceOverlay } from './components/ui/PerformanceOverlay'
-import { Rocket, X, TrendingUp } from 'lucide-react'
+import { Rocket, X, TrendingUp, Sliders } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
 import type { InfraAlert } from './store/infraTypes'
+import { THEMES } from './store/themeTypes'
+import { ToastProvider } from './components/ui/base'
+import { audioManager } from './utils/AudioManager'
 
 function EmergencyToasts() {
   const alerts = useInfraStore(s => s.alerts)
@@ -114,8 +117,29 @@ function App() {
     setIsTerminalOpen,
     isTerminalOpen,
     addTerminalSession,
-    terminalStates
+    terminalStates,
+    renderQuality,
+    setRenderQuality,
+    activeTheme,
+    setTheme
   } = useInfraStore()
+
+  // Dynamic Design Tokens DOM Injector
+  useEffect(() => {
+    const root = document.documentElement
+    const themeSpec = THEMES[activeTheme]
+    if (!themeSpec) return
+    
+    root.style.setProperty('--primary', themeSpec.primary)
+    root.style.setProperty('--primary-glow', themeSpec.primaryGlow)
+    root.style.setProperty('--accent', themeSpec.accent)
+    root.style.setProperty('--accent-glow', themeSpec.accentGlow)
+    root.style.setProperty('--bg-dark', themeSpec.bgDark)
+    root.style.setProperty('--bg-deep', themeSpec.bgDeep)
+    root.style.setProperty('--surface', themeSpec.surface)
+    root.style.setProperty('--border', themeSpec.border)
+    root.style.setProperty('--border-active', themeSpec.borderActive)
+  }, [activeTheme])
   const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
   const placementMode = useInfraStore((s) => s.placementMode)
   const processAutoBackups = useInfraStore((s) => s.processAutoBackups)
@@ -247,6 +271,40 @@ function App() {
                 {overloadedRackCount > 0 ? 'FAILURES' : 'NOMINAL'}
               </span>
             </div>
+
+            <div className="flex items-center justify-between pt-1.5 border-t border-white/5 mt-1.5">
+              <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
+                <Sliders className="w-2.5 h-2.5 text-teal-400" /> GPU LOD
+              </span>
+              <select 
+                value={renderQuality}
+                onChange={(e) => setRenderQuality(e.target.value as 'ultra' | 'auto' | 'low')}
+                className="bg-slate-900/90 text-white font-bold text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded border border-white/10 outline-none cursor-pointer focus:border-teal-500 hover:bg-slate-800 transition-colors"
+              >
+                <option value="ultra">Ultra (No LOD)</option>
+                <option value="auto">Auto (Dynamic)</option>
+                <option value="low">Low (Max Perf)</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-between pt-1.5 border-t border-white/5 mt-1.5">
+              <span className="text-[7px] font-bold text-slate-400 uppercase tracking-tight flex items-center gap-1">
+                🎨 Theme
+              </span>
+              <select 
+                value={activeTheme}
+                onChange={(e) => {
+                  const newTheme = e.target.value as any
+                  setTheme(newTheme)
+                  audioManager.playEffect('click')
+                }}
+                className="bg-slate-900/90 text-white font-bold text-[8px] uppercase tracking-wide px-1.5 py-0.5 rounded border border-white/10 outline-none cursor-pointer focus:border-teal-500 hover:bg-slate-800 transition-colors"
+              >
+                {Object.values(THEMES).map(t => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {cloudBurstingActive && (
@@ -302,6 +360,7 @@ function App() {
       <PerformanceOverlay />
 
       <EmergencyToasts />
+      <ToastProvider />
       {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
       <GlobalNetwork />
       <MissionHUD />

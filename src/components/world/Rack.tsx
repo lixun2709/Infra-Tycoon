@@ -1,6 +1,9 @@
 import React, { type ReactNode } from 'react'
 import { Text, Edges, Line } from '@react-three/drei'
 import { RACK_HEIGHT, U_WORLD, RACK_U } from '../../physics/dimensions'
+import { useInteractable } from '../../hooks/useInteraction'
+import { useInfraStore } from '../../store/useInfraStore'
+import { THEMES } from '../../store/themeTypes'
 
 interface RackProps {
   id: string
@@ -14,6 +17,9 @@ interface RackProps {
 }
 
 function USlotLines() {
+  const activeTheme = useInfraStore(s => s.activeTheme)
+  const themeSpec = THEMES[activeTheme]
+
   const segments = React.useMemo(() => {
     const out: { key: number; y: number }[] = []
     for (let j = 1; j <= RACK_U; j++) {
@@ -29,7 +35,7 @@ function USlotLines() {
         <Line
           key={key}
           points={[[-0.501, y, 0.502], [0.501, y, 0.502]]}
-          color="#48afbb"
+          color={themeSpec.render.rackBoundHover}
           lineWidth={1}
           opacity={0.3}
           transparent
@@ -39,21 +45,21 @@ function USlotLines() {
   )
 }
 
-import { useInteractable } from '../../hooks/useInteraction'
-
 function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, children }: RackProps) {
   const isOverload = status === 'power_overload'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
   
   const { isHovered, interactionProps } = useInteractable(id, 'RACK')
+  const activeTheme = useInfraStore(s => s.activeTheme)
+  const themeSpec = THEMES[activeTheme]
 
   return (
     <group position={[position.x, position.y + RACK_HEIGHT / 2, position.z]}>
       <mesh>
         <boxGeometry args={[1, RACK_HEIGHT, 1]} />
         <meshStandardMaterial
-          color={isOverload ? '#3b0a14' : '#2d3748'}
-          emissive={isOverload ? '#ff0000' : '#000000'}
+          color={isOverload ? themeSpec.render.rackStatusOverload : '#2d3748'}
+          emissive={isOverload ? themeSpec.render.rackStatusOverload : '#000000'}
           emissiveIntensity={isOverload ? 0.8 : 0}
           metalness={0.8}
           roughness={0.2}
@@ -62,7 +68,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
           depthWrite={false}
         />
         <Edges 
-          color={isSelected ? '#2dd4bf' : (isHovered ? '#48afbb' : (isOverload ? '#ff4444' : '#f0f7fa'))} 
+          color={isSelected ? themeSpec.render.rackBoundSelected : (isHovered ? themeSpec.render.rackBoundHover : (isOverload ? themeSpec.render.rackStatusOverload : themeSpec.render.rackBound))} 
           threshold={14} 
           lineWidth={isSelected || isHovered ? 3 : 1.5} 
         />
@@ -73,13 +79,13 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
         {...interactionProps}
         position={[0, RACK_HEIGHT / 2 + 0.15, 0]} 
         fontSize={0.1} 
-        color={isOverload ? '#ff0000' : '#031225'} 
+        color={isOverload ? themeSpec.render.rackStatusOverload : '#031225'} 
         outlineColor="#ffffff" 
         outlineWidth={0.01}
       >
         {name}
       </Text>
-      <Text position={[0, RACK_HEIGHT / 2 + 0.02, 0]} fontSize={0.07} color={isOverload ? '#ff0000' : '#031225'} outlineColor="#ffffff" outlineWidth={0.005}>
+      <Text position={[0, RACK_HEIGHT / 2 + 0.02, 0]} fontSize={0.07} color={isOverload ? themeSpec.render.rackStatusOverload : '#031225'} outlineColor="#ffffff" outlineWidth={0.005}>
         {powerText}
       </Text>
       {children}

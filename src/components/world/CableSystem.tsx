@@ -1,17 +1,12 @@
-import { useRef, useMemo, useState } from 'react'
+import { useRef, useMemo, useState, useEffect } from 'react'
+import { THEMES } from '../../store/themeTypes'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { InfraNode, Connection } from '../../store/infraTypes'
-import type { PortType } from '../../physics/hardwareLibrary'
 import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
 
-const CABLE_COLORS: Record<PortType, string> = {
-  network: '#00f2ff', // Vibrant Cyan (Fiber optic look)
-  power: '#facc15',   // Industrial Yellow
-  fc: '#f97316',      // Alert Orange
-  sas: '#d946ef',     // Magenta
-}
+// Colors loaded dynamically from the centralized theme specification.
 
 const CABLE_RADIUS = 0.003
 
@@ -176,19 +171,45 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
     }
   }, [connection, startNode, endNode, allNodes])
 
+  const activeTheme = useInfraStore(s => s.activeTheme)
+  const themeSpec = THEMES[activeTheme]
+
   const material = useMemo(() => {
-    const color = connection.type ? CABLE_COLORS[connection.type] : '#ffffff'
     return new THREE.ShaderMaterial({
       ...CableShader,
       uniforms: {
         uTime: { value: 0 },
-        uColor: { value: new THREE.Color(color) },
+        uColor: { value: new THREE.Color('#ffffff') },
         uStatus: { value: connection.status === 'active' ? 1.0 : (connection.status === 'blocked' ? 2.0 : 0.0) },
         uHighlight: { value: 0.0 }
       },
       transparent: true,
     })
-  }, [connection.type, connection.status])
+  }, [])
+
+  useEffect(() => {
+    let colorHex = '#ffffff'
+    if (connection.type === 'network') colorHex = themeSpec.render.cableNetwork
+    else if (connection.type === 'power') colorHex = themeSpec.render.cablePower
+    else if (connection.type === 'fc') colorHex = themeSpec.render.cableFC
+    else if (connection.type === 'sas') colorHex = themeSpec.render.cableSAS
+
+    if (material.uniforms && material.uniforms.uColor && material.uniforms.uStatus) {
+      material.uniforms.uColor.value.set(colorHex)
+      material.uniforms.uStatus.value = connection.status === 'active' ? 1.0 : (connection.status === 'blocked' ? 2.0 : 0.0)
+    }
+  }, [material, connection.type, connection.status, themeSpec])
+
+  const connectorMaterial = useMemo(() => {
+    return new THREE.MeshStandardMaterial({
+      metalness: 0.6,
+      roughness: 0.4
+    })
+  }, [])
+
+  useEffect(() => {
+    connectorMaterial.color.set(themeSpec.primary)
+  }, [connectorMaterial, themeSpec.primary])
 
   useFrame(({ clock }) => {
     if (meshRef.current) {
@@ -214,15 +235,13 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
       </mesh>
       
       {/* Start Connector (Blue RJ45 Style) */}
-      <mesh position={startPos} rotation={[0, 0, 0]}>
+      <mesh position={startPos} rotation={[0, 0, 0]} material={connectorMaterial}>
         <boxGeometry args={[0.012, 0.012, 0.04]} />
-        <meshStandardMaterial color="#2563eb" metalness={0.6} roughness={0.4} />
       </mesh>
 
       {/* End Connector (Blue RJ45 Style) */}
-      <mesh position={endPos} rotation={[0, 0, 0]}>
+      <mesh position={endPos} rotation={[0, 0, 0]} material={connectorMaterial}>
         <boxGeometry args={[0.012, 0.012, 0.04]} />
-        <meshStandardMaterial color="#2563eb" metalness={0.6} roughness={0.4} />
       </mesh>
     </group>
   )

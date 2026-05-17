@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand'
 import { Vector3 } from 'three'
 import type { InfraState } from '../infraStoreTypes'
 import { audioManager } from '../../utils/AudioManager'
+import type { ThemeKey } from '../themeTypes'
 
 export interface UISlice {
   setNetworkLoad: (load: number) => void
@@ -14,6 +15,8 @@ export interface UISlice {
   acknowledgeAlert: (id: string) => void
   acknowledgeAllAlerts: () => void
   setIsTerminalOpen: (val: boolean) => void
+  setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
+  setTheme: (theme: ThemeKey) => void
 }
 
 export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) => ({
@@ -24,6 +27,8 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) =>
   toggleHeatMap: () => set(state => ({ isHeatMapVisible: !state.isHeatMapVisible })),
   toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
   setIsTerminalOpen: (val: boolean) => set({ isTerminalOpen: val }),
+  setRenderQuality: (quality) => set({ renderQuality: quality }),
+  setTheme: (theme) => set({ activeTheme: theme }),
 
   pushAlert: (severity, message, nodeId) => {
     if (severity === 'critical') audioManager.playEffect('error')

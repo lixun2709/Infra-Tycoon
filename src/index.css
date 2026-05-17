@@ -85,9 +85,56 @@
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(45, 212, 191, 0.2);
+  background: color-mix(in srgb, var(--primary) 20%, transparent);
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(45, 212, 191, 0.4);
+  background: color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+/* Centralized Tailwind Class Overrides for Theme Synchronization */
+.text-teal-400 {
+  color: var(--primary) !important;
+}
+.text-teal-500 {
+  color: var(--primary) !important;
+}
+.bg-teal-500 {
+  background-color: var(--primary) !important;
+}
+.bg-teal-500\/10 {
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+}
+.bg-teal-500\/20 {
+  background-color: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+}
+.border-teal-500 {
+  border-color: var(--primary) !important;
+}
+.border-teal-500\/30 {
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent) !important;
+}
+.border-teal-500\/50 {
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent) !important;
+}
+.hover\:bg-teal-500\/10:hover {
+  background-color: color-mix(in srgb, var(--primary) 10%, transparent) !important;
+}
+.hover\:bg-teal-500\/20:hover {
+  background-color: color-mix(in srgb, var(--primary) 20%, transparent) !important;
+}
+.hover\:border-teal-500\/30:hover {
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent) !important;
+}
+.hover\:border-teal-500\/50:hover {
+  border-color: color-mix(in srgb, var(--primary) 50%, transparent) !important;
+}
+.group-hover\:bg-teal-500:hover, .group:hover .group-hover\:bg-teal-500 {
+  background-color: var(--primary) !important;
+}
+.group-hover\:border-teal-500\/30:hover, .group:hover .group-hover\:border-teal-500\/30 {
+  border-color: color-mix(in srgb, var(--primary) 30%, transparent) !important;
+}
+.group-hover\:text-white:hover, .group:hover .group-hover\:text-white {
+  color: #ffffff !important;
 }

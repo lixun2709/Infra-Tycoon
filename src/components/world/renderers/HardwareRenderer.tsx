@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import React, { useMemo, useRef } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -32,9 +32,8 @@ const materials = {
   portDisconnected: new THREE.MeshStandardMaterial({ color: '#f59e0b', metalness: 1, roughness: 0.1, emissive: '#f59e0b', emissiveIntensity: 0.8 })
 }
 
-// --- Sub-components extracted from Scene.tsx ---
-
-export function StorageBar({ used, total, color, h }: { used: number, total: number, color: string, h: number }) {
+// --- StorageBar Component ---
+function StorageBarComponent({ used, total, color, h }: { used: number, total: number, color: string, h: number }) {
   const ratio = total > 0 ? Math.min(1, used / total) : 0
   const barH = h * ratio
   if (barH <= 0) return null
@@ -47,8 +46,10 @@ export function StorageBar({ used, total, color, h }: { used: number, total: num
     </group>
   )
 }
+export const StorageBar = React.memo(StorageBarComponent)
 
-export function PIIShield({ h }: { h: number }) {
+// --- PIIShield Component ---
+function PIIShieldComponent({ h }: { h: number }) {
   const meshRef = useRef<THREE.Mesh>(null)
   useFrame(({ clock }) => {
     if (!meshRef.current) return
@@ -61,8 +62,10 @@ export function PIIShield({ h }: { h: number }) {
     </group>
   )
 }
+export const PIIShield = React.memo(PIIShieldComponent)
 
-export function MaintenanceIcon() {
+// --- MaintenanceIcon Component ---
+function MaintenanceIconComponent() {
   const meshRef = useRef<THREE.Mesh>(null)
   useFrame(({ clock }) => {
     if (!meshRef.current) return
@@ -76,11 +79,14 @@ export function MaintenanceIcon() {
     </group>
   )
 }
+export const MaintenanceIcon = React.memo(MaintenanceIconComponent)
 
 import { useInteractable } from '../../../hooks/useInteraction'
 
-export function PortVisuals({ node, h }: { node: InfraNode, h: number }) {
-  const { handlePortClick, activePatchSource } = useInfraStore()
+// --- PortVisuals (High LOD) ---
+function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
+  const handlePortClick = useInfraStore(s => s.handlePortClick)
+  const activePatchSource = useInfraStore(s => s.activePatchSource)
   
   const scheme = useMemo(() => {
     switch(node.type) {
@@ -161,8 +167,48 @@ export function PortVisuals({ node, h }: { node: InfraNode, h: number }) {
     </group>
   )
 }
+export const PortVisuals = React.memo(PortVisualsComponent)
 
-export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
+// --- PortVisualsSimplified (Medium LOD) ---
+function PortVisualsSimplifiedComponent({ node, h }: { node: InfraNode, h: number }) {
+  const scheme = useMemo(() => {
+    switch(node.type) {
+      case 'network': return { panel: '#0f172a', bezel: '#334155', boundary: '#1e293b' }
+      case 'storage': return { panel: '#1e3a8a', bezel: '#1e40af', boundary: '#1d4ed8' }
+      case 'compute': return { panel: '#171717', bezel: '#404040', boundary: '#262626' }
+      case 'security': return { panel: '#450a0a', bezel: '#7f1d1d', boundary: '#991b1b' }
+      default: return { panel: '#1a1a1a', bezel: '#262626', boundary: '#404040' }
+    }
+  }, [node.type])
+
+  const { interactionProps } = useInteractable(node.id, 'NODE')
+  const isCritical = node.healthStatus === 'critical' || node.isInfected
+  const isDegraded = node.healthStatus === 'degraded' || node.degradation > 0
+  const ledColor = isCritical ? '#ef4444' : (isDegraded ? '#eab308' : '#10b981')
+
+  return (
+    <group position={[0, 0, -0.455]} rotation={[0, Math.PI, 0]}>
+      {/* Bezel Frame */}
+      <mesh geometry={bezelGeometry} scale={[1, h * 0.92, 1]} {...interactionProps}>
+        <meshStandardMaterial color={scheme.bezel} metalness={1} roughness={0.1} />
+      </mesh>
+
+      {/* Main Recessed Back Panel */}
+      <mesh geometry={panelGeometry} scale={[1, h * 0.88, 1]} position={[0, 0, 0.004]} {...interactionProps}>
+        <meshStandardMaterial color={scheme.panel} metalness={0.5} roughness={0.8} />
+      </mesh>
+
+      {/* Single Simplified Status LED indicator */}
+      <mesh position={[0.4, 0, 0.006]} geometry={portGeometry} scale={[0.015, 0.015, 1]}>
+        <meshStandardMaterial color={ledColor} emissive={ledColor} emissiveIntensity={2.0} />
+      </mesh>
+    </group>
+  )
+}
+export const PortVisualsSimplified = React.memo(PortVisualsSimplifiedComponent)
+
+// --- InternalHardware Component ---
+function InternalHardwareComponent({ node, h }: { node: InfraNode, h: number }) {
   const health = node.componentHealth || { 
     cpu: ['healthy'], 
     ram: ['healthy', 'healthy', 'healthy', 'healthy'], 
@@ -226,8 +272,10 @@ export function InternalHardware({ node, h }: { node: InfraNode, h: number }) {
     </group>
   )
 }
+export const InternalHardware = React.memo(InternalHardwareComponent)
 
-export function ServiceHolograms({ node }: { node: InfraNode }) {
+// --- ServiceHolograms Component ---
+function ServiceHologramsComponent({ node }: { node: InfraNode }) {
   const allApplications = useInfraStore(s => s.applications)
   const applications = useMemo(() => allApplications.filter(a => a.nodeId === node.id), [allApplications, node.id])
   
@@ -256,3 +304,4 @@ export function ServiceHolograms({ node }: { node: InfraNode }) {
     </Billboard>
   )
 }
+export const ServiceHolograms = React.memo(ServiceHologramsComponent)

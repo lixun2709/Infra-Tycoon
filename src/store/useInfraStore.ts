@@ -63,6 +63,8 @@ export const useInfraStore = create<InfraState>()(
       previewBlueprintId: null,
       applications: [],
       isChaosMode: false,
+      renderQuality: 'auto',
+      activeTheme: 'cyberpunk',
 
       // --- ACTION SLICES ---
       ...createSimulationSlice(set, get, api),
@@ -92,7 +94,9 @@ export const useInfraStore = create<InfraState>()(
         activeContracts: state.activeContracts,
         blueprints: state.blueprints,
         applications: state.applications,
-        terminalStates: state.terminalStates
+        terminalStates: state.terminalStates,
+        renderQuality: state.renderQuality,
+        activeTheme: state.activeTheme
       })
     }
   )
