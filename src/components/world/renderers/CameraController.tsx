@@ -1,8 +1,10 @@
+/* eslint-disable react-hooks/immutability */
 import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useInput } from '../../../contexts/InputContext'
 import { audioManager } from '../../../utils/AudioManager'
 import { RACK_HEIGHT, U_WORLD } from '../../../physics/dimensions'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -25,6 +27,7 @@ export function CameraController() {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const nodes = useInfraStore(s => s.nodes)
+  const { isActionActive } = useInput()
 
   const mode = useRef<CameraMode>('SITE_DEFAULT')
   const prevSiteId = useRef(currentSiteId)
@@ -114,9 +117,35 @@ export function CameraController() {
         }
         break
 
-      case 'MANUAL_FREE':
-        // No programmatic intervention required; OrbitControls runs natively
+      case 'MANUAL_FREE': {
+        // RTS-style planar WASD panning
+        let moveX = 0
+        let moveZ = 0
+        
+        if (isActionActive('MOVE_FORWARD')) moveZ -= 1
+        if (isActionActive('MOVE_BACKWARD')) moveZ += 1
+        if (isActionActive('MOVE_LEFT')) moveX -= 1
+        if (isActionActive('MOVE_RIGHT')) moveX += 1
+        
+        if (moveX !== 0 || moveZ !== 0) {
+          // Calculate movement relative to camera's current yaw angle
+          const yaw = Math.atan2(
+            camera.position.x - orbitControls.target.x,
+            camera.position.z - orbitControls.target.z
+          )
+          
+          const speed = delta * 15 // units per second panning speed
+          
+          const worldMoveX = moveX * Math.cos(yaw) + moveZ * Math.sin(yaw)
+          const worldMoveZ = -moveX * Math.sin(yaw) + moveZ * Math.cos(yaw)
+          
+          orbitControls.target.x += worldMoveX * speed
+          orbitControls.target.z += worldMoveZ * speed
+          camera.position.x += worldMoveX * speed
+          camera.position.z += worldMoveZ * speed
+        }
         break
+      }
     }
 
     orbitControls.update()

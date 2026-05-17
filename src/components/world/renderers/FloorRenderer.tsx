@@ -2,10 +2,12 @@ import { useState } from 'react'
 import * as THREE from 'three'
 import { Edges } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useInput } from '../../../contexts/InputContext'
 import { RACK_HEIGHT } from '../../../physics/dimensions'
 
 export function FloorRenderer() {
-  const { placementMode, setPlacementMode, addNode, currentSiteId } = useInfraStore()
+  const { placementMode } = useInfraStore()
+  const { dispatchIntent } = useInput()
   const [ghostPos, setGhostPos] = useState<THREE.Vector3 | null>(null)
 
   return (
@@ -22,33 +24,11 @@ export function FloorRenderer() {
         }}
         onClick={(e) => {
           if (!placementMode || !ghostPos) {
-            useInfraStore.getState().setSelectedNode(null)
+            dispatchIntent({ type: 'DESELECT_NODE' })
             return
           }
           e.stopPropagation()
-          addNode({
-            id: crypto.randomUUID(),
-            type: 'rack',
-            position: ghostPos.clone(),
-            name: `Rack-${Math.floor(Math.random() * 1000)}`,
-            uHeight: 42,
-            wattage: 0,
-            btuOutput: 0,
-            maxPowerKW: 5.0,
-            currentPowerKW: 0,
-            status: 'online',
-            catalogKey: 'RACK_42U',
-            ports: [],
-            siteId: currentSiteId,
-            services: [],
-            systemState: 'running',
-            bootProgress: 100,
-            provisioningState: 'bootstrapped',
-            installDate: useInfraStore.getState().simulationCycle,
-            degradation: 0,
-            temperature: 22
-          })
-          setPlacementMode(false, null)
+          dispatchIntent({ type: 'PLACE_NODE', payload: { position: { x: ghostPos.x, y: ghostPos.y, z: ghostPos.z } } })
           setGhostPos(null)
         }}
       >

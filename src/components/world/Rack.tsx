@@ -10,7 +10,6 @@ interface RackProps {
   status: string
   position: { x: number; y: number; z: number }
   isSelected: boolean
-  onSelect: (id: string) => void
   children?: ReactNode
 }
 
@@ -40,9 +39,13 @@ function USlotLines() {
   )
 }
 
-function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, onSelect, children }: RackProps) {
+import { useInteractable } from '../../hooks/useInteraction'
+
+function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, children }: RackProps) {
   const isOverload = status === 'power_overload'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
+  
+  const { isHovered, interactionProps } = useInteractable(id, 'RACK')
 
   return (
     <group position={[position.x, position.y + RACK_HEIGHT / 2, position.z]}>
@@ -59,15 +62,15 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
           depthWrite={false}
         />
         <Edges 
-          color={isSelected ? '#2dd4bf' : (isOverload ? '#ff4444' : '#f0f7fa')} 
+          color={isSelected ? '#2dd4bf' : (isHovered ? '#48afbb' : (isOverload ? '#ff4444' : '#f0f7fa'))} 
           threshold={14} 
-          lineWidth={isSelected ? 3 : 1.5} 
+          lineWidth={isSelected || isHovered ? 3 : 1.5} 
         />
       </mesh>
 
       <USlotLines />
       <Text 
-        onClick={(e) => { e.stopPropagation(); onSelect(id) }}
+        {...interactionProps}
         position={[0, RACK_HEIGHT / 2 + 0.15, 0]} 
         fontSize={0.1} 
         color={isOverload ? '#ff0000' : '#031225'} 

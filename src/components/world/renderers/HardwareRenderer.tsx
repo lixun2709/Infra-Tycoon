@@ -77,7 +77,9 @@ export function MaintenanceIcon() {
   )
 }
 
-export function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number, onSelect: (id: string) => void }) {
+import { useInteractable } from '../../../hooks/useInteraction'
+
+export function PortVisuals({ node, h }: { node: InfraNode, h: number }) {
   const { handlePortClick, activePatchSource } = useInfraStore()
   
   const scheme = useMemo(() => {
@@ -96,15 +98,17 @@ export function PortVisuals({ node, h, onSelect }: { node: InfraNode, h: number,
     return a.label.localeCompare(b.label, undefined, { numeric: true })
   }), [node.ports])
 
+  const { interactionProps } = useInteractable(node.id, 'NODE')
+
   return (
     <group position={[0, 0, -0.455]} rotation={[0, Math.PI, 0]}>
       {/* Bezel Frame */}
-      <mesh geometry={bezelGeometry} scale={[1, h * 0.92, 1]} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
+      <mesh geometry={bezelGeometry} scale={[1, h * 0.92, 1]} {...interactionProps}>
         <meshStandardMaterial color={scheme.bezel} metalness={1} roughness={0.1} />
       </mesh>
 
       {/* Main Recessed Back Panel */}
-      <mesh geometry={panelGeometry} scale={[1, h * 0.88, 1]} position={[0, 0, 0.004]} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
+      <mesh geometry={panelGeometry} scale={[1, h * 0.88, 1]} position={[0, 0, 0.004]} {...interactionProps}>
         <meshStandardMaterial color={scheme.panel} metalness={0.5} roughness={0.8} />
       </mesh>
 

@@ -11,7 +11,6 @@ import { PortVisuals, StorageBar, PIIShield, MaintenanceIcon, InternalHardware, 
 interface MountedUnitProps {
   node: InfraNode
   isSelected: boolean
-  onSelect: (id: string) => void
 }
 
 const TYPE_ACCENT: Record<string, string> = {
@@ -28,7 +27,9 @@ function rackHardwareCenterY(slotIndex: number, uHeight: number): number {
 // Global Cached Resources
 const chassisGeometry = new THREE.BoxGeometry(0.92, 1, 0.9)
 
-function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) {
+import { useInteractable } from '../../hooks/useInteraction'
+
+function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
   const updateNode = useInfraStore(s => s.updateNode)
   const finalRemoveNode = useInfraStore(s => s.finalRemoveNode)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
@@ -75,6 +76,8 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
     }
   })
 
+  const { isHovered, interactionProps } = useInteractable(node.id, 'NODE')
+
   if (node.slotIndex == null || node.parentRackId == null) return null
 
   const isAnyNodeSelected = !!selectedNodeId
@@ -87,7 +90,7 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
 
   return (
     <group ref={groupRef} position={[0, y, isBrandNew || isDecommissioning ? -1.2 : 0]}>
-      <mesh geometry={chassisGeometry} scale={[1, h, 1]} onClick={(e) => { e.stopPropagation(); onSelect(node.id) }}>
+      <mesh geometry={chassisGeometry} scale={[1, h, 1]} {...interactionProps}>
         <meshStandardMaterial
           color={node.isInfected ? '#4a044e' : color}
           metalness={0.4}
@@ -96,11 +99,11 @@ function MountedUnitComponent({ node, isSelected, onSelect }: MountedUnitProps) 
           opacity={opacity}
           depthWrite={!isSelected}
         />
-        <Edges color={isSelected ? '#00f2ff' : '#f7fafc'} threshold={20} lineWidth={isSelected ? 3 : 1} />
+        <Edges color={isSelected ? '#00f2ff' : (isHovered ? '#48afbb' : '#f7fafc')} threshold={20} lineWidth={isSelected || isHovered ? 3 : 1} />
       </mesh>
       
       {/* Front Panel Features */}
-      <PortVisuals node={node} h={h} onSelect={onSelect} />
+      <PortVisuals node={node} h={h} />
       
       {node.type === 'storage' && node.totalStorageTB && (
         <StorageBar used={node.usedStorageTB || 0} total={node.totalStorageTB} color={color} h={h} />

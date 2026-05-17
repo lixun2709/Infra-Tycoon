@@ -10,16 +10,21 @@ import { HeatMapOverlay } from './HeatMapOverlay'
 import { Rack } from './Rack'
 import { MountedUnit } from './MountedUnit'
 
+import { InteractionSystem } from '../../systems/InteractionSystem'
+import { useInput } from '../../contexts/InputContext'
+
 export function Scene() {
-  const { nodes, selectedNodeId, setSelectedNode, currentSiteId } = useInfraStore()
+  const { nodes, selectedNodeId, currentSiteId } = useInfraStore()
+  const { dispatchIntent } = useInput()
   const racks = nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
 
   return (
     <Canvas 
       className="h-full w-full" 
       camera={{ position: [5, 4, 5], fov: 45 }} 
-      onPointerMissed={() => useInfraStore.getState().setSelectedNode(null)}
+      onPointerMissed={() => dispatchIntent({ type: 'DESELECT_NODE' })}
     >
+      <InteractionSystem />
       <CameraController />
       <EnvironmentRenderer />
       <FloorRenderer />
@@ -40,14 +45,12 @@ export function Scene() {
           status={rack.status || 'online'}
           position={rack.position}
           isSelected={selectedNodeId === rack.id}
-          onSelect={setSelectedNode}
         >
           {nodes.filter(n => n.parentRackId === rack.id).map(hw => (
             <MountedUnit
               key={hw.id}
               node={hw}
               isSelected={selectedNodeId === hw.id}
-              onSelect={setSelectedNode}
             />
           ))}
         </Rack>
