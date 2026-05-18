@@ -4,7 +4,6 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
 import type { InfraNode } from '../../../store/infraTypes'
-import { APPLICATION_CATALOG } from '../../../physics/applicationLibrary'
 import { CoolingFan } from '../CoolingFan'
 
 // --- Global Cached Resources ---
@@ -273,35 +272,3 @@ function InternalHardwareComponent({ node, h }: { node: InfraNode, h: number }) 
   )
 }
 export const InternalHardware = React.memo(InternalHardwareComponent)
-
-// --- ServiceHolograms Component ---
-function ServiceHologramsComponent({ node }: { node: InfraNode }) {
-  const allApplications = useInfraStore(s => s.applications)
-  const applications = useMemo(() => allApplications.filter(a => a.nodeId === node.id), [allApplications, node.id])
-  
-  if (applications.length === 0) return null
-
-  return (
-    <Billboard position={[0.65, 0, 0.45]}>
-      {applications.map((app, i) => {
-        const appInfo = APPLICATION_CATALOG[app.appId]
-        if (!appInfo) return null
-
-        return (
-          <group key={app.id} position={[0, (i - (applications.length - 1) / 2) * 0.12, 0]}>
-            <Text 
-              fontSize={0.08} 
-              color={app.status === 'deploying' ? '#94a3b8' : appInfo.color} 
-              outlineColor="#000000" 
-              outlineWidth={0.005}
-            >
-              {appInfo.icon}
-            </Text>
-            <pointLight color={appInfo.color} distance={0.3} intensity={app.status === 'running' ? 0.8 : 0.2} />
-          </group>
-        )
-      })}
-    </Billboard>
-  )
-}
-export const ServiceHolograms = React.memo(ServiceHologramsComponent)

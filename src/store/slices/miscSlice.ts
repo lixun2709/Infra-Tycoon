@@ -7,6 +7,7 @@ export interface MiscSlice {
   processAging: () => void
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
+  toggleMaintenanceMode: (nodeId: string) => void
   setCloudBursting: (active: boolean) => void
   saveSiteAsBlueprint: (name: string) => void
   applyBlueprint: (id: string) => void
@@ -68,24 +69,69 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   },
 
   repairHardware: (nodeId) => {
-    const { balance, pushAlert } = get()
+    const { balance, nodes, technicianTickets, pushAlert } = get()
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) return
+
     const cost = 1500
     if (balance < cost) {
-      pushAlert('warning', 'Insufficient funds for repair.')
+      pushAlert('warning', 'RMA Dispatch Blocked: Insufficient CapEx funds to schedule hardware repair.')
+      audioManager.playEffect('error')
       return
     }
+
+    const hasTicket = technicianTickets.some(t => t.nodeId === nodeId)
+    if (hasTicket) {
+      pushAlert('warning', `RMA Dispatch Blocked: A technician ticket is already active for ${node.name}.`)
+      return
+    }
+
+    let componentType: 'drive' | 'cpu' | 'motherboard' | 'psu' = 'cpu'
+    if (node.type === 'storage' || (node.driveDegradation && node.driveDegradation > 0)) {
+      componentType = 'drive'
+    } else if (node.wattage > 1000) {
+      componentType = 'psu'
+    }
+
+    const ticketId = `ticket-${Math.random().toString(36).substring(2, 11)}`
+    const newTicket = {
+      id: ticketId,
+      nodeId,
+      nodeName: node.name,
+      type: componentType,
+      status: 'dispatched' as const,
+      elapsedSeconds: 0,
+      totalSeconds: 20,
+      cost
+    }
+
     set(state => ({
       balance: state.balance - cost,
-      nodes: state.nodes.map(n => n.id === nodeId ? { 
-        ...n, 
-        healthStatus: 'healthy',
-        degradation: 0,
-        driveDegradation: 0,
-        storageStatus: n.storageStatus === 'failed' || n.storageStatus === 'degraded' ? 'rebuilding' : n.storageStatus,
-        rebuildProgress: 0
-      } : n)
+      technicianTickets: [...state.technicianTickets, newTicket],
+      nodes: state.nodes.map(n => n.id === nodeId ? { ...n, maintenanceMode: true } : n)
     }))
-    pushAlert('info', `Hardware repaired for $${cost.toLocaleString()}`)
+
+    pushAlert('info', `RMA Ticket Scheduled: Technician dispatched for ${node.name}. Fee: $${cost.toLocaleString()}`)
+    audioManager.playEffect('click')
+  },
+
+  toggleMaintenanceMode: (nodeId) => {
+    const { nodes, pushAlert } = get()
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) return
+
+    const nextMode = !node.maintenanceMode
+
+    set(state => ({
+      nodes: state.nodes.map(n => n.id === nodeId ? { ...n, maintenanceMode: nextMode } : n)
+    }))
+
+    if (nextMode) {
+      pushAlert('info', `Maintenance Mode Enabled: Safe operational drain initiated on ${node.name}. Workloads paused.`)
+    } else {
+      pushAlert('info', `Maintenance Mode Disabled: ${node.name} returned to high-availability pool.`)
+    }
+    audioManager.playEffect('click')
   },
 
   setCloudBursting: (active) => set({ cloudBurstingActive: active }),

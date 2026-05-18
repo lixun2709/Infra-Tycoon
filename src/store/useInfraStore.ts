@@ -64,6 +64,7 @@ export const useInfraStore = create<InfraState>()(
       blueprints: [],
       previewBlueprintId: null,
       applications: [],
+      technicianTickets: [],
       isChaosMode: false,
       renderQuality: 'auto',
       activeTheme: 'cyberpunk',
@@ -98,6 +99,7 @@ export const useInfraStore = create<InfraState>()(
         activeContracts: state.activeContracts,
         blueprints: state.blueprints,
         applications: state.applications,
+        technicianTickets: state.technicianTickets,
         terminalStates: state.terminalStates,
         renderQuality: state.renderQuality,
         activeTheme: state.activeTheme

@@ -2,6 +2,9 @@ import type { InfraState } from './infraStoreTypes'
 import { performanceMonitor } from '../simulation/PerformanceMonitor'
 import { TECHNICAL_MANUALS } from '../physics/Manuals'
 import type { TerminalSession, TerminalPane } from './terminalTypes'
+import { PrometheusExporter } from '../simulation/observability/PrometheusExporter'
+import { ObservabilityTracer } from '../simulation/observability/ObservabilityTracer'
+import { ObservabilityAlerting } from '../simulation/observability/ObservabilityAlerting'
 
 export function handleCommand(
   get: () => InfraState, 
@@ -88,7 +91,7 @@ export function handleCommand(
     output.push("NET: [[GREEN]]ping [target][[RESET]], [[GREEN]]show ip brief[[RESET]], [[GREEN]]traceroute[[RESET]]")
     output.push("ORCH: [[BLUE]]apt install[[RESET]], [[BLUE]]systemctl start[[RESET]], [[BLUE]]sync-ntp[[RESET]]")
     output.push("NAV: [[YELLOW]]scan console[[RESET]], [[YELLOW]]connect console [id][[RESET]], [[YELLOW]]exit[[RESET]]")
-    output.push("SIM: [[BLUE]]ecs-stats[[RESET]], [[BLUE]]sim-telemetry[[RESET]]")
+    output.push("SIM: [[BLUE]]ecs-stats[[RESET]], [[BLUE]]sim-diagnostics[[RESET]], [[BLUE]]prom[[RESET]], [[BLUE]]traces[[RESET]], [[BLUE]]alerts[[RESET]]")
   } else if (targetNode && targetNode.systemState === 'off' && !['poweron', 'exit', 'help'].includes(cmdLower)) {
     output.push("[[RED]]SYSTEM ERROR: Node is logically powered down.[[RESET]]")
     output.push("Required: '[[YELLOW]]poweron[[RESET]]' to initialize CPU/RAM.")
@@ -212,6 +215,39 @@ export function handleCommand(
         output.push(`[[GREEN]]env set: ${key} = ${val}[[RESET]]`)
       }
     }
+  } else if (cmdLower === 'prometheus' || cmdLower === 'prom') {
+    const rawMetrics = PrometheusExporter.exportMetrics()
+    output.push("--- [[GREEN]]PROMETHEUS OPENMETRICS EXPORTER[[RESET]] ---")
+    rawMetrics.split('\n').forEach(line => {
+      if (line.trim()) {
+        output.push(line)
+      }
+    })
+  } else if (cmdLower === 'traces' || cmdLower === 'trace') {
+    const spans = ObservabilityTracer.getSpans()
+    output.push("--- [[BLUE]]SYSTEM TRANSACTION TRACER LOGS[[RESET]] ---")
+    if (spans.length === 0) {
+      output.push("No transaction spans recorded in the current sliding window.")
+    } else {
+      spans.forEach(span => {
+        const timeStr = new Date(span.timestamp).toLocaleTimeString()
+        const durationStr = span.durationMs !== undefined ? `${span.durationMs}ms` : 'running'
+        const color = span.status === 'success' ? '[[GREEN]]' : span.status === 'failed' ? '[[RED]]' : '[[YELLOW]]'
+        const statusLabel = `${color}${span.status.toUpperCase()}[[RESET]]`
+        output.push(`[${timeStr}] ${statusLabel} ${span.name} (id: ${span.spanId}, parent: ${span.parentSpanId ?? 'none'}, duration: ${durationStr})`)
+        if (span.metadata && Object.keys(span.metadata).length > 0) {
+          output.push(`  metadata: ${JSON.stringify(span.metadata)}`)
+        }
+      })
+    }
+  } else if (cmdLower === 'alerts' || cmdLower === 'alert') {
+    const rules = ObservabilityAlerting.getRules()
+    output.push("--- [[RED]]OBSERVABILITY RULES REGISTRY[[RESET]] ---")
+    rules.forEach(rule => {
+      const activeStr = rule.isActive ? '[[GREEN]]ACTIVE[[RESET]]' : '[[RED]]INACTIVE[[RESET]]'
+      output.push(`Rule: ${rule.name} [${activeStr}]`)
+      output.push(`  Metric: ${rule.metricType} | Operator: ${rule.operator} | Threshold: ${rule.threshold} | Severity: ${rule.severity}`)
+    })
   } else {
     output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
   }

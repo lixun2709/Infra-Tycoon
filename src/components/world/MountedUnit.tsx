@@ -12,9 +12,9 @@ import {
   StorageBar, 
   PIIShield, 
   MaintenanceIcon, 
-  InternalHardware, 
-  ServiceHolograms 
+  InternalHardware 
 } from './renderers/HardwareRenderer'
+import { CoolingEffect } from './CoolingEffect'
 
 interface MountedUnitProps {
   node: InfraNode
@@ -128,6 +128,10 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
       
       <PortVisualsSimplified node={node} h={h} />
 
+      {node.type === 'cooling' && (
+        <CoolingEffect h={h} isRunning={node.systemState === 'running'} />
+      )}
+
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
       </Text>
@@ -161,9 +165,10 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
 
       {/* Internal Modules (Visible when node is selected/transparent) */}
       {isSelected && <InternalHardware node={node} h={h} />}
-      
-      {/* Service Holograms */}
-      <ServiceHolograms node={node} />
+
+      {node.type === 'cooling' && (
+        <CoolingEffect h={h} isRunning={node.systemState === 'running'} />
+      )}
 
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}

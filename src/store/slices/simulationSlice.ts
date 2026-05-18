@@ -2,6 +2,7 @@ import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { simWorkerManager } from '../../simulation/SimulationWorkerManager'
 import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
+import { audioManager } from '../../utils/AudioManager'
 import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEngine'
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
@@ -92,6 +93,48 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // 1. Core Simulation Updates (Decoupled from UI)
     get().processAging()
 
+    // 1.5. Asynchronous Technician RMA Ticket Tickers
+    const { technicianTickets, pushAlert, updateNode } = get()
+    if (technicianTickets.length > 0) {
+      const nextTickets = technicianTickets.map(ticket => {
+        const nextElapsed = ticket.elapsedSeconds + 1
+        const pct = nextElapsed / ticket.totalSeconds
+        let nextStatus = ticket.status
+        if (pct >= 1.0) {
+          nextStatus = 'completed' as const
+        } else if (pct >= 0.7) {
+          nextStatus = 'repairing' as const
+        } else if (pct >= 0.4) {
+          nextStatus = 'diagnosing' as const
+        } else if (pct >= 0.15) {
+          nextStatus = 'arrived' as const
+        }
+        return { ...ticket, elapsedSeconds: nextElapsed, status: nextStatus }
+      })
+
+      const completedTickets = nextTickets.filter(t => t.status === 'completed')
+      const remainingTickets = nextTickets.filter(t => t.status !== 'completed')
+
+      set({ technicianTickets: remainingTickets })
+
+      completedTickets.forEach(ticket => {
+        const n = get().nodes.find(item => item.id === ticket.nodeId)
+        if (n) {
+          updateNode(ticket.nodeId, {
+            healthStatus: 'healthy',
+            degradation: 0,
+            driveDegradation: 0,
+            storageStatus: n.storageStatus === 'failed' || n.storageStatus === 'degraded' ? 'rebuilding' : n.storageStatus,
+            rebuildProgress: 0,
+            maintenanceMode: false,
+            lastMaintenance: Date.now()
+          })
+          pushAlert('info', `RMA Completed: Technician successfully repaired and certified ${ticket.nodeName}!`)
+          audioManager.playEffect('success')
+        }
+      })
+    }
+
     // 2. SLA & Contract Management
     const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0
     let monthlyRevenue = 0
@@ -104,7 +147,11 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       // Check requirements
       let isHealthy = true
       blueprint.requirements.forEach(req => {
-        const runningApps = applications.filter(a => a.appId === req.appId && a.status === 'running')
+        const runningApps = applications.filter(a => {
+          if (a.appId !== req.appId || a.status !== 'running') return false
+          const parentNode = nodes.find(n => n.id === a.nodeId)
+          return parentNode ? !parentNode.maintenanceMode : true
+        })
         if (runningApps.length < req.count) isHealthy = false
       })
 

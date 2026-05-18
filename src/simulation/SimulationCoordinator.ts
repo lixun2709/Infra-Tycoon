@@ -1,4 +1,5 @@
 import { useInfraStore } from '../store/useInfraStore'
+import { ObservabilityAlerting } from './observability/ObservabilityAlerting'
 
 export type SimEvent = 
   | { type: 'TICK_START'; cycle: number }
@@ -48,6 +49,7 @@ export class SimulationCoordinator {
       const start = performance.now()
       try {
         useInfraStore.getState().processTick()
+        ObservabilityAlerting.evaluateRules()
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err)
         console.error('[[SimulationCoordinator]] Error in processTick execution:', err)

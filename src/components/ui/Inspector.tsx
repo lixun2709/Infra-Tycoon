@@ -5,7 +5,26 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { Card, Button, Badge, Tabs } from './base'
 
 export function Inspector() {
-  const { nodes, connections, selectedNodeId, activePatchSource, handlePortClick, updateNode, removeNode, removeConnection, pushAlert, sites, alerts, installService, toggleService, advanceProvisioningState, powerOnNode } = useInfraStore()
+  const { 
+    nodes, 
+    connections, 
+    selectedNodeId, 
+    activePatchSource, 
+    handlePortClick, 
+    updateNode, 
+    removeNode, 
+    removeConnection, 
+    pushAlert, 
+    sites, 
+    alerts, 
+    installService, 
+    toggleService, 
+    advanceProvisioningState, 
+    powerOnNode,
+    repairHardware,
+    toggleMaintenanceMode,
+    technicianTickets
+  } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
@@ -437,6 +456,95 @@ export function Inspector() {
                     </div>
                  </div>
               </Card>
+
+              {selectedNode.type !== 'rack' && (
+                <Card title="Asset Maintenance" subtitle="Technician RMA & Diagnostics">
+                  <div className="space-y-4">
+                    {/* Maintenance Mode Toggle */}
+                    <div className="flex justify-between items-center bg-slate-950/40 border border-white/5 rounded-xl p-3">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-white font-black uppercase tracking-wider">Maintenance Mode</span>
+                        <span className="text-[8px] text-slate-500 font-medium font-sans">Pause apps & drain traffic</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedNode.maintenanceMode && (
+                          <Badge variant="warning" className="text-[8px] px-2 py-0.5 font-black font-mono tracking-widest animate-pulse" glow>DRAINING</Badge>
+                        )}
+                        <input 
+                          type="checkbox"
+                          checked={!!selectedNode.maintenanceMode}
+                          onChange={() => toggleMaintenanceMode(selectedNode.id)}
+                          className="w-4 h-4 accent-teal-500 cursor-pointer rounded bg-slate-900 border-white/10"
+                        />
+                      </div>
+                    </div>
+
+                    {/* RMA Status / Dispatch Button */}
+                    <div className="pt-2 border-t border-white/5 space-y-3">
+                      {(() => {
+                        const ticket = technicianTickets.find(t => t.nodeId === selectedNode.id)
+                        if (!ticket) {
+                          return (
+                            <Button 
+                              variant={selectedNode.healthStatus !== 'healthy' ? 'primary' : 'ghost'}
+                              className="w-full justify-center text-[10px] font-black tracking-widest py-2 h-9"
+                              onClick={() => repairHardware(selectedNode.id)}
+                            >
+                              🛠️ REQUEST TECHNICIAN RMA ($1,500)
+                            </Button>
+                          )
+                        }
+
+                        let statusText = 'Technician Dispatched'
+                        let statusIcon = '🚀'
+                        if (ticket.status === 'arrived') {
+                          statusText = 'Unboxing Tools & Grounding'
+                          statusIcon = '📦'
+                        } else if (ticket.status === 'diagnosing') {
+                          statusText = 'Running Silicon Diagnostics'
+                          statusIcon = '🔍'
+                        } else if (ticket.status === 'repairing') {
+                          statusText = 'Hot-Swapping Hardware'
+                          statusIcon = '🔧'
+                        }
+
+                        const pct = Math.round((ticket.elapsedSeconds / ticket.totalSeconds) * 100)
+
+                        return (
+                          <div className="bg-slate-950/60 border border-amber-500/20 rounded-xl p-3 space-y-3 relative overflow-hidden">
+                            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 to-transparent pointer-events-none" />
+                            <div className="flex justify-between items-start">
+                              <div className="space-y-0.5">
+                                <span className="text-[9px] uppercase font-black text-amber-400 font-mono tracking-wider flex items-center gap-1.5 animate-pulse">
+                                  <span>{statusIcon}</span>
+                                  <span>ACTIVE SERVICE TICKET</span>
+                                </span>
+                                <p className="text-[10px] font-bold text-white uppercase">{statusText}</p>
+                              </div>
+                              <Badge variant="warning" className="text-[8px] font-black uppercase font-mono px-2 py-0.5 rounded border border-amber-500/20">
+                                {pct}%
+                              </Badge>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="space-y-1">
+                              <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                  className="bg-amber-400 h-full transition-all duration-300 shadow-[0_0_8px_rgba(245,158,11,0.5)]" 
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                              <p className="text-[8px] font-mono text-slate-500 text-right uppercase">
+                                T-MINUS {ticket.totalSeconds - ticket.elapsedSeconds} SECONDS
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
           )}
 

@@ -148,6 +148,7 @@ export interface InfraNode {
   isInfected?: boolean
   lastMaintenance?: number
   provisioningProgress?: number
+  maintenanceMode?: boolean
   activeMigration?: { targetNodeId: string; progress: number }
   ipmiConfig?: {
     ip?: string
@@ -232,4 +233,15 @@ export interface Connection {
   syncProgress?: number
   type?: PortType
   highlightTime?: number
+}
+
+export interface TechnicianTicket {
+  id: string
+  nodeId: string
+  nodeName: string
+  type: 'drive' | 'cpu' | 'motherboard' | 'psu'
+  status: 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
+  elapsedSeconds: number
+  totalSeconds: number
+  cost: number
 }

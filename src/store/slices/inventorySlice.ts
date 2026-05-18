@@ -6,6 +6,8 @@ import type { HardwareCatalogKey, HardwareCatalogSpec } from '../../physics/hard
 import { createPortsForCatalog } from '../infraInitialState'
 import type { InfraNode, ServiceType, ServiceStatus } from '../infraTypes'
 import { findFirstEmptySlot } from '../../physics/snapping'
+import { ObservabilityTracer } from '../../simulation/observability/ObservabilityTracer'
+import { audioManager } from '../../utils/AudioManager'
 
 export interface InventorySlice {
   setPlacementMode: (mode: boolean, type?: string | null) => void
@@ -50,17 +52,25 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
   },
 
   placeCatalogHardware: (key, targetRackId) => {
+    const spanId = ObservabilityTracer.startSpan('hardware_procurement', undefined, { key, targetRackId })
     const { nodes, balance, pushAlert } = get()
     const spec = HARDWARE_CATALOG[key] as HardwareCatalogSpec
-    if (!spec) return false
+    if (!spec) {
+      ObservabilityTracer.endSpan(spanId, 'failed')
+      return false
+    }
 
     if (balance < spec.purchasePrice) {
       pushAlert('warning', `Insufficient funds to procure ${spec.name}`)
+      ObservabilityTracer.endSpan(spanId, 'failed')
       return false
     }
 
     const rack = nodes.find(n => n.id === targetRackId)
-    if (!rack || rack.type !== 'rack') return false
+    if (!rack || rack.type !== 'rack') {
+      ObservabilityTracer.endSpan(spanId, 'failed')
+      return false
+    }
 
     let slotIndex: number
 
@@ -68,6 +78,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       const chassis = nodes.find(n => n.parentRackId === targetRackId && n.catalogKey === 'BLADE_CHASSIS_4U')
       if (!chassis) {
         pushAlert('warning', `Blade servers require a Blade Chassis to be placed in the rack.`)
+        ObservabilityTracer.endSpan(spanId, 'failed')
         return false
       }
       slotIndex = chassis.slotIndex || 1
@@ -76,6 +87,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       const slot = findFirstEmptySlot(nodes, spec.uHeight, targetRackId)
       if (!slot || slot.rackId !== targetRackId) {
          pushAlert('warning', `No available ${spec.uHeight}U slot in target rack.`)
+         ObservabilityTracer.endSpan(spanId, 'failed')
          return false
       }
       slotIndex = slot.slotIndex
@@ -126,27 +138,85 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     }))
 
     pushAlert('info', `Procured ${spec.name} for $${spec.purchasePrice.toLocaleString()}`)
+    ObservabilityTracer.endSpan(spanId, 'success', { nodeId: newNode.id })
     return true
   },
 
   advanceProvisioningState: (id) => {
-    const { nodes, updateNode } = get()
+    const { nodes, connections, updateNode, pushAlert } = get()
     const node = nodes.find(n => n.id === id)
     if (!node || node.provisioningState === 'provisioned') return
 
-    const nextProgress = (node.provisioningProgress ?? 0) + 20
-    if (nextProgress >= 100) {
-      updateNode(id, { provisioningState: 'provisioned', provisioningProgress: 100, systemState: 'booting' })
-      setTimeout(() => updateNode(id, { systemState: 'running' }), 5000)
-    } else {
-      updateNode(id, { provisioningProgress: nextProgress })
+    const currentState = node.provisioningState
+
+    if (currentState === 'unboxed') {
+      // 1. Unboxed -> Racked
+      if (!node.parentRackId && node.type !== 'rack' && node.type !== 'cooling') {
+        pushAlert('warning', `Mounting Required: Please mount ${node.name} inside a Server Rack before racking.`)
+        audioManager.playEffect('error')
+        return
+      }
+      updateNode(id, { provisioningState: 'racked', provisioningProgress: 25 })
+      pushAlert('info', `Lifecycle: ${node.name} has been successfully racked.`)
+      audioManager.playEffect('click')
+
+    } else if (currentState === 'racked') {
+      // 2. Racked -> Patched
+      const hasConnections = connections.some(c => c.startNodeId === id || c.endNodeId === id)
+      if (node.ports.length > 0 && !hasConnections) {
+        pushAlert('warning', `Cabling Required: Please connect network/power cables to the ports of ${node.name} before patching.`)
+        audioManager.playEffect('error')
+        return
+      }
+      updateNode(id, { provisioningState: 'patched', provisioningProgress: 50 })
+      pushAlert('info', `Lifecycle: ${node.name} cabled connections successfully patched.`)
+      audioManager.playEffect('click')
+
+    } else if (currentState === 'patched') {
+      // 3. Patched -> Bootstrapped
+      updateNode(id, { provisioningState: 'bootstrapped', provisioningProgress: 75 })
+      pushAlert('info', `Lifecycle: ${node.name} successfully bootstrapped with base configurations.`)
+      audioManager.playEffect('click')
+
+    } else if (currentState === 'bootstrapped') {
+      // 4. Bootstrapped -> Provisioned (Booting Sequence)
+      updateNode(id, { 
+        provisioningState: 'provisioned', 
+        provisioningProgress: 100, 
+        systemState: 'booting',
+        bootProgress: 0 
+      })
+      pushAlert('info', `Lifecycle: ${node.name} fully provisioned! Boot sequence initiated.`)
+      audioManager.playEffect('click')
+
+      let progress = 0
+      const interval = setInterval(() => {
+        const currentNodes = get().nodes
+        const n = currentNodes.find(item => item.id === id)
+        if (!n || n.systemState !== 'booting') {
+          clearInterval(interval)
+          return
+        }
+
+        progress += 10
+        updateNode(id, { bootProgress: progress })
+        if (progress >= 100) {
+          clearInterval(interval)
+          updateNode(id, { systemState: 'running' })
+          audioManager.playEffect('success')
+        }
+      }, 500)
     }
   },
 
   installService: (nodeId, type) => {
+    const spanId = ObservabilityTracer.startSpan('service_installation', undefined, { nodeId, type })
     const { nodes, updateNode, pushAlert } = get()
     const node = nodes.find(n => n.id === nodeId)
-    if (!node) return
+    if (!node) {
+      ObservabilityTracer.endSpan(spanId, 'failed')
+      return
+    }
 
     const newService = {
       id: crypto.randomUUID(),
@@ -165,6 +235,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
           services: n.services.map(s => s.id === newService.id ? { ...s, status: 'running' } : s)
         } : n)
       }))
+      ObservabilityTracer.endSpan(spanId, 'success', { serviceId: newService.id })
     }, 3000)
   },
 

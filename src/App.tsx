@@ -17,60 +17,10 @@ import { GlobalMap } from './components/ui/GlobalMap'
 import { Rocket, X, TrendingUp, Sliders } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
-import type { InfraAlert } from './store/infraTypes'
 import { THEMES } from './store/themeTypes'
 import type { ThemeKey } from './store/themeTypes'
 import { ToastProvider } from './components/ui/base'
 import { audioManager } from './utils/AudioManager'
-
-function EmergencyToasts() {
-  const alerts = useInfraStore(s => s.alerts)
-  const [activeAlert, setActiveAlert] = useState<InfraAlert | null>(null)
-
-  useEffect(() => {
-    if (alerts.length === 0) return
-
-    const latest = alerts[alerts.length - 1]
-    if (!latest) return
-    if (Date.now() - latest.timestamp < 6000) {
-      // Async update to satisfy React purity/cascading rules
-      const timerId = setTimeout(() => {
-        setActiveAlert(latest)
-      }, 0)
-      
-      const clearTimer = setTimeout(() => {
-        setActiveAlert(null)
-      }, 6000)
-      
-      return () => {
-        clearTimeout(timerId)
-        clearTimeout(clearTimer)
-      }
-    }
-    return undefined
-  }, [alerts])
-
-  if (!activeAlert) return null
-
-  const isCritical = activeAlert.severity === 'critical'
-  const isWarning = activeAlert.severity === 'warning'
-
-  return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] pointer-events-none transition-all">
-      <div className={`bg-[#0a1536]/95 backdrop-blur-xl border rounded-xl px-6 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.5)] flex items-center gap-4 max-w-xl w-max ring-4 ${isCritical ? 'border-red-500 ring-red-900/30' : (isWarning ? 'border-amber-500 ring-amber-900/30' : 'border-teal-500 ring-teal-900/30')}`}>
-        <div className="text-4xl animate-bounce drop-shadow-lg">{isCritical ? '🚨' : (isWarning ? '⚠️' : '💾')}</div>
-        <div className="flex-1">
-          <h2 className={`text-sm font-black tracking-widest uppercase mb-1 drop-shadow-sm ${isCritical ? 'text-red-500' : (isWarning ? 'text-amber-500' : 'text-teal-400')}`}>
-            {isCritical ? 'Critical Failure' : (isWarning ? 'Action Denied' : 'System Sync')}
-          </h2>
-          <p className={`font-semibold text-sm leading-snug ${isCritical ? 'text-red-100' : (isWarning ? 'text-amber-100' : 'text-teal-100')}`}>
-            {activeAlert.message}
-          </p>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 import { SaveManager } from './components/ui/SaveManager'
 
@@ -371,7 +321,6 @@ function App() {
         isOpen={isProcurementOpen}
         onToggle={setIsProcurementOpen}
       />
-      <EmergencyToasts />
       <ToastProvider />
       {isNOCDashboardOpen && (
         <Dashboard 

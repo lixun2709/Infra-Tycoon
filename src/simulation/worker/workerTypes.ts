@@ -66,7 +66,7 @@ export interface SimSyncOutputPayload {
     isThrottled: boolean
     currentPowerKW: number
     bootProgress: number
-    systemState: SystemState
+    systemState?: SystemState
     totalStorageTB?: number
     usedStorageTB?: number
     raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'

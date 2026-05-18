@@ -287,7 +287,7 @@ function sendSyncOutput() {
         isThrottled: comp.isThrottled,
         currentPowerKW: power?.load ?? 0,
         bootProgress: prov?.bootProgress ?? 0,
-        systemState: prov && prov.bootProgress >= 100 ? 'running' : 'booting', // Simplified
+        systemState: (power && !power.isPowered) ? 'off' : undefined,
         totalStorageTB: storage?.totalStorageTB,
         usedStorageTB: storage?.usedStorageTB,
         raidLevel: storage?.raidLevel,

@@ -15,7 +15,8 @@ import type {
   ServiceType,
   ServiceStatus,
   SaveMetadata,
-  ActiveContract
+  ActiveContract,
+  TechnicianTicket
 } from './infraTypes'
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
@@ -60,6 +61,7 @@ export type InfraState = {
   
   // v5.0 Service Layer
   applications: ApplicationDeployment[]
+  technicianTickets: TechnicianTicket[]
   
   // Day 6: Enterprise Management Console
   terminalStates: Record<string, TerminalStateRecord>
@@ -105,6 +107,7 @@ export type InfraState = {
   processAging: () => void
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
+  toggleMaintenanceMode: (nodeId: string) => void
   installService: (nodeId: string, type: ServiceType) => void
   toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
   // Day 30 Actions
