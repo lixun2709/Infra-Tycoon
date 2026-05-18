@@ -28,11 +28,14 @@ function overlaps(
 export function findFirstEmptySlot(
   nodes: InfraNode[],
   uHeight: number,
+  targetRackId?: string,
 ): { rackId: string; slotIndex: number } | null {
   if (uHeight < 1 || uHeight > RACK_U) return null
 
   const racks = nodes.filter((n) => n.type === 'rack')
-  for (const rack of racks) {
+  const searchedRacks = targetRackId ? racks.filter(r => r.id === targetRackId) : racks
+
+  for (const rack of searchedRacks) {
     const mounted = nodes.filter(
       (n) => n.parentRackId === rack.id && n.slotIndex != null,
     )

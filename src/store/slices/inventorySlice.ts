@@ -73,7 +73,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       slotIndex = chassis.slotIndex || 1
     } else {
       // Find empty slot (using snapping helper)
-      const slot = findFirstEmptySlot(nodes, spec.uHeight)
+      const slot = findFirstEmptySlot(nodes, spec.uHeight, targetRackId)
       if (!slot || slot.rackId !== targetRackId) {
          pushAlert('warning', `No available ${spec.uHeight}U slot in target rack.`)
          return false

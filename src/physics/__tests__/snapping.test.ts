@@ -38,4 +38,16 @@ describe('snapping logic', () => {
     const result = findFirstEmptySlot(nodesWithFullRack as InfraNode[], 5) // 40 + 5 = 45 > 42
     expect(result).toBeNull()
   })
+
+  it('should target the correct rack when targetRackId is provided', () => {
+    const multiRackNodes: Partial<InfraNode>[] = [
+      { id: 'rack-1', type: 'rack' },
+      { id: 'rack-2', type: 'rack' },
+      { id: 'node-1', type: 'compute', parentRackId: 'rack-1', slotIndex: 1, uHeight: 1 }
+    ]
+    
+    // rack-1 first empty is 2. rack-2 first empty is 1.
+    const resultForRack2 = findFirstEmptySlot(multiRackNodes as InfraNode[], 1, 'rack-2')
+    expect(resultForRack2).toEqual({ rackId: 'rack-2', slotIndex: 1 })
+  })
 })

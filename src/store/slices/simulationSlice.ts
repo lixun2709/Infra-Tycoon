@@ -6,6 +6,7 @@ import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEng
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
 import { simulationCoordinator } from '../../simulation/SimulationCoordinator'
+import { simulateNetwork } from '../../physics/network/simulation'
 
 export interface SimulationSlice {
   processTick: () => void
@@ -70,17 +71,9 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // 1. Core Simulation Updates (Decoupled from UI)
     get().processAging()
 
-    if (networkLoad > 0) {
-      const updatedConnections = connections.map(c => {
-        if (c.status === 'blocked') return { ...c, throughputGbps: 0 }
-        const targetThroughput = c.bandwidthGbps * networkLoad
-        const variance = targetThroughput * 0.2
-        const newThroughput = Math.max(0, Math.min(c.bandwidthGbps, targetThroughput + (Math.random() * variance * 2 - variance)))
-        const newSync = Math.min(100, (c.syncProgress ?? 0) + (newThroughput / c.bandwidthGbps) * 10) // Scaled for 2s tick
-        return { ...c, throughputGbps: newThroughput, syncProgress: newSync }
-      })
-      set({ connections: updatedConnections })
-    }
+    // Deterministic Network Simulation Pipeline (Day 31)
+    const { connections: updatedConnections } = simulateNetwork(nodes, connections, networkLoad)
+    set({ connections: updatedConnections })
 
     // 2. SLA & Contract Management
     const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0

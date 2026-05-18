@@ -220,7 +220,7 @@ export interface Connection {
   throughputGbps: number
   latencyMs: number
   isBlockedByCompliance?: boolean
-  status?: 'active' | 'blocked'
+  status?: 'active' | 'blocked' | 'degraded'
   syncProgress?: number
   type?: PortType
   highlightTime?: number

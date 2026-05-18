@@ -213,6 +213,10 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const siteState = useInfraStore(s => s.terminalStates[currentSiteId])
   const nodes = useInfraStore(s => s.nodes)
+
+  const topActiveSessionId = siteState?.activeSessionId
+  const topActiveSession = siteState?.sessions?.find(s => s.id === topActiveSessionId)
+  const topActivePaneId = topActiveSession?.activePaneId
   
   const { 
     processCommand, 
@@ -237,6 +241,15 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [systemLoad, setSystemLoad] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Keep terminal input focused on tab swap or active pane change
+  useEffect(() => {
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 50)
+  }, [topActivePaneId, topActiveSessionId])
+
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -383,7 +396,12 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return (
       <div 
         key={pane.id}
-        onClick={() => setActivePane(pane.id)}
+        onClick={() => {
+          setActivePane(pane.id)
+          setTimeout(() => {
+            inputRef.current?.focus()
+          }, 10)
+        }}
         className={`flex-1 flex flex-col min-h-0 relative transition-all duration-300 ${isFocused ? 'bg-white/[0.04]' : 'bg-black/20 opacity-60 grayscale-[0.5]'}`}
       >
         <div className="absolute top-2 left-6 flex items-center gap-3 pointer-events-none z-20">
@@ -414,6 +432,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   <span className="text-emerald-500 font-black text-[10px] animate-pulse">●</span>
                 </div>
                 <input 
+                  ref={isFocused ? inputRef : undefined}
                   autoFocus
                   type="text"
                   value={input}
