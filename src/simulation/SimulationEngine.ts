@@ -5,6 +5,7 @@ import { ProvisioningSystem } from './ecs/systems/ProvisioningSystem'
 import { ApplicationSystem } from './ecs/systems/ApplicationSystem'
 import { StorageSystem } from './ecs/systems/StorageSystem'
 import { PacketSystem } from './ecs/systems/PacketSystem'
+import { TelemetrySystem } from './ecs/systems/TelemetrySystem'
 import { SystemManager } from './ecs/SystemManager'
 
 /**
@@ -29,6 +30,7 @@ export class SimulationEngine {
     this.systemManager.registerSystem(new PacketSystem(this.world), 28)
     this.systemManager.registerSystem(new ProvisioningSystem(this.world), 30)
     this.systemManager.registerSystem(new ApplicationSystem(this.world), 40)
+    this.systemManager.registerSystem(new TelemetrySystem(this.world), 50)
   }
 
   public getWorld() {
@@ -56,7 +58,8 @@ export class SimulationEngine {
       lastTickTime: this.lastTickTime,
       systemTimings: this.systemTimings,
       systemProfiling: this.systemManager.getProfilingData(),
-      queryTelemetry: this.world.getQueryTelemetry()
+      queryTelemetry: this.world.getQueryTelemetry(),
+      simStats: TelemetrySystem.simStats
     }
   }
 }

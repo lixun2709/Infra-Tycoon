@@ -78,4 +78,15 @@ export interface StorageComponent extends Component {
   driveDegradation: number
 }
 
+// Telemetry Component: Per-entity performance and operational history
+export interface TelemetryComponent extends Component {
+  uptimeTicks: number
+  totalTicks: number
+  powerSpikesCount: number
+  thermalThrottlingTicks: number
+  networkCongestionTicks: number
+  storageIopsThrottlingTicks: number
+  auditViolationsCount: number
+}
+
 export type ComponentMap<T extends Component> = Map<Entity, T>

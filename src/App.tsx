@@ -14,7 +14,6 @@ import { MissionLogic } from './components/world/MissionLogic'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
-import { PerformanceOverlay } from './components/ui/PerformanceOverlay'
 import { Rocket, X, TrendingUp, Sliders } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
@@ -81,6 +80,7 @@ function App() {
   const setIsSaveManagerOpen = (val: boolean) => useInfraStore.setState({ isSaveManagerOpen: val })
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
+  const [nocInitialTab, setNocInitialTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics'>('overview')
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   const [isHandbookOpen, setIsHandbookOpen] = useState(false)
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
@@ -163,6 +163,21 @@ function App() {
   }, [isTerminalOpen, setIsTerminalOpen])
 
   useEffect(() => {
+    const handleF2Key = (e: KeyboardEvent) => {
+      if (e.key === 'F2') {
+        e.preventDefault()
+        setNocInitialTab('diagnostics')
+        setIsNOCDashboardOpen(prev => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleF2Key)
+    return () => {
+      window.removeEventListener('keydown', handleF2Key)
+    }
+  }, [])
+
+  useEffect(() => {
     const interval = setInterval(() => {
       processAutoBackups()
     }, 15000)
@@ -205,7 +220,10 @@ function App() {
       {/* Top Navigation Bar */}
       <TopNav 
         onOpenNetwork={() => setNetworkManagerOpen(!useInfraStore.getState().isNetworkManagerOpen)} 
-        onToggleNOC={() => setIsNOCDashboardOpen(!isNOCDashboardOpen)}
+        onToggleNOC={() => {
+          setNocInitialTab('overview')
+          setIsNOCDashboardOpen(!isNOCDashboardOpen)
+        }}
         onToggleTerminal={() => {
            setIsTerminalOpen(!isTerminalOpen)
            if (siteTerminal && siteTerminal.sessions.length === 0) {
@@ -353,11 +371,15 @@ function App() {
         isOpen={isProcurementOpen}
         onToggle={setIsProcurementOpen}
       />
-      <PerformanceOverlay />
-
       <EmergencyToasts />
       <ToastProvider />
-      {isNOCDashboardOpen && <Dashboard onClose={() => setIsNOCDashboardOpen(false)} />}
+      {isNOCDashboardOpen && (
+        <Dashboard 
+          key={nocInitialTab}
+          initialTab={nocInitialTab} 
+          onClose={() => setIsNOCDashboardOpen(false)} 
+        />
+      )}
       <GlobalNetwork />
       <MissionHUD />
       <MissionLogic />

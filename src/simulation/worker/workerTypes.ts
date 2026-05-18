@@ -97,6 +97,14 @@ export interface SimTelemetryPayload {
     queryMisses: number
     cacheHitRatio: number
   }
+  simStats?: {
+    averageUptimeRatio: number
+    overheatedNodeCount: number
+    congestedLinkCount: number
+    totalPowerDrawKW: number
+    totalStorageUsedTB: number
+    totalStorageCapacityTB: number
+  }
 }
 
 export type SimMessage = 

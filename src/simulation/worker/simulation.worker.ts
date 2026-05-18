@@ -10,7 +10,8 @@ import type {
   ProvisioningComponent, 
   ApplicationComponent,
   StorageComponent,
-  ConnectionComponent
+  ConnectionComponent,
+  TelemetryComponent
 } from '../ecs/types'
 
 const engine = new SimulationEngine()
@@ -156,6 +157,19 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       state: node.provisioningState,
       bootProgress: node.bootProgress
     } as ProvisioningComponent)
+
+    if (!world.hasComponent('telemetry', node.id)) {
+      world.addComponent('telemetry', {
+        entityId: node.id,
+        uptimeTicks: 0,
+        totalTicks: 0,
+        powerSpikesCount: 0,
+        thermalThrottlingTicks: 0,
+        networkCongestionTicks: 0,
+        storageIopsThrottlingTicks: 0,
+        auditViolationsCount: 0
+      } as TelemetryComponent)
+    }
 
     if (node.type === 'storage' || node.type === 'compute' || (node.totalStorageTB && node.totalStorageTB > 0)) {
       world.addComponent('storage', {

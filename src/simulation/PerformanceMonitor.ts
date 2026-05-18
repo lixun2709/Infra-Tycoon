@@ -40,6 +40,16 @@ export interface PerformanceMetrics {
   droppedTicks: number
   successfulTicks: number
   backpressureRatio: number
+
+  // Deterministic Simulation Statistics (Day 35)
+  simStats?: {
+    averageUptimeRatio: number
+    overheatedNodeCount: number
+    congestedLinkCount: number
+    totalPowerDrawKW: number
+    totalStorageUsedTB: number
+    totalStorageCapacityTB: number
+  }
 }
 
 export class PerformanceMonitor {
@@ -68,7 +78,15 @@ export class PerformanceMonitor {
     frameJitter: 0,
     droppedTicks: 0,
     successfulTicks: 0,
-    backpressureRatio: 0
+    backpressureRatio: 0,
+    simStats: {
+      averageUptimeRatio: 1.0,
+      overheatedNodeCount: 0,
+      congestedLinkCount: 0,
+      totalPowerDrawKW: 0.0,
+      totalStorageUsedTB: 0.0,
+      totalStorageCapacityTB: 0.0
+    }
   }
 
   private frameCount = 0
@@ -167,6 +185,14 @@ export class PerformanceMonitor {
       queryHits: number
       queryMisses: number
       cacheHitRatio: number
+    },
+    simStats?: {
+      averageUptimeRatio: number
+      overheatedNodeCount: number
+      congestedLinkCount: number
+      totalPowerDrawKW: number
+      totalStorageUsedTB: number
+      totalStorageCapacityTB: number
     }
   ) {
     this.metrics.simTickTime = simTickTime
@@ -177,6 +203,9 @@ export class PerformanceMonitor {
       this.metrics.queryHits = queryTelemetry.queryHits
       this.metrics.queryMisses = queryTelemetry.queryMisses
       this.metrics.cacheHitRatio = queryTelemetry.cacheHitRatio
+    }
+    if (simStats) {
+      this.metrics.simStats = simStats
     }
     this.metrics.lastUpdate = Date.now()
     this.metrics.workerStatus = 'online'

@@ -1,14 +1,29 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { 
   AlertCircle, 
   Scale, 
   LayoutDashboard,
-  Zap
+  Zap,
+  Activity,
+  Clock,
+  Database,
+  ShieldAlert,
+  HardDrive,
+  Layers,
+  Globe
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
+import { performanceMonitor } from '../../simulation/PerformanceMonitor'
+import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 
-export function Dashboard({ onClose }: { onClose: () => void }) {
+export function Dashboard({ 
+  onClose,
+  initialTab = 'overview'
+}: { 
+  onClose: () => void
+  initialTab?: 'overview' | 'events' | 'audit' | 'diagnostics'
+}) {
   const {
     nodes, alerts, acknowledgeAlert, acknowledgeAllAlerts,
     totalPowerKW,
@@ -16,8 +31,31 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
     simulationCycle, auditLogs,
     isHeatMapVisible, toggleHeatMap
   } = useInfraStore()
-  
-  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics'>(initialTab)
+
+  const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
+
+  useEffect(() => {
+    if (activeTab !== 'diagnostics') return
+    const interval = setInterval(() => {
+      setMetrics(performanceMonitor.getMetrics())
+    }, 500)
+    return () => clearInterval(interval)
+  }, [activeTab])
+
+  const formatBytes = (bytes?: number): string => {
+    if (bytes === undefined) return 'N/A'
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'online': return 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+      case 'restarting': return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+      case 'failed': return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+      default: return 'text-slate-500 border-slate-700 bg-slate-800/50'
+    }
+  }
 
   const allHardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
 
@@ -28,6 +66,7 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
     { id: 'overview', label: 'OVERVIEW', icon: <LayoutDashboard size={14} /> },
     { id: 'events', label: 'EVENTS', icon: <AlertCircle size={14} /> },
     { id: 'audit', label: 'AUDIT LOGS', icon: <Scale size={14} /> },
+    { id: 'diagnostics', label: 'DIAGNOSTICS', icon: <Activity size={14} /> },
   ]
 
   return (
@@ -211,6 +250,233 @@ export function Dashboard({ onClose }: { onClose: () => void }) {
                   ))}
                 </div>
               </Card>
+            </div>
+          )}
+
+          {activeTab === 'diagnostics' && (
+            <div className="grid grid-cols-2 gap-8 font-mono text-[11px] text-slate-300">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Host Metrics Card */}
+                <Card title="Host Diagnostics" subtitle="Main Thread & Memory performance">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-900/50 border border-slate-900/40 rounded-xl p-3 flex flex-col justify-between h-20">
+                      <span className="text-slate-500 text-[9px] uppercase tracking-wider font-bold">Main Thread</span>
+                      <div className="flex justify-between items-baseline mt-0.5">
+                        <span className={`${metrics.fps > 55 ? 'text-emerald-400' : 'text-amber-400'} text-base font-bold`}>{metrics.fps}</span>
+                        <span className="text-[9px] text-slate-500">FPS ({metrics.frameTime.toFixed(1)}ms)</span>
+                      </div>
+                      <div className="flex justify-between text-[9px] text-slate-400/90 border-t border-slate-800/40 pt-1 mt-1">
+                        <span>1% Low: <span className="font-bold text-amber-500">{metrics.onePercentLowFps ?? metrics.fps}</span></span>
+                        <span>Jitter: <span className="font-bold text-sky-400">{metrics.frameJitter?.toFixed(1) ?? '0.0'}ms</span></span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-900/50 border border-slate-900/40 rounded-xl p-3 flex flex-col justify-between h-20">
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-500 text-[9px] uppercase tracking-wider font-bold">JS Heap Memory</span>
+                        <HardDrive className="w-3.5 h-3.5 text-sky-400 opacity-60" />
+                      </div>
+                      <div className="flex justify-between items-baseline mt-0.5">
+                        <span className="text-sky-400 font-bold text-xs">{formatBytes(metrics.usedJSHeapSize)}</span>
+                        <span className="text-[8px] text-slate-500">of {formatBytes(metrics.totalJSHeapSize)}</span>
+                      </div>
+                      <div className="text-[8px] text-slate-500/85 border-t border-slate-800/40 pt-1 mt-1 text-right">
+                        Limit: {formatBytes(metrics.jsHeapSizeLimit)}
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Worker Diagnostics Card */}
+                <Card title="Simulation Worker Thread" subtitle="Background ECS compute engine state">
+                  <div className="flex justify-between items-center pb-2 border-b border-slate-900/50 mb-3">
+                    <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1.5">
+                      <Activity className="w-3.5 h-3.5 text-indigo-400" />
+                      Worker Execution
+                    </span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold border ${getStatusColor(metrics.workerStatus)}`}>
+                      {metrics.workerStatus.toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] bg-slate-900/20 p-2.5 rounded-xl border border-slate-900/25">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <Clock className="w-3 h-3 opacity-40" /> Tick duration
+                      </span>
+                      <span className="text-indigo-400 font-semibold">
+                        {metrics.simTickTime === 0 || metrics.simTickTime < 0.001 
+                          ? '< 0.001ms' 
+                          : `${metrics.simTickTime.toFixed(3)}ms`}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <Zap className="w-3 h-3 opacity-40" /> Thread latency
+                      </span>
+                      <span className="text-slate-300 font-semibold">{metrics.workerLatency.toFixed(1)}ms</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <Database className="w-3 h-3 opacity-40" /> Total entities
+                      </span>
+                      <span className="text-slate-300 font-semibold">{metrics.entityCount}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <ShieldAlert className="w-3 h-3 opacity-40 text-rose-400" /> Dropped ticks
+                      </span>
+                      <span className={`font-semibold ${metrics.droppedTicks > 0 ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
+                        {metrics.droppedTicks ?? 0}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center col-span-2 border-t border-slate-900/50 pt-2 mt-1">
+                      <span className="text-slate-500 flex items-center gap-1">
+                        <Zap className="w-3 h-3 opacity-40 text-amber-400" /> Backpressure Ratio
+                      </span>
+                      <span className={`font-semibold ${metrics.backpressureRatio > 0.1 ? 'text-amber-400 font-bold' : 'text-slate-300'}`}>
+                        {((metrics.backpressureRatio ?? 0) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* Deterministic Simulation Stats */}
+                {metrics.simStats && (
+                  <Card title="Deterministic Simulation" subtitle="Day 35 ECS Aggregated Telemetry">
+                    <div className="flex justify-between items-center pb-2 border-b border-slate-900/50 mb-3">
+                      <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider">
+                        Operating Health Index
+                      </span>
+                      <span className="text-sky-400 font-bold text-[10px]">
+                        {(metrics.simStats.averageUptimeRatio * 100).toFixed(1)}% UPTIME
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] bg-slate-900/20 p-2.5 rounded-xl border border-slate-900/25">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Power Draw</span>
+                        <span className="text-amber-400 font-semibold">{metrics.simStats.totalPowerDrawKW.toFixed(2)} kW</span>
+                      </div>
+
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-500">Hotspots Count</span>
+                        <span className={`font-semibold ${metrics.simStats.overheatedNodeCount > 0 ? 'text-rose-400 font-bold' : 'text-slate-300'}`}>
+                          {metrics.simStats.overheatedNodeCount}
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center col-span-2 border-t border-slate-900/50 pt-2 mt-1">
+                        <span className="text-slate-500">Aggregated Storage</span>
+                        <span className="text-slate-300">
+                          {metrics.simStats.totalStorageUsedTB.toFixed(1)} / {metrics.simStats.totalStorageCapacityTB.toFixed(1)} TB
+                        </span>
+                      </div>
+
+                      <div className="flex justify-between items-center col-span-2">
+                        <span className="text-slate-500">Congested Link Count</span>
+                        <span className={`font-semibold ${metrics.simStats.congestedLinkCount > 0 ? 'text-amber-400 font-bold' : 'text-slate-300'}`}>
+                          {metrics.simStats.congestedLinkCount}
+                        </span>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                {/* WebGL & Graphics */}
+                <Card title="WebGL Graphics Renderer" subtitle="Three.js 3D pipeline telemetry">
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] bg-slate-900/20 p-2.5 rounded-xl border border-slate-900/25">
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Draw Calls</span>
+                      <span className="text-amber-400 font-bold">{metrics.drawCalls}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-slate-500">Triangles Count</span>
+                      <span className="text-slate-300 font-semibold">{metrics.triangles.toLocaleString()}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center col-span-2 border-t border-slate-900/50 pt-2 mt-1">
+                      <span className="text-slate-500">Geometries Load</span>
+                      <span className="text-slate-300 font-semibold">{metrics.geometries}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center col-span-2">
+                      <span className="text-slate-500">Textures Load</span>
+                      <span className="text-slate-300 font-semibold">{metrics.textures}</span>
+                    </div>
+                  </div>
+                </Card>
+
+                {/* ECS Query Cache & Multiplayer */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-900/25 border border-slate-900/30 rounded-2xl p-4 space-y-2">
+                    <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1.5 border-b border-slate-900/55 pb-1">
+                      <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                      ECS Query Cache
+                    </span>
+                    <div className="text-[10px] text-emerald-400 font-bold mt-1">
+                      {(metrics.cacheHitRatio * 100).toFixed(1)}% HIT RATE
+                    </div>
+                    <div className="text-[9px] text-slate-500 space-y-0.5 pt-1">
+                      <div>Active Queries: {metrics.activeQueries}</div>
+                      <div>Hits / Misses: {metrics.queryHits} / {metrics.queryMisses}</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/25 border border-slate-900/30 rounded-2xl p-4 space-y-2">
+                    <span className="text-slate-400 font-bold uppercase text-[9px] tracking-wider flex items-center gap-1.5 border-b border-slate-900/55 pb-1">
+                      <Globe className="w-3.5 h-3.5 text-pink-400" />
+                      Multiplayer State
+                    </span>
+                    <div className="text-[10px] text-pink-400 font-bold mt-1">
+                      READY / LOCALHOST
+                    </div>
+                    <div className="text-[9px] text-slate-500 space-y-0.5 pt-1">
+                      <div>Ping RTT: 0.0 ms</div>
+                      <div>Packet Loss: 0.00%</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Subsystem timings */}
+                {Object.keys(metrics.systemTimings).length > 0 && (
+                  <Card title="ECS Subsystem Timing Profile" subtitle="Background execution breakdown">
+                    <div className="space-y-2 text-[10px]">
+                      {Object.entries(metrics.systemTimings).map(([name, time]) => (
+                        <div key={name} className="flex flex-col gap-1">
+                          <div className="flex justify-between font-mono">
+                            <span className="truncate max-w-[150px] text-slate-400 font-semibold">{name}</span>
+                            <span className="text-slate-300">
+                              {time === 0 || time < 0.0001 
+                                ? '< 0.0001ms' 
+                                : `${time.toFixed(4)}ms`}
+                            </span>
+                          </div>
+                          <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
+                            <div 
+                              className="bg-indigo-500 h-full rounded transition-all duration-300"
+                              style={{ 
+                                width: `${metrics.simTickTime > 0 
+                                  ? Math.min(100, (time / metrics.simTickTime) * 100) 
+                                  : 0}%` 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+              </div>
             </div>
           )}
         </div>

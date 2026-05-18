@@ -87,7 +87,7 @@ export class SimulationWorkerManager {
 
         case 'TELEMETRY': {
           const t = payload as SimTelemetryPayload
-          performanceMonitor.updateSimMetrics(t.tickDurationMs, t.entityCount, t.systemTimings, t.queryTelemetry)
+          performanceMonitor.updateSimMetrics(t.tickDurationMs, t.entityCount, t.systemTimings, t.queryTelemetry, t.simStats)
           if (this.onTelemetryCallback) this.onTelemetryCallback(t)
           break
         }
