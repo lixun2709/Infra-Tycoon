@@ -159,7 +159,15 @@ export class SimulationWorkerManager {
       bootProgress: n.bootProgress ?? 0,
       temperature: n.temperature,
       isThrottled: n.isThrottled,
-      btuOutput: n.btuOutput ?? 0
+      btuOutput: n.btuOutput ?? 0,
+      totalStorageTB: n.totalStorageTB,
+      usedStorageTB: n.usedStorageTB,
+      raidLevel: n.raidLevel,
+      storageStatus: n.storageStatus,
+      rebuildProgress: n.rebuildProgress,
+      ioPSLimit: n.ioPSLimit,
+      ioPSUsed: n.ioPSUsed,
+      driveDegradation: n.driveDegradation
     }))
 
     const compactApps = applications.map(a => ({

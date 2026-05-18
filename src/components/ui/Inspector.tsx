@@ -98,19 +98,104 @@ export function Inspector() {
                 </div>
 
                 {selectedNode.totalStorageTB != null && selectedNode.totalStorageTB > 0 && (
-                  <div className="mt-4 pt-4 border-t border-white/5">
-                    <div className="flex justify-between text-[10px] mb-2 font-bold uppercase tracking-wider">
-                      <span className="text-slate-500">Storage Utilization</span>
-                      <span className="text-teal-400 font-mono">
-                        {selectedNode.usedStorageTB} / {selectedNode.totalStorageTB} TB
-                      </span>
+                  <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+                    {/* Capacity Section */}
+                    <div>
+                      <div className="flex justify-between text-[10px] mb-2 font-bold uppercase tracking-wider">
+                        <span className="text-slate-500">Storage Capacity</span>
+                        <span className="text-teal-400 font-mono">
+                          {(selectedNode.usedStorageTB ?? 0).toFixed(1)} / {selectedNode.totalStorageTB} TB
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-teal-500 h-full transition-all duration-500 shadow-[0_0_8px_var(--primary)]"
+                          style={{ width: `${Math.min(100, ((selectedNode.usedStorageTB ?? 0) / selectedNode.totalStorageTB!) * 100)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-slate-950 rounded-full h-1 overflow-hidden">
-                      <div
-                        className="bg-teal-500 h-full transition-all duration-500 shadow-[0_0_8px_var(--primary)]"
-                        style={{ width: `${(selectedNode.usedStorageTB! / selectedNode.totalStorageTB!) * 100}%` }}
-                      />
-                    </div>
+
+                    {/* RAID & Array Health Section */}
+                    {selectedNode.raidLevel && (
+                      <div className="bg-slate-950/40 border border-white/5 rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-500 uppercase font-black">RAID Array</span>
+                          <Badge variant="ghost" className="bg-teal-500/10 text-teal-400 border border-teal-500/20 px-2 py-0.5 rounded text-[8px] font-black font-mono">
+                            {selectedNode.raidLevel}
+                          </Badge>
+                        </div>
+
+                        <div className="flex justify-between items-center text-[10px]">
+                          <span className="text-slate-500 uppercase font-black">Array Status</span>
+                          <span className="flex items-center gap-1.5">
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              selectedNode.storageStatus === 'healthy' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' :
+                              selectedNode.storageStatus === 'degraded' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)] animate-pulse' :
+                              selectedNode.storageStatus === 'rebuilding' ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.5)] animate-pulse' :
+                              'bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] animate-ping'
+                            }`} />
+                            <span className={`font-mono text-[9px] font-black uppercase ${
+                              selectedNode.storageStatus === 'healthy' ? 'text-emerald-400' :
+                              selectedNode.storageStatus === 'degraded' ? 'text-amber-400' :
+                              selectedNode.storageStatus === 'rebuilding' ? 'text-yellow-400' :
+                              'text-rose-400'
+                            }`}>
+                              {selectedNode.storageStatus}
+                            </span>
+                          </span>
+                        </div>
+
+                        {selectedNode.storageStatus === 'rebuilding' && selectedNode.rebuildProgress !== undefined && (
+                          <div className="space-y-1 pt-1">
+                            <div className="flex justify-between text-[8px] font-mono text-yellow-400">
+                              <span>ARRAY SYNCING...</span>
+                              <span>{Math.round(selectedNode.rebuildProgress)}%</span>
+                            </div>
+                            <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
+                              <div 
+                                className="bg-yellow-400 h-full transition-all duration-300" 
+                                style={{ width: `${selectedNode.rebuildProgress}%` }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* IOPS Performance section */}
+                    {selectedNode.ioPSLimit && (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                          <span className="text-slate-500">I/O Performance</span>
+                          <span className={`font-mono font-black text-[9px] ${
+                            (selectedNode.ioPSUsed ?? 0) > selectedNode.ioPSLimit ? 'text-rose-400 animate-pulse' : 'text-teal-400'
+                          }`}>
+                            {(selectedNode.ioPSUsed ?? 0).toLocaleString()} / {selectedNode.ioPSLimit.toLocaleString()} IOPS
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-950 rounded-full h-1 overflow-hidden relative">
+                          <div 
+                            className={`h-full transition-all duration-300 ${
+                              (selectedNode.ioPSUsed ?? 0) > selectedNode.ioPSLimit ? 'bg-rose-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]' : 'bg-teal-500'
+                            }`}
+                            style={{ width: `${Math.min(100, ((selectedNode.ioPSUsed ?? 0) / selectedNode.ioPSLimit) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Wear & Degradation status */}
+                    {selectedNode.driveDegradation !== undefined && (
+                      <div className="flex justify-between items-center text-[10px] pt-1">
+                        <span className="text-slate-500 uppercase font-black">Drive Wear</span>
+                        <span className={`font-mono text-[9px] font-black ${
+                          selectedNode.driveDegradation > 80 ? 'text-rose-400 font-bold' :
+                          selectedNode.driveDegradation > 50 ? 'text-amber-400' : 'text-slate-400'
+                        }`}>
+                          {selectedNode.driveDegradation.toFixed(1)}% WEAR
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </Card>

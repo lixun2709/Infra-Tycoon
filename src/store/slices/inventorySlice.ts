@@ -81,6 +81,10 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       slotIndex = slot.slotIndex
     }
 
+    const isStorage = spec.type === 'storage'
+    const isCompute = spec.type === 'compute'
+    const totalStorageTB = spec.storageTB || (isCompute ? 2 : 0)
+
     const newNode: InfraNode = {
       id: crypto.randomUUID(),
       name: `${spec.name} ${nodes.length + 1}`,
@@ -104,7 +108,15 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       degradation: 0,
       lastMaintenance: Date.now(),
       bootProgress: 0,
-      installDate: Date.now()
+      installDate: Date.now(),
+      totalStorageTB,
+      usedStorageTB: 0,
+      raidLevel: isStorage ? 'RAID5' : isCompute ? 'RAID0' : undefined,
+      storageStatus: isStorage || isCompute ? 'healthy' : undefined,
+      rebuildProgress: isStorage || isCompute ? 0 : undefined,
+      ioPSLimit: isStorage ? 15000 : isCompute ? 5000 : undefined,
+      ioPSUsed: isStorage || isCompute ? 0 : undefined,
+      driveDegradation: isStorage || isCompute ? 0 : undefined
     }
 
     set(state => ({

@@ -5,7 +5,8 @@ import type {
   PowerComponent, 
   TransformComponent, 
   ProvisioningComponent, 
-  ApplicationComponent 
+  ApplicationComponent,
+  StorageComponent
 } from '../ecs/types'
 
 const engine = new SimulationEngine()
@@ -138,6 +139,20 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       state: node.provisioningState,
       bootProgress: node.bootProgress
     } as ProvisioningComponent)
+
+    if (node.type === 'storage' || node.type === 'compute' || (node.totalStorageTB && node.totalStorageTB > 0)) {
+      world.addComponent('storage', {
+        entityId: node.id,
+        totalStorageTB: node.totalStorageTB ?? 0,
+        usedStorageTB: node.usedStorageTB ?? 0,
+        ioPSLimit: node.ioPSLimit ?? 5000,
+        ioPSUsed: node.ioPSUsed ?? 0,
+        raidLevel: node.raidLevel ?? 'RAID5',
+        storageStatus: node.storageStatus ?? 'healthy',
+        rebuildProgress: node.rebuildProgress ?? 0,
+        driveDegradation: node.driveDegradation ?? 0
+      } as StorageComponent)
+    }
   })
 
   // 5. Update Application Components
@@ -149,6 +164,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
     world.addComponent('application', {
       entityId: app.id,
       appId: app.appId,
+      nodeId: app.nodeId,
       status: app.status,
       progress: app.progress
     } as ApplicationComponent)
@@ -173,11 +189,13 @@ function sendSyncOutput() {
   const thermalMap = world.getComponentMap<ThermalComponent>('thermal')
   const powerMap = world.getComponentMap<PowerComponent>('power')
   const provMap = world.getComponentMap<ProvisioningComponent>('provisioning')
+  const storageMap = world.getComponentMap<StorageComponent>('storage')
   const appMap = world.getComponentMap<ApplicationComponent>('application')
 
   thermalMap.forEach((comp, id) => {
     const power = powerMap.get(id)
     const prov = provMap.get(id)
+    const storage = storageMap.get(id)
     if (power || prov) { // Only for hardware, not for apps-as-entities
       output.nodes.push({
         id,
@@ -185,7 +203,15 @@ function sendSyncOutput() {
         isThrottled: comp.isThrottled,
         currentPowerKW: power?.load ?? 0,
         bootProgress: prov?.bootProgress ?? 0,
-        systemState: prov && prov.bootProgress >= 100 ? 'running' : 'booting' // Simplified
+        systemState: prov && prov.bootProgress >= 100 ? 'running' : 'booting', // Simplified
+        totalStorageTB: storage?.totalStorageTB,
+        usedStorageTB: storage?.usedStorageTB,
+        raidLevel: storage?.raidLevel,
+        storageStatus: storage?.storageStatus,
+        rebuildProgress: storage?.rebuildProgress,
+        ioPSLimit: storage?.ioPSLimit,
+        ioPSUsed: storage?.ioPSUsed,
+        driveDegradation: storage?.driveDegradation
       })
     }
   })

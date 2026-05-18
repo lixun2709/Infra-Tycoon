@@ -55,7 +55,14 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     }
     set(state => ({
       balance: state.balance - cost,
-      nodes: state.nodes.map(n => n.id === nodeId ? { ...n, degradation: 0, lastMaintenance: Date.now() } : n)
+      nodes: state.nodes.map(n => n.id === nodeId ? { 
+        ...n, 
+        degradation: 0, 
+        driveDegradation: 0,
+        storageStatus: n.storageStatus === 'failed' || n.storageStatus === 'degraded' ? 'rebuilding' : n.storageStatus,
+        rebuildProgress: 0,
+        lastMaintenance: Date.now() 
+      } : n)
     }))
     pushAlert('info', `Hardware refreshed for $${cost.toLocaleString()}`)
   },
@@ -69,7 +76,14 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     }
     set(state => ({
       balance: state.balance - cost,
-      nodes: state.nodes.map(n => n.id === nodeId ? { ...n, healthStatus: 'healthy' } : n)
+      nodes: state.nodes.map(n => n.id === nodeId ? { 
+        ...n, 
+        healthStatus: 'healthy',
+        degradation: 0,
+        driveDegradation: 0,
+        storageStatus: n.storageStatus === 'failed' || n.storageStatus === 'degraded' ? 'rebuilding' : n.storageStatus,
+        rebuildProgress: 0
+      } : n)
     }))
     pushAlert('info', `Hardware repaired for $${cost.toLocaleString()}`)
   },

@@ -23,6 +23,14 @@ export interface CompactNode {
   temperature?: number
   isThrottled?: boolean
   btuOutput: number
+  totalStorageTB?: number
+  usedStorageTB?: number
+  raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'
+  storageStatus?: 'healthy' | 'degraded' | 'rebuilding' | 'failed'
+  rebuildProgress?: number
+  ioPSLimit?: number
+  ioPSUsed?: number
+  driveDegradation?: number
 }
 
 export interface CompactApplication {
@@ -51,6 +59,14 @@ export interface SimSyncOutputPayload {
     currentPowerKW: number
     bootProgress: number
     systemState: SystemState
+    totalStorageTB?: number
+    usedStorageTB?: number
+    raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'
+    storageStatus?: 'healthy' | 'degraded' | 'rebuilding' | 'failed'
+    rebuildProgress?: number
+    ioPSLimit?: number
+    ioPSUsed?: number
+    driveDegradation?: number
   }>
   applications: Array<{
     id: string

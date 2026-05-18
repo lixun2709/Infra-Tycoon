@@ -115,6 +115,12 @@ export interface InfraNode {
   backupStatus?: BackupStatus
   totalStorageTB?: number
   usedStorageTB?: number
+  raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'
+  storageStatus?: 'healthy' | 'degraded' | 'rebuilding' | 'failed'
+  rebuildProgress?: number
+  ioPSLimit?: number
+  ioPSUsed?: number
+  driveDegradation?: number
   systemState: SystemState
   bootProgress: number
   hostname?: string
