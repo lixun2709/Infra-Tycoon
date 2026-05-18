@@ -15,12 +15,32 @@ export interface TransformComponent extends Component {
   parentRackId?: string
   slotIndex?: number
   type: string
+  // Dynamic network incident & state variables
+  degradation?: number
+  healthStatus?: string
+  isInfected?: boolean
+}
+
+// Connection Component: Network link state
+export interface ConnectionComponent extends Component {
+  startNodeId: string
+  startPortId: string
+  endNodeId: string
+  endPortId: string
+  bandwidthGbps: number
+  throughputGbps: number
+  latencyMs: number
+  isBlockedByCompliance?: boolean
+  status?: 'active' | 'blocked' | 'degraded'
+  syncProgress?: number
+  type?: string
 }
 
 // Thermal Component: Heat dynamics state
 export interface ThermalComponent extends Component {
   temperature: number
   isThrottled: boolean
+  fanSpeedPercent: number
   btuOutput: number
   lastUpdate: number
 }

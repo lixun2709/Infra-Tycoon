@@ -1,12 +1,16 @@
 import { SimulationEngine } from '../SimulationEngine'
+import { ThermalSystem } from '../ecs/systems/ThermalSystem'
+import { PacketSystem } from '../ecs/systems/PacketSystem'
 import type { SimMessage, SimInitPayload, SimSyncInputPayload, SimSyncOutputPayload } from './workerTypes'
+import type { Connection } from '../../store/infraTypes'
 import type { 
   ThermalComponent, 
   PowerComponent, 
   TransformComponent, 
   ProvisioningComponent, 
   ApplicationComponent,
-  StorageComponent
+  StorageComponent,
+  ConnectionComponent
 } from '../ecs/types'
 
 const engine = new SimulationEngine()
@@ -80,12 +84,20 @@ function processQueue() {
  */
 function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const world = engine.getWorld()
-  const { nodes, applications } = payload
+  const { nodes, applications, connections, networkLoad } = payload
 
-  // 1. Gather all active entity IDs in the incoming payload
+  // Track global network load deterministically inside the PacketSystem
+  if (networkLoad !== undefined) {
+    PacketSystem.networkLoad = networkLoad
+  }
+
+  // 1. Gather all active entity IDs in the incoming payload (including connection links)
   const incomingIds = new Set<string>()
   nodes.forEach(node => incomingIds.add(node.id))
   applications.forEach(app => incomingIds.add(app.id))
+  if (connections) {
+    connections.forEach(conn => incomingIds.add(conn.id))
+  }
 
   // 2. Fetch all current entity IDs registered in the ECS World
   const currentEntities = world.getEntitiesWith([])
@@ -115,13 +127,18 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       siteId: node.siteId,
       parentRackId: node.parentRackId,
       slotIndex: node.slotIndex,
-      type: node.type
+      type: node.type,
+      // Map incident metrics for networking calculations
+      degradation: node.degradationPercent,
+      healthStatus: node.healthStatus,
+      isInfected: node.isInfected
     } as TransformComponent)
 
     world.addComponent('thermal', {
       entityId: node.id,
       temperature: node.temperature ?? 22.0,
       isThrottled: node.isThrottled ?? false,
+      fanSpeedPercent: node.fanSpeedPercent ?? 20.0,
       btuOutput: node.btuOutput,
       lastUpdate: Date.now()
     } as ThermalComponent)
@@ -174,6 +191,57 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
        world.addComponent('power', { ...nodePower, entityId: app.id })
     }
   })
+
+  // 5.1 Update Connection Components using Diff-based updates (Persistent Pool)
+  if (connections) {
+    connections.forEach(conn => {
+      if (!world.hasComponent('connection', conn.id)) {
+        world.registerEntity(conn.id)
+        
+        world.addComponent('connection', {
+          entityId: conn.id,
+          startNodeId: conn.startNodeId,
+          startPortId: conn.startPortId,
+          endNodeId: conn.endNodeId,
+          endPortId: conn.endPortId,
+          bandwidthGbps: conn.bandwidthGbps,
+          throughputGbps: conn.throughputGbps ?? 0,
+          latencyMs: conn.latencyMs ?? 1,
+          isBlockedByCompliance: conn.isBlockedByCompliance ?? false,
+          status: conn.status ?? 'active',
+          syncProgress: conn.syncProgress ?? 0,
+          type: conn.type
+        } as ConnectionComponent)
+      } else {
+        // Granular updates to preserve component identity & stable references
+        const existing = world.getComponent<ConnectionComponent>('connection', conn.id)
+        if (existing) {
+          if (existing.startNodeId !== conn.startNodeId) existing.startNodeId = conn.startNodeId
+          if (existing.startPortId !== conn.startPortId) existing.startPortId = conn.startPortId
+          if (existing.endNodeId !== conn.endNodeId) existing.endNodeId = conn.endNodeId
+          if (existing.endPortId !== conn.endPortId) existing.endPortId = conn.endPortId
+          if (existing.bandwidthGbps !== conn.bandwidthGbps) existing.bandwidthGbps = conn.bandwidthGbps
+          if (existing.type !== conn.type) existing.type = conn.type
+          
+          if (conn.throughputGbps !== undefined && existing.throughputGbps !== conn.throughputGbps) {
+            existing.throughputGbps = conn.throughputGbps
+          }
+          if (conn.latencyMs !== undefined && existing.latencyMs !== conn.latencyMs) {
+            existing.latencyMs = conn.latencyMs
+          }
+          if (conn.isBlockedByCompliance !== undefined && existing.isBlockedByCompliance !== conn.isBlockedByCompliance) {
+            existing.isBlockedByCompliance = conn.isBlockedByCompliance
+          }
+          if (conn.status !== undefined && existing.status !== conn.status) {
+            existing.status = conn.status
+          }
+          if (conn.syncProgress !== undefined && existing.syncProgress !== conn.syncProgress) {
+            existing.syncProgress = conn.syncProgress
+          }
+        }
+      }
+    })
+  }
 }
 
 function sendSyncOutput() {
@@ -182,7 +250,8 @@ function sendSyncOutput() {
   
   const output: SimSyncOutputPayload = {
     nodes: [],
-    applications: []
+    applications: [],
+    connections: []
   }
 
   // Collect results from components
@@ -191,6 +260,7 @@ function sendSyncOutput() {
   const provMap = world.getComponentMap<ProvisioningComponent>('provisioning')
   const storageMap = world.getComponentMap<StorageComponent>('storage')
   const appMap = world.getComponentMap<ApplicationComponent>('application')
+  const connectionMap = world.getComponentMap<ConnectionComponent>('connection')
 
   thermalMap.forEach((comp, id) => {
     const power = powerMap.get(id)
@@ -211,7 +281,8 @@ function sendSyncOutput() {
         rebuildProgress: storage?.rebuildProgress,
         ioPSLimit: storage?.ioPSLimit,
         ioPSUsed: storage?.ioPSUsed,
-        driveDegradation: storage?.driveDegradation
+        driveDegradation: storage?.driveDegradation,
+        fanSpeedPercent: comp.fanSpeedPercent
       })
     }
   })
@@ -223,6 +294,30 @@ function sendSyncOutput() {
       progress: comp.progress
     })
   })
+
+  connectionMap.forEach((comp, id) => {
+    output.connections.push({
+      id,
+      startNodeId: comp.startNodeId,
+      startPortId: comp.startPortId,
+      endNodeId: comp.endNodeId,
+      endPortId: comp.endPortId,
+      bandwidthGbps: comp.bandwidthGbps,
+      throughputGbps: comp.throughputGbps,
+      latencyMs: comp.latencyMs,
+      isBlockedByCompliance: comp.isBlockedByCompliance,
+      status: comp.status,
+      syncProgress: comp.syncProgress,
+      type: comp.type as unknown as Connection['type']
+    })
+  })
+
+  // Compile site localized ambient temperatures from the ThermalSystem
+  const temps: Record<string, number> = {}
+  ThermalSystem.siteAmbientTemps.forEach((temp, siteId) => {
+    temps[siteId] = temp
+  })
+  output.siteAmbientTemps = temps
 
   postMessageTransferable({ type: 'SYNC_OUTPUT', payload: output })
   postMessageTransferable({ type: 'TELEMETRY', payload: telemetry })

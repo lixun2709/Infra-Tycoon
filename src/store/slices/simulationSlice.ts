@@ -6,7 +6,6 @@ import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEng
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
 import { simulationCoordinator } from '../../simulation/SimulationCoordinator'
-import { simulateNetwork } from '../../physics/network/simulation'
 
 export interface SimulationSlice {
   processTick: () => void
@@ -21,7 +20,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
   },
 
   handleWorkerOutput: (payload) => {
-    const { nodes, applications } = get()
+    const { nodes, applications, connections } = get()
     
     // Update nodes with telemetry data
     const updatedNodes = nodes.map(node => {
@@ -41,9 +40,31 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       return app
     })
 
+    // Update cabled connection links asynchronously from worker output
+    let updatedConnections = connections
+    if (payload.connections) {
+      updatedConnections = connections.map(conn => {
+        const update = payload.connections.find(c => c.id === conn.id)
+        if (update) {
+          return { ...conn, ...update }
+        }
+        return conn
+      })
+    }
+
+    // Update sites with localized ambient temperature updates
+    const updatedSites = get().sites.map(site => {
+      if (payload.siteAmbientTemps && payload.siteAmbientTemps[site.id] !== undefined) {
+        return { ...site, ambientTemp: payload.siteAmbientTemps[site.id] }
+      }
+      return site
+    })
+
     set({ 
       nodes: updatedNodes, 
-      applications: updatedApps
+      applications: updatedApps,
+      connections: updatedConnections,
+      sites: updatedSites
     })
   },
 
@@ -54,8 +75,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       set({ _lastTelemetry: telemetry } as Partial<InfraState>)
     })
     
-    const { nodes, applications } = get()
-    simWorkerManager.init(nodes, applications)
+    const { nodes, applications, connections, networkLoad } = get()
+    simWorkerManager.init(nodes, applications, connections, networkLoad)
 
     // Start centralized non-React Simulation Engine run loop (Day 28)
     simulationCoordinator.start(2000)
@@ -63,17 +84,13 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
   processTick: () => {
     // 0. Request Worker Tick (Asynchronous)
-    simWorkerManager.syncInput(get().nodes, get().applications)
+    simWorkerManager.syncInput(get().nodes, get().applications, get().connections, get().networkLoad)
     simWorkerManager.requestTick()
     
-    const { nodes, applications, activeContracts, simulationCycle, balance, reputation, networkLoad, connections } = get()
+    const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
 
     // 1. Core Simulation Updates (Decoupled from UI)
     get().processAging()
-
-    // Deterministic Network Simulation Pipeline (Day 31)
-    const { connections: updatedConnections } = simulateNetwork(nodes, connections, networkLoad)
-    set({ connections: updatedConnections })
 
     // 2. SLA & Contract Management
     const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0

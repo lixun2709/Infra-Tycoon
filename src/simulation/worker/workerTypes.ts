@@ -1,4 +1,4 @@
-import type { SystemState } from '../../store/infraTypes'
+import type { SystemState, Connection } from '../../store/infraTypes'
 
 export type SimMessageType = 
   | 'INIT' 
@@ -31,6 +31,10 @@ export interface CompactNode {
   ioPSLimit?: number
   ioPSUsed?: number
   driveDegradation?: number
+  fanSpeedPercent?: number
+  degradationPercent?: number
+  healthStatus?: string
+  isInfected?: boolean
 }
 
 export interface CompactApplication {
@@ -44,11 +48,15 @@ export interface CompactApplication {
 export interface SimInitPayload {
   nodes: CompactNode[]
   applications: CompactApplication[]
+  connections: Connection[]
+  networkLoad: number
 }
 
 export interface SimSyncInputPayload {
   nodes: CompactNode[]
   applications: CompactApplication[]
+  connections: Connection[]
+  networkLoad: number
 }
 
 export interface SimSyncOutputPayload {
@@ -67,12 +75,15 @@ export interface SimSyncOutputPayload {
     ioPSLimit?: number
     ioPSUsed?: number
     driveDegradation?: number
+    fanSpeedPercent?: number
   }>
   applications: Array<{
     id: string
     status: string
     progress: number
   }>
+  connections: Connection[]
+  siteAmbientTemps?: Record<string, number>
 }
 
 export interface SimTelemetryPayload {

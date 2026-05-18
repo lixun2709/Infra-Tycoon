@@ -1,5 +1,5 @@
 import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload, SimInitPayload, SimSyncInputPayload } from './worker/workerTypes'
-import type { InfraNode, ApplicationDeployment } from '../store/infraTypes'
+import type { InfraNode, ApplicationDeployment, Connection } from '../store/infraTypes'
 import { performanceMonitor } from './PerformanceMonitor'
 
 /**
@@ -18,6 +18,8 @@ export class SimulationWorkerManager {
   private heartbeatInterval: number | null = null
   private lastNodes: InfraNode[] = []
   private lastApps: ApplicationDeployment[] = []
+  private lastConnections: Connection[] = []
+  private lastNetworkLoad: number = 0
   
   private restartAttempts = 0
   private maxRestartAttempts = 5
@@ -135,7 +137,7 @@ export class SimulationWorkerManager {
         this.start()
         // Re-initialize with last known state
         if (this.lastNodes.length > 0) {
-          this.init(this.lastNodes, this.lastApps)
+          this.init(this.lastNodes, this.lastApps, this.lastConnections, this.lastNetworkLoad)
         }
       }, 1000 * this.restartAttempts) // Exponential backoff-ish
     } else {
@@ -144,7 +146,12 @@ export class SimulationWorkerManager {
     }
   }
 
-  private compactState(nodes: InfraNode[], applications: ApplicationDeployment[]) {
+  private compactState(
+    nodes: InfraNode[],
+    applications: ApplicationDeployment[],
+    connections: Connection[],
+    networkLoad: number
+  ) {
     const start = performance.now()
     const compactNodes = nodes.map(n => ({
       id: n.id,
@@ -167,7 +174,11 @@ export class SimulationWorkerManager {
       rebuildProgress: n.rebuildProgress,
       ioPSLimit: n.ioPSLimit,
       ioPSUsed: n.ioPSUsed,
-      driveDegradation: n.driveDegradation
+      driveDegradation: n.driveDegradation,
+      fanSpeedPercent: n.fanSpeedPercent,
+      degradationPercent: (n.degradation ?? 0) * 100, // Convert 0-1 range to 0-100%
+      healthStatus: n.healthStatus ?? 'healthy',
+      isInfected: n.isInfected ?? false
     }))
 
     const compactApps = applications.map(a => ({
@@ -178,7 +189,28 @@ export class SimulationWorkerManager {
       progress: a.progress
     }))
 
-    const compacted = { nodes: compactNodes, applications: compactApps }
+    // Compact cabled connection links to minimum required wire frame
+    const compactConnections = connections.map(c => ({
+      id: c.id,
+      startNodeId: c.startNodeId,
+      startPortId: c.startPortId,
+      endNodeId: c.endNodeId,
+      endPortId: c.endPortId,
+      bandwidthGbps: c.bandwidthGbps,
+      throughputGbps: c.throughputGbps,
+      latencyMs: c.latencyMs,
+      isBlockedByCompliance: c.isBlockedByCompliance,
+      status: c.status,
+      syncProgress: c.syncProgress,
+      type: c.type
+    }))
+
+    const compacted = {
+      nodes: compactNodes,
+      applications: compactApps,
+      connections: compactConnections,
+      networkLoad
+    }
     const timeMs = performance.now() - start
     const approxBytes = JSON.stringify(compacted).length
 
@@ -189,18 +221,22 @@ export class SimulationWorkerManager {
     return compacted
   }
 
-  public init(nodes: InfraNode[], applications: ApplicationDeployment[]) {
+  public init(nodes: InfraNode[], applications: ApplicationDeployment[], connections: Connection[] = [], networkLoad: number = 0) {
     this.lastNodes = nodes
     this.lastApps = applications
-    const compacted = this.compactState(nodes, applications)
+    this.lastConnections = connections
+    this.lastNetworkLoad = networkLoad
+    const compacted = this.compactState(nodes, applications, connections, networkLoad)
     this.sendTransferable('INIT', compacted)
     this.restartAttempts = 0 // Reset on successful user-triggered init
   }
 
-  public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[]) {
+  public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[], connections: Connection[] = [], networkLoad: number = 0) {
     this.lastNodes = nodes
     this.lastApps = applications
-    const compacted = this.compactState(nodes, applications)
+    this.lastConnections = connections
+    this.lastNetworkLoad = networkLoad
+    const compacted = this.compactState(nodes, applications, connections, networkLoad)
     this.sendTransferable('SYNC_INPUT', compacted)
   }
 

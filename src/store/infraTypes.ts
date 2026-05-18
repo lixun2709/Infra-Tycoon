@@ -66,6 +66,7 @@ export type Site = {
   region: string
   energySource: 'Renewable' | 'Grid'
   geoCoords: { lat: number; lng: number }
+  ambientTemp?: number
 }
 
 export type HardwarePort = {
@@ -139,6 +140,7 @@ export interface InfraNode {
   degradation: number
   temperature?: number
   isThrottled?: boolean
+  fanSpeedPercent?: number
   isRefreshing?: boolean
   componentHealth?: ComponentHealth
   failureProbability?: number

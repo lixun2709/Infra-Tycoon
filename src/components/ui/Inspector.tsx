@@ -275,14 +275,35 @@ export function Inspector() {
 
           {activeTab === 'thermal' && (
             <div className="space-y-4">
+              <style>{`
+                @keyframes custom-fan-spin {
+                  from { transform: rotate(0deg); }
+                  to { transform: rotate(360deg); }
+                }
+              `}</style>
+
               <Card title="Thermodynamics" subtitle="Real-time Thermal Telemetry">
                 <div className="space-y-4">
+                  {/* CPU Temp */}
                   <div className="flex justify-between items-center">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Current Temperature</span>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">CPU Temperature</span>
                     <span className={`text-xl font-black ${selectedNode.temperature && selectedNode.temperature > 70 ? 'text-rose-400 animate-pulse' : 'text-teal-400'}`}>
                       {selectedNode.temperature?.toFixed(1) || '22.0'}°C
                     </span>
                   </div>
+
+                  {/* Site Ambient Temp */}
+                  <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Site Ambient</span>
+                    <span className={`text-sm font-mono font-bold ${
+                      (nodeSite?.ambientTemp ?? 22) > 40 ? 'text-rose-400 animate-pulse' :
+                      (nodeSite?.ambientTemp ?? 22) > 30 ? 'text-amber-400' : 'text-slate-300'
+                    }`}>
+                      {(nodeSite?.ambientTemp ?? 22.0).toFixed(1)}°C
+                    </span>
+                  </div>
+
+                  {/* Throttle Status */}
                   <div className="flex justify-between items-center pt-2 border-t border-white/5">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Throttle Status</span>
                     <Badge variant={selectedNode.isThrottled ? 'warning' : 'ghost'} glow={selectedNode.isThrottled}>
@@ -292,22 +313,65 @@ export function Inspector() {
                 </div>
               </Card>
 
-              {selectedNode.type !== 'rack' && (
-                <Card title="Silicon Health">
-                   <div className="space-y-2">
+              {selectedNode.type !== 'rack' && selectedNode.type !== 'cooling' && (
+                <>
+                  {/* Dynamic Cooling Fan Widget */}
+                  <Card title="Active Ventilation" subtitle="Dynamic Fan Velocity">
+                    <div className="flex items-center gap-4 p-2 bg-slate-950/40 border border-white/5 rounded-xl">
+                      <div className="relative w-12 h-12 flex items-center justify-center bg-slate-900 border border-white/10 rounded-full overflow-hidden">
+                        <svg 
+                          className={`w-8 h-8 ${selectedNode.systemState === 'off' ? 'text-slate-600' : 'text-teal-400'}`} 
+                          viewBox="0 0 24 24" 
+                          fill="none" 
+                          stroke="currentColor" 
+                          strokeWidth="2.5" 
+                          style={{
+                            animation: selectedNode.systemState !== 'off' && selectedNode.fanSpeedPercent && selectedNode.fanSpeedPercent > 0 
+                              ? 'custom-fan-spin infinite linear' 
+                              : 'none',
+                            animationDuration: selectedNode.fanSpeedPercent 
+                              ? `${Math.max(0.1, 2.0 - (selectedNode.fanSpeedPercent / 100) * 1.95)}s` 
+                              : '0s',
+                            transformOrigin: 'center'
+                          }}
+                        >
+                          <circle cx="12" cy="12" r="3" />
+                          <path d="M12 2v7M12 15v7M2 12h7M15 12h7M5.6 5.6l4.9 4.9M13.5 13.5l4.9 4.9M18.4 5.6l-4.9 4.9M10.5 13.5l-4.9 4.9" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                          <span className="text-slate-500">Fan Speed</span>
+                          <span className="text-teal-400 font-mono">
+                            {selectedNode.systemState === 'off' ? '0.0' : (selectedNode.fanSpeedPercent ?? 20.0).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-950 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-teal-500 h-full transition-all duration-300"
+                            style={{ width: `${selectedNode.systemState === 'off' ? 0 : (selectedNode.fanSpeedPercent ?? 20.0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card title="Silicon Health">
+                    <div className="space-y-2">
                       <div className="flex justify-between text-[9px] uppercase font-black text-slate-500">
-                         <span>Operating Window</span>
-                         <span>20°C - 85°C</span>
+                        <span>Operating Window</span>
+                        <span>20°C - 80°C</span>
                       </div>
                       <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden relative">
-                         <div className="absolute inset-0 bg-gradient-to-r from-teal-500 via-yellow-500 to-rose-500 opacity-20" />
-                         <div 
-                           className="h-full bg-teal-500 transition-all duration-1000"
-                           style={{ width: `${Math.min(100, (selectedNode.temperature || 20) / 0.85)}%` }}
-                         />
+                        <div className="absolute inset-0 bg-gradient-to-r from-teal-500 via-yellow-500 to-rose-500 opacity-20" />
+                        <div 
+                          className="h-full bg-teal-500 transition-all duration-1000"
+                          style={{ width: `${Math.min(100, ((selectedNode.temperature || 20) / 80) * 100)}%` }}
+                        />
                       </div>
-                   </div>
-                </Card>
+                    </div>
+                  </Card>
+                </>
               )}
             </div>
           )}
