@@ -6,6 +6,7 @@ import { ApplicationSystem } from './ecs/systems/ApplicationSystem'
 import { StorageSystem } from './ecs/systems/StorageSystem'
 import { PacketSystem } from './ecs/systems/PacketSystem'
 import { TelemetrySystem } from './ecs/systems/TelemetrySystem'
+import { ObservabilitySystem } from './ecs/systems/ObservabilitySystem'
 import { SystemManager } from './ecs/SystemManager'
 
 /**
@@ -31,6 +32,7 @@ export class SimulationEngine {
     this.systemManager.registerSystem(new ProvisioningSystem(this.world), 30)
     this.systemManager.registerSystem(new ApplicationSystem(this.world), 40)
     this.systemManager.registerSystem(new TelemetrySystem(this.world), 50)
+    this.systemManager.registerSystem(new ObservabilitySystem(this.world), 60)
   }
 
   public getWorld() {

@@ -15,6 +15,7 @@ export interface TransformComponent extends Component {
   parentRackId?: string
   slotIndex?: number
   type: string
+  name?: string
   // Dynamic network incident & state variables
   degradation?: number
   healthStatus?: string

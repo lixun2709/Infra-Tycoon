@@ -155,6 +155,7 @@ export class SimulationWorkerManager {
     const start = performance.now()
     const compactNodes = nodes.map(n => ({
       id: n.id,
+      name: n.name || n.hostname || n.id.slice(0, 8),
       type: n.type,
       siteId: n.siteId,
       parentRackId: n.parentRackId,

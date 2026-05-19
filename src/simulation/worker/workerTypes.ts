@@ -11,6 +11,7 @@ export type SimMessageType =
 
 export interface CompactNode {
   id: string
+  name?: string
   type: string
   siteId: string
   parentRackId?: string
@@ -84,6 +85,11 @@ export interface SimSyncOutputPayload {
   }>
   connections: Connection[]
   siteAmbientTemps?: Record<string, number>
+  alerts?: Array<{
+    severity: 'info' | 'warning' | 'critical'
+    message: string
+    nodeId?: string
+  }>
 }
 
 export interface SimTelemetryPayload {

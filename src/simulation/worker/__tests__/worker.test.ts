@@ -86,7 +86,7 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     expect(compactedNode.ports).toBeUndefined()
     expect(compactedNode.services).toBeUndefined()
     expect(compactedNode.degradation).toBeUndefined()
-    expect(compactedNode.name).toBeUndefined()
+    expect(compactedNode.name).toBe('Enterprise Rack A')
 
     // Validate app compaction
     const compactedApp = payload.applications[0]

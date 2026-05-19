@@ -1,6 +1,7 @@
 import { SimulationEngine } from '../SimulationEngine'
 import { ThermalSystem } from '../ecs/systems/ThermalSystem'
 import { PacketSystem } from '../ecs/systems/PacketSystem'
+import { ObservabilitySystem } from '../ecs/systems/ObservabilitySystem'
 import type { SimMessage, SimInitPayload, SimSyncInputPayload, SimSyncOutputPayload } from './workerTypes'
 import type { Connection } from '../../store/infraTypes'
 import type { 
@@ -129,6 +130,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       parentRackId: node.parentRackId,
       slotIndex: node.slotIndex,
       type: node.type,
+      name: node.name,
       // Map incident metrics for networking calculations
       degradation: node.degradationPercent,
       healthStatus: node.healthStatus,
@@ -265,7 +267,8 @@ function sendSyncOutput() {
   const output: SimSyncOutputPayload = {
     nodes: [],
     applications: [],
-    connections: []
+    connections: [],
+    alerts: ObservabilitySystem.flushAlerts()
   }
 
   // Collect results from components

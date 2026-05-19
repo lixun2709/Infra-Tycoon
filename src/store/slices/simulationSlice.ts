@@ -67,6 +67,13 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       connections: updatedConnections,
       sites: updatedSites
     })
+
+    // Process background-fired alerts from the ObservabilitySystem
+    if (payload.alerts && payload.alerts.length > 0) {
+      payload.alerts.forEach(alert => {
+        get().pushAlert(alert.severity, alert.message, alert.nodeId)
+      })
+    }
   },
 
   initializeSimulation: () => {
