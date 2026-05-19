@@ -10,7 +10,7 @@ Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
 prompts folder 
 
 
-Execute Day 37 only.
+Execute Day 38 only.
 
 Requirements:
 - analyze repository first
@@ -25,5 +25,9 @@ Requirements:
 - run build
 - fix all errors
 - generate implementation report
+- Once the tests pass and the work is verified, execute the following Git commands in the terminal to save the progress:
+   - `git add .`
+   - `git commit -m "Version2 | Day 38 | : auto-completed implementation for Day 38"`
+   - `git push`
 
 Stop after completion.

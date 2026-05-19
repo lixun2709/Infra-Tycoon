@@ -4,7 +4,7 @@ import type { ThermalComponent, PowerComponent, TransformComponent } from '../ty
 /**
  * ThermalSystem
  * ECS implementation of thermodynamic simulation.
- * Handles conduction, convection, zone-localized site cooling, dynamic server fans, and safety shutdowns.
+ * Handles conduction, convection, zone-localized site cooling, dynamic server fans, rack micro-climates, and safety shutdowns.
  */
 export class ThermalSystem extends System {
   public static siteAmbientTemps = new Map<string, number>()
@@ -15,6 +15,7 @@ export class ThermalSystem extends System {
   private static DEFAULT_CRITICAL = 80.0 // Silicon shutdown limit
   private static DEFAULT_THROTTLE = 70.0 // Performance throttling limit
   private static SITE_THERMAL_MASS = 12000.0 // Room air heat absorption threshold
+  private static RACK_THERMAL_MASS = 1500.0 // Rack localized containment air heat threshold
 
   public update(dt: number) {
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
@@ -23,67 +24,205 @@ export class ThermalSystem extends System {
 
     const entities = this.world.getEntitiesWith(['thermal', 'transform'])
 
-    // 1. Calculate Localized Site Ambient Temperatures based on heat/cooling loads
-    const siteLoads = new Map<string, { serverHeatBTU: number; coolingBTU: number }>()
+    // Separate lists for organization
+    const racks: string[] = []
+    const coolingUnits: string[] = []
+    const chassisNodes: string[] = []
 
     entities.forEach(id => {
+      const transform = transformMap.get(id)!
+      if (transform.type === 'rack') {
+        racks.push(id)
+      } else if (transform.type === 'cooling') {
+        coolingUnits.push(id)
+      } else {
+        chassisNodes.push(id)
+      }
+    })
+
+    // 1. Initialize loads for sites and racks
+    const siteLoads = new Map<string, { serverHeatBTU: number; coolingBTU: number }>()
+    const rackLoads = new Map<string, { serverHeatBTU: number; coolingBTU: number }>()
+
+    racks.forEach(id => {
+      rackLoads.set(id, { serverHeatBTU: 0, coolingBTU: 0 })
+    })
+
+    // 2. Process Cooling units - calculate dynamic efficiency, throttling, and safety shutdowns
+    coolingUnits.forEach(id => {
       const transform = transformMap.get(id)!
       const power = powerMap.get(id)
       const thermal = thermalMap.get(id)!
 
       const siteId = transform.siteId || 'default-site'
+      const roomAmbientTemp = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
+
+      const isRunning = power?.isPowered ?? false
+      const coolingName = transform.name || `CRAC-${id.slice(0, 4)}`
+
+      // Environmental limits checking (maxOperatingTemp = 60C, throttleTemp = 50C)
+      let efficiency = 1.0
+
+      if (isRunning) {
+        if (roomAmbientTemp > 60.0) {
+          // Safety thermal shutdown
+          if (power) {
+            power.isPowered = false
+            this.world.eventBus.publish('system:alert', {
+              entityId: id,
+              message: `CRITICAL: High-temperature thermal shutdown on cooling unit ${coolingName}. Room temperature reached ${roomAmbientTemp.toFixed(1)}°C!`,
+              severity: 'critical'
+            })
+          }
+          efficiency = 0.0
+        } else if (roomAmbientTemp > 50.0) {
+          // Performance Throttling
+          efficiency = 0.5
+          if (!thermal.isThrottled) {
+            thermal.isThrottled = true
+            this.world.eventBus.publish('system:alert', {
+              entityId: id,
+              message: `WARNING: Cooling unit ${coolingName} is throttled due to high room temperature (${roomAmbientTemp.toFixed(1)}°C). Capacity cut to 50%.`,
+              severity: 'warning'
+            })
+          }
+        } else if (thermal.isThrottled && roomAmbientTemp < 45.0) {
+          // Recovery
+          thermal.isThrottled = false
+          this.world.eventBus.publish('system:alert', {
+            entityId: id,
+            message: `INFO: Cooling unit ${coolingName} thermal throttling cleared.`,
+            severity: 'info'
+          })
+        }
+      } else {
+        efficiency = 0.0
+      }
+
+      // Degradation scale factor (1.0 - degradationPercent / 100)
+      const degradationFactor = 1.0 - (transform.degradation ?? 0.0)
+      const effectiveCoolingBTU = Math.abs(thermal.btuOutput) * efficiency * degradationFactor
+
+      if (isRunning && effectiveCoolingBTU > 0) {
+        if (transform.parentRackId) {
+          // In-Row CRAC cooling specific rack micro-climate
+          const rackLoad = rackLoads.get(transform.parentRackId)
+          if (rackLoad) {
+            rackLoad.coolingBTU += effectiveCoolingBTU
+          }
+        } else {
+          // General room-level cooling unit
+          if (!siteLoads.has(siteId)) {
+            siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
+          }
+          siteLoads.get(siteId)!.coolingBTU += effectiveCoolingBTU
+        }
+      }
+
+      // Keep cooling unit temperature tracked
+      thermal.temperature = Math.max(18.0, roomAmbientTemp - (isRunning ? 5.0 * efficiency : 0))
+      thermal.lastUpdate = Date.now()
+    })
+
+    // 3. Process active server heat generation loads
+    chassisNodes.forEach(id => {
+      const transform = transformMap.get(id)!
+      const power = powerMap.get(id)
+
+      const siteId = transform.siteId || 'default-site'
+      const isRunning = power?.isPowered ?? false
+
+      let serverHeatBTU = 0.5 // Minimal ambient heat in idle state
+      if (isRunning) {
+        const efficiency = power?.efficiency ?? 0.8
+        const activeWattage = (power?.wattage ?? 300) * (power?.load ?? 0.2)
+        serverHeatBTU = Math.max(10.0, activeWattage * 3.41 * (1.1 - efficiency))
+      }
+
+      // Add to specific rack load if mounted in a rack
+      if (transform.parentRackId) {
+        const rackLoad = rackLoads.get(transform.parentRackId)
+        if (rackLoad) {
+          rackLoad.serverHeatBTU += serverHeatBTU
+        }
+      }
+
+      // Add to general site loads
       if (!siteLoads.has(siteId)) {
         siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
       }
-      const load = siteLoads.get(siteId)!
-
-      const isRunning = power?.isPowered ?? false
-
-      if (transform.type === 'cooling') {
-        if (isRunning) {
-          // Negative btuOutput is cooling capacity (e.g. -50000)
-          load.coolingBTU += Math.abs(thermal.btuOutput)
-        }
-      } else if (transform.type !== 'rack') {
-        if (isRunning) {
-          // Heat load generated dynamically by server usage
-          const efficiency = power?.efficiency ?? 0.8
-          const activeWattage = (power?.wattage ?? 300) * (power?.load ?? 0.2)
-          const serverHeatBTU = activeWattage * 3.41 * (1.1 - efficiency)
-          load.serverHeatBTU += Math.max(10.0, serverHeatBTU)
-        } else {
-          load.serverHeatBTU += 0.5 // Minimal ambient heat in idle state
-        }
-      }
+      siteLoads.get(siteId)!.serverHeatBTU += serverHeatBTU
     })
 
-    // Compute new ambient temperature for each site
+    // 4. Calculate Rack Micro-climate Thermal Zone states
+    racks.forEach(rackId => {
+      const rackThermal = thermalMap.get(rackId)!
+      const rackTransform = transformMap.get(rackId)!
+      const siteId = rackTransform.siteId || 'default-site'
+      const roomAmbientTemp = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
+
+      const load = rackLoads.get(rackId) ?? { serverHeatBTU: 0, coolingBTU: 0 }
+      const netBTU = load.serverHeatBTU - load.coolingBTU
+
+      const currentRackTemp = rackThermal.temperature ?? roomAmbientTemp
+      const tempChange = (netBTU / ThermalSystem.RACK_THERMAL_MASS) * dt
+
+      // Convective exchange between the rack air containment and the general site room ambient
+      const convectionExchange = (currentRackTemp - roomAmbientTemp) * 0.1 * dt
+
+      let nextRackTemp = currentRackTemp + tempChange - convectionExchange
+      nextRackTemp = Math.min(65.0, Math.max(16.0, nextRackTemp))
+
+      rackThermal.temperature = nextRackTemp
+      rackThermal.lastUpdate = Date.now()
+    })
+
+    // 5. Compute new global Ambient Temperatures for each site room
     siteLoads.forEach((load, siteId) => {
       const currentAmbient = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
-      const netBTU = load.serverHeatBTU - load.coolingBTU
+
+      // Sum convection leakage from all racks within this site room
+      let rackConvectionLeakage = 0
+      racks.forEach(rackId => {
+        const rackTransform = transformMap.get(rackId)!
+        if (rackTransform.siteId === siteId) {
+          const rackThermal = thermalMap.get(rackId)
+          if (rackThermal) {
+            rackConvectionLeakage += (rackThermal.temperature - currentAmbient) * 0.05
+          }
+        }
+      })
+
+      const netBTU = load.serverHeatBTU - load.coolingBTU + rackConvectionLeakage
       const ambientChange = (netBTU / ThermalSystem.SITE_THERMAL_MASS) * dt
       
       let nextAmbient = currentAmbient + ambientChange
 
-      // Natural environmental heat dispersion towards standard temperature
+      // Natural environmental heat dispersion towards standard room temp
       const dispersion = (ThermalSystem.BASE_AMBIENT_TEMP - nextAmbient) * 0.02 * dt
       nextAmbient = nextAmbient + dispersion
 
-      // Clamp ambient room temp between safe margins
       nextAmbient = Math.min(60.0, Math.max(15.0, nextAmbient))
       ThermalSystem.siteAmbientTemps.set(siteId, nextAmbient)
     })
 
-    // 2. Process per-entity heat dynamics, fan speeds, and alarms
-    entities.forEach(id => {
+    // 6. Process per-entity server thermodynamics (using rack micro-climate as its local ambient temperature!)
+    chassisNodes.forEach(id => {
       const thermal = thermalMap.get(id)!
       const power = powerMap.get(id)
       const transform = transformMap.get(id)!
 
-      if (transform.type === 'rack' || transform.type === 'cooling') return
-
       const siteId = transform.siteId || 'default-site'
-      const ambientTemp = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
+      const roomAmbientTemp = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
+
+      // Local convective ambient: resolve to parent rack micro-climate if mounted
+      let localAmbient = roomAmbientTemp
+      if (transform.parentRackId) {
+        const parentRackThermal = thermalMap.get(transform.parentRackId)
+        if (parentRackThermal) {
+          localAmbient = parentRackThermal.temperature
+        }
+      }
 
       const isRunning = power?.isPowered ?? false
 
@@ -91,19 +230,12 @@ export class ThermalSystem extends System {
       const currentTemp = thermal.temperature
       const targetFanSpeed = isRunning
         ? 20.0 + 80.0 * Math.min(1.0, Math.max(0.0, (currentTemp - 35.0) / 35.0))
-        : 0.0 // Turned off completely if powered down!
+        : 0.0
       
-      // Fan mechanical inertia interpolation with overshoot protection
       const fanInertiaCoeff = isRunning ? 3.0 : 6.0
       const alpha = Math.min(1.0, fanInertiaCoeff * dt)
       const newFanSpeed = thermal.fanSpeedPercent + (targetFanSpeed - thermal.fanSpeedPercent) * alpha
-      thermal.fanSpeedPercent = Math.min(
-        100.0,
-        Math.max(
-          isRunning ? 20.0 : 0.0,
-          newFanSpeed
-        )
-      )
+      thermal.fanSpeedPercent = Math.min(100.0, Math.max(isRunning ? 20.0 : 0.0, newFanSpeed))
 
       // Dynamic fan wattage load penalty: higher speed draws up to 50W extra
       if (isRunning && power) {
@@ -113,9 +245,9 @@ export class ThermalSystem extends System {
 
       // Enhanced convection cooling coefficient scaled by fan spin rate
       const convectionCoeff = ThermalSystem.CONVECTION_COEFFICIENT * (1.0 + thermal.fanSpeedPercent / 100.0)
-      const convection = (currentTemp - ambientTemp) * convectionCoeff * dt
+      const convection = (currentTemp - localAmbient) * convectionCoeff * dt
 
-      // dynamic server heat equation
+      // Server active heat equation
       const efficiency = power?.efficiency ?? 0.8
       const dynamicWattage = isRunning ? (power?.wattage ?? 300) * (power?.load ?? 0.2) : 0
       const serverHeat = isRunning ? dynamicWattage * 0.001 * (1.2 - efficiency) : 0.01
@@ -127,7 +259,6 @@ export class ThermalSystem extends System {
       const critical = ThermalSystem.DEFAULT_CRITICAL
 
       if (nextTemp > critical) {
-        // High-temperature silicon guard shutdown
         if (power && power.isPowered) {
           power.isPowered = false
           this.world.eventBus.publish('system:alert', {
@@ -158,15 +289,12 @@ export class ThermalSystem extends System {
       thermal.lastUpdate = Date.now()
     })
 
-    // 3. Conduction between adjacent entities in the same rack (optimized O(N) single-pass grouping)
+    // 7. Conduction between adjacent entities in the same rack (optimized O(N) single-pass grouping)
     const rackChildrenMap = new Map<string, string[]>()
-    const racks: string[] = []
 
-    entities.forEach(id => {
+    chassisNodes.forEach(id => {
       const transform = transformMap.get(id)!
-      if (transform.type === 'rack') {
-        racks.push(id)
-      } else if (transform.parentRackId) {
+      if (transform.parentRackId) {
         if (!rackChildrenMap.has(transform.parentRackId)) {
           rackChildrenMap.set(transform.parentRackId, [])
         }
@@ -178,7 +306,7 @@ export class ThermalSystem extends System {
       const rackNodes = rackChildrenMap.get(rackId)
       if (!rackNodes || rackNodes.length < 2) return
 
-      // Sort only the local rack nodes
+      // Sort only local rack nodes by slotIndex
       rackNodes.sort((a, b) => (transformMap.get(a)?.slotIndex ?? 0) - (transformMap.get(b)?.slotIndex ?? 0))
 
       for (let i = 0; i < rackNodes.length - 1; i++) {
