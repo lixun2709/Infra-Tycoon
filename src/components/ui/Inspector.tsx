@@ -23,7 +23,8 @@ export function Inspector() {
     powerOnNode,
     repairHardware,
     toggleMaintenanceMode,
-    technicianTickets
+    technicianTickets,
+    timeFormat
   } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
@@ -600,7 +601,7 @@ export function Inspector() {
                     <div className="flex-1">
                       <p className="text-[10px] text-slate-300 leading-relaxed font-medium">{alert.message}</p>
                       <p className="text-[8px] text-slate-500 mt-2 font-mono uppercase">
-                        {new Date(alert.timestamp).toLocaleTimeString()}
+                        {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
                       </p>
                     </div>
                   </div>

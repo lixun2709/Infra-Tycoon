@@ -12,7 +12,7 @@ export class SimulationCoordinator {
   private isRunningState = false
   private intervalId: ReturnType<typeof setInterval> | null = null
   private listeners: Set<SimListener> = new Set()
-  private tickRateMs = 2000
+  private tickRateMs = 1000
   private lastTickDurationMs = 0
 
   public addListener(listener: SimListener): () => void {
@@ -32,22 +32,29 @@ export class SimulationCoordinator {
     })
   }
 
-  public start(tickRateMs = 2000): void {
+  public start(tickRateMs = 1000): void {
     if (this.isRunningState) return
     this.tickRateMs = tickRateMs
     this.isRunningState = true
     
     this.emit({ type: 'STATUS_CHANGE', running: true })
     
+    let lastTime = performance.now()
     const runLoop = () => {
       if (!this.isRunningState) return
       
-      const cycle = useInfraStore.getState().simulationCycle
-      this.emit({ type: 'TICK_START', cycle })
+      const now = performance.now()
+      const dt = (now - lastTime) / 1000.0
+      lastTime = now
+
+      // Clamp delta time to stable physical limits to safeguard physics integration
+      const clampedDt = Math.max(0.1, Math.min(2.0, dt))
+      const seconds = Math.floor(useInfraStore.getState().realTimePlayedSeconds)
+      this.emit({ type: 'TICK_START', cycle: seconds })
       
       const start = performance.now()
       try {
-        useInfraStore.getState().processTick()
+        useInfraStore.getState().processTick(clampedDt)
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err)
         console.error('[[SimulationCoordinator]] Error in processTick execution:', err)
@@ -56,7 +63,7 @@ export class SimulationCoordinator {
       
       const duration = performance.now() - start
       this.lastTickDurationMs = duration
-      this.emit({ type: 'TICK_END', cycle, durationMs: duration })
+      this.emit({ type: 'TICK_END', cycle: seconds, durationMs: duration })
     }
 
     this.intervalId = setInterval(runLoop, this.tickRateMs)

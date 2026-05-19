@@ -4,7 +4,7 @@ import { useInfraStore } from '../../store/useInfraStore'
 
 vi.mock('../../store/useInfraStore', () => {
   const mockState = {
-    simulationCycle: 42,
+    realTimePlayedSeconds: 42,
     processTick: vi.fn(),
   }
   return {

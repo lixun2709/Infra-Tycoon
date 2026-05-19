@@ -1,5 +1,6 @@
 import { System } from '../System'
 import type { ThermalComponent, PowerComponent, TransformComponent } from '../types'
+import { HARDWARE_CATALOG, type HardwareCatalogSpec } from '../../../physics/hardwareLibrary'
 
 /**
  * ThermalSystem
@@ -9,13 +10,13 @@ import type { ThermalComponent, PowerComponent, TransformComponent } from '../ty
 export class ThermalSystem extends System {
   public static siteAmbientTemps = new Map<string, number>()
 
-  private static CONDUCTION_COEFFICIENT = 0.05
-  private static CONVECTION_COEFFICIENT = 0.02
+  private static CONDUCTION_COEFFICIENT = 0.05 / 9.0
+  private static CONVECTION_COEFFICIENT = 0.02 / 9.0
   private static BASE_AMBIENT_TEMP = 22.0
   private static DEFAULT_CRITICAL = 80.0 // Silicon shutdown limit
   private static DEFAULT_THROTTLE = 70.0 // Performance throttling limit
-  private static SITE_THERMAL_MASS = 12000.0 // Room air heat absorption threshold
-  private static RACK_THERMAL_MASS = 1500.0 // Rack localized containment air heat threshold
+  private static SITE_THERMAL_MASS = 108000.0 // Room air heat absorption threshold (12000.0 * 9.0)
+  private static RACK_THERMAL_MASS = 13500.0 // Rack localized containment air heat threshold (1500.0 * 9.0)
 
   public update(dt: number) {
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
@@ -100,8 +101,10 @@ export class ThermalSystem extends System {
       }
 
       // Degradation scale factor (1.0 - degradationPercent / 100)
-      const degradationFactor = 1.0 - (transform.degradation ?? 0.0)
+      const degradationFactor = Math.max(0.0, Math.min(1.0, 1.0 - (transform.degradation ?? 0.0) / 100.0))
       const effectiveCoolingBTU = Math.abs(thermal.btuOutput) * efficiency * degradationFactor
+
+
 
       if (isRunning && effectiveCoolingBTU > 0) {
         if (transform.parentRackId) {
@@ -110,13 +113,13 @@ export class ThermalSystem extends System {
           if (rackLoad) {
             rackLoad.coolingBTU += effectiveCoolingBTU
           }
-        } else {
-          // General room-level cooling unit
-          if (!siteLoads.has(siteId)) {
-            siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
-          }
-          siteLoads.get(siteId)!.coolingBTU += effectiveCoolingBTU
         }
+        
+        // Both general and In-Row CRAC units contribute to extracting net heat from the overall room!
+        if (!siteLoads.has(siteId)) {
+          siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
+        }
+        siteLoads.get(siteId)!.coolingBTU += effectiveCoolingBTU
       }
 
       // Keep cooling unit temperature tracked
@@ -168,7 +171,7 @@ export class ThermalSystem extends System {
       const tempChange = (netBTU / ThermalSystem.RACK_THERMAL_MASS) * dt
 
       // Convective exchange between the rack air containment and the general site room ambient
-      const convectionExchange = (currentRackTemp - roomAmbientTemp) * 0.1 * dt
+      const convectionExchange = (currentRackTemp - roomAmbientTemp) * (0.1 / 9.0) * dt
 
       let nextRackTemp = currentRackTemp + tempChange - convectionExchange
       nextRackTemp = Math.min(65.0, Math.max(16.0, nextRackTemp))
@@ -199,7 +202,7 @@ export class ThermalSystem extends System {
       let nextAmbient = currentAmbient + ambientChange
 
       // Natural environmental heat dispersion towards standard room temp
-      const dispersion = (ThermalSystem.BASE_AMBIENT_TEMP - nextAmbient) * 0.02 * dt
+      const dispersion = (ThermalSystem.BASE_AMBIENT_TEMP - nextAmbient) * (0.02 / 9.0) * dt
       nextAmbient = nextAmbient + dispersion
 
       nextAmbient = Math.min(60.0, Math.max(15.0, nextAmbient))
@@ -255,15 +258,16 @@ export class ThermalSystem extends System {
       const convection = (currentTemp - localAmbient) * convectionCoeff * dt
 
       // Server active heat equation
-      const efficiency = power?.efficiency ?? 0.8
+      const spec = (transform.catalogKey ? HARDWARE_CATALOG[transform.catalogKey as keyof typeof HARDWARE_CATALOG] : null) as HardwareCatalogSpec | null
+      const efficiency = spec?.heatEfficiency ?? power?.efficiency ?? 0.8
       const dynamicWattage = isRunning ? (power?.wattage ?? 300) * (power?.load ?? 0.2) : 0
       const serverHeat = isRunning ? dynamicWattage * 0.001 * (1.2 - efficiency) : 0.01
 
-      const nextTemp = currentTemp + (serverHeat * dt * 45.0) - convection
+      const nextTemp = currentTemp + (serverHeat * dt * 1.0) - convection
 
       // Thermal Safety Thresholds & Alarm Event Publishing
-      const throttle = ThermalSystem.DEFAULT_THROTTLE
-      const critical = ThermalSystem.DEFAULT_CRITICAL
+      const throttle = spec?.throttleTemp ?? ThermalSystem.DEFAULT_THROTTLE
+      const critical = spec?.maxOperatingTemp ?? ThermalSystem.DEFAULT_CRITICAL
 
       if (nextTemp > critical) {
         if (power && power.isPowered) {

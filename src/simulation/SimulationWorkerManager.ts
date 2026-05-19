@@ -245,7 +245,7 @@ export class SimulationWorkerManager {
     this.sendTransferable('SYNC_INPUT', compacted)
   }
 
-  public requestTick() {
+  public requestTick(dt = 1.0) {
     if (!this.worker || this.isRestarting) return 
     if (this.isProcessingTick) {
       this.droppedTicksCount++
@@ -256,7 +256,7 @@ export class SimulationWorkerManager {
     this.successfulTicksCount++
     performanceMonitor.updateBackpressure(this.droppedTicksCount, this.successfulTicksCount)
     this.lastTickRequestTime = performance.now()
-    this.send('TICK')
+    this.send('TICK', { dt })
   }
 
   public getBackpressureMetrics() {
@@ -279,7 +279,7 @@ export class SimulationWorkerManager {
 
   private send(type: 'INIT', payload: SimInitPayload): void
   private send(type: 'SYNC_INPUT', payload: SimSyncInputPayload): void
-  private send(type: 'TICK'): void
+  private send(type: 'TICK', payload: { dt: number }): void
   private send(type: 'PING'): void
   private send(type: string, payload?: unknown) {
     if (this.worker) {

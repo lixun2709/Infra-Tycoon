@@ -9,7 +9,7 @@ import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation
 import { simulationCoordinator } from '../../simulation/SimulationCoordinator'
 
 export interface SimulationSlice {
-  processTick: () => void
+  processTick: (dt?: number) => void
   initializeSimulation: () => void
   handleWorkerOutput: (payload: SimSyncOutputPayload) => void
   getSimulationTelemetry: () => SimTelemetryPayload | null
@@ -106,15 +106,22 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     simWorkerManager.init(nodes, applications, connections, networkLoad)
 
     // Start centralized non-React Simulation Engine run loop (Day 28)
-    simulationCoordinator.start(2000)
+    simulationCoordinator.start(1000)
   },
 
-  processTick: () => {
+  processTick: (dt = 1.0) => {
+    console.log('[MAIN THREAD NODES]', get().nodes.map(n => ({
+      id: n.id,
+      name: n.name,
+      type: n.type,
+      parentRackId: n.parentRackId,
+      slotIndex: n.slotIndex
+    })))
     // 0. Request Worker Tick (Asynchronous)
     simWorkerManager.syncInput(get().nodes, get().applications, get().connections, get().networkLoad)
-    simWorkerManager.requestTick()
+    simWorkerManager.requestTick(dt)
     
-    const { nodes, applications, activeContracts, simulationCycle, balance, reputation } = get()
+    const { nodes, applications, activeContracts, realTimePlayedSeconds, balance, reputation } = get()
 
     // 1. Core Simulation Updates (Decoupled from UI)
     get().processAging()
@@ -123,7 +130,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     const { technicianTickets, pushAlert, updateNode } = get()
     if (technicianTickets.length > 0) {
       const nextTickets = technicianTickets.map(ticket => {
-        const nextElapsed = ticket.elapsedSeconds + 1
+        const nextElapsed = ticket.elapsedSeconds + dt
         const pct = nextElapsed / ticket.totalSeconds
         let nextStatus = ticket.status
         if (pct >= 1.0) {
@@ -161,8 +168,11 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       })
     }
 
-    // 2. SLA & Contract Management
-    const isMonthEnd = simulationCycle % 30 === 0 && simulationCycle > 0
+    // 2. SLA & Contract Management (Run billing accounting every 60 seconds of play time)
+    const nextRealTimePlayedSeconds = realTimePlayedSeconds + dt
+    const oldFloor = Math.floor(realTimePlayedSeconds / 60)
+    const newFloor = Math.floor(nextRealTimePlayedSeconds / 60)
+    const isMonthEnd = newFloor > oldFloor
     let monthlyRevenue = 0
     let monthlyPenalty = 0
 
@@ -183,7 +193,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
       const newAccumulatedPenalty = isHealthy 
         ? contract.accumulatedPenalty 
-        : contract.accumulatedPenalty + blueprint.penaltyPerTick
+        : contract.accumulatedPenalty + (blueprint.penaltyPerTick * dt)
 
       if (isMonthEnd) {
         monthlyRevenue += blueprint.monthlyMRR
@@ -201,20 +211,20 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
     // 3. Operational Expenses
     const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
-    const powerCost = totalPowerKW * 0.12 // $0.12 per kWh equivalent per tick
-    const rackRent = nodes.filter(n => n.type === 'rack').length * 50 // $50 per rack per tick
+    const powerCost = totalPowerKW * 0.12 * dt // $0.12 per kWh equivalent per second
+    const rackRent = nodes.filter(n => n.type === 'rack').length * 50 * dt // $50 per rack per second
 
     const maintenanceCost = nodes.reduce((sum, n) => {
       if (n.type === 'rack') return sum
       const base = 10 // $10 base maintenance per node
       const stressMultiplier = n.isThrottled ? 2.5 : 1.0
       const ageMultiplier = 1 + (n.degradation / 100)
-      return sum + (base * stressMultiplier * ageMultiplier)
+      return sum + (base * stressMultiplier * ageMultiplier * dt)
     }, 0)
 
     // Hybrid Cloud Expenses
-    const cloudCost = get().cloudBurstingActive ? (get().activeCloudInstances * 5) : 0
-    const egressCost = get().cloudEgressGB * 0.1 // $0.10 per GB
+    const cloudCost = get().cloudBurstingActive ? (get().activeCloudInstances * 5 * dt) : 0
+    const egressCost = get().cloudEgressGB * 0.1 * dt // $0.10 per GB
 
     const totalExpenses = powerCost + rackRent + cloudCost + egressCost + maintenanceCost
     let newBalance = balance - totalExpenses
@@ -238,7 +248,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     set({ 
       activeContracts: updatedContracts,
       balance: newBalance,
-      simulationCycle: simulationCycle + 1
+      realTimePlayedSeconds: nextRealTimePlayedSeconds
     })
 
     // Recalculate Facilities

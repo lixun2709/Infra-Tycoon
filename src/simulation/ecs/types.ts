@@ -16,6 +16,7 @@ export interface TransformComponent extends Component {
   slotIndex?: number
   type: string
   name?: string
+  catalogKey?: string
   // Dynamic network incident & state variables
   degradation?: number
   healthStatus?: string
@@ -52,6 +53,10 @@ export interface PowerComponent extends Component {
   load: number
   isPowered: boolean
   efficiency: number
+  breakerTripped?: boolean
+  overloadSeconds?: number
+  feedSource?: 'A' | 'B' | 'both'
+  baseWattage?: number
 }
 
 // Provisioning Component: OS/App lifecycle state

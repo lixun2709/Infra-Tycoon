@@ -248,6 +248,31 @@ export function handleCommand(
       output.push(`Rule: ${rule.name} [${activeStr}]`)
       output.push(`  Metric: ${rule.metricType} | Operator: ${rule.operator} | Threshold: ${rule.threshold} | Severity: ${rule.severity}`)
     })
+  } else if (cmdLower === 'pdu') {
+    const action = args[1]?.toLowerCase()
+    const targetRackId = args[2]
+    if (action === 'status') {
+      output.push("--- [[BLUE]]PDU POWER DISTRIBUTION MODULES[[RESET]] ---")
+      nodes.filter(n => n.type === 'rack' && n.siteId === siteId).forEach(n => {
+        const isTripped = n.breakerTripped
+        const statusStr = isTripped ? '[[RED]]TRIPPED[[RESET]]' : '[[GREEN]]NOMINAL[[RESET]]'
+        output.push(`Rack: ${n.hostname || n.name || n.id.slice(0, 8)} | Max: ${(n.maxPowerKW ?? 5).toFixed(1)} kW | Load: ${(n.currentPowerKW ?? 0).toFixed(2)} kW | Status: ${statusStr}`)
+      })
+    } else if (action === 'reset') {
+      if (!targetRackId) {
+        output.push("usage: pdu reset [rack_id_or_name]")
+      } else {
+        const rack = nodes.find(n => n.type === 'rack' && (n.id === targetRackId || n.name === targetRackId || n.hostname === targetRackId))
+        if (!rack) {
+          output.push(`[[RED]]ERROR: Rack '${targetRackId}' not found.[[RESET]]`)
+        } else {
+          get().resetRackBreaker(rack.id)
+          output.push(`[[GREEN]]SUCCESS: PDU Breaker for ${rack.name || rack.id.slice(0, 8)} has been reset. All mounted servers are starting boot sequence.[[RESET]]`)
+        }
+      }
+    } else {
+      output.push("usage: [[YELLOW]]pdu status[[RESET]] or [[YELLOW]]pdu reset [rack_id][[RESET]]")
+    }
   } else {
     output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
   }

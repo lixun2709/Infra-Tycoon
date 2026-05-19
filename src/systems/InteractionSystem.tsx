@@ -47,7 +47,7 @@ export function InteractionSystem() {
             systemState: 'running',
             bootProgress: 100,
             provisioningState: 'bootstrapped',
-            installDate: store.simulationCycle,
+            installDate: Math.floor(store.realTimePlayedSeconds),
             degradation: 0,
             temperature: 22
           })

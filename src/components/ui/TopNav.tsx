@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
@@ -23,8 +24,45 @@ export function TopNav({
   onToggleSaveManager,
   isTerminalOpen,
 }: TopNavProps) {
-  const { currentSiteId, sites, setCurrentSiteId, simulationCycle, isNetworkManagerOpen } = useInfraStore()
+  const { 
+    currentSiteId, 
+    sites, 
+    setCurrentSiteId, 
+    realTimePlayedSeconds, 
+    isNetworkManagerOpen,
+    timeFormat,
+    setTimeFormat
+  } = useInfraStore()
   const activeSite = sites.find(s => s.id === currentSiteId)
+
+  const [localTime, setLocalTime] = useState(new Date())
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLocalTime(new Date())
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [])
+
+  const formatLocalTime = (date: Date, format: '12h' | '24h') => {
+    if (format === '24h') {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+    } else {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })
+    }
+  }
+
+  const formatUptime = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600)
+    const m = Math.floor((totalSeconds % 3600) / 60)
+    const s = Math.floor(totalSeconds % 60)
+    
+    const pad = (num: number) => String(num).padStart(2, '0')
+    if (h > 0) {
+      return `${pad(h)}:${pad(m)}:${pad(s)}`
+    }
+    return `${pad(m)}:${pad(s)}`
+  }
 
   return (
     <div className="fixed top-0 left-0 right-0 z-[100] h-16 glass-dark border-b border-white/10 flex items-center justify-between px-8">
@@ -83,15 +121,31 @@ export function TopNav({
         ))}
       </nav>
 
-      {/* System Status */}
+      {/* System Status & Operations Clock */}
       <div className="flex items-center gap-6">
+        {/* Local Clock */}
+        <div 
+          onClick={() => setTimeFormat(timeFormat === '24h' ? '12h' : '24h')}
+          className="flex flex-col items-end cursor-pointer group select-none px-3 py-1 bg-white/5 border border-white/10 rounded-lg hover:border-teal-500/50 hover:bg-teal-950/20 transition-all duration-300 shadow-[0_0_10px_rgba(255,255,255,0.02)] hover:shadow-[0_0_15px_rgba(45,212,191,0.1)]"
+          title="Click to toggle 12-hour / 24-hour local clock format"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+            <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest group-hover:text-teal-400 transition-colors">Local Time</p>
+          </div>
+          <span className="text-xs font-black font-mono tracking-tight text-teal-400 mt-0.5 group-hover:scale-105 transition-transform">
+            {formatLocalTime(localTime, timeFormat)}
+          </span>
+        </div>
+
+        {/* System Uptime indicator */}
         <div className="flex flex-col items-end">
           <div className="flex items-center gap-2">
             <Badge variant="success" glow className="py-0">ONLINE</Badge>
-            <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">Cycle</p>
+            <p className="text-[8px] text-slate-500 font-black uppercase tracking-widest">Uptime</p>
           </div>
           <span className="text-xs font-black font-mono tracking-tighter text-teal-400 mt-0.5">
-            {simulationCycle.toLocaleString()}
+            {formatUptime(realTimePlayedSeconds)}
           </span>
         </div>
       </div>

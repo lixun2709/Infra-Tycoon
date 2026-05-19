@@ -17,6 +17,8 @@ export interface UISlice {
   setIsTerminalOpen: (val: boolean) => void
   setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
   setTheme: (theme: ThemeKey) => void
+  timeFormat: '24h' | '12h'
+  setTimeFormat: (format: '24h' | '12h') => void
 }
 
 export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) => ({
@@ -29,13 +31,23 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) =>
   setIsTerminalOpen: (val: boolean) => set({ isTerminalOpen: val }),
   setRenderQuality: (quality) => set({ renderQuality: quality }),
   setTheme: (theme) => set({ activeTheme: theme }),
+  timeFormat: '24h',
+  setTimeFormat: (format) => set({ timeFormat: format }),
 
   pushAlert: (severity, message, nodeId) => {
     if (severity === 'critical') audioManager.playEffect('error')
     else if (severity === 'warning') audioManager.playEffect('alert')
     
     set((state) => ({
-      alerts: [{ id: crypto.randomUUID(), timestamp: Date.now(), severity, message, isAcknowledged: false, nodeId }, ...state.alerts].slice(0, 100)
+      alerts: [{ 
+        id: crypto.randomUUID(), 
+        timestamp: Date.now(), 
+        cycle: Math.floor(state.realTimePlayedSeconds), 
+        severity, 
+        message, 
+        isAcknowledged: false, 
+        nodeId 
+      }, ...state.alerts].slice(0, 100)
     }))
   },
 

@@ -49,7 +49,7 @@ export type InfraState = {
   // v2.0 SDDC Metrics
   operationalBudget: number
   capacityUnits: number
-  simulationCycle: number
+  realTimePlayedSeconds: number
   dnsRecords: DnsRecord[]
   dhcpLeases: DhcpLease[]
   availableIPPool: string[]
@@ -85,6 +85,8 @@ export type InfraState = {
   setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
   activeTheme: ThemeKey
   setTheme: (theme: ThemeKey) => void
+  timeFormat: '24h' | '12h'
+  setTimeFormat: (format: '24h' | '12h') => void
   
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
@@ -133,7 +135,7 @@ export type InfraState = {
   removeApplication: (id: string) => void
   
   // Infrastructure Core Actions
-  processTick: () => void
+  processTick: (dt?: number) => void
   
   setPlacementMode: (mode: boolean, type?: string | null) => void
   addNode: (node: InfraNode) => void
@@ -181,6 +183,7 @@ export type InfraState = {
   finalRemoveNode: (id: string) => void
   visualizePath: (startId: string, endId: string) => void
   fixState: () => void
+  resetRackBreaker: (rackId: string) => void
 
   // Phase 10: Save System
   saveGame: (slotId: string) => void

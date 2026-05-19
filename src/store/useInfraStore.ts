@@ -47,7 +47,7 @@ export const useInfraStore = create<InfraState>()(
       terminalStates: INITIAL_TERMINAL_STATE,
       deploymentQueue: [],
       isHeatMapVisible: false,
-      simulationCycle: 0,
+      realTimePlayedSeconds: 0,
       balance: 1000000,
       reputation: 85,
       activeContracts: [],
@@ -83,7 +83,35 @@ export const useInfraStore = create<InfraState>()(
       ...createInteractionSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
-      processCommand: (text) => handleCommand(get, set, text)
+      processCommand: (text) => handleCommand(get, set, text),
+      resetRackBreaker: (rackId) => {
+        const { nodes, pushAlert } = get()
+        const rack = nodes.find(n => n.id === rackId)
+        if (!rack) return
+
+        const nextNodes = nodes.map(node => {
+          if (node.id === rackId) {
+            return {
+              ...node,
+              breakerTripped: false,
+              overloadSeconds: 0,
+              status: 'online' as const,
+              systemState: 'running' as const
+            }
+          }
+          if (node.parentRackId === rackId && node.type !== 'rack') {
+            return {
+              ...node,
+              systemState: 'running' as const,
+              bootProgress: 100
+            }
+          }
+          return node
+        })
+
+        set({ nodes: nextNodes })
+        pushAlert('info', `[PDU RESET] Circuit breaker on Server Rack [${rack.name || rack.id}] has been reset successfully. Mounted nodes are powering back on.`, rackId)
+      }
     }),
     {
       name: 'infra-storage',
@@ -95,14 +123,15 @@ export const useInfraStore = create<InfraState>()(
         sites: state.sites,
         balance: state.balance,
         reputation: state.reputation,
-        simulationCycle: state.simulationCycle,
+        realTimePlayedSeconds: state.realTimePlayedSeconds,
         activeContracts: state.activeContracts,
         blueprints: state.blueprints,
         applications: state.applications,
         technicianTickets: state.technicianTickets,
         terminalStates: state.terminalStates,
         renderQuality: state.renderQuality,
-        activeTheme: state.activeTheme
+        activeTheme: state.activeTheme,
+        timeFormat: state.timeFormat
       })
     }
   )

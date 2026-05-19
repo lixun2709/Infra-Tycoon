@@ -68,10 +68,12 @@ function processQueue() {
           handleSyncInput(data.payload)
           break
 
-        case 'TICK':
-          engine.update(1.0)
+        case 'TICK': {
+          const dt = data.payload?.dt ?? 1.0
+          engine.update(dt)
           sendSyncOutput()
           break
+        }
       }
     } catch (err) {
       console.error('[[Worker Thread]] Error processing message in FIFO queue:', err)
@@ -124,6 +126,8 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
     if (!world.hasComponent('transform', node.id)) {
       world.registerEntity(node.id)
     }
+
+
     
     world.addComponent('transform', {
       entityId: node.id,
@@ -132,6 +136,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       slotIndex: node.slotIndex,
       type: node.type,
       name: node.name,
+      catalogKey: node.catalogKey,
       // Map incident metrics for networking calculations
       degradation: node.degradationPercent,
       healthStatus: node.healthStatus,
@@ -151,8 +156,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       entityId: node.id,
       wattage: node.wattage,
       load: node.currentPowerKW || 0,
-      isPowered: node.systemState !== 'off',
-      efficiency: 0.9
+      isPowered: node.systemState !== 'off' && !node.breakerTripped,
+      efficiency: 0.9,
+      breakerTripped: node.breakerTripped ?? false,
+      overloadSeconds: node.overloadSeconds ?? 0,
+      feedSource: node.feedSource ?? 'both',
+      baseWattage: node.wattage
     } as PowerComponent)
 
     world.addComponent('provisioning', {
@@ -317,6 +326,10 @@ function sendSyncOutput() {
         currentPowerKW: power?.load ?? 0,
         bootProgress: prov?.bootProgress ?? 0,
         systemState: (power && !power.isPowered) ? 'off' : undefined,
+        breakerTripped: power?.breakerTripped,
+        overloadSeconds: power?.overloadSeconds,
+        feedSource: power?.feedSource,
+        wattage: power?.wattage,
         totalStorageTB: storage?.totalStorageTB,
         usedStorageTB: storage?.usedStorageTB,
         raidLevel: storage?.raidLevel,

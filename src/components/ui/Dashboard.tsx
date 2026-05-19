@@ -28,9 +28,20 @@ export function Dashboard({
     nodes, alerts, acknowledgeAlert, acknowledgeAllAlerts,
     totalPowerKW,
     networkLoad,
-    simulationCycle, auditLogs,
-    isHeatMapVisible, toggleHeatMap
+    realTimePlayedSeconds, auditLogs,
+    isHeatMapVisible, toggleHeatMap,
+    timeFormat
   } = useInfraStore()
+
+  const formatUptime = (totalSeconds: number) => {
+    const h = Math.floor(totalSeconds / 3600)
+    const m = Math.floor((totalSeconds % 3600) / 60)
+    const s = Math.floor(totalSeconds % 60)
+    const pad = (num: number) => String(num).padStart(2, '0')
+    if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`
+    return `${pad(m)}:${pad(s)}`
+  }
+
   const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics'>(initialTab)
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
@@ -80,7 +91,7 @@ export function Dashboard({
       headerExtra={
         <>
           <Badge variant="ghost" className="bg-white/5 border border-white/10 font-mono text-[10px] py-1 text-slate-400">
-            SIM_TICK: {simulationCycle}
+            UPTIME: {formatUptime(realTimePlayedSeconds)}
           </Badge>
           <button 
             onClick={toggleHeatMap}
@@ -199,7 +210,9 @@ export function Dashboard({
                         <div className="flex-1">
                           <p className="text-[11px] font-bold text-slate-200 leading-relaxed">{alert.message}</p>
                           <div className="flex justify-between items-center mt-3">
-                            <span className="text-[9px] font-mono text-slate-500">{new Date(alert.timestamp).toLocaleTimeString()}</span>
+                            <span className="text-[9px] font-mono text-slate-500">
+                              {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
+                            </span>
                             <Button variant="ghost" className="h-7 text-[9px]" onClick={() => acknowledgeAlert(alert.id)}>RESOLVE</Button>
                           </div>
                         </div>
@@ -215,7 +228,9 @@ export function Dashboard({
                   {alerts.filter(a => a.isAcknowledged).map(alert => (
                     <Card key={alert.id} glass={false} className="bg-white/5">
                       <p className="text-[10px] text-slate-400">{alert.message}</p>
-                      <p className="text-[8px] font-mono text-slate-600 mt-2">{new Date(alert.timestamp).toLocaleString()}</p>
+                      <p className="text-[8px] font-mono text-slate-600 mt-2">
+                        {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
+                      </p>
                     </Card>
                   ))}
                 </div>
@@ -240,10 +255,10 @@ export function Dashboard({
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] font-mono text-slate-500">
-                          {new Date(log.timestamp).toLocaleTimeString()}
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
                         </p>
                         <p className="text-[9px] font-black text-slate-700 uppercase tracking-widest mt-1">
-                          Cycle {simulationCycle}
+                          AUDIT TRAIL
                         </p>
                       </div>
                     </div>

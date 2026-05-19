@@ -17,7 +17,7 @@ export const createSaveSlice: StateCreator<InfraState, [], [], SaveSlice> = (set
       sites: state.sites,
       balance: state.balance,
       reputation: state.reputation,
-      simulationCycle: state.simulationCycle,
+      realTimePlayedSeconds: state.realTimePlayedSeconds,
       activeContracts: state.activeContracts,
       applications: state.applications,
       auditLogs: state.auditLogs
@@ -45,6 +45,11 @@ export const createSaveSlice: StateCreator<InfraState, [], [], SaveSlice> = (set
 
     try {
       const snapshot = JSON.parse(data)
+      // Provide robust backward compatibility mapping from cycle-based saves
+      if (snapshot.simulationCycle !== undefined && snapshot.realTimePlayedSeconds === undefined) {
+        snapshot.realTimePlayedSeconds = snapshot.simulationCycle * 60.0 // 1 cycle mapped to 60 seconds
+        delete snapshot.simulationCycle
+      }
       set({ ...snapshot })
       get().pushAlert('info', `Game loaded from slot ${slotId}`)
     } catch {

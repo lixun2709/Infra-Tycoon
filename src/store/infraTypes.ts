@@ -43,6 +43,7 @@ export type SystemState = 'off' | 'booting' | 'running'
 export type InfraAlert = {
   id: string
   timestamp: number
+  cycle?: number
   severity: AlertSeverity
   message: string
   isAcknowledged: boolean
@@ -156,6 +157,9 @@ export interface InfraNode {
     password?: string
     powerStatus: 'on' | 'off'
   }
+  breakerTripped?: boolean
+  overloadSeconds?: number
+  feedSource?: 'A' | 'B' | 'both'
 }
 
 export interface PostMortem {

@@ -23,6 +23,9 @@ export interface CompactNode {
   currentPowerKW?: number
   status?: string
   systemState: string
+  breakerTripped?: boolean
+  overloadSeconds?: number
+  feedSource?: 'A' | 'B' | 'both'
   provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'provisioned' | 'decommissioning'
   bootProgress: number
   temperature?: number
@@ -81,6 +84,10 @@ export interface SimSyncOutputPayload {
     ioPSUsed?: number
     driveDegradation?: number
     fanSpeedPercent?: number
+    breakerTripped?: boolean
+    overloadSeconds?: number
+    feedSource?: 'A' | 'B' | 'both'
+    wattage?: number
   }>
   applications: Array<{
     id: string
@@ -127,7 +134,7 @@ export interface SimTelemetryPayload {
 export type SimMessage = 
   | { type: 'INIT'; payload: SimInitPayload }
   | { type: 'SYNC_INPUT'; payload: SimSyncInputPayload }
-  | { type: 'TICK'; payload?: undefined }
+  | { type: 'TICK'; payload?: { dt: number } }
   | { type: 'SYNC_OUTPUT'; payload: SimSyncOutputPayload }
   | { type: 'TELEMETRY'; payload: SimTelemetryPayload }
   | { type: 'PING'; payload?: undefined }

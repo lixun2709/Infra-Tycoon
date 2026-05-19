@@ -5,7 +5,7 @@ interface SimulationState {
   nodes: InfraNode[];
   sites: Site[];
   currentSiteId: string;
-  simulationCycle: number;
+  realTimePlayedSeconds: number;
   alerts: InfraAlert[];
   auditLogs: AuditLog[];
   isHeatMapVisible: boolean;
@@ -15,7 +15,7 @@ interface SimulationState {
   addNode: (node: InfraNode) => void;
   removeNode: (id: string) => void;
   setCurrentSiteId: (siteId: string) => void;
-  incrementCycle: () => void;
+  incrementTime: (dt: number) => void;
   pushAlert: (alert: InfraAlert) => void;
   toggleHeatMap: () => void;
 }
@@ -24,7 +24,7 @@ export const useSimulationStore = create<SimulationState>((set) => ({
   nodes: [],
   sites: [],
   currentSiteId: 'site-1',
-  simulationCycle: 0,
+  realTimePlayedSeconds: 0,
   alerts: [],
   auditLogs: [],
   isHeatMapVisible: false,
@@ -36,7 +36,7 @@ export const useSimulationStore = create<SimulationState>((set) => ({
   addNode: (node) => set((state) => ({ nodes: [...state.nodes, node] })),
   removeNode: (id) => set((state) => ({ nodes: state.nodes.filter(n => n.id !== id) })),
   setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
-  incrementCycle: () => set((state) => ({ simulationCycle: state.simulationCycle + 1 })),
+  incrementTime: (dt) => set((state) => ({ realTimePlayedSeconds: state.realTimePlayedSeconds + dt })),
   pushAlert: (alert) => set((state) => ({ alerts: [alert, ...state.alerts].slice(0, 100) })),
   toggleHeatMap: () => set((state) => ({ isHeatMapVisible: !state.isHeatMapVisible })),
 }));
