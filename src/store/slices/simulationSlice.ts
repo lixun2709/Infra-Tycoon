@@ -24,7 +24,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     const { nodes, applications, connections } = get()
     
     // Update nodes with telemetry data
-    const updatedNodes = nodes.map(node => {
+    let updatedNodes = nodes.map(node => {
       const update = payload.nodes.find(n => n.id === node.id)
       if (update) {
         return { ...node, ...update } as InfraNode
@@ -61,11 +61,30 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       return site
     })
 
+    // Reconcile dynamic rack status and current power loads
+    if (payload.racks && payload.racks.length > 0) {
+      updatedNodes = updatedNodes.map(node => {
+        const update = payload.racks!.find(r => r.id === node.id)
+        if (update) {
+          return {
+            ...node,
+            status: update.status,
+            maxPowerKW: update.maxPowerKW,
+            currentPowerKW: update.currentPowerKW
+          } as InfraNode
+        }
+        return node
+      })
+    }
+
+    const overloadedRackCount = payload.overloadedRackCount ?? 0
+
     set({ 
       nodes: updatedNodes, 
       applications: updatedApps,
       connections: updatedConnections,
-      sites: updatedSites
+      sites: updatedSites,
+      overloadedRackCount
     })
 
     // Process background-fired alerts from the ObservabilitySystem

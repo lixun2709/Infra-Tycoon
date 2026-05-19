@@ -12,7 +12,8 @@ import type {
   ApplicationComponent,
   StorageComponent,
   ConnectionComponent,
-  TelemetryComponent
+  TelemetryComponent,
+  RackComponent
 } from '../ecs/types'
 
 const engine = new SimulationEngine()
@@ -186,6 +187,31 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         driveDegradation: node.driveDegradation ?? 0
       } as StorageComponent)
     }
+
+    if (node.type === 'rack') {
+      const hasPDU = nodes.some(n => n.parentRackId === node.id && n.catalogKey === 'HIGH_DENSITY_PDU_1U')
+      const uHeight = node.uHeight || 42
+      const occupancy = new Array(uHeight + 1).fill(false)
+      nodes.forEach(n => {
+        if (n.parentRackId === node.id && n.slotIndex != null && n.type !== 'rack') {
+          const childH = n.uHeight || 1
+          for (let u = n.slotIndex; u < n.slotIndex + childH; u++) {
+            if (u < occupancy.length) {
+              occupancy[u] = true
+            }
+          }
+        }
+      })
+
+      world.addComponent('rack', {
+        entityId: node.id,
+        maxPowerKW: hasPDU ? 15.0 : (node.maxPowerKW ?? 5.0),
+        currentPowerKW: node.currentPowerKW ?? 0,
+        status: (node.status as 'online' | 'power_overload') ?? 'online',
+        hasHighDensityPDU: hasPDU,
+        slotOccupancy: occupancy
+      } as RackComponent)
+    }
   })
 
   // 5. Update Application Components
@@ -335,6 +361,30 @@ function sendSyncOutput() {
     temps[siteId] = temp
   })
   output.siteAmbientTemps = temps
+
+  // Compile background Rack States
+  const rackMap = world.getComponentMap<RackComponent>('rack')
+  const rackOutputs: Array<{
+    id: string
+    status: 'online' | 'power_overload'
+    maxPowerKW: number
+    currentPowerKW: number
+  }> = []
+  let overloadedCount = 0
+
+  rackMap.forEach((rack, id) => {
+    if (rack.status === 'power_overload') {
+      overloadedCount++
+    }
+    rackOutputs.push({
+      id,
+      status: rack.status,
+      maxPowerKW: rack.maxPowerKW,
+      currentPowerKW: rack.currentPowerKW
+    })
+  })
+  output.racks = rackOutputs
+  output.overloadedRackCount = overloadedCount
 
   postMessageTransferable({ type: 'SYNC_OUTPUT', payload: output })
   postMessageTransferable({ type: 'TELEMETRY', payload: telemetry })

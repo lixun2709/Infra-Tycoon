@@ -16,8 +16,12 @@ export interface CompactNode {
   siteId: string
   parentRackId?: string
   slotIndex?: number
+  uHeight?: number
   wattage: number
+  catalogKey?: string
+  maxPowerKW?: number
   currentPowerKW?: number
+  status?: string
   systemState: string
   provisioningState: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'provisioned' | 'decommissioning'
   bootProgress: number
@@ -90,6 +94,13 @@ export interface SimSyncOutputPayload {
     message: string
     nodeId?: string
   }>
+  racks?: Array<{
+    id: string
+    status: 'online' | 'power_overload'
+    maxPowerKW: number
+    currentPowerKW: number
+  }>
+  overloadedRackCount?: number
 }
 
 export interface SimTelemetryPayload {

@@ -90,4 +90,13 @@ export interface TelemetryComponent extends Component {
   auditViolationsCount: number
 }
 
+// Rack Component: Power capacity, status, and physical slot layout
+export interface RackComponent extends Component {
+  maxPowerKW: number
+  currentPowerKW: number
+  status: 'online' | 'power_overload'
+  hasHighDensityPDU: boolean
+  slotOccupancy: boolean[]
+}
+
 export type ComponentMap<T extends Component> = Map<Entity, T>

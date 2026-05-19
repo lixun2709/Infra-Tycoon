@@ -169,6 +169,13 @@ export class ObservabilitySystem extends System {
   }
 
   /**
+   * Pushes a new alert directly into the fired alerts queue.
+   */
+  public static pushFiredAlert(alert: FiredAlert): void {
+    this.firedAlerts.push(alert)
+  }
+
+  /**
    * Retrieves and clears the accumulated fired alerts from the static queue.
    */
   public static flushAlerts(): FiredAlert[] {

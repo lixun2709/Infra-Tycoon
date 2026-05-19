@@ -1,6 +1,5 @@
 import type { InfraNode } from '../store/infraTypes'
 
-const RACK_U = 42
 
 /**
  * Rack-local vertical span [bottomU, topU] inclusive (1-based, bottom of rack = U1).
@@ -30,12 +29,15 @@ export function findFirstEmptySlot(
   uHeight: number,
   targetRackId?: string,
 ): { rackId: string; slotIndex: number } | null {
-  if (uHeight < 1 || uHeight > RACK_U) return null
+  if (uHeight < 1) return null
 
   const racks = nodes.filter((n) => n.type === 'rack')
   const searchedRacks = targetRackId ? racks.filter(r => r.id === targetRackId) : racks
 
   for (const rack of searchedRacks) {
+    const rackU = rack.uHeight || 42
+    if (uHeight > rackU) continue
+
     const mounted = nodes.filter(
       (n) => n.parentRackId === rack.id && n.slotIndex != null,
     )
@@ -43,9 +45,9 @@ export function findFirstEmptySlot(
       unitSpan(n.slotIndex!, n.uHeight),
     )
 
-    for (let slot = 1; slot <= RACK_U - uHeight + 1; slot++) {
+    for (let slot = 1; slot <= rackU - uHeight + 1; slot++) {
       const candidate = unitSpan(slot, uHeight)
-      if (candidate.top > RACK_U) continue
+      if (candidate.top > rackU) continue
       const clash = spans.some((s) => overlaps(candidate, s))
       if (!clash) return { rackId: rack.id, slotIndex: slot }
     }

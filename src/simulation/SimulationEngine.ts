@@ -1,6 +1,7 @@
 import { World } from './ecs/World'
 import { ThermalSystem } from './ecs/systems/ThermalSystem'
 import { PowerSystem } from './ecs/systems/PowerSystem'
+import { RackSystem } from './ecs/systems/RackSystem'
 import { ProvisioningSystem } from './ecs/systems/ProvisioningSystem'
 import { ApplicationSystem } from './ecs/systems/ApplicationSystem'
 import { StorageSystem } from './ecs/systems/StorageSystem'
@@ -26,6 +27,7 @@ export class SimulationEngine {
 
     // Register active simulation systems with strict priority execution
     this.systemManager.registerSystem(new PowerSystem(this.world), 10)
+    this.systemManager.registerSystem(new RackSystem(this.world), 15)
     this.systemManager.registerSystem(new ThermalSystem(this.world), 20)
     this.systemManager.registerSystem(new StorageSystem(this.world), 25)
     this.systemManager.registerSystem(new PacketSystem(this.world), 28)
