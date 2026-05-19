@@ -79,10 +79,17 @@ export interface StorageComponent extends Component {
   usedStorageTB: number
   ioPSLimit: number
   ioPSUsed: number
-  raidLevel: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'
-  storageStatus: 'healthy' | 'degraded' | 'rebuilding' | 'failed'
+  raidLevel: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID6' | 'RAID10' | 'JBOD'
+  storageStatus: 'healthy' | 'degraded' | 'highly_degraded' | 'rebuilding' | 'failed'
   rebuildProgress: number
   driveDegradation: number
+  tier?: 'hdd' | 'ssd' | 'nvme'
+  failedDrives?: number
+  replicationSourceId?: string
+  replicationProgress?: number
+  baseTotalStorageTB?: number
+  baseUsedStorageTB?: number
+  baseIoPSLimit?: number
 }
 
 // Telemetry Component: Per-entity performance and operational history

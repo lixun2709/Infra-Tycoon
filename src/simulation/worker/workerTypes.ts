@@ -33,9 +33,13 @@ export interface CompactNode {
   btuOutput: number
   totalStorageTB?: number
   usedStorageTB?: number
-  raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'
-  storageStatus?: 'healthy' | 'degraded' | 'rebuilding' | 'failed'
+  raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID6' | 'RAID10' | 'JBOD'
+  storageStatus?: 'healthy' | 'degraded' | 'highly_degraded' | 'rebuilding' | 'failed'
   rebuildProgress?: number
+  tier?: 'hdd' | 'ssd' | 'nvme'
+  failedDrives?: number
+  replicationSourceId?: string
+  replicationProgress?: number
   ioPSLimit?: number
   ioPSUsed?: number
   driveDegradation?: number
@@ -77,9 +81,13 @@ export interface SimSyncOutputPayload {
     systemState?: SystemState
     totalStorageTB?: number
     usedStorageTB?: number
-    raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID10' | 'JBOD'
-    storageStatus?: 'healthy' | 'degraded' | 'rebuilding' | 'failed'
+    raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID6' | 'RAID10' | 'JBOD'
+    storageStatus?: 'healthy' | 'degraded' | 'highly_degraded' | 'rebuilding' | 'failed'
     rebuildProgress?: number
+    tier?: 'hdd' | 'ssd' | 'nvme'
+    failedDrives?: number
+    replicationSourceId?: string
+    replicationProgress?: number
     ioPSLimit?: number
     ioPSUsed?: number
     driveDegradation?: number

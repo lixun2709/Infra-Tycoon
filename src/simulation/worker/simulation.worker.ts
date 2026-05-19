@@ -193,7 +193,11 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         raidLevel: node.raidLevel ?? 'RAID5',
         storageStatus: node.storageStatus ?? 'healthy',
         rebuildProgress: node.rebuildProgress ?? 0,
-        driveDegradation: node.driveDegradation ?? 0
+        driveDegradation: node.driveDegradation ?? 0,
+        tier: node.tier ?? 'hdd',
+        failedDrives: node.failedDrives ?? 0,
+        replicationSourceId: node.replicationSourceId,
+        replicationProgress: node.replicationProgress ?? 0
       } as StorageComponent)
     }
 
@@ -339,6 +343,10 @@ function sendSyncOutput() {
         raidLevel: storage?.raidLevel,
         storageStatus: storage?.storageStatus,
         rebuildProgress: storage?.rebuildProgress,
+        tier: storage?.tier,
+        failedDrives: storage?.failedDrives,
+        replicationSourceId: storage?.replicationSourceId,
+        replicationProgress: storage?.replicationProgress,
         ioPSLimit: storage?.ioPSLimit,
         ioPSUsed: storage?.ioPSUsed,
         driveDegradation: storage?.driveDegradation,
