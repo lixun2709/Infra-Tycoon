@@ -29,7 +29,8 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
     deploymentQueue,
     setPlacementMode,
     sites,
-    currentSiteId
+    currentSiteId,
+    selectedNodeId
   } = useInfraStore()
 
   const [activeCategory, setActiveCategory] = useState<Category>('compute')
@@ -56,7 +57,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
   const currentSiteName = sites.find(s => s.id === currentSiteId)?.name
 
   return (
-    <div className="fixed bottom-8 right-8 z-[200]">
+    <div className={`fixed bottom-8 z-[200] transition-all duration-300 ${selectedNodeId ? 'right-[352px]' : 'right-8'}`}>
       {/* Main Toggle Button */}
       <button 
         onClick={() => onToggle(!isOpen)}

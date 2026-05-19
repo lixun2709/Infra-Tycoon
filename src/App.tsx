@@ -302,7 +302,7 @@ function App() {
         </div>
       </div>
 
-      <div className="fixed bottom-8 right-32 z-[200]">
+      <div className={`fixed bottom-8 z-[200] transition-all duration-300 ${selectedNodeId ? 'right-[448px]' : 'right-32'}`}>
         <button 
           onClick={() => setIsAppBrowserOpen(!isAppBrowserOpen)}
           aria-label={isAppBrowserOpen ? "Close Application Browser" : "Open Application Browser"}
