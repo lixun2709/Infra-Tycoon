@@ -217,10 +217,15 @@ export class ThermalSystem extends System {
 
       // Local convective ambient: resolve to parent rack micro-climate if mounted
       let localAmbient = roomAmbientTemp
+      let hasActiveRackCooling = false
       if (transform.parentRackId) {
         const parentRackThermal = thermalMap.get(transform.parentRackId)
         if (parentRackThermal) {
           localAmbient = parentRackThermal.temperature
+        }
+        const load = rackLoads.get(transform.parentRackId)
+        if (load && load.coolingBTU > 0) {
+          hasActiveRackCooling = true
         }
       }
 
@@ -243,8 +248,10 @@ export class ThermalSystem extends System {
         power.load = Math.min(1.0, power.load + fanPenaltyKW)
       }
 
-      // Enhanced convection cooling coefficient scaled by fan spin rate
-      const convectionCoeff = ThermalSystem.CONVECTION_COEFFICIENT * (1.0 + thermal.fanSpeedPercent / 100.0)
+      // Enhanced convection cooling coefficient scaled by fan spin rate and active rack forced containment airflow
+      const convectionCoeff = ThermalSystem.CONVECTION_COEFFICIENT * 
+        (1.0 + thermal.fanSpeedPercent / 100.0) * 
+        (hasActiveRackCooling ? 6.0 : 1.0)
       const convection = (currentTemp - localAmbient) * convectionCoeff * dt
 
       // Server active heat equation
