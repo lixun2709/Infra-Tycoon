@@ -50,7 +50,8 @@ export class PacketSystem extends System {
         isBlockedByCompliance: conn.isBlockedByCompliance,
         status: conn.status,
         syncProgress: conn.syncProgress,
-        type: conn.type as unknown as Connection['type']
+        type: conn.type as unknown as Connection['type'],
+        packetLoss: conn.packetLoss ?? 0.0
       })
     })
 
@@ -69,6 +70,7 @@ export class PacketSystem extends System {
         existing.latencyMs = conn.latencyMs
         existing.status = conn.status
         existing.syncProgress = conn.syncProgress
+        existing.packetLoss = conn.packetLoss
       }
     })
   }

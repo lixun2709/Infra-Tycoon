@@ -237,6 +237,7 @@ export interface Connection {
   syncProgress?: number
   type?: PortType
   highlightTime?: number
+  packetLoss?: number
 }
 
 export interface TechnicianTicket {

@@ -36,6 +36,7 @@ export interface ConnectionComponent extends Component {
   status?: 'active' | 'blocked' | 'degraded'
   syncProgress?: number
   type?: string
+  packetLoss?: number
 }
 
 // Thermal Component: Heat dynamics state

@@ -24,7 +24,7 @@ export function resolveCongestion(
   // Approximation Model for fast scalable throughput aggregation:
   const updatedConnections = connections.map(conn => {
     if (conn.status === 'blocked') {
-      return { ...conn, throughputGbps: 0, latencyMs: 999 }
+      return { ...conn, throughputGbps: 0, latencyMs: 999, packetLoss: 1.0 }
     }
 
     const startNode = nodeMap.get(conn.startNodeId)
@@ -58,10 +58,12 @@ export function resolveCongestion(
     const capBandwidth = conn.bandwidthGbps || 10
     const ratio = Math.min(1.5, throughput / capBandwidth)
 
-    // Exponential queuing latency penalty
+    // Exponential queuing latency penalty & packet loss
     let latencyPenalty = 0
+    let packetLoss = 0.0
     if (ratio > 0.8) {
       latencyPenalty = Math.pow((ratio - 0.8) / 0.7, 3) * 30 // queue buffering delay up to +30ms
+      packetLoss = Math.min(1.0, Math.pow((ratio - 0.8) / 0.7, 2) * 0.5) // packet loss up to 50% under saturation
     }
 
     let activeIncidentMultiplier = 1.0
@@ -83,7 +85,8 @@ export function resolveCongestion(
       throughputGbps: Number(newThroughput.toFixed(2)),
       latencyMs: Number(calculatedLatency.toFixed(1)),
       status: newStatus,
-      syncProgress: Number(newSync.toFixed(1))
+      syncProgress: Number(newSync.toFixed(1)),
+      packetLoss: Number(packetLoss.toFixed(4))
     }
   })
 

@@ -167,6 +167,7 @@ export type InfraState = {
   setNodeHostname: (nodeId: string, name: string) => void
   assignNetworkDetails: () => void
   checkNetworkPath: (startId: string, endId: string) => boolean
+  getNetworkRoute: (startId: string, endId: string) => { exists: boolean; path: string[]; latencyMs: number; packetLoss: number; hops: number }
   resetState: () => void
 
   // ECS Sync

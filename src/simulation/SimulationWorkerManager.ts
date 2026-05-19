@@ -207,7 +207,8 @@ export class SimulationWorkerManager {
       isBlockedByCompliance: c.isBlockedByCompliance,
       status: c.status,
       syncProgress: c.syncProgress,
-      type: c.type
+      type: c.type,
+      packetLoss: c.packetLoss
     }))
 
     const compacted = {

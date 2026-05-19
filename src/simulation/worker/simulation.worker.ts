@@ -261,7 +261,8 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           isBlockedByCompliance: conn.isBlockedByCompliance ?? false,
           status: conn.status ?? 'active',
           syncProgress: conn.syncProgress ?? 0,
-          type: conn.type
+          type: conn.type,
+          packetLoss: conn.packetLoss ?? 0.0
         } as ConnectionComponent)
       } else {
         // Granular updates to preserve component identity & stable references
@@ -288,6 +289,9 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           }
           if (conn.syncProgress !== undefined && existing.syncProgress !== conn.syncProgress) {
             existing.syncProgress = conn.syncProgress
+          }
+          if (conn.packetLoss !== undefined && existing.packetLoss !== conn.packetLoss) {
+            existing.packetLoss = conn.packetLoss
           }
         }
       }
@@ -364,7 +368,8 @@ function sendSyncOutput() {
       isBlockedByCompliance: comp.isBlockedByCompliance,
       status: comp.status,
       syncProgress: comp.syncProgress,
-      type: comp.type as unknown as Connection['type']
+      type: comp.type as unknown as Connection['type'],
+      packetLoss: comp.packetLoss
     })
   })
 

@@ -19,6 +19,7 @@ export interface MiscSlice {
   setNodeHostname: (nodeId: string, name: string) => void
   assignNetworkDetails: () => void
   checkNetworkPath: (startId: string, endId: string) => boolean
+  getNetworkRoute: (startId: string, endId: string) => { exists: boolean; path: string[]; latencyMs: number; packetLoss: number; hops: number }
   resetState: () => void
   fixState: () => void
   updateSite: (id: string, updates: Partial<Site>) => void
@@ -255,27 +256,107 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   },
 
   checkNetworkPath: (startId, endId) => {
+    return get().getNetworkRoute(startId, endId).exists
+  },
+
+  getNetworkRoute: (startId, endId) => {
     const { connections } = get()
-    if (startId === endId) return true
+    if (startId === endId) {
+      return { exists: true, path: [startId], latencyMs: 0.0, packetLoss: 0.0, hops: 0 }
+    }
 
-    const queue = [startId]
-    const visited = new Set([startId])
+    const dist = new Map<string, number>()
+    const prev = new Map<string, { nodeId: string; connId: string }>()
+    const visited = new Set<string>()
 
-    while (queue.length > 0) {
-      const current = queue.shift()!
-      const neighbors = connections
-        .filter(c => c.startNodeId === current || c.endNodeId === current)
-        .map(c => c.startNodeId === current ? c.endNodeId : c.startNodeId)
+    dist.set(startId, 0)
 
-      for (const neighbor of neighbors) {
-        if (neighbor === endId) return true
-        if (!visited.has(neighbor)) {
-          visited.add(neighbor)
-          queue.push(neighbor)
+    const nodeIds = new Set<string>()
+    connections.forEach(c => {
+      nodeIds.add(c.startNodeId)
+      nodeIds.add(c.endNodeId)
+    })
+
+    while (true) {
+      let u: string | null = null
+      let minDist = Infinity
+
+      nodeIds.forEach(nodeId => {
+        if (!visited.has(nodeId)) {
+          const d = dist.get(nodeId) ?? Infinity
+          if (d < minDist) {
+            minDist = d
+            u = nodeId
+          }
+        }
+      })
+
+      if (u === null || minDist === Infinity) {
+        break
+      }
+
+      if (u === endId) {
+        break
+      }
+
+      visited.add(u)
+
+      const adj = connections.filter(c => c.status !== 'blocked' && (c.startNodeId === u || c.endNodeId === u))
+      for (const conn of adj) {
+        const v = conn.startNodeId === u ? conn.endNodeId : conn.startNodeId
+        if (visited.has(v)) continue
+
+        const latency = conn.latencyMs ?? 1.0
+        const loss = conn.packetLoss ?? 0.0
+        const weight = latency * (1.0 + loss * 10.0)
+
+        const alt = minDist + weight
+        if (alt < (dist.get(v) ?? Infinity)) {
+          dist.set(v, alt)
+          prev.set(v, { nodeId: u, connId: conn.id })
         }
       }
     }
-    return false
+
+    if (!dist.has(endId) || dist.get(endId) === Infinity) {
+      return { exists: false, path: [], latencyMs: 999.0, packetLoss: 1.0, hops: 0 }
+    }
+
+    const path: string[] = []
+    const connIds: string[] = []
+    let curr = endId
+    while (curr !== startId) {
+      const parent = prev.get(curr)
+      if (!parent) break
+      path.push(curr)
+      connIds.push(parent.connId)
+      curr = parent.nodeId
+    }
+    path.push(startId)
+    path.reverse()
+    connIds.reverse()
+
+    let totalLatency = 0.0
+    let compoundSuccessRate = 1.0
+
+    connIds.forEach(connId => {
+      const conn = connections.find(c => c.id === connId)
+      if (conn) {
+        totalLatency += conn.latencyMs ?? 1.0
+        const loss = conn.packetLoss ?? 0.0
+        compoundSuccessRate *= (1.0 - loss)
+      }
+    })
+
+    const finalLoss = 1.0 - compoundSuccessRate
+
+    return {
+      exists: true,
+      path,
+      latencyMs: Number(totalLatency.toFixed(1)),
+      packetLoss: Number(finalLoss.toFixed(4)),
+      hops: connIds.length
+    }
   },
 
   processAutoBackups: () => {
