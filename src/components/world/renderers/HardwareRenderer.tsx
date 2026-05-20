@@ -11,6 +11,7 @@ const cpuGeometry = new THREE.BoxGeometry(0.22, 1, 0.22)
 const ramGeometry = new THREE.BoxGeometry(0.015, 1, 0.18)
 const driveGeometry = new THREE.BoxGeometry(0.11, 1, 0.28)
 const portGeometry = new THREE.BoxGeometry(1, 1, 0.004)
+const portBackingGeometry = new THREE.BoxGeometry(1, 1, 0.006)
 const piiTorusGeometry = new THREE.TorusGeometry(0.55, 0.015, 16, 32)
 const maintenanceTorusGeometry = new THREE.TorusGeometry(0.2, 0.05, 12, 8)
 const bezelGeometry = new THREE.BoxGeometry(0.91, 1, 0.01)
@@ -148,6 +149,15 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
 
           return (
             <group key={port.id} position={[x, y, 0]}>
+              {/* Refined mechanical jack backing sleeve */}
+              <mesh
+                position={[0, 0, -0.002]}
+                geometry={portBackingGeometry}
+                scale={[portSize * 1.25, portSize * 1.25, 1]}
+              >
+                <meshStandardMaterial color="#07090e" metalness={0.9} roughness={0.2} />
+              </mesh>
+
               <mesh 
                 onClick={(e) => { e.stopPropagation(); handlePortClick(node.id, port.id); }}
                 position={[0, 0, 0.001]}

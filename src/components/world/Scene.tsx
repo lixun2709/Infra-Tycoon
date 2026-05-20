@@ -48,6 +48,7 @@ export function Scene() {
           status={rack.status || 'online'}
           position={rack.position}
           isSelected={selectedNodeId === rack.id}
+          containmentType={rack.containmentType}
         >
           {nodes.filter(n => n.parentRackId === rack.id).map(hw => (
             <MountedUnit

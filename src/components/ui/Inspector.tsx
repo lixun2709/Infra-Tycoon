@@ -100,6 +100,25 @@ export function Inspector() {
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
           {activeTab === 'details' && (
             <>
+              {selectedNode.type === 'rack' && (
+                <Card title="Aisle Containment Strategy" className="bg-transparent" glass={false}>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-[9px] text-slate-500 block mb-1.5 uppercase font-black tracking-widest">Configuration</label>
+                      <select
+                        value={selectedNode.containmentType || 'none'}
+                        onChange={(e) => updateNode(selectedNode.id, { containmentType: e.target.value as 'none' | 'cold_aisle' | 'hot_aisle' })}
+                        className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-slate-200 focus:outline-none focus:border-teal-500/50 uppercase font-black"
+                      >
+                        <option value="none">No Containment (Open Air)</option>
+                        <option value="cold_aisle">Cold Aisle Containment (20% Convection)</option>
+                        <option value="hot_aisle">Hot Aisle Containment (1.5x Cooling Return)</option>
+                      </select>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               <Card title="Specifications" className="bg-transparent" glass={false}>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">

@@ -13,6 +13,7 @@ interface RackProps {
   status: string
   position: { x: number; y: number; z: number }
   isSelected: boolean
+  containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
   children?: ReactNode
 }
 
@@ -45,7 +46,7 @@ function USlotLines() {
   )
 }
 
-function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, children }: RackProps) {
+function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', children }: RackProps) {
   const isOverload = status === 'power_overload'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
   
@@ -73,6 +74,25 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
           lineWidth={isSelected || isHovered ? 3 : 1.5} 
         />
       </mesh>
+
+      {containmentType && containmentType !== 'none' && (
+        <mesh position={[0, 0, 0]}>
+          <boxGeometry args={[1.08, RACK_HEIGHT * 1.002, 1.08]} />
+          <meshStandardMaterial
+            color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
+            transparent
+            opacity={0.15}
+            roughness={0.1}
+            metalness={0.9}
+            depthWrite={false}
+          />
+          <Edges
+            color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
+            threshold={24}
+            lineWidth={2.0}
+          />
+        </mesh>
+      )}
 
       <USlotLines />
       <Text 

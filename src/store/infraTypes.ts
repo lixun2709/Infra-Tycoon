@@ -128,6 +128,7 @@ export interface InfraNode {
   ioPSUsed?: number
   driveDegradation?: number
   systemState: SystemState
+  containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
   bootProgress: number
   hostname?: string
   managementIP?: string

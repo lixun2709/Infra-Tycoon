@@ -17,6 +17,53 @@ import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 
+function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
+  if (!data || data.length === 0) return null
+  const max = Math.max(...data, maxVal, 0.001)
+  const min = 0
+  const width = 240
+  const step = width / Math.max(1, data.length - 1)
+  const points = data.map((val, idx) => {
+    const x = idx * step
+    const y = height - ((val - min) / (max - min)) * height
+    return `${x},${y}`
+  }).join(' ')
+
+  return (
+    <div className="w-full mt-3 overflow-hidden" style={{ height: `${height}px` }}>
+      <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.25} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+          </linearGradient>
+        </defs>
+        <path
+          d={`M 0,${height} L ${points} L ${width},${height} Z`}
+          fill={`url(#gradient-${color.replace('#', '')})`}
+          className="transition-all duration-500"
+        />
+        <polyline
+          fill="none"
+          stroke={color}
+          strokeWidth="1.5"
+          points={points}
+          className="transition-all duration-500"
+        />
+        {data.length > 0 && (
+          <circle
+            cx={width}
+            cy={height - (((data[data.length - 1] ?? 0) - min) / (max - min)) * height}
+            r="2"
+            fill={color}
+            className="animate-pulse"
+          />
+        )}
+      </svg>
+    </div>
+  )
+}
+
 export function Dashboard({ 
   onClose,
   initialTab = 'overview'
@@ -46,6 +93,25 @@ export function Dashboard({
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
 
+  const allHardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
+  const globalHealthyCount = allHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
+  const globalHealthIndex = allHardware.length > 0 ? Math.round((globalHealthyCount / allHardware.length) * 100) : 100
+
+  const [powerHistory, setPowerHistory] = useState<number[]>([totalPowerKW, totalPowerKW, totalPowerKW, totalPowerKW, totalPowerKW])
+  const [networkHistory, setNetworkHistory] = useState<number[]>([networkLoad, networkLoad, networkLoad, networkLoad, networkLoad])
+  const [healthHistory, setHealthHistory] = useState<number[]>([globalHealthIndex, globalHealthIndex, globalHealthIndex, globalHealthIndex, globalHealthIndex])
+  const [fpsHistory, setFpsHistory] = useState<number[]>([60, 60, 60, 60, 60])
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setPowerHistory(prev => [...prev.slice(-24), totalPowerKW])
+      setNetworkHistory(prev => [...prev.slice(-24), networkLoad])
+      setHealthHistory(prev => [...prev.slice(-24), globalHealthIndex])
+      setFpsHistory(prev => [...prev.slice(-24), performanceMonitor.getMetrics().fps])
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [totalPowerKW, networkLoad, globalHealthIndex])
+
   useEffect(() => {
     if (activeTab !== 'diagnostics') return
     const interval = setInterval(() => {
@@ -68,10 +134,7 @@ export function Dashboard({
     }
   }
 
-  const allHardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
 
-  const globalHealthyCount = allHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
-  const globalHealthIndex = allHardware.length > 0 ? Math.round((globalHealthyCount / allHardware.length) * 100) : 100
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'OVERVIEW', icon: <LayoutDashboard size={14} /> },
@@ -129,6 +192,7 @@ export function Dashboard({
                       style={{ width: `${globalHealthIndex}%` }}
                     />
                   </div>
+                  <SparklineChart data={healthHistory} color={globalHealthIndex > 80 ? '#14b8a6' : '#ef4444'} maxVal={100} />
                   <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">
                     {globalHealthyCount} / {allHardware.length} Nodes Operational
                   </p>
@@ -142,6 +206,7 @@ export function Dashboard({
                   <div className="w-full bg-slate-950 h-1 rounded-full overflow-hidden">
                     <div className="bg-teal-500 h-full" style={{ width: '99.9%' }} />
                   </div>
+                  <SparklineChart data={[99.98, 99.99, 99.99, 99.98, 99.99, 99.99]} color="#10b981" maxVal={100} />
                   <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">Zero Violations in Current Cycle</p>
                 </Card>
 
@@ -156,6 +221,7 @@ export function Dashboard({
                       style={{ width: `${networkLoad * 100}%` }} 
                     />
                   </div>
+                  <SparklineChart data={networkHistory.map(n => n * 100)} color="#f59e0b" maxVal={100} />
                   <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">
                     Fabric Throughput Monitoring Active
                   </p>
@@ -164,32 +230,35 @@ export function Dashboard({
 
               {/* Facility Status */}
               <Card title="Facility Utilization" subtitle="Aggregate Site Power Load">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-6xl font-black text-white tracking-tighter">
-                      {(totalPowerKW).toFixed(1)}
-                      <span className="text-2xl text-slate-600 ml-2">kW</span>
-                    </span>
-                    <Badge variant={totalPowerKW > 80 ? 'error' : 'success'} glow className="mb-2">
-                      {totalPowerKW > 80 ? 'CRITICAL' : 'OPTIMAL'}
-                    </Badge>
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-baseline gap-3">
+                      <span className="text-6xl font-black text-white tracking-tighter">
+                        {(totalPowerKW).toFixed(1)}
+                        <span className="text-2xl text-slate-600 ml-2">kW</span>
+                      </span>
+                      <Badge variant={totalPowerKW > 80 ? 'error' : 'success'} glow className="mb-2">
+                        {totalPowerKW > 80 ? 'CRITICAL' : 'OPTIMAL'}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-3 gap-12 text-right">
+                      <div>
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Density</p>
+                        <p className="text-xl font-black text-slate-200">
+                          {nodes.filter(n => n.parentRackId).length} Units
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Efficiency</p>
+                        <p className="text-xl font-black text-teal-500">1.12 PUE</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Capacity</p>
+                        <p className="text-xl font-black text-slate-200">100kW</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-12 text-right">
-                    <div>
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Density</p>
-                      <p className="text-xl font-black text-slate-200">
-                        {nodes.filter(n => n.parentRackId).length} Units
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Efficiency</p>
-                      <p className="text-xl font-black text-teal-500">1.12 PUE</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Capacity</p>
-                      <p className="text-xl font-black text-slate-200">100kW</p>
-                    </div>
-                  </div>
+                  <SparklineChart data={powerHistory} color="#ff5a36" maxVal={50} height={50} />
                 </div>
               </Card>
             </div>
@@ -275,12 +344,13 @@ export function Dashboard({
                 {/* Host Metrics Card */}
                 <Card title="Host Diagnostics" subtitle="Main Thread & Memory performance">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-900/50 border border-slate-900/40 rounded-xl p-3 flex flex-col justify-between h-20">
+                    <div className="bg-slate-900/50 border border-slate-900/40 rounded-xl p-3 flex flex-col justify-between h-32">
                       <span className="text-slate-500 text-[9px] uppercase tracking-wider font-bold">Main Thread</span>
                       <div className="flex justify-between items-baseline mt-0.5">
                         <span className={`${metrics.fps > 55 ? 'text-emerald-400' : 'text-amber-400'} text-base font-bold`}>{metrics.fps}</span>
                         <span className="text-[9px] text-slate-500">FPS ({metrics.frameTime.toFixed(1)}ms)</span>
                       </div>
+                      <SparklineChart data={fpsHistory} color={metrics.fps > 55 ? '#10b981' : '#f59e0b'} height={25} maxVal={60} />
                       <div className="flex justify-between text-[9px] text-slate-400/90 border-t border-slate-800/40 pt-1 mt-1">
                         <span>1% Low: <span className="font-bold text-amber-500">{metrics.onePercentLowFps ?? metrics.fps}</span></span>
                         <span>Jitter: <span className="font-bold text-sky-400">{metrics.frameJitter?.toFixed(1) ?? '0.0'}ms</span></span>
