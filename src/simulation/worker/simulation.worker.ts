@@ -149,7 +149,11 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       isThrottled: node.isThrottled ?? false,
       fanSpeedPercent: node.fanSpeedPercent ?? 20.0,
       btuOutput: node.btuOutput,
-      lastUpdate: Date.now()
+      lastUpdate: Date.now(),
+      humidity: node.humidity,
+      containmentType: node.containmentType ?? 'none',
+      isStandby: node.isStandby ?? false,
+      accumulatedSimTime: node.accumulatedSimTime ?? 0.0
     } as ThermalComponent)
 
     world.addComponent('power', {
@@ -350,7 +354,11 @@ function sendSyncOutput() {
         ioPSLimit: storage?.ioPSLimit,
         ioPSUsed: storage?.ioPSUsed,
         driveDegradation: storage?.driveDegradation,
-        fanSpeedPercent: comp.fanSpeedPercent
+        fanSpeedPercent: comp.fanSpeedPercent,
+        humidity: comp.humidity,
+        containmentType: comp.containmentType,
+        isStandby: comp.isStandby,
+        accumulatedSimTime: comp.accumulatedSimTime
       })
     }
   })
@@ -387,6 +395,12 @@ function sendSyncOutput() {
     temps[siteId] = temp
   })
   output.siteAmbientTemps = temps
+
+  const hums: Record<string, number> = {}
+  ThermalSystem.siteAmbientHumidity.forEach((hum, siteId) => {
+    hums[siteId] = hum
+  })
+  output.siteAmbientHumidity = hums
 
   // Compile background Rack States
   const rackMap = world.getComponentMap<RackComponent>('rack')

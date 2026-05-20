@@ -46,6 +46,11 @@ export interface ThermalComponent extends Component {
   fanSpeedPercent: number
   btuOutput: number
   lastUpdate: number
+  // V2/Enterprise Additions
+  humidity?: number            // Relative Humidity % (0 - 100)
+  containmentType?: 'none' | 'cold_aisle' | 'hot_aisle' // Airflow containment configuration
+  isStandby?: boolean         // Standby state for CRAC units under N+1 redundancy
+  accumulatedSimTime?: number  // Deterministic time tracking counter (seconds)
 }
 
 // Power Component: Electrical state

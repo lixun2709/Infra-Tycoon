@@ -31,6 +31,10 @@ export interface CompactNode {
   temperature?: number
   isThrottled?: boolean
   btuOutput: number
+  humidity?: number
+  containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
+  isStandby?: boolean
+  accumulatedSimTime?: number
   totalStorageTB?: number
   usedStorageTB?: number
   raidLevel?: 'RAID0' | 'RAID1' | 'RAID5' | 'RAID6' | 'RAID10' | 'JBOD'
@@ -96,6 +100,10 @@ export interface SimSyncOutputPayload {
     overloadSeconds?: number
     feedSource?: 'A' | 'B' | 'both'
     wattage?: number
+    humidity?: number
+    containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
+    isStandby?: boolean
+    accumulatedSimTime?: number
   }>
   applications: Array<{
     id: string
@@ -104,6 +112,7 @@ export interface SimSyncOutputPayload {
   }>
   connections: Connection[]
   siteAmbientTemps?: Record<string, number>
+  siteAmbientHumidity?: Record<string, number>
   alerts?: Array<{
     severity: 'info' | 'warning' | 'critical'
     message: string
