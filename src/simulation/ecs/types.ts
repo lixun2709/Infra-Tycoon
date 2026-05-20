@@ -84,7 +84,7 @@ export interface PowerComponent extends Component {
 
 // Provisioning Component: OS/App lifecycle state
 export interface ProvisioningComponent extends Component {
-  state: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'provisioned'
+  state: 'unboxed' | 'racked' | 'patched' | 'bootstrapped' | 'provisioned' | 'decommissioning'
   bootProgress: number
 }
 

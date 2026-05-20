@@ -398,12 +398,6 @@ export class ThermalSystem extends System {
       const newFanSpeed = thermal.fanSpeedPercent + (targetFanSpeed - thermal.fanSpeedPercent) * alpha
       thermal.fanSpeedPercent = Math.min(100.0, Math.max(isRunning ? 20.0 : 0.0, newFanSpeed))
 
-      // Dynamic fan wattage load penalty: higher speed draws up to 50W extra
-      if (isRunning && power) {
-        const fanPenaltyKW = (thermal.fanSpeedPercent / 100.0) * 0.05
-        power.load = Math.min(1.0, power.load + fanPenaltyKW)
-      }
-
       // Reconstruct dynamic workload utilization factor U directly from dynamic wattage
       let workload = 0.2
       if (isRunning && power) {
@@ -419,6 +413,9 @@ export class ThermalSystem extends System {
       // Max expected temperature rise above ambient under 100% full workload
       const maxExpectedRise = 30.0 * (1.2 - efficiency)
 
+      // Clamp localAmbient to prevent extreme mathematical bounds
+      localAmbient = Math.max(10.0, Math.min(50.0, localAmbient))
+
       // Target equilibrium temperature convergence limit
       const fanEffectiveness = 0.5 + 1.0 * (thermal.fanSpeedPercent / 100.0)
       let targetTemp = localAmbient
@@ -426,15 +423,29 @@ export class ThermalSystem extends System {
         targetTemp += 8.0 + (workload * maxExpectedRise) / fanEffectiveness
       }
 
+      // Safeguard: Clamp targetTemp to realistic environmental and hardware silicon range (15 C to 120 C)
+      targetTemp = Math.max(15.0, Math.min(120.0, targetTemp))
+
       // Airflow response rate (Thermal inertia capacity). 
       // Dynamic server thermal time constant (takes 1-3 minutes to reach equilibrium when active, 5 minutes when off)
-      const serverTimeConstant = isRunning
+      let serverTimeConstant = isRunning
         ? (180.0 - 120.0 * (thermal.fanSpeedPercent / 100.0))
         : 300.0
+      
+      // Safeguard: Time constant must be positive and bounded to prevent division/exponential errors
+      if (!Number.isFinite(serverTimeConstant) || Number.isNaN(serverTimeConstant) || serverTimeConstant < 1.0) {
+        serverTimeConstant = 180.0
+      }
 
       // Asymptotically converge to target temperature
       const tempAlpha = 1.0 - Math.exp(-dt / serverTimeConstant)
-      const nextTemp = currentTemp + (targetTemp - currentTemp) * tempAlpha
+      let nextTemp = currentTemp + (targetTemp - currentTemp) * tempAlpha
+
+      // Safeguard: Clamp nextTemp to prevent numerical blowups
+      if (!Number.isFinite(nextTemp) || Number.isNaN(nextTemp)) {
+        nextTemp = targetTemp
+      }
+      nextTemp = Math.max(15.0, Math.min(120.0, nextTemp))
 
       // Thermal Safety Thresholds & Alarm Event Publishing
       const throttle = spec?.throttleTemp ?? ThermalSystem.DEFAULT_THROTTLE

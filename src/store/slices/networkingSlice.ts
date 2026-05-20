@@ -50,6 +50,36 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       return
     }
 
+    const sNode = nodes.find(n => n.id === sNodeId)
+    const tNode = nodes.find(n => n.id === tNodeId)
+    const sPort = sNode?.ports.find(p => p.id === sPortId)
+    const tPort = tNode?.ports.find(p => p.id === tPortId)
+
+    if (!sPort || !tPort) {
+      pushAlert('warning', 'Port not found. Cannot establish link.')
+      return
+    }
+
+    // Enforce port type compatibility
+    if (sPort.type !== tPort.type) {
+      pushAlert('critical', `Incompatible Ports: Cannot connect a ${sPort.type.toUpperCase()} port to a ${tPort.type.toUpperCase()} port.`)
+      return
+    }
+
+    // Set high-fidelity realistic capacity, latency, and characteristics based on connection type
+    let bandwidthGbps = 10
+    let latencyMs = 1
+    if (sPort.type === 'fc') {
+      bandwidthGbps = 16 // 16GFC Fiber Channel
+      latencyMs = 0.2    // Ultra low latency optical transit
+    } else if (sPort.type === 'sas') {
+      bandwidthGbps = 12 // SAS-3 12Gb/s storage fabric
+      latencyMs = 0.4    // Low-latency local storage bus
+    } else if (sPort.type === 'power') {
+      bandwidthGbps = 0  // Power delivery has no network transit bandwidth
+      latencyMs = 0
+    }
+
     const newConnection: Connection = {
       id: crypto.randomUUID(),
       startNodeId: sNodeId,
@@ -57,9 +87,10 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       endNodeId: tNodeId,
       endPortId: tPortId,
       status: 'active' as const,
-      bandwidthGbps: 10,
+      bandwidthGbps,
       throughputGbps: 0,
-      latencyMs: 1
+      latencyMs,
+      type: sPort.type
     }
 
     const updatedNodes = nodes.map(n => {
@@ -79,7 +110,15 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
 
     set({ connections: [...connections, newConnection], nodes: updatedNodes })
     audioManager.playEffect('success')
-    pushAlert('info', `Physical link established between ${sNodeId.slice(0,4)} and ${tNodeId.slice(0,4)}`)
+    
+    const typeLabels: Record<string, string> = {
+      power: 'C13 Power Feed',
+      network: 'Ethernet Cat6 Copper',
+      fc: 'OM4 Duplex LC Optical Fiber',
+      sas: 'Mini-SAS HD Metallic Shielded'
+    }
+    const label = typeLabels[sPort.type] || 'Standard Interface'
+    pushAlert('info', `Physical ${label} established between ${sNode?.hostname || sNodeId.slice(0,4)} and ${tNode?.hostname || tNodeId.slice(0,4)}`)
   },
 
   removeConnection: (id) => {

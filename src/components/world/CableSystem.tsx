@@ -1,22 +1,20 @@
 /* eslint-disable react-hooks/immutability */
 import { useRef, useMemo, useState, useEffect } from 'react'
-import { THEMES } from '../../store/themeTypes'
+import { THEMES, type ThemeSpec } from '../../store/themeTypes'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { InfraNode, Connection } from '../../store/infraTypes'
 import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
 
-// Colors loaded dynamically from the centralized theme specification.
-
-const CABLE_RADIUS = 0.003
-
+// Custom high-fidelity cable shader with type-specific physical wave and pulse behaviors.
 const CableShader = {
   uniforms: {
     uTime: { value: 0 },
     uColor: { value: new THREE.Color('#3b82f6') },
     uStatus: { value: 1.0 }, // 0: idle, 1: active, 2: error
     uHighlight: { value: 0.0 }, // 0: normal, 1: diagnostic highlight
+    uType: { value: 0.0 }, // 0.0: network, 1.0: power, 2.0: fc, 3.0: sas
   },
   vertexShader: `
     varying vec2 vUv;
@@ -33,6 +31,7 @@ const CableShader = {
     uniform vec3 uColor;
     uniform float uStatus;
     uniform float uHighlight;
+    uniform float uType;
     varying vec2 vUv;
     varying float vProgress;
 
@@ -45,32 +44,62 @@ const CableShader = {
       }
 
       // Outer sheath: semi-transparent, lightened version of the color
-      vec3 sheathColor = mix(uColor, vec3(1.0), 0.2);
-      float alpha = 0.25; 
+      vec3 sheathColor = mix(uColor, vec3(1.0), 0.25);
+      float alpha = 0.3; 
 
-      // Data flow / Inner layer
       vec3 color = sheathColor;
       
       if (uStatus > 0.5) {
-        float speed = 4.0;
-        // Sharper, brighter pulses
-        float pulse = pow(max(0.0, sin(vProgress * 15.0 - uTime * speed)), 20.0);
+        float pulse = 0.0;
         
-        if (uStatus > 1.5) {
-          // Error state: Red pulses
-          color = mix(sheathColor, vec3(1.0, 0.0, 0.0), pulse);
-          alpha = mix(alpha, 1.0, pulse);
+        if (abs(uType - 1.0) < 0.1) {
+          // Power: Smooth flowing wave representation of power/current
+          float flow = sin(vProgress * 8.0 - uTime * 2.5);
+          pulse = smoothstep(0.2, 0.8, flow) * 0.4;
+          
+          if (uStatus > 1.5) {
+            // Overloaded / Error Power: Aggressive fluctuating red
+            color = mix(sheathColor, vec3(1.0, 0.1, 0.1), pulse * 1.5);
+            alpha = mix(alpha, 0.9, pulse);
+          } else {
+            // Power Flow: Warm glowing flow
+            vec3 flowColor = mix(uColor, vec3(1.0, 0.9, 0.5), 0.5);
+            color = mix(sheathColor, flowColor, pulse);
+            alpha = mix(alpha, 0.8, pulse);
+          }
+        } else if (abs(uType - 2.0) < 0.1) {
+          // Fiber (FC): Blazing fast photon packets
+          float speed = 12.0;
+          pulse = pow(max(0.0, sin(vProgress * 35.0 - uTime * speed)), 30.0);
+          
+          if (uStatus > 1.5) {
+            color = mix(sheathColor, vec3(1.0, 0.0, 0.0), pulse);
+            alpha = mix(alpha, 1.0, pulse);
+          } else {
+            // Cyan/white bright photon laser pulse
+            vec3 laserColor = vec3(1.8, 2.5, 2.5);
+            color = mix(sheathColor, laserColor, pulse);
+            alpha = mix(alpha, 1.0, pulse);
+          }
         } else {
-          // Active state: Overdriven white pulses for bloom effect
-          vec3 pulseColor = vec3(1.5, 1.5, 1.5);
-          color = mix(sheathColor, pulseColor, pulse);
-          alpha = mix(alpha, 1.0, pulse);
+          // Network & SAS: Regular packets
+          float speed = 4.0;
+          pulse = pow(max(0.0, sin(vProgress * 15.0 - uTime * speed)), 20.0);
+          
+          if (uStatus > 1.5) {
+            color = mix(sheathColor, vec3(1.0, 0.0, 0.0), pulse);
+            alpha = mix(alpha, 1.0, pulse);
+          } else {
+            vec3 pulseColor = vec3(1.5, 1.5, 1.5);
+            color = mix(sheathColor, pulseColor, pulse);
+            alpha = mix(alpha, 1.0, pulse);
+          }
         }
       }
 
       // Rim lighting for the tube shape
       float rim = 1.0 - abs(vUv.y - 0.5) * 2.0;
-      color += vec3(0.3) * pow(rim, 2.0);
+      color += vec3(0.25) * pow(rim, 2.0);
 
       gl_FragColor = vec4(color, alpha);
     }
@@ -127,6 +156,148 @@ function getPortWorldPosition(node: InfraNode, portId: string, allNodes: InfraNo
   return new THREE.Vector3(rack.position.x - x, worldY + y, rack.position.z + z)
 }
 
+function CableConnector({ 
+  position, 
+  type, 
+  themeSpec 
+}: { 
+  position: THREE.Vector3
+  type: Connection['type']
+  themeSpec: ThemeSpec 
+}) {
+  const materials = useMemo(() => {
+    return {
+      powerBody: new THREE.MeshStandardMaterial({
+        color: '#111111', // Matte black
+        roughness: 0.8,
+        metalness: 0.1
+      }),
+      powerBoot: new THREE.MeshStandardMaterial({
+        color: '#2a2a2a', // Dark grey rubber collar
+        roughness: 0.8,
+        metalness: 0.1
+      }),
+      networkBoot: new THREE.MeshStandardMaterial({
+        color: themeSpec.render.cableNetwork || '#06b6d4',
+        roughness: 0.5,
+        metalness: 0.2
+      }),
+      networkClip: new THREE.MeshStandardMaterial({
+        color: '#ffffff',
+        transparent: true,
+        opacity: 0.6,
+        roughness: 0.2,
+        metalness: 0.1
+      }),
+      fcBody: new THREE.MeshStandardMaterial({
+        color: '#eab308', // Gold/beige standard LC casing
+        roughness: 0.6,
+        metalness: 0.1
+      }),
+      fcClamp: new THREE.MeshStandardMaterial({
+        color: '#10b981', // Emerald green clip clamp
+        roughness: 0.5,
+        metalness: 0.1
+      }),
+      sasBody: new THREE.MeshStandardMaterial({
+        color: '#a1a1aa', // Silver metallic casing
+        roughness: 0.2,
+        metalness: 0.8
+      }),
+      sasTab: new THREE.MeshStandardMaterial({
+        color: '#3b82f6', // Bright blue release tab
+        roughness: 0.7,
+        metalness: 0.1
+      })
+    }
+  }, [themeSpec])
+
+  if (type === 'power') {
+    return (
+      <group position={position}>
+        {/* Main C13 Plug Body */}
+        <mesh position={[0, 0, 0.008]}>
+          <boxGeometry args={[0.015, 0.015, 0.02]} />
+          <primitive object={materials.powerBody} attach="material" />
+        </mesh>
+        {/* Rubber Collar Boot */}
+        <mesh position={[0, 0, -0.008]}>
+          <boxGeometry args={[0.011, 0.011, 0.012]} />
+          <primitive object={materials.powerBoot} attach="material" />
+        </mesh>
+      </group>
+    )
+  }
+
+  if (type === 'network') {
+    return (
+      <group position={position}>
+        {/* RJ45 Boot */}
+        <mesh position={[0, 0, -0.004]}>
+          <boxGeometry args={[0.011, 0.011, 0.016]} />
+          <primitive object={materials.networkBoot} attach="material" />
+        </mesh>
+        {/* Clear Plastic Plug Tip */}
+        <mesh position={[0, 0, 0.008]}>
+          <boxGeometry args={[0.008, 0.008, 0.01]} />
+          <primitive object={materials.networkClip} attach="material" />
+        </mesh>
+        {/* Locking Clip Tab */}
+        <mesh position={[0, 0.005, 0.006]}>
+          <boxGeometry args={[0.002, 0.004, 0.008]} />
+          <primitive object={materials.networkClip} attach="material" />
+        </mesh>
+      </group>
+    )
+  }
+
+  if (type === 'fc') {
+    return (
+      <group position={position}>
+        {/* Dual LC Fiber Ferrules (Twin cylinders side by side) */}
+        <mesh position={[-0.004, 0, 0.004]}>
+          <boxGeometry args={[0.004, 0.004, 0.016]} />
+          <primitive object={materials.fcBody} attach="material" />
+        </mesh>
+        <mesh position={[0.004, 0, 0.004]}>
+          <boxGeometry args={[0.004, 0.004, 0.016]} />
+          <primitive object={materials.fcBody} attach="material" />
+        </mesh>
+        {/* Connector Base Clamp */}
+        <mesh position={[0, 0, -0.006]}>
+          <boxGeometry args={[0.012, 0.005, 0.008]} />
+          <primitive object={materials.fcClamp} attach="material" />
+        </mesh>
+      </group>
+    )
+  }
+
+  if (type === 'sas') {
+    return (
+      <group position={position}>
+        {/* Heavy Silver Metallic SFF-8644 Plug */}
+        <mesh position={[0, 0, 0.004]}>
+          <boxGeometry args={[0.02, 0.008, 0.022]} />
+          <primitive object={materials.sasBody} attach="material" />
+        </mesh>
+        {/* Pull tab ribbon */}
+        <mesh position={[0, 0, -0.01]}>
+          <boxGeometry args={[0.006, 0.001, 0.012]} />
+          <primitive object={materials.sasTab} attach="material" />
+        </mesh>
+      </group>
+    )
+  }
+
+  // Fallback box
+  return (
+    <mesh position={position}>
+      <boxGeometry args={[0.01, 0.01, 0.03]} />
+      <primitive object={materials.networkBoot} attach="material" />
+    </mesh>
+  )
+}
+
 function Cable({ connection, allNodes }: { connection: Connection, allNodes: InfraNode[] }) {
   const meshRef = useRef<THREE.Mesh>(null)
   
@@ -172,8 +343,24 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
     }
   }, [connection, startNode, endNode, allNodes])
 
+  // Dynamic cable type resolution, falling back to port definition if missing
+  const resolvedType = useMemo(() => {
+    if (connection.type) return connection.type
+    const sNode = allNodes.find(n => n.id === connection.startNodeId)
+    const sPort = sNode?.ports.find(p => p.id === connection.startPortId)
+    return sPort?.type || 'network'
+  }, [connection.type, connection.startNodeId, connection.startPortId, allNodes])
+
   const activeTheme = useInfraStore(s => s.activeTheme)
   const themeSpec = THEMES[activeTheme]
+
+  // Dynamic cable radius depending on high-fidelity physical type representation
+  const cableRadius = useMemo(() => {
+    if (resolvedType === 'power') return 0.005
+    if (resolvedType === 'fc') return 0.0016
+    if (resolvedType === 'sas') return 0.0045
+    return 0.003 // Default network Ethernet Cat6
+  }, [resolvedType])
 
   const material = useMemo(() => {
     return new THREE.ShaderMaterial({
@@ -182,35 +369,26 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
         uTime: { value: 0 },
         uColor: { value: new THREE.Color('#ffffff') },
         uStatus: { value: connection.status === 'active' ? 1.0 : (connection.status === 'blocked' ? 2.0 : 0.0) },
-        uHighlight: { value: 0.0 }
+        uHighlight: { value: 0.0 },
+        uType: { value: resolvedType === 'network' ? 0.0 : (resolvedType === 'power' ? 1.0 : (resolvedType === 'fc' ? 2.0 : 3.0)) }
       },
       transparent: true,
     })
-  }, [])
+  }, [connection.status, resolvedType])
 
   useEffect(() => {
     let colorHex = '#ffffff'
-    if (connection.type === 'network') colorHex = themeSpec.render.cableNetwork
-    else if (connection.type === 'power') colorHex = themeSpec.render.cablePower
-    else if (connection.type === 'fc') colorHex = themeSpec.render.cableFC
-    else if (connection.type === 'sas') colorHex = themeSpec.render.cableSAS
+    if (resolvedType === 'network') colorHex = themeSpec.render.cableNetwork
+    else if (resolvedType === 'power') colorHex = themeSpec.render.cablePower
+    else if (resolvedType === 'fc') colorHex = themeSpec.render.cableFC
+    else if (resolvedType === 'sas') colorHex = themeSpec.render.cableSAS
 
-    if (material.uniforms && material.uniforms.uColor && material.uniforms.uStatus) {
+    if (material.uniforms && material.uniforms.uColor && material.uniforms.uStatus && material.uniforms.uType) {
       material.uniforms.uColor.value.set(colorHex)
       material.uniforms.uStatus.value = connection.status === 'active' ? 1.0 : (connection.status === 'blocked' ? 2.0 : 0.0)
+      material.uniforms.uType.value = resolvedType === 'network' ? 0.0 : (resolvedType === 'power' ? 1.0 : (resolvedType === 'fc' ? 2.0 : 3.0))
     }
-  }, [material, connection.type, connection.status, themeSpec])
-
-  const connectorMaterial = useMemo(() => {
-    return new THREE.MeshStandardMaterial({
-      metalness: 0.6,
-      roughness: 0.4
-    })
-  }, [])
-
-  useEffect(() => {
-    connectorMaterial.color.set(themeSpec.primary)
-  }, [connectorMaterial, themeSpec.primary])
+  }, [material, resolvedType, connection.status, themeSpec])
 
   useFrame(({ clock }) => {
     if (meshRef.current) {
@@ -231,19 +409,15 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
   return (
     <group>
       <mesh ref={meshRef}>
-        <tubeGeometry args={[curve, 20, CABLE_RADIUS, 8, false]} />
+        <tubeGeometry args={[curve, 20, cableRadius, 8, false]} />
         <primitive object={material} attach="material" />
       </mesh>
       
-      {/* Start Connector (Blue RJ45 Style) */}
-      <mesh position={startPos} rotation={[0, 0, 0]} material={connectorMaterial}>
-        <boxGeometry args={[0.012, 0.012, 0.04]} />
-      </mesh>
+      {/* Start Connector */}
+      <CableConnector position={startPos} type={resolvedType} themeSpec={themeSpec} />
 
-      {/* End Connector (Blue RJ45 Style) */}
-      <mesh position={endPos} rotation={[0, 0, 0]} material={connectorMaterial}>
-        <boxGeometry args={[0.012, 0.012, 0.04]} />
-      </mesh>
+      {/* End Connector */}
+      <CableConnector position={endPos} type={resolvedType} themeSpec={themeSpec} />
     </group>
   )
 }

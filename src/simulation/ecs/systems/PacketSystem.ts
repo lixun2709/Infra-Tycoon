@@ -2,6 +2,7 @@ import { System } from '../System'
 import type { TransformComponent, PowerComponent, ConnectionComponent } from '../types'
 import type { InfraNode, Connection } from '../../../store/infraTypes'
 import { simulateNetwork } from '../../../physics/network/simulation'
+import { ObservabilitySystem } from './ObservabilitySystem'
 
 /**
  * PacketSystem
@@ -69,9 +70,36 @@ export class PacketSystem extends System {
     }
 
     // 3. Invoke deterministic aggregate-flow physical calculation forwarding dt
-    const { connections: updatedConnections } = simulateNetwork(nodes, connections, PacketSystem.networkLoad, dt)
+    const { connections: updatedConnections, newlyInfectedNodeIds } = simulateNetwork(
+      nodes,
+      connections,
+      PacketSystem.networkLoad,
+      dt
+    )
 
-    // 4. Propagate updated properties back to ECS components
+    // 4. Handle newly infected nodes via lateral spread
+    newlyInfectedNodeIds.forEach(nodeId => {
+      const transform = transformMap.get(nodeId)
+      if (transform) {
+        transform.isInfected = true
+
+        // Notify the ECS Event Bus
+        this.world.eventBus.publish('system:alert', {
+          entityId: nodeId,
+          message: `CRITICAL: Ransomware lateral propagation! Node [${transform.name || nodeId}] has been infected over network link.`,
+          severity: 'critical'
+        })
+
+        // Push alert into ObservabilitySystem to notify the UI
+        ObservabilitySystem.pushFiredAlert({
+          severity: 'critical',
+          message: `CRITICAL: Ransomware lateral propagation! Node [${transform.name || nodeId}] has been infected over network link.`,
+          nodeId
+        })
+      }
+    })
+
+    // 5. Propagate updated properties back to ECS components
     updatedConnections.forEach(conn => {
       const existing = connectionMap.get(conn.id)
       if (existing) {

@@ -5,6 +5,7 @@ import { resolveCongestion } from './congestion'
 
 export interface NetworkTickResult {
   connections: Connection[]
+  newlyInfectedNodeIds: string[]
 }
 
 /**
@@ -13,7 +14,7 @@ export interface NetworkTickResult {
  * Orchestrates:
  * 1. Demand Phase: calculates node bandwidth requirements and applies incident profiles.
  * 2. Topology Phase: constructs high-performance adjacency maps.
- * 3. Congestion Phase: aggregates traffic recursively and evaluates queue penalties.
+ * 3. Congestion & Propagation Phase: routes traffic via Dijkstra and simulates malware spreading.
  */
 export function simulateNetwork(
   nodes: InfraNode[],
@@ -28,9 +29,10 @@ export function simulateNetwork(
   const adjMap = buildAdjacencyMap(connections)
 
   // Phase 3: Congestion & Propagation Phase
-  const { updatedConnections } = resolveCongestion(nodes, connections, demands, adjMap, dt)
+  const { updatedConnections, newlyInfectedNodeIds } = resolveCongestion(nodes, connections, demands, adjMap, dt)
 
   return {
-    connections: updatedConnections
+    connections: updatedConnections,
+    newlyInfectedNodeIds
   }
 }

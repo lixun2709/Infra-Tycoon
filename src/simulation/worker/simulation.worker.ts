@@ -5,6 +5,7 @@ import { ObservabilitySystem } from '../ecs/systems/ObservabilitySystem'
 import { TelemetrySystem } from '../ecs/systems/TelemetrySystem'
 import type { SimMessage, SimInitPayload, SimSyncInputPayload, SimSyncOutputPayload } from './workerTypes'
 import type { Connection } from '../../store/infraTypes'
+import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import type { 
   ThermalComponent, 
   PowerComponent, 
@@ -121,63 +122,126 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
     console.log(`[[Worker Thread Reconciler]] Pruned ${prunedCount} deleted entities from simulation.`)
   }
 
-  // 4. Update Node Components
+  // 4. Update Node Components (using Granular Diffing to preserve Worker-driven simulation state)
   nodes.forEach(node => {
     // Only register entity if it is new to avoid console warnings
     if (!world.hasComponent('transform', node.id)) {
       world.registerEntity(node.id)
     }
 
+    // 4.1 Update Transform Component
+    if (!world.hasComponent('transform', node.id)) {
+      world.addComponent('transform', {
+        entityId: node.id,
+        siteId: node.siteId,
+        parentRackId: node.parentRackId,
+        slotIndex: node.slotIndex,
+        type: node.type,
+        name: node.name,
+        catalogKey: node.catalogKey,
+        uHeight: node.uHeight,
+        degradation: node.degradationPercent,
+        healthStatus: node.healthStatus,
+        isInfected: node.isInfected,
+        isBlackholed: node.isBlackholed,
+        rateLimitGbps: node.rateLimitGbps
+      } as TransformComponent)
+    } else {
+      const transform = world.getComponent<TransformComponent>('transform', node.id)
+      if (transform) {
+        transform.siteId = node.siteId
+        transform.parentRackId = node.parentRackId
+        transform.slotIndex = node.slotIndex
+        transform.type = node.type
+        transform.name = node.name
+        transform.catalogKey = node.catalogKey
+        transform.uHeight = node.uHeight
+        transform.degradation = node.degradationPercent
+        transform.healthStatus = node.healthStatus
+        transform.isInfected = node.isInfected
+        transform.isBlackholed = node.isBlackholed
+        transform.rateLimitGbps = node.rateLimitGbps
+      }
+    }
 
-    
-    world.addComponent('transform', {
-      entityId: node.id,
-      siteId: node.siteId,
-      parentRackId: node.parentRackId,
-      slotIndex: node.slotIndex,
-      type: node.type,
-      name: node.name,
-      catalogKey: node.catalogKey,
-      uHeight: node.uHeight,
-      // Map incident metrics for networking calculations
-      degradation: node.degradationPercent,
-      healthStatus: node.healthStatus,
-      isInfected: node.isInfected,
-      isBlackholed: node.isBlackholed,
-      rateLimitGbps: node.rateLimitGbps
-    } as TransformComponent)
+    // 4.2 Update Thermal Component
+    if (!world.hasComponent('thermal', node.id)) {
+      world.addComponent('thermal', {
+        entityId: node.id,
+        temperature: node.temperature ?? 22.0,
+        isThrottled: node.isThrottled ?? false,
+        fanSpeedPercent: node.fanSpeedPercent ?? 20.0,
+        btuOutput: node.btuOutput,
+        lastUpdate: Date.now(),
+        humidity: node.humidity,
+        containmentType: node.containmentType ?? 'none',
+        isStandby: node.isStandby ?? false,
+        accumulatedSimTime: node.accumulatedSimTime ?? 0.0
+      } as ThermalComponent)
+    } else {
+      const thermal = world.getComponent<ThermalComponent>('thermal', node.id)
+      if (thermal) {
+        if (node.containmentType !== undefined) thermal.containmentType = node.containmentType
+        if (node.isStandby !== undefined) thermal.isStandby = node.isStandby
+        // Do NOT overwrite dynamic simulated fields (temperature, isThrottled, fanSpeedPercent, btuOutput, lastUpdate, accumulatedSimTime)
+      }
+    }
 
-    world.addComponent('thermal', {
-      entityId: node.id,
-      temperature: node.temperature ?? 22.0,
-      isThrottled: node.isThrottled ?? false,
-      fanSpeedPercent: node.fanSpeedPercent ?? 20.0,
-      btuOutput: node.btuOutput,
-      lastUpdate: Date.now(),
-      humidity: node.humidity,
-      containmentType: node.containmentType ?? 'none',
-      isStandby: node.isStandby ?? false,
-      accumulatedSimTime: node.accumulatedSimTime ?? 0.0
-    } as ThermalComponent)
+    // 4.3 Update Power Component
+    if (!world.hasComponent('power', node.id)) {
+      const catalogSpec = node.catalogKey ? HARDWARE_CATALOG[node.catalogKey as keyof typeof HARDWARE_CATALOG] : null
+      const baseWattage = catalogSpec ? catalogSpec.wattage : (node.wattage || 300)
+      
+      world.addComponent('power', {
+        entityId: node.id,
+        wattage: baseWattage,
+        load: node.currentPowerKW || (baseWattage / 1000.0),
+        isPowered: node.systemState !== 'off' && !node.breakerTripped,
+        efficiency: 0.9,
+        breakerTripped: node.breakerTripped ?? false,
+        overloadSeconds: node.overloadSeconds ?? 0,
+        feedSource: node.feedSource ?? 'both',
+        baseWattage: baseWattage,
+        upsMaxBatterySeconds: node.uHeight === 0 ? 10.0 : 30.0,
+        upsBatterySeconds: node.uHeight === 0 ? 10.0 : 30.0,
+      } as PowerComponent)
+    } else {
+      const power = world.getComponent<PowerComponent>('power', node.id)
+      if (power) {
+        const isPowered = node.systemState !== 'off' && !node.breakerTripped
+        if (power.isPowered !== isPowered) power.isPowered = isPowered
+        if (node.breakerTripped !== undefined && power.breakerTripped !== node.breakerTripped) {
+          power.breakerTripped = node.breakerTripped
+          if (!node.breakerTripped) {
+            power.overloadSeconds = 0
+          }
+        }
+        if (node.overloadSeconds !== undefined && node.overloadSeconds === 0) {
+          power.overloadSeconds = 0
+        }
+        if (node.feedSource !== undefined && power.feedSource !== node.feedSource) {
+          power.feedSource = node.feedSource
+        }
+        // Do NOT overwrite worker-simulated fields (baseWattage, wattage, load, overloadSeconds, upsBatterySeconds, apparentPowerVA)
+      }
+    }
 
-    world.addComponent('power', {
-      entityId: node.id,
-      wattage: node.wattage,
-      load: node.currentPowerKW || 0,
-      isPowered: node.systemState !== 'off' && !node.breakerTripped,
-      efficiency: 0.9,
-      breakerTripped: node.breakerTripped ?? false,
-      overloadSeconds: node.overloadSeconds ?? 0,
-      feedSource: node.feedSource ?? 'both',
-      baseWattage: node.wattage
-    } as PowerComponent)
+    // 4.4 Update Provisioning Component
+    if (!world.hasComponent('provisioning', node.id)) {
+      world.addComponent('provisioning', {
+        entityId: node.id,
+        state: node.provisioningState,
+        bootProgress: node.bootProgress
+      } as ProvisioningComponent)
+    } else {
+      const provisioning = world.getComponent<ProvisioningComponent>('provisioning', node.id)
+      if (provisioning) {
+        provisioning.state = node.provisioningState
+        provisioning.bootProgress = node.bootProgress
+      }
+    }
 
-    world.addComponent('provisioning', {
-      entityId: node.id,
-      state: node.provisioningState,
-      bootProgress: node.bootProgress
-    } as ProvisioningComponent)
-
+    // 4.5 Initialize Telemetry Component
     if (!world.hasComponent('telemetry', node.id)) {
       world.addComponent('telemetry', {
         entityId: node.id,
@@ -191,24 +255,44 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       } as TelemetryComponent)
     }
 
+    // 4.6 Update Storage Component
     if (node.type === 'storage' || node.type === 'compute' || (node.totalStorageTB && node.totalStorageTB > 0)) {
-      world.addComponent('storage', {
-        entityId: node.id,
-        totalStorageTB: node.totalStorageTB ?? 0,
-        usedStorageTB: node.usedStorageTB ?? 0,
-        ioPSLimit: node.ioPSLimit ?? 5000,
-        ioPSUsed: node.ioPSUsed ?? 0,
-        raidLevel: node.raidLevel ?? 'RAID5',
-        storageStatus: node.storageStatus ?? 'healthy',
-        rebuildProgress: node.rebuildProgress ?? 0,
-        driveDegradation: node.driveDegradation ?? 0,
-        tier: node.tier ?? 'hdd',
-        failedDrives: node.failedDrives ?? 0,
-        replicationSourceId: node.replicationSourceId,
-        replicationProgress: node.replicationProgress ?? 0
-      } as StorageComponent)
+      if (!world.hasComponent('storage', node.id)) {
+        world.addComponent('storage', {
+          entityId: node.id,
+          totalStorageTB: node.totalStorageTB ?? 0,
+          usedStorageTB: node.usedStorageTB ?? 0,
+          ioPSLimit: node.ioPSLimit ?? 5000,
+          ioPSUsed: node.ioPSUsed ?? 0,
+          raidLevel: node.raidLevel ?? 'RAID5',
+          storageStatus: node.storageStatus ?? 'healthy',
+          rebuildProgress: node.rebuildProgress ?? 0,
+          driveDegradation: node.driveDegradation ?? 0,
+          tier: node.tier ?? 'hdd',
+          failedDrives: node.failedDrives ?? 0,
+          replicationSourceId: node.replicationSourceId,
+          replicationProgress: node.replicationProgress ?? 0
+        } as StorageComponent)
+      } else {
+        const storage = world.getComponent<StorageComponent>('storage', node.id)
+        if (storage) {
+          storage.totalStorageTB = node.totalStorageTB ?? storage.totalStorageTB
+          storage.usedStorageTB = node.usedStorageTB ?? storage.usedStorageTB
+          storage.ioPSLimit = node.ioPSLimit ?? storage.ioPSLimit
+          storage.ioPSUsed = node.ioPSUsed ?? storage.ioPSUsed
+          storage.raidLevel = node.raidLevel ?? storage.raidLevel
+          storage.storageStatus = node.storageStatus ?? storage.storageStatus
+          storage.rebuildProgress = node.rebuildProgress ?? storage.rebuildProgress
+          storage.driveDegradation = node.driveDegradation ?? storage.driveDegradation
+          storage.tier = node.tier ?? storage.tier
+          storage.failedDrives = node.failedDrives ?? storage.failedDrives
+          storage.replicationSourceId = node.replicationSourceId ?? storage.replicationSourceId
+          storage.replicationProgress = node.replicationProgress ?? storage.replicationProgress
+        }
+      }
     }
 
+    // 4.7 Update Rack Component
     if (node.type === 'rack') {
       const hasPDU = nodes.some(n => n.parentRackId === node.id && n.catalogKey === 'HIGH_DENSITY_PDU_1U')
       const uHeight = node.uHeight || 42
@@ -224,14 +308,24 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         }
       })
 
-      world.addComponent('rack', {
-        entityId: node.id,
-        maxPowerKW: hasPDU ? 15.0 : (node.maxPowerKW ?? 5.0),
-        currentPowerKW: node.currentPowerKW ?? 0,
-        status: (node.status as 'online' | 'power_overload') ?? 'online',
-        hasHighDensityPDU: hasPDU,
-        slotOccupancy: occupancy
-      } as RackComponent)
+      if (!world.hasComponent('rack', node.id)) {
+        world.addComponent('rack', {
+          entityId: node.id,
+          maxPowerKW: hasPDU ? 15.0 : (node.maxPowerKW ?? 5.0),
+          currentPowerKW: node.currentPowerKW ?? 0,
+          status: (node.status as 'online' | 'power_overload') ?? 'online',
+          hasHighDensityPDU: hasPDU,
+          slotOccupancy: occupancy
+        } as RackComponent)
+      } else {
+        const rack = world.getComponent<RackComponent>('rack', node.id)
+        if (rack) {
+          rack.maxPowerKW = hasPDU ? 15.0 : (node.maxPowerKW ?? 5.0)
+          rack.hasHighDensityPDU = hasPDU
+          rack.slotOccupancy = occupancy
+          // status and currentPowerKW are calculated inside worker systems, so do NOT overwrite them!
+        }
+      }
     }
   })
 
@@ -343,6 +437,7 @@ function sendSyncOutput() {
   }
 
   // Collect results from components
+  const transformMap = world.getComponentMap<TransformComponent>('transform')
   const thermalMap = world.getComponentMap<ThermalComponent>('thermal')
   const powerMap = world.getComponentMap<PowerComponent>('power')
   const provMap = world.getComponentMap<ProvisioningComponent>('provisioning')
@@ -354,6 +449,7 @@ function sendSyncOutput() {
     const power = powerMap.get(id)
     const prov = provMap.get(id)
     const storage = storageMap.get(id)
+    const transform = transformMap.get(id)
     if (power || prov) { // Only for hardware, not for apps-as-entities
       output.nodes.push({
         id,
@@ -382,7 +478,9 @@ function sendSyncOutput() {
         humidity: comp.humidity,
         containmentType: comp.containmentType,
         isStandby: comp.isStandby,
-        accumulatedSimTime: comp.accumulatedSimTime
+        accumulatedSimTime: comp.accumulatedSimTime,
+        isInfected: transform?.isInfected,
+        isBlackholed: transform?.isBlackholed
       })
     }
   })

@@ -1,5 +1,6 @@
 import { System } from '../System'
-import type { PowerComponent, TransformComponent, ThermalComponent, ApplicationComponent, RackComponent } from '../types'
+import type { PowerComponent, TransformComponent, ThermalComponent, ApplicationComponent, RackComponent, ConnectionComponent } from '../types'
+import { HARDWARE_CATALOG } from '../../../physics/hardwareLibrary'
 
 /**
  * PowerSystem
@@ -109,17 +110,17 @@ export class PowerSystem extends System {
       const power = powerMap.get(id)!
       const thermal = thermalMap.get(id)
 
-      // Initialize base wattage
-      if (power.baseWattage === undefined) {
-        power.baseWattage = power.wattage || 300
+      // Initialize and validate base wattage using catalog specifications
+      if (power.baseWattage === undefined || !Number.isFinite(power.baseWattage) || Number.isNaN(power.baseWattage) || power.baseWattage <= 0) {
+        const catalogSpec = transform.catalogKey ? HARDWARE_CATALOG[transform.catalogKey as keyof typeof HARDWARE_CATALOG] : null
+        power.baseWattage = catalogSpec ? catalogSpec.wattage : (power.wattage && Number.isFinite(power.wattage) && power.wattage > 0 ? power.wattage : 300)
       }
+      power.baseWattage = Math.max(50, Math.min(15000, power.baseWattage))
 
-      // Initialize slot-based alternating phase layout
-      if (!power.phase) {
-        power.phase = transform.slotIndex !== undefined
-          ? (['A', 'B', 'C'][transform.slotIndex % 3] as 'A' | 'B' | 'C')
-          : 'A'
-      }
+      // Dynamically compute slot-based alternating phase layout to adapt to node placement and moves
+      power.phase = transform.slotIndex !== undefined
+        ? (['A', 'B', 'C'][transform.slotIndex % 3] as 'A' | 'B' | 'C')
+        : 'A'
 
       // Standby UPS battery default for standalone nodes (10s if not slotted in a rack)
       if (!transform.parentRackId) {
@@ -193,22 +194,45 @@ export class PowerSystem extends System {
         const app = this.world.getComponent<ApplicationComponent>('application', appId)
         return app?.nodeId === id && app?.status === 'running'
       })
-      const utilization = Math.min(100.0, runningApps.length * 30.0)
+
+      // Fetch connection map and compute node network processing overhead
+      const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
+      let nodeThroughput = 0.0
+      connectionMap.forEach(conn => {
+        if (conn.startNodeId === id || conn.endNodeId === id) {
+          nodeThroughput += conn.throughputGbps ?? 0.0
+        }
+      })
+      const networkUtil = Math.min(100.0, nodeThroughput * 10.0) // 10% CPU utilization per 1 Gbps
+
+      const utilization = Math.min(100.0, runningApps.length * 30.0 + networkUtil)
       const fanSpeed = thermal?.fanSpeedPercent ?? 0.0
 
       // Calculate internal DC hardware power draw
       const internalDCWattage = power.baseWattage * (1.0 + (utilization / 100.0) * 0.5) + (fanSpeed / 100.0) * 50.0
 
       // Factor in PSU AC Conversion efficiency losses
-      const efficiency = power.efficiency ?? 0.85
-      const dynamicWattage = internalDCWattage / efficiency
+      const efficiency = power.efficiency && power.efficiency > 0.5 && power.efficiency <= 1.0 ? power.efficiency : 0.85
+      let dynamicWattage = internalDCWattage / efficiency
+
+      // Validate dynamic wattage bounds to prevent explosive calculations
+      if (!Number.isFinite(dynamicWattage) || Number.isNaN(dynamicWattage) || dynamicWattage < 0) {
+        dynamicWattage = power.baseWattage
+      }
+      
+      // Node wattage capacity bound: Clamp absolute maximum draw per single compute/node to 15.0 kW (dense GPU server)
+      dynamicWattage = Math.max(10, Math.min(15000, dynamicWattage))
 
       // Calculate Dynamic Power Factor PFC curve (improves under heavy utilization)
       const powerFactor = Math.max(0.85, Math.min(0.99, 0.85 + 0.13 * (utilization / 100.0)))
       power.powerFactor = powerFactor
 
       // Calculate Apparent Power S (VA)
-      power.apparentPowerVA = dynamicWattage / powerFactor
+      let apparentPower = dynamicWattage / powerFactor
+      if (!Number.isFinite(apparentPower) || Number.isNaN(apparentPower)) {
+        apparentPower = dynamicWattage
+      }
+      power.apparentPowerVA = apparentPower
 
       power.wattage = dynamicWattage
       power.load = dynamicWattage / 1000.0 // kWE
@@ -232,19 +256,38 @@ export class PowerSystem extends System {
       deviceNodes.forEach(id => {
         const transform = transformMap.get(id)!
         if (transform.parentRackId === rackId) {
+          // Exclude cooling/facility cooling units from IT PDU power aggregation
+          if (transform.type === 'cooling') {
+            return
+          }
+
           const childPower = powerMap.get(id)
           if (childPower && childPower.isPowered) {
             const serverPhase = childPower.phase ?? 'A'
             const phaseIndex = serverPhase === 'A' ? 0 : serverPhase === 'B' ? 1 : 2
-            phaseWatts[phaseIndex] += childPower.wattage
-            phaseVA[phaseIndex] += childPower.apparentPowerVA ?? childPower.wattage
+            
+            const cWattage = Number.isFinite(childPower.wattage) && !Number.isNaN(childPower.wattage) ? childPower.wattage : 0
+            const cVA = (childPower.apparentPowerVA !== undefined && Number.isFinite(childPower.apparentPowerVA) && !Number.isNaN(childPower.apparentPowerVA)) ? childPower.apparentPowerVA : cWattage
+            
+            phaseWatts[phaseIndex] += cWattage
+            phaseVA[phaseIndex] += cVA
           }
         }
       })
 
       // Sum totals
-      const totalWatts = phaseWatts[0] + phaseWatts[1] + phaseWatts[2]
-      const totalVA = phaseVA[0] + phaseVA[1] + phaseVA[2]
+      let totalWatts = phaseWatts[0] + phaseWatts[1] + phaseWatts[2]
+      let totalVA = phaseVA[0] + phaseVA[1] + phaseVA[2]
+
+      // Clamp aggregate rack capacity bounds to 150 kW (extremely dense GPU/AI cooling containment racks)
+      totalWatts = Math.max(0, Math.min(150000, totalWatts))
+      totalVA = Math.max(0, Math.min(150000, totalVA))
+
+      // Recalculate phases if sum was clamped (unlikely under normal usage, but good protection)
+      for (let i = 0; i < 3; i++) {
+        if (!Number.isFinite(phaseWatts[i]) || Number.isNaN(phaseWatts[i])) phaseWatts[i] = 0
+        if (!Number.isFinite(phaseVA[i]) || Number.isNaN(phaseVA[i])) phaseVA[i] = 0
+      }
 
       rackPower.phaseLoadsWatts = phaseWatts
       rackPower.phaseLoadsVA = phaseVA
@@ -261,6 +304,11 @@ export class PowerSystem extends System {
       const rackComp = this.world.getComponent<RackComponent>('rack', rackId)
 
       if (rackPower && rackComp) {
+        // High-fidelity transition logging: Detect breaker reset transition
+        if (rackComp.status === 'power_overload' && !rackPower.breakerTripped) {
+          console.log(`[PowerSystem] Detected BREAKER RESET or recovery initiation on Rack: ${rackId} (${transform?.name || 'Unnamed'}). Re-evaluating power loads...`)
+        }
+
         if (rackPower.breakerTripped) {
           rackPower.isPowered = false
           rackPower.load = 0
@@ -269,8 +317,8 @@ export class PowerSystem extends System {
           return
         }
 
-        const maxLimit = rackComp.maxPowerKW ?? 5.0
-        const totalLoadKW = rackPower.load
+        const maxLimit = Number.isFinite(rackComp.maxPowerKW) && rackComp.maxPowerKW > 0 ? rackComp.maxPowerKW : 5.0
+        const totalLoadKW = Number.isFinite(rackPower.load) && !Number.isNaN(rackPower.load) ? rackPower.load : 0.0
 
         // Each individual phase has a max rated capacity of maxPower / 3, with 15% imbalance tolerance
         const maxPhaseLimitKW = (maxLimit / 3.0) * 1.15
@@ -320,6 +368,22 @@ export class PowerSystem extends System {
             } else {
               tripMessage += `total power overload (${totalLoadKW.toFixed(2)} kW > ${maxLimit.toFixed(2)} kW)!`
             }
+
+            // High-fidelity debug instrumentation logging when breaker trips
+            console.log(
+              `[PowerSystem] BREAKER TRIP TRIGGERED on Rack Entity: ${rackId} (${transform?.name || 'Unnamed'}). ` +
+              `Total Load: ${totalLoadKW.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW. ` +
+              `Phase A: ${phaseA_KW.toFixed(2)} kW, Phase B: ${phaseB_KW.toFixed(2)} kW, Phase C: ${phaseC_KW.toFixed(2)} kW. ` +
+              `Overload source: ${isTotalOverloaded ? 'Total Load Exceeded' : ''}${isTotalOverloaded && isPhaseOverloaded ? ' & ' : ''}${isPhaseOverloaded ? 'Phase Imbalance Exceeded' : ''}. ` +
+              `Slotted devices count: ${deviceNodes.filter(id => transformMap.get(id)?.parentRackId === rackId).length}. ` +
+              `Slotted non-cooling active devices: [${
+                deviceNodes.filter(id => {
+                  const t = transformMap.get(id)!
+                  const p = powerMap.get(id)
+                  return t.parentRackId === rackId && t.type !== 'cooling' && p?.isPowered
+                }).map(id => `${id} (${transformMap.get(id)?.name || 'unnamed'}: ${(powerMap.get(id)?.wattage ?? 0).toFixed(0)}W on Phase ${powerMap.get(id)?.phase ?? 'A'}`).join(', ')
+              }]`
+            )
 
             // Publish alert to main event stream
             this.world.eventBus.publish('system:alert', {

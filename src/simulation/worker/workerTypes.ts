@@ -106,6 +106,8 @@ export interface SimSyncOutputPayload {
     containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
     isStandby?: boolean
     accumulatedSimTime?: number
+    isInfected?: boolean
+    isBlackholed?: boolean
   }>
   applications: Array<{
     id: string

@@ -167,6 +167,8 @@ export class SimulationWorkerManager {
       currentPowerKW: n.maintenanceMode ? 0 : n.currentPowerKW,
       status: n.status,
       systemState: n.maintenanceMode ? 'off' : n.systemState,
+      breakerTripped: n.breakerTripped,
+      overloadSeconds: n.overloadSeconds,
       provisioningState: n.provisioningState,
       bootProgress: n.bootProgress ?? 0,
       temperature: n.temperature,

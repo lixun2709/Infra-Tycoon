@@ -269,4 +269,102 @@ describe('Enterprise Power Subsystem ECS Tests', () => {
     expect(rackPower.isPowered).toBe(false) // Depleted battery => goes offline!
     expect(rackPower.upsBatterySeconds).toBe(0.0)
   })
+
+  it('should exclude cooling type devices from IT PDU power aggregation but shut them down if parent PDU trips', () => {
+    const rackId = 'rack-cooling-test'
+    const coolingId = 'cooling-node'
+    const serverId = 'server-node'
+
+    world.registerEntity(rackId)
+    world.registerEntity(coolingId)
+    world.registerEntity(serverId)
+
+    world.addComponent('transform', { entityId: rackId, type: 'rack', siteId: 'site-1' } as TransformComponent)
+    world.addComponent('rack', { entityId: rackId, maxPowerKW: 5.0, status: 'online' } as RackComponent)
+    world.addComponent('power', { entityId: rackId, wattage: 0, load: 0, isPowered: true } as PowerComponent)
+
+    // Add In-Row CRAC (4U) (5000W load)
+    world.addComponent('transform', {
+      entityId: coolingId,
+      type: 'cooling',
+      parentRackId: rackId,
+      slotIndex: 1,
+      siteId: 'site-1'
+    } as TransformComponent)
+    world.addComponent('power', {
+      entityId: coolingId,
+      baseWattage: 5000,
+      wattage: 5000,
+      load: 5.0,
+      isPowered: true,
+      efficiency: 1.0
+    } as PowerComponent)
+
+    // Add normal compute server (1200W load)
+    world.addComponent('transform', {
+      entityId: serverId,
+      type: 'compute',
+      parentRackId: rackId,
+      slotIndex: 2,
+      siteId: 'site-1'
+    } as TransformComponent)
+    world.addComponent('power', {
+      entityId: serverId,
+      baseWattage: 1200,
+      wattage: 1200,
+      load: 1.2,
+      isPowered: true,
+      efficiency: 1.0
+    } as PowerComponent)
+
+    // Tick the power system
+    powerSystem.update(1.0)
+
+    let rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    let coolingPower = world.getComponent<PowerComponent>('power', coolingId)!
+    let serverPower = world.getComponent<PowerComponent>('power', serverId)!
+
+    // The rack load should ONLY include the 1.2kW server, completely excluding the 5.0kW CRAC unit load!
+    // Since 1.2kW < 5.0kW rack limit, the breaker must remain active (untripped).
+    expect(rackPower.load).toBeCloseTo(1.2, 2)
+    expect(rackPower.breakerTripped).toBeFalsy()
+    expect(coolingPower.isPowered).toBe(true)
+    expect(serverPower.isPowered).toBe(true)
+
+    // Now, force the rack breaker to trip by adding an extremely heavy load server
+    const heavyServerId = 'heavy-server'
+    world.registerEntity(heavyServerId)
+    world.addComponent('transform', {
+      entityId: heavyServerId,
+      type: 'compute',
+      parentRackId: rackId,
+      slotIndex: 3,
+      siteId: 'site-1'
+    } as TransformComponent)
+    world.addComponent('power', {
+      entityId: heavyServerId,
+      baseWattage: 10000, // 10kW load (> 5kW rack capacity)
+      wattage: 10000,
+      load: 10.0,
+      isPowered: true,
+      efficiency: 1.0
+    } as PowerComponent)
+
+    // Tick for 10 seconds to trigger breaker trip
+    for (let i = 0; i < 10; i++) {
+      powerSystem.update(1.0)
+    }
+
+    rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    coolingPower = world.getComponent<PowerComponent>('power', coolingId)!
+    serverPower = world.getComponent<PowerComponent>('power', serverId)!
+    const heavyServerPower = world.getComponent<PowerComponent>('power', heavyServerId)!
+
+    // The breaker must be tripped, and both the IT equipment AND the cooling unit must be unpowered
+    expect(rackPower.breakerTripped).toBe(true)
+    expect(rackPower.isPowered).toBe(false)
+    expect(serverPower.isPowered).toBe(false)
+    expect(heavyServerPower.isPowered).toBe(false)
+    expect(coolingPower.isPowered).toBe(false) // Physical dependency maintained!
+  })
 })
