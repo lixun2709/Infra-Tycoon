@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { World } from '../../World'
 import { PowerSystem } from '../PowerSystem'
 import type { 
@@ -29,13 +29,13 @@ describe('Enterprise Power Subsystem ECS Tests', () => {
       siteId: 'site-1'
     } as TransformComponent)
 
-    // Base wattage 400W
+    // Base wattage 400W, efficiency 1.0 (ideal AC to DC efficiency)
     world.addComponent('power', {
       entityId: serverId,
       wattage: 400,
       load: 0.4,
       isPowered: true,
-      efficiency: 0.9,
+      efficiency: 1.0,
       feedSource: 'both'
     } as PowerComponent)
 
@@ -82,9 +82,10 @@ describe('Enterprise Power Subsystem ECS Tests', () => {
     world.addComponent('transform', { entityId: nodeB, type: 'compute', siteId: 'site-1' } as TransformComponent)
     world.addComponent('transform', { entityId: nodeBoth, type: 'compute', siteId: 'site-1' } as TransformComponent)
 
-    world.addComponent('power', { entityId: nodeA, wattage: 300, isPowered: true, feedSource: 'A' } as PowerComponent)
-    world.addComponent('power', { entityId: nodeB, wattage: 300, isPowered: true, feedSource: 'B' } as PowerComponent)
-    world.addComponent('power', { entityId: nodeBoth, wattage: 300, isPowered: true, feedSource: 'both' } as PowerComponent)
+    // Specify zero battery backup so they fail immediately on grid drop
+    world.addComponent('power', { entityId: nodeA, wattage: 300, isPowered: true, feedSource: 'A', upsMaxBatterySeconds: 0, upsBatterySeconds: 0 } as PowerComponent)
+    world.addComponent('power', { entityId: nodeB, wattage: 300, isPowered: true, feedSource: 'B', upsMaxBatterySeconds: 0, upsBatterySeconds: 0 } as PowerComponent)
+    world.addComponent('power', { entityId: nodeBoth, wattage: 300, isPowered: true, feedSource: 'both', upsMaxBatterySeconds: 0, upsBatterySeconds: 0 } as PowerComponent)
 
     // Simulate facility transient: loss of Feed A grid line
     PowerSystem.facilityFeeds.A = false
@@ -108,7 +109,7 @@ describe('Enterprise Power Subsystem ECS Tests', () => {
     world.registerEntity(serverId)
 
     world.addComponent('transform', { entityId: rackId, type: 'rack', siteId: 'site-1' } as TransformComponent)
-    world.addComponent('power', { entityId: rackId, wattage: 0, load: 0, isPowered: true } as PowerComponent)
+    world.addComponent('power', { entityId: rackId, wattage: 0, load: 0, isPowered: true, upsMaxBatterySeconds: 0, upsBatterySeconds: 0 } as PowerComponent)
     world.addComponent('rack', { entityId: rackId, maxPowerKW: 2.0, status: 'online' } as RackComponent)
 
     world.addComponent('transform', { entityId: serverId, type: 'compute', parentRackId: rackId, siteId: 'site-1' } as TransformComponent)
@@ -136,5 +137,136 @@ describe('Enterprise Power Subsystem ECS Tests', () => {
     expect(rackPower.breakerTripped).toBe(true)
     expect(rackPower.isPowered).toBe(false)
     expect(serverPower.isPowered).toBe(false) // Power automatically cut to all children!
+  })
+
+  it('should factor in PSU AC efficiency losses on power draw', () => {
+    const serverId = 'compute-efficiency'
+    world.registerEntity(serverId)
+
+    world.addComponent('transform', { entityId: serverId, type: 'compute', siteId: 'site-1' } as TransformComponent)
+
+    // Internal DC draw of 340W with a 85% efficient PSU: 340W / 0.85 = 400W AC load from PDU
+    world.addComponent('power', {
+      entityId: serverId,
+      baseWattage: 340,
+      isPowered: true,
+      efficiency: 0.85
+    } as PowerComponent)
+
+    powerSystem.update(1.0)
+
+    const powerComp = world.getComponent<PowerComponent>('power', serverId)!
+    // Internal DC draw = 340 * 1.0 (0% util) + 0 (0% fan speed) = 340W
+    // AC draw = 340 / 0.85 = 400W
+    expect(powerComp.wattage).toBeCloseTo(400.0, 1)
+  })
+
+  it('should balance server loads across 3 phases in PDU and trigger breaker trip on phase imbalance', () => {
+    const rackId = 'rack-3phase'
+    const serverId = 'server-heavy-phaseA'
+
+    world.registerEntity(rackId)
+    world.registerEntity(serverId)
+
+    world.addComponent('transform', { entityId: rackId, type: 'rack', siteId: 'site-1' } as TransformComponent)
+    world.addComponent('power', { entityId: rackId, wattage: 0, load: 0, isPowered: true, upsMaxBatterySeconds: 0, upsBatterySeconds: 0 } as PowerComponent)
+    // 3.0kW max total power. Standard phase limit = (3.0 / 3) * 1.15 = 1.15kW per phase.
+    world.addComponent('rack', { entityId: rackId, maxPowerKW: 3.0, status: 'online' } as RackComponent)
+
+    world.addComponent('transform', {
+      entityId: serverId,
+      type: 'compute',
+      parentRackId: rackId,
+      slotIndex: 3, // slotIndex % 3 === 0 => Phase A
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    // Add heavy 1500W server on Phase A (1.5kW exceeds the single phase limit of 1.15kW, but total 1.5kW < 3.0kW)
+    world.addComponent('power', {
+      entityId: serverId,
+      baseWattage: 1500,
+      isPowered: true,
+      efficiency: 1.0,
+      phase: 'A'
+    } as PowerComponent)
+
+    // Mock alert publish
+    const alertSpy = vi.fn()
+    world.eventBus.publish = alertSpy
+
+    // Overload should sustain for 10s to trip
+    for (let i = 0; i < 9; i++) {
+      powerSystem.update(1.0)
+    }
+
+    let rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    expect(rackPower.breakerTripped).toBeFalsy()
+
+    // 10th second - breaker trips!
+    powerSystem.update(1.0)
+
+    rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    expect(rackPower.breakerTripped).toBe(true)
+    expect(rackPower.isPowered).toBe(false)
+    expect(alertSpy).toHaveBeenCalledWith('system:alert', expect.objectContaining({
+      severity: 'critical',
+      message: expect.stringContaining('Phase Imbalance')
+    }))
+  })
+
+  it('should provide transient battery backup on utility failure and charge back up on recovery', () => {
+    const rackId = 'rack-ups'
+    world.registerEntity(rackId)
+
+    world.addComponent('transform', { entityId: rackId, type: 'rack', siteId: 'site-1' } as TransformComponent)
+    world.addComponent('rack', { entityId: rackId, maxPowerKW: 5.0, status: 'online' } as RackComponent)
+    world.addComponent('power', {
+      entityId: rackId,
+      wattage: 0,
+      load: 0,
+      isPowered: true,
+      upsMaxBatterySeconds: 30.0,
+      upsBatterySeconds: 30.0,
+      feedSource: 'both'
+    } as PowerComponent)
+
+    // Lose grid power feeds
+    PowerSystem.facilityFeeds.A = false
+    PowerSystem.facilityFeeds.B = false
+
+    // Tick 10 seconds. Rack PDU should stay powered due to UPS battery discharging!
+    for (let i = 0; i < 10; i++) {
+      powerSystem.update(1.0)
+    }
+
+    let rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    expect(rackPower.isPowered).toBe(true)
+    expect(rackPower.upsBatterySeconds).toBeCloseTo(20.0, 1) // 30s - 10s = 20s remaining
+
+    // Grid power returns!
+    PowerSystem.facilityFeeds.A = true
+    PowerSystem.facilityFeeds.B = true
+
+    // Tick 5 seconds. UPS should charge back up by 5s * 2.0 = 10s, returning to full 30s!
+    for (let i = 0; i < 5; i++) {
+      powerSystem.update(1.0)
+    }
+
+    rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    expect(rackPower.isPowered).toBe(true)
+    expect(rackPower.upsBatterySeconds).toBe(30.0) // Restored to max capacity
+
+    // Grid power lost again
+    PowerSystem.facilityFeeds.A = false
+    PowerSystem.facilityFeeds.B = false
+
+    // Tick 35 seconds to deplete battery completely
+    for (let i = 0; i < 35; i++) {
+      powerSystem.update(1.0)
+    }
+
+    rackPower = world.getComponent<PowerComponent>('power', rackId)!
+    expect(rackPower.isPowered).toBe(false) // Depleted battery => goes offline!
+    expect(rackPower.upsBatterySeconds).toBe(0.0)
   })
 })

@@ -72,6 +72,14 @@ export interface PowerComponent extends Component {
   overloadSeconds?: number
   feedSource?: 'A' | 'B' | 'both'
   baseWattage?: number
+  // V2/Enterprise Additions
+  powerFactor?: number
+  apparentPowerVA?: number
+  upsBatterySeconds?: number     // Current battery backup charge (seconds)
+  upsMaxBatterySeconds?: number  // Maximum battery capacity (default: 30s)
+  phase?: 'A' | 'B' | 'C'        // Phase connection for server nodes
+  phaseLoadsWatts?: [number, number, number] // [A, B, C] Real Power
+  phaseLoadsVA?: [number, number, number]    // [A, B, C] Apparent Power
 }
 
 // Provisioning Component: OS/App lifecycle state

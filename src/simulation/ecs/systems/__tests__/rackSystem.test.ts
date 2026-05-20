@@ -66,7 +66,7 @@ describe('Rack Subsystem ECS Tests', () => {
       wattage: 3000, // 3 kW
       load: 3.0,
       isPowered: true,
-      efficiency: 0.9
+      efficiency: 1.0
     } as PowerComponent)
 
     // Run systems
@@ -127,7 +127,7 @@ describe('Rack Subsystem ECS Tests', () => {
       wattage: 6000, // 6 kW
       load: 6.0,
       isPowered: true,
-      efficiency: 0.9
+      efficiency: 1.0
     } as PowerComponent)
 
     powerSystem.update(1.0)
@@ -180,7 +180,7 @@ describe('Rack Subsystem ECS Tests', () => {
       wattage: 3000, // 3 kW (safe now)
       load: 3.0,
       isPowered: true,
-      efficiency: 0.9
+      efficiency: 1.0
     } as PowerComponent
     world.addComponent('power', serverPower)
 
