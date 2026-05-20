@@ -17,6 +17,7 @@ export interface TransformComponent extends Component {
   type: string
   name?: string
   catalogKey?: string
+  uHeight?: number
   // Dynamic network incident & state variables
   degradation?: number
   healthStatus?: string

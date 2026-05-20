@@ -201,4 +201,83 @@ describe('Rack Subsystem ECS Tests', () => {
     expect(alerts[0]!.severity).toBe('info')
     expect(alerts[0]!.message).toContain('[RACK RECOVERY]')
   })
+
+  it('should dynamically update slot occupancy maps and report booking conflicts', () => {
+    const rackId = 'rack-conflict-test'
+    const serverIdA = 'server-conflict-a'
+    const serverIdB = 'server-conflict-b'
+
+    world.registerEntity(rackId)
+    world.registerEntity(serverIdA)
+    world.registerEntity(serverIdB)
+
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      name: 'Conflict Rack',
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 5.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: false,
+      slotOccupancy: []
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    // Mount server A at slot 10 (size 2U)
+    world.addComponent('transform', {
+      entityId: serverIdA,
+      type: 'compute',
+      parentRackId: rackId,
+      slotIndex: 10,
+      uHeight: 2,
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    // Mount server B at slot 11 (size 1U) - creates a collision overlap at slot 11!
+    world.addComponent('transform', {
+      entityId: serverIdB,
+      type: 'compute',
+      parentRackId: rackId,
+      slotIndex: 11,
+      uHeight: 1,
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    rackSystem.update(1.0)
+
+    // Verify slotOccupancy mapping
+    expect(rackComp.slotOccupancy[10]).toBe(true)
+    expect(rackComp.slotOccupancy[11]).toBe(true)
+    expect(rackComp.slotOccupancy[12]).toBe(false)
+
+    // Verify collision alert
+    const alerts = ObservabilitySystem.flushAlerts()
+    expect(alerts.length).toBe(1)
+    expect(alerts[0]!.severity).toBe('warning')
+    expect(alerts[0]!.message).toContain('[RACK SLOT COLLISION]')
+  })
+
+  it('should scale PDU maxPowerKW limit dynamically when high-density PDU is upgraded', () => {
+    const rackId = 'rack-hd-upgrade'
+    world.registerEntity(rackId)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 5.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: true,
+      slotOccupancy: []
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    rackSystem.update(1.0)
+
+    expect(rackComp.maxPowerKW).toBe(15.0)
+  })
 })

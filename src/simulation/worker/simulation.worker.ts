@@ -138,6 +138,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       type: node.type,
       name: node.name,
       catalogKey: node.catalogKey,
+      uHeight: node.uHeight,
       // Map incident metrics for networking calculations
       degradation: node.degradationPercent,
       healthStatus: node.healthStatus,
