@@ -14,7 +14,6 @@ export class ThermalSystem extends System {
   private accumulatedTime = 0.0 // V2 multiplayer-safe deterministic elapsed time (seconds)
 
   private static CONDUCTION_COEFFICIENT = 0.05 / 9.0
-  private static CONVECTION_COEFFICIENT = 0.02 / 9.0
   private static BASE_AMBIENT_TEMP = 22.0
   private static DEFAULT_CRITICAL = 80.0 // Silicon shutdown limit
   private static DEFAULT_THROTTLE = 70.0 // Performance throttling limit
@@ -415,19 +414,29 @@ export class ThermalSystem extends System {
         power.load = Math.min(1.0, power.load + fanPenaltyKW)
       }
 
-      // Enhanced convection cooling coefficient scaled by fan spin rate and active rack forced containment airflow
-      const convectionCoeff = ThermalSystem.CONVECTION_COEFFICIENT * 
-        (1.0 + thermal.fanSpeedPercent / 100.0) * 
-        (hasActiveRackCooling ? 6.0 : 1.0)
-      const convection = (currentTemp - localAmbient) * convectionCoeff * dt
-
-      // Server active heat equation
+      // Target Equilibrium Relaxation Model (High-Fidelity Server Thermal Mass & Inertia)
       const spec = (transform.catalogKey ? HARDWARE_CATALOG[transform.catalogKey as keyof typeof HARDWARE_CATALOG] : null) as HardwareCatalogSpec | null
       const efficiency = spec?.heatEfficiency ?? power?.efficiency ?? 0.8
-      const dynamicWattage = isRunning ? (power?.wattage ?? 300) * (power?.load ?? 0.2) : 0
-      const serverHeat = isRunning ? dynamicWattage * 0.001 * (1.2 - efficiency) : 0.01
+      const loadFactor = isRunning ? (power?.load ?? 0.2) : 0.0
 
-      const nextTemp = currentTemp + (serverHeat * dt * 1.0) - convection
+      // Max expected temperature rise above ambient under 100% full workload
+      const maxExpectedRise = 30.0 * (1.2 - efficiency)
+
+      // Target equilibrium temperature convergence limit
+      let targetTemp = localAmbient
+      if (isRunning) {
+        targetTemp += 8.0 + (loadFactor * maxExpectedRise)
+      }
+
+      // Airflow response rate (Thermal inertia capacity). 
+      // Convergence rate speeds up with faster fans and active rack air containment.
+      const fanFactor = 0.005 + (thermal.fanSpeedPercent / 100.0) * 0.02
+      const coolingAirflowMult = hasActiveRackCooling ? 1.5 : 1.0
+      const responseRate = fanFactor * coolingAirflowMult
+
+      // Asymptotically converge to target temperature (capped to prevent mathematical oscillation or overshoot)
+      const tempAlpha = Math.min(1.0, responseRate * dt)
+      const nextTemp = currentTemp + (targetTemp - currentTemp) * tempAlpha
 
       // Thermal Safety Thresholds & Alarm Event Publishing
       const throttle = spec?.throttleTemp ?? ThermalSystem.DEFAULT_THROTTLE
