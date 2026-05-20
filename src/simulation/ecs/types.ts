@@ -114,6 +114,10 @@ export interface TelemetryComponent extends Component {
   networkCongestionTicks: number
   storageIopsThrottlingTicks: number
   auditViolationsCount: number
+  // V2/Enterprise rolling history ring buffers
+  powerHistory?: number[]
+  tempHistory?: number[]
+  iopsHistory?: number[]
 }
 
 // Rack Component: Power capacity, status, and physical slot layout

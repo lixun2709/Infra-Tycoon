@@ -78,13 +78,15 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     }
 
     const overloadedRackCount = payload.overloadedRackCount ?? 0
+    const siteMetricsHistory = payload.siteMetricsHistory
 
     set({ 
       nodes: updatedNodes, 
       applications: updatedApps,
       connections: updatedConnections,
       sites: updatedSites,
-      overloadedRackCount
+      overloadedRackCount,
+      siteMetricsHistory
     })
 
     // Process background-fired alerts from the ObservabilitySystem

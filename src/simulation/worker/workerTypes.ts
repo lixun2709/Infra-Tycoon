@@ -127,6 +127,11 @@ export interface SimSyncOutputPayload {
     currentPowerKW: number
   }>
   overloadedRackCount?: number
+  siteMetricsHistory?: Record<string, {
+    power: number[]
+    temp: number[]
+    humidity: number[]
+  }>
 }
 
 export interface SimTelemetryPayload {

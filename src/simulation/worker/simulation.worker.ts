@@ -2,6 +2,7 @@ import { SimulationEngine } from '../SimulationEngine'
 import { ThermalSystem } from '../ecs/systems/ThermalSystem'
 import { PacketSystem } from '../ecs/systems/PacketSystem'
 import { ObservabilitySystem } from '../ecs/systems/ObservabilitySystem'
+import { TelemetrySystem } from '../ecs/systems/TelemetrySystem'
 import type { SimMessage, SimInitPayload, SimSyncInputPayload, SimSyncOutputPayload } from './workerTypes'
 import type { Connection } from '../../store/infraTypes'
 import type { 
@@ -452,6 +453,17 @@ function sendSyncOutput() {
   })
   output.racks = rackOutputs
   output.overloadedRackCount = overloadedCount
+
+  // Compile site-wide metrics history
+  const history: Record<string, { power: number[]; temp: number[]; humidity: number[] }> = {}
+  TelemetrySystem.sitePowerHistory.forEach((_, siteId) => {
+    history[siteId] = {
+      power: TelemetrySystem.sitePowerHistory.get(siteId) ?? [],
+      temp: TelemetrySystem.siteTempHistory.get(siteId) ?? [],
+      humidity: TelemetrySystem.siteHumidityHistory.get(siteId) ?? []
+    }
+  })
+  output.siteMetricsHistory = history
 
   postMessageTransferable({ type: 'SYNC_OUTPUT', payload: output })
   postMessageTransferable({ type: 'TELEMETRY', payload: telemetry })

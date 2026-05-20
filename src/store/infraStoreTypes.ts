@@ -58,6 +58,11 @@ export type InfraState = {
   postMortems: PostMortem[]
   blueprints: Blueprint[]
   previewBlueprintId: string | null
+  siteMetricsHistory?: Record<string, {
+    power: number[]
+    temp: number[]
+    humidity: number[]
+  }>
   
   // v5.0 Service Layer
   applications: ApplicationDeployment[]
