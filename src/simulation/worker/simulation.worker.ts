@@ -140,7 +140,9 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       // Map incident metrics for networking calculations
       degradation: node.degradationPercent,
       healthStatus: node.healthStatus,
-      isInfected: node.isInfected
+      isInfected: node.isInfected,
+      isBlackholed: node.isBlackholed,
+      rateLimitGbps: node.rateLimitGbps
     } as TransformComponent)
 
     world.addComponent('thermal', {
@@ -270,7 +272,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           status: conn.status ?? 'active',
           syncProgress: conn.syncProgress ?? 0,
           type: conn.type,
-          packetLoss: conn.packetLoss ?? 0.0
+          packetLoss: conn.packetLoss ?? 0.0,
+          controlQueueDelayMs: conn.controlQueueDelayMs,
+          bulkQueueDelayMs: conn.bulkQueueDelayMs,
+          packetsDropped: conn.packetsDropped,
+          isBlackholed: conn.isBlackholed,
+          rateLimitGbps: conn.rateLimitGbps
         } as ConnectionComponent)
       } else {
         // Granular updates to preserve component identity & stable references
@@ -300,6 +307,21 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           }
           if (conn.packetLoss !== undefined && existing.packetLoss !== conn.packetLoss) {
             existing.packetLoss = conn.packetLoss
+          }
+          if (conn.controlQueueDelayMs !== undefined && existing.controlQueueDelayMs !== conn.controlQueueDelayMs) {
+            existing.controlQueueDelayMs = conn.controlQueueDelayMs
+          }
+          if (conn.bulkQueueDelayMs !== undefined && existing.bulkQueueDelayMs !== conn.bulkQueueDelayMs) {
+            existing.bulkQueueDelayMs = conn.bulkQueueDelayMs
+          }
+          if (conn.packetsDropped !== undefined && existing.packetsDropped !== conn.packetsDropped) {
+            existing.packetsDropped = conn.packetsDropped
+          }
+          if (conn.isBlackholed !== undefined && existing.isBlackholed !== conn.isBlackholed) {
+            existing.isBlackholed = conn.isBlackholed
+          }
+          if (conn.rateLimitGbps !== undefined && existing.rateLimitGbps !== conn.rateLimitGbps) {
+            existing.rateLimitGbps = conn.rateLimitGbps
           }
         }
       }
@@ -385,7 +407,12 @@ function sendSyncOutput() {
       status: comp.status,
       syncProgress: comp.syncProgress,
       type: comp.type as unknown as Connection['type'],
-      packetLoss: comp.packetLoss
+      packetLoss: comp.packetLoss,
+      controlQueueDelayMs: comp.controlQueueDelayMs,
+      bulkQueueDelayMs: comp.bulkQueueDelayMs,
+      packetsDropped: comp.packetsDropped,
+      isBlackholed: comp.isBlackholed,
+      rateLimitGbps: comp.rateLimitGbps
     })
   })
 

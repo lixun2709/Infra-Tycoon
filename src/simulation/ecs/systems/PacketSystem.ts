@@ -11,7 +11,7 @@ import { simulateNetwork } from '../../../physics/network/simulation'
 export class PacketSystem extends System {
   public static networkLoad = 0.0
 
-  public update(_dt: number) {
+  public update(dt: number) {
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
@@ -31,7 +31,10 @@ export class PacketSystem extends System {
         healthStatus: (transform.healthStatus as unknown as InfraNode['healthStatus']) ?? 'healthy',
         degradation: transform.degradation ?? 0,
         wattage: power?.wattage ?? 0,
-        currentPowerKW: power?.load ?? 0
+        currentPowerKW: power?.load ?? 0,
+        // V2 parameters
+        isBlackholed: transform.isBlackholed ?? false,
+        rateLimitGbps: transform.rateLimitGbps
       } as InfraNode)
     })
 
@@ -51,7 +54,13 @@ export class PacketSystem extends System {
         status: conn.status,
         syncProgress: conn.syncProgress,
         type: conn.type as unknown as Connection['type'],
-        packetLoss: conn.packetLoss ?? 0.0
+        packetLoss: conn.packetLoss ?? 0.0,
+        // V2 additions
+        controlQueueDelayMs: conn.controlQueueDelayMs,
+        bulkQueueDelayMs: conn.bulkQueueDelayMs,
+        packetsDropped: conn.packetsDropped,
+        isBlackholed: conn.isBlackholed,
+        rateLimitGbps: conn.rateLimitGbps
       })
     })
 
@@ -59,8 +68,8 @@ export class PacketSystem extends System {
       return
     }
 
-    // 3. Invoke deterministic aggregate-flow physical calculation
-    const { connections: updatedConnections } = simulateNetwork(nodes, connections, PacketSystem.networkLoad)
+    // 3. Invoke deterministic aggregate-flow physical calculation forwarding dt
+    const { connections: updatedConnections } = simulateNetwork(nodes, connections, PacketSystem.networkLoad, dt)
 
     // 4. Propagate updated properties back to ECS components
     updatedConnections.forEach(conn => {
@@ -71,6 +80,12 @@ export class PacketSystem extends System {
         existing.status = conn.status
         existing.syncProgress = conn.syncProgress
         existing.packetLoss = conn.packetLoss
+        // Propagate QoS telemetry back to connection component
+        existing.controlQueueDelayMs = conn.controlQueueDelayMs
+        existing.bulkQueueDelayMs = conn.bulkQueueDelayMs
+        existing.packetsDropped = conn.packetsDropped
+        existing.isBlackholed = conn.isBlackholed
+        existing.rateLimitGbps = conn.rateLimitGbps
       }
     })
   }

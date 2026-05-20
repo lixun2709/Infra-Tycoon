@@ -18,7 +18,8 @@ export interface NetworkTickResult {
 export function simulateNetwork(
   nodes: InfraNode[],
   connections: Connection[],
-  networkLoad: number
+  networkLoad: number,
+  dt = 1.0
 ): NetworkTickResult {
   // Phase 1: Demand Phase
   const demands = nodes.map(node => calculateNodeDemand(node, networkLoad))
@@ -27,7 +28,7 @@ export function simulateNetwork(
   const adjMap = buildAdjacencyMap(connections)
 
   // Phase 3: Congestion & Propagation Phase
-  const { updatedConnections } = resolveCongestion(nodes, connections, demands, adjMap)
+  const { updatedConnections } = resolveCongestion(nodes, connections, demands, adjMap, dt)
 
   return {
     connections: updatedConnections

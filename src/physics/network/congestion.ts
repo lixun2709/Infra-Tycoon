@@ -16,19 +16,32 @@ export function resolveCongestion(
   nodes: InfraNode[],
   connections: Connection[],
   demands: NetworkDemand[],
-  adjMap: AdjacencyMap
+  adjMap: AdjacencyMap,
+  dt = 1.0
 ): CongestionResult {
   const demandMap = new Map(demands.map(d => [d.nodeId, d]))
   const nodeMap = new Map(nodes.map(n => [n.id, n]))
 
   // Approximation Model for fast scalable throughput aggregation:
   const updatedConnections = connections.map(conn => {
-    if (conn.status === 'blocked') {
-      return { ...conn, throughputGbps: 0, latencyMs: 999, packetLoss: 1.0 }
-    }
-
     const startNode = nodeMap.get(conn.startNodeId)
     const endNode = nodeMap.get(conn.endNodeId)
+
+    // 1. Administrative Blackholing / Null Routing check
+    if (conn.status === 'blocked' || startNode?.isBlackholed || endNode?.isBlackholed) {
+      return {
+        ...conn,
+        throughputGbps: 0,
+        latencyMs: 999.0,
+        packetLoss: 1.0,
+        status: 'blocked' as const,
+        isBlackholed: true,
+        controlQueueDelayMs: 0,
+        bulkQueueDelayMs: 0,
+        packetsDropped: (conn.packetsDropped ?? 0) + (conn.status !== 'blocked' ? 100 : 0)
+      }
+    }
+
     if (!startNode || !endNode) return conn
 
     // Throughput calculation
@@ -58,13 +71,32 @@ export function resolveCongestion(
     const capBandwidth = conn.bandwidthGbps || 10
     const ratio = Math.min(1.5, throughput / capBandwidth)
 
-    // Exponential queuing latency penalty & packet loss
-    let latencyPenalty = 0
-    let packetLoss = 0.0
+    // 2. V2 QoS Priority Queuing Pipelines
+    let controlQueueDelay = 0.0
+    let appQueueDelay = 0.0
+    let bulkQueueDelay = 0.0
+
+    let appPacketLoss = 0.0
+    let bulkPacketLoss = 0.0
+
     if (ratio > 0.8) {
-      latencyPenalty = Math.pow((ratio - 0.8) / 0.7, 3) * 30 // queue buffering delay up to +30ms
-      packetLoss = Math.min(1.0, Math.pow((ratio - 0.8) / 0.7, 2) * 0.5) // packet loss up to 50% under saturation
+      const overloadFactor = (ratio - 0.8) / 0.7
+      
+      // Control Queue: prioritized, very low queue latency ceiling, 0% drop rate
+      controlQueueDelay = Math.pow(overloadFactor, 3) * 5.0 // Cap at +5ms
+      
+      // Application Queue: moderate priority, caps at +20ms, up to 15% drops
+      appQueueDelay = Math.pow(overloadFactor, 3) * 20.0
+      appPacketLoss = Math.min(0.15, Math.pow(overloadFactor, 2) * 0.15)
+      
+      // Bulk Data Queue: lowest priority, caps at +50ms, up to 80% drops
+      bulkQueueDelay = Math.pow(overloadFactor, 3) * 50.0
+      bulkPacketLoss = Math.min(0.80, Math.pow(overloadFactor, 2) * 0.80)
     }
+
+    // Weighted traffic aggregation (10% Control, 50% Application, 40% Bulk)
+    const weightedDelay = (0.1 * controlQueueDelay) + (0.5 * appQueueDelay) + (0.4 * bulkQueueDelay)
+    const overallLoss = (0.1 * 0.0) + (0.5 * appPacketLoss) + (0.4 * bulkPacketLoss)
 
     let activeIncidentMultiplier = 1.0
     const startIncident = demandMap.get(conn.startNodeId)?.activeIncident
@@ -74,11 +106,15 @@ export function resolveCongestion(
       activeIncidentMultiplier = INCIDENT_PROFILES[activeIncidentKey]!.latencyMultiplier
     }
 
-    const calculatedLatency = Math.min(100, (1 + latencyPenalty) * activeIncidentMultiplier)
+    const calculatedLatency = Math.min(120, (1 + weightedDelay) * activeIncidentMultiplier)
     const newThroughput = Math.min(capBandwidth, throughput)
     const newStatus = newThroughput >= capBandwidth ? 'degraded' as const : 'active' as const
 
-    const newSync = Math.min(100, (conn.syncProgress ?? 0) + (newThroughput / capBandwidth) * 15)
+    // 3. Frame-rate independent time-scaled Link Synchronization
+    const newSync = Math.min(100, (conn.syncProgress ?? 0) + (newThroughput / capBandwidth) * 15.0 * dt)
+
+    // Calculate approximate packet drops per tick (Gbps * loss * multiplier)
+    const droppedPacketsCount = overallLoss > 0.0 ? Math.floor(newThroughput * overallLoss * 15 * dt) : 0
 
     return {
       ...conn,
@@ -86,7 +122,10 @@ export function resolveCongestion(
       latencyMs: Number(calculatedLatency.toFixed(1)),
       status: newStatus,
       syncProgress: Number(newSync.toFixed(1)),
-      packetLoss: Number(packetLoss.toFixed(4))
+      packetLoss: Number(overallLoss.toFixed(4)),
+      controlQueueDelayMs: Number(controlQueueDelay.toFixed(1)),
+      bulkQueueDelayMs: Number(bulkQueueDelay.toFixed(1)),
+      packetsDropped: (conn.packetsDropped ?? 0) + droppedPacketsCount
     }
   })
 

@@ -164,6 +164,9 @@ export interface InfraNode {
   breakerTripped?: boolean
   overloadSeconds?: number
   feedSource?: 'A' | 'B' | 'both'
+  // V2 network options
+  isBlackholed?: boolean
+  rateLimitGbps?: number
 }
 
 export interface PostMortem {
@@ -242,6 +245,12 @@ export interface Connection {
   type?: PortType
   highlightTime?: number
   packetLoss?: number
+  // V2/Enterprise Additions
+  controlQueueDelayMs?: number
+  bulkQueueDelayMs?: number
+  packetsDropped?: number
+  isBlackholed?: boolean
+  rateLimitGbps?: number
 }
 
 export interface TechnicianTicket {

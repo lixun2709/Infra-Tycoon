@@ -187,7 +187,9 @@ export class SimulationWorkerManager {
       fanSpeedPercent: n.fanSpeedPercent,
       degradationPercent: (n.degradation ?? 0) * 100, // Convert 0-1 range to 0-100%
       healthStatus: n.healthStatus ?? 'healthy',
-      isInfected: n.isInfected ?? false
+      isInfected: n.isInfected ?? false,
+      isBlackholed: n.isBlackholed ?? false,
+      rateLimitGbps: n.rateLimitGbps
     }))
 
     const compactApps = applications.map(a => ({
@@ -212,7 +214,12 @@ export class SimulationWorkerManager {
       status: c.status,
       syncProgress: c.syncProgress,
       type: c.type,
-      packetLoss: c.packetLoss
+      packetLoss: c.packetLoss,
+      controlQueueDelayMs: c.controlQueueDelayMs,
+      bulkQueueDelayMs: c.bulkQueueDelayMs,
+      packetsDropped: c.packetsDropped,
+      isBlackholed: c.isBlackholed,
+      rateLimitGbps: c.rateLimitGbps
     }))
 
     const compacted = {

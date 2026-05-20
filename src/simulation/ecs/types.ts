@@ -21,6 +21,8 @@ export interface TransformComponent extends Component {
   degradation?: number
   healthStatus?: string
   isInfected?: boolean
+  isBlackholed?: boolean
+  rateLimitGbps?: number
 }
 
 // Connection Component: Network link state
@@ -37,6 +39,12 @@ export interface ConnectionComponent extends Component {
   syncProgress?: number
   type?: string
   packetLoss?: number
+  // V2/Enterprise Additions
+  controlQueueDelayMs?: number // Delay for latency-sensitive control traffic
+  bulkQueueDelayMs?: number    // Delay for bulk storage/backup transfers
+  packetsDropped?: number      // Count of packets dropped on this link
+  isBlackholed?: boolean       // Administrative null route toggle
+  rateLimitGbps?: number       // Speed ceiling for this link
 }
 
 // Thermal Component: Heat dynamics state

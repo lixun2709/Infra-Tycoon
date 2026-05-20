@@ -163,4 +163,96 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
       expect(result.connections[0]?.throughputGbps).toBe(0.8)
     })
   })
+
+  describe('Phase 5: Enterprise QoS, Blackholing, and Administrative Limits', () => {
+    it('should drop all demands and connection traffic to zero when a node is blackholed', () => {
+      const blackholedNode = { ...mockComputeNode, isBlackholed: true }
+      const demand = calculateNodeDemand(blackholedNode, 0)
+      expect(demand.demandGbps).toBe(0)
+      expect(demand.activeIncident).toBe('blackholed')
+
+      const conn: Connection = {
+        id: 'conn-1',
+        startNodeId: 'node-compute',
+        startPortId: 'p1',
+        endNodeId: 'node-switch',
+        endPortId: 'p2',
+        status: 'active',
+        bandwidthGbps: 10,
+        throughputGbps: 5,
+        latencyMs: 1
+      }
+
+      const nodes = [blackholedNode, mockSwitchNode]
+      const demands = nodes.map(n => calculateNodeDemand(n, 0))
+      const map = buildAdjacencyMap([conn])
+
+      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map, 1.0)
+      const resolved = updatedConnections[0]!
+      expect(resolved.throughputGbps).toBe(0)
+      expect(resolved.status).toBe('blocked')
+      expect(resolved.latencyMs).toBe(999.0)
+      expect(resolved.packetLoss).toBe(1.0)
+    })
+
+    it('should strictly ceiling network traffic demands when rateLimitGbps is set', () => {
+      const rateLimitedNode = { ...mockComputeNode, rateLimitGbps: 0.25 }
+      // Base compute demand at networkLoad 0 is 0.8 Gbps, should be ceiled to 0.25 Gbps
+      const demand = calculateNodeDemand(rateLimitedNode, 0)
+      expect(demand.demandGbps).toBe(0.25)
+    })
+
+    it('should segment traffic into QoS priorities and route Control frames safely under link congestion', () => {
+      const conn: Connection = {
+        id: 'conn-1',
+        startNodeId: 'node-compute',
+        startPortId: 'p1',
+        endNodeId: 'node-switch',
+        endPortId: 'p2',
+        status: 'active',
+        bandwidthGbps: 1.0, // Low bandwidth to force saturation ratio
+        throughputGbps: 0,
+        latencyMs: 1
+      }
+
+      // Infected compute node generating 2.0 Gbps (exceeds 1.0 Gbps bandwidth)
+      const overloadedNode = { ...mockComputeNode, isInfected: true }
+      const nodes = [overloadedNode, mockSwitchNode]
+      const demands = nodes.map(n => calculateNodeDemand(n, 0))
+      const map = buildAdjacencyMap([conn])
+
+      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map, 1.0)
+      const resolved = updatedConnections[0]!
+      
+      expect(resolved.status).toBe('degraded')
+      expect(resolved.controlQueueDelayMs).toBe(5.0)
+      expect(resolved.bulkQueueDelayMs).toBe(50.0)
+      expect(resolved.packetsDropped).toBeGreaterThan(0)
+    })
+
+    it('should synchronize cabling progress in a frame-rate independent manner scaled strictly by dt', () => {
+      const conn: Connection = {
+        id: 'conn-1',
+        startNodeId: 'node-compute',
+        startPortId: 'p1',
+        endNodeId: 'node-switch',
+        endPortId: 'p2',
+        status: 'active',
+        bandwidthGbps: 10,
+        throughputGbps: 0,
+        latencyMs: 1,
+        syncProgress: 10.0
+      }
+
+      const nodes = [mockComputeNode, mockSwitchNode]
+      const demands = nodes.map(n => calculateNodeDemand(n, 0))
+      const map = buildAdjacencyMap([conn])
+
+      // With dt = 2.0, build-out should progress faster than with dt = 0.5
+      const res1 = resolveCongestion(nodes, [conn], demands, map, 0.5).updatedConnections[0]!
+      const res2 = resolveCongestion(nodes, [conn], demands, map, 2.0).updatedConnections[0]!
+
+      expect(res2.syncProgress).toBeGreaterThan(res1.syncProgress!)
+    })
+  })
 })

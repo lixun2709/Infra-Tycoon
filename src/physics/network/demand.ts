@@ -7,6 +7,11 @@ import { type NetworkDemand, INCIDENT_PROFILES } from './types'
  * incident profile modifiers (like ransomware DDoS spike or operational degradation drop).
  */
 export function calculateNodeDemand(node: InfraNode, networkLoad: number): NetworkDemand {
+  // If node is blackholed, all traffic demands drop to zero immediately
+  if (node.isBlackholed) {
+    return { nodeId: node.id, demandGbps: 0, activeIncident: 'blackholed' }
+  }
+
   if (node.type === 'rack' || node.type === 'cooling') {
     return { nodeId: node.id, demandGbps: 0 }
   }
@@ -39,9 +44,16 @@ export function calculateNodeDemand(node: InfraNode, networkLoad: number): Netwo
     multiplier = INCIDENT_PROFILES.degraded!.trafficMultiplier
   }
 
+  let demandGbps = baseDemand * multiplier
+
+  // Apply administrative rate limit ceiling if active
+  if (node.rateLimitGbps !== undefined && node.rateLimitGbps >= 0) {
+    demandGbps = Math.min(demandGbps, node.rateLimitGbps)
+  }
+
   return {
     nodeId: node.id,
-    demandGbps: baseDemand * multiplier,
+    demandGbps,
     activeIncident
   }
 }

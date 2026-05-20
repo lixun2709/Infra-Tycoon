@@ -51,6 +51,8 @@ export interface CompactNode {
   degradationPercent?: number
   healthStatus?: string
   isInfected?: boolean
+  isBlackholed?: boolean
+  rateLimitGbps?: number
 }
 
 export interface CompactApplication {
