@@ -389,4 +389,96 @@ describe('Thermodynamic Simulation Subsystem Core', () => {
     const standbyCount = (t1.isStandby ? 1 : 0) + (t2.isStandby ? 1 : 0)
     expect(standbyCount).toBe(1)
   })
+
+  it('should gradually converge room temperature over time demonstrating large thermal inertia', () => {
+    const world = new World()
+    const system = new ThermalSystem(world)
+
+    const siteId = 'site-inertia-test'
+    ThermalSystem.siteAmbientTemps.set(siteId, 22.0)
+
+    const srvId = 'srv-inertia-01'
+    world.registerEntity(srvId)
+
+    world.addComponent('transform', {
+      entityId: srvId,
+      type: 'compute',
+      siteId
+    } as TransformComponent)
+
+    world.addComponent('thermal', {
+      entityId: srvId,
+      temperature: 22.0,
+      fanSpeedPercent: 20.0,
+      btuOutput: 1000.0,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    // Very large load: 10000W
+    world.addComponent('power', {
+      entityId: srvId,
+      wattage: 10000,
+      load: 1.0,
+      isPowered: true,
+      efficiency: 0.8
+    } as PowerComponent)
+
+    // After 1 second of simulation, the room temperature should barely rise due to massive room thermal inertia
+    system.update(1.0)
+    const temp1 = ThermalSystem.siteAmbientTemps.get(siteId)!
+    expect(temp1).toBeGreaterThan(22.0)
+    expect(temp1).toBeLessThan(22.2) // Less than 0.2 degree rise in 1 second!
+
+    // After 10 minutes of simulation, room temperature should drift much higher towards equilibrium
+    for (let i = 0; i < 600; i++) {
+      system.update(1.0)
+    }
+    const temp2 = ThermalSystem.siteAmbientTemps.get(siteId)!
+    expect(temp2).toBeGreaterThan(temp1)
+    expect(temp2).toBeGreaterThan(22.48) // Warmed up significantly over 10 minutes toward target 23.70C
+  })
+
+  it('should demonstrate that aisle containment reduces rack recirculation and keeps temperatures lower', () => {
+    const world = new World()
+    const system = new ThermalSystem(world)
+    const siteId = 'site-containment-compare'
+    ThermalSystem.siteAmbientTemps.set(siteId, 22.0)
+
+    const rack1 = 'rack-no-containment'
+    const rack2 = 'rack-cold-containment'
+
+    world.registerEntity(rack1)
+    world.registerEntity(rack2)
+
+    world.addComponent('transform', { entityId: rack1, type: 'rack', siteId } as TransformComponent)
+    world.addComponent('thermal', { entityId: rack1, temperature: 22.0, containmentType: 'none', lastUpdate: Date.now() } as ThermalComponent)
+
+    world.addComponent('transform', { entityId: rack2, type: 'rack', siteId } as TransformComponent)
+    world.addComponent('thermal', { entityId: rack2, temperature: 22.0, containmentType: 'cold_aisle', lastUpdate: Date.now() } as ThermalComponent)
+
+    // Add high heat compute load to both racks
+    const srv1 = 'srv-rack1'
+    const srv2 = 'srv-rack2'
+    world.registerEntity(srv1)
+    world.registerEntity(srv2)
+
+    world.addComponent('transform', { entityId: srv1, type: 'compute', parentRackId: rack1, siteId } as TransformComponent)
+    world.addComponent('power', { entityId: srv1, wattage: 5000, load: 1.0, isPowered: true, efficiency: 0.8 } as PowerComponent)
+    world.addComponent('thermal', { entityId: srv1, temperature: 22.0, fanSpeedPercent: 20.0, lastUpdate: Date.now() } as ThermalComponent)
+
+    world.addComponent('transform', { entityId: srv2, type: 'compute', parentRackId: rack2, siteId } as TransformComponent)
+    world.addComponent('power', { entityId: srv2, wattage: 5000, load: 1.0, isPowered: true, efficiency: 0.8 } as PowerComponent)
+    world.addComponent('thermal', { entityId: srv2, temperature: 22.0, fanSpeedPercent: 20.0, lastUpdate: Date.now() } as ThermalComponent)
+
+    // Run for 3 minutes (180s)
+    for (let i = 0; i < 180; i++) {
+      system.update(1.0)
+    }
+
+    const tempRack1 = world.getComponent<ThermalComponent>('thermal', rack1)!.temperature
+    const tempRack2 = world.getComponent<ThermalComponent>('thermal', rack2)!.temperature
+
+    // Rack 2 (cold containment) has reduced recirculation, so it must stay much cooler than Rack 1 (no containment)
+    expect(tempRack2).toBeLessThan(tempRack1)
+  })
 })
