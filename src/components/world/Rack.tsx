@@ -1,5 +1,7 @@
-import React, { type ReactNode } from 'react'
+import React, { type ReactNode, useMemo, useRef } from 'react'
 import { Text, Edges, Line } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { RACK_HEIGHT, U_WORLD, RACK_U } from '../../physics/dimensions'
 import { useInteractable } from '../../hooks/useInteraction'
 import { useInfraStore } from '../../store/useInfraStore'
@@ -46,6 +48,98 @@ function USlotLines() {
   )
 }
 
+interface ContainmentFlowProps {
+  containmentType: 'cold_aisle' | 'hot_aisle'
+  ambientTemp: number
+}
+
+function ContainmentFlowComponent({ containmentType, ambientTemp }: ContainmentFlowProps) {
+  const isHeatMapVisible = useInfraStore(s => s.isHeatMapVisible)
+  const materialRef = useRef<THREE.ShaderMaterial>(null)
+
+  const material = useMemo(() => {
+    return new THREE.ShaderMaterial({
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float uTime;
+        uniform vec3 uColor;
+        uniform float uSpeed;
+        uniform float uDensity;
+        uniform float uOpacity;
+        varying vec2 vUv;
+
+        void main() {
+          float flow = sin((vUv.y - uTime * uSpeed) * uDensity) * 0.5 + 0.5;
+          float wave = sin(vUv.x * 6.0 + uTime) * 0.05;
+          float flowCombined = sin((vUv.y + wave - uTime * uSpeed) * uDensity) * 0.5 + 0.5;
+          
+          float edgeFade = smoothstep(0.0, 0.1, vUv.x) * smoothstep(0.0, 0.1, 1.0 - vUv.x);
+          float verticalFade = smoothstep(0.0, 0.15, vUv.y) * smoothstep(0.0, 0.15, 1.0 - vUv.y);
+          
+          gl_FragColor = vec4(uColor, flowCombined * edgeFade * verticalFade * uOpacity);
+        }
+      `,
+      uniforms: {
+        uTime: { value: 0.0 },
+        uColor: { value: new THREE.Color(containmentType === 'cold_aisle' ? '#00f2ff' : '#f97316') },
+        uSpeed: { value: containmentType === 'cold_aisle' ? -1.0 : 1.5 },
+        uDensity: { value: 10.0 },
+        uOpacity: { value: 0.15 }
+      },
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide
+    })
+  }, [containmentType])
+
+  useFrame(({ clock }) => {
+    if (!materialRef.current) return
+    const time = clock.getElapsedTime()
+    materialRef.current.uniforms.uTime!.value = time
+
+    const baseColor = new THREE.Color()
+    if (containmentType === 'cold_aisle') {
+      if (ambientTemp <= 24) {
+        baseColor.set('#00f2ff')
+      } else if (ambientTemp >= 35) {
+        baseColor.set('#f97316')
+      } else {
+        const t = (ambientTemp - 24) / (35 - 24)
+        baseColor.set('#00f2ff').lerp(new THREE.Color('#f97316'), t)
+      }
+    } else {
+      if (ambientTemp <= 25) {
+        baseColor.set('#f97316')
+      } else {
+        baseColor.set('#ef4444')
+      }
+    }
+    
+    materialRef.current.uniforms.uColor!.value.copy(baseColor)
+    
+    const baseOpacity = containmentType === 'cold_aisle' ? 0.12 : 0.18
+    const heatmapBoost = isHeatMapVisible ? 1.8 : 1.0
+    materialRef.current.uniforms.uOpacity!.value = baseOpacity * heatmapBoost
+  })
+
+  const zPos = containmentType === 'cold_aisle' ? 0.541 : -0.541
+
+  return (
+    <mesh position={[0, 0, zPos]}>
+      <planeGeometry args={[1.08, RACK_HEIGHT]} />
+      <primitive object={material} ref={materialRef} attach="material" />
+    </mesh>
+  )
+}
+
+const ContainmentFlow = React.memo(ContainmentFlowComponent)
+
 function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', children }: RackProps) {
   const isOverload = status === 'power_overload'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
@@ -53,6 +147,11 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
   const { isHovered, interactionProps } = useInteractable(id, 'RACK')
   const activeTheme = useInfraStore(s => s.activeTheme)
   const themeSpec = THEMES[activeTheme]
+
+  const currentSiteId = useInfraStore(s => s.currentSiteId)
+  const sites = useInfraStore(s => s.sites)
+  const currentSite = sites.find(site => site.id === currentSiteId)
+  const ambientTemp = currentSite?.ambientTemp ?? 22.0
 
   return (
     <group position={[position.x, position.y + RACK_HEIGHT / 2, position.z]}>
@@ -76,22 +175,25 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
       </mesh>
 
       {containmentType && containmentType !== 'none' && (
-        <mesh position={[0, 0, 0]}>
-          <boxGeometry args={[1.08, RACK_HEIGHT * 1.002, 1.08]} />
-          <meshStandardMaterial
-            color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
-            transparent
-            opacity={0.15}
-            roughness={0.1}
-            metalness={0.9}
-            depthWrite={false}
-          />
-          <Edges
-            color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
-            threshold={24}
-            lineWidth={2.0}
-          />
-        </mesh>
+        <>
+          <mesh position={[0, 0, 0]}>
+            <boxGeometry args={[1.08, RACK_HEIGHT * 1.002, 1.08]} />
+            <meshStandardMaterial
+              color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
+              transparent
+              opacity={0.15}
+              roughness={0.1}
+              metalness={0.9}
+              depthWrite={false}
+            />
+            <Edges
+              color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
+              threshold={24}
+              lineWidth={2.0}
+            />
+          </mesh>
+          <ContainmentFlow containmentType={containmentType} ambientTemp={ambientTemp} />
+        </>
       )}
 
       <USlotLines />

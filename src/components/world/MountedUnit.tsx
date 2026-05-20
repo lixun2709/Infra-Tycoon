@@ -14,7 +14,7 @@ import {
   MaintenanceIcon, 
   InternalHardware 
 } from './renderers/HardwareRenderer'
-import { CoolingEffect } from './CoolingEffect'
+import { AirflowVisualizer } from './AirflowVisualizer'
 
 interface MountedUnitProps {
   node: InfraNode
@@ -128,9 +128,7 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
       
       <PortVisualsSimplified node={node} h={h} />
 
-      {node.type === 'cooling' && (
-        <CoolingEffect h={h} isRunning={node.systemState === 'running'} />
-      )}
+      <AirflowVisualizer node={node} h={h} />
 
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
@@ -166,9 +164,7 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
       {/* Internal Modules (Visible when node is selected/transparent) */}
       {isSelected && <InternalHardware node={node} h={h} />}
 
-      {node.type === 'cooling' && (
-        <CoolingEffect h={h} isRunning={node.systemState === 'running'} />
-      )}
+      <AirflowVisualizer node={node} h={h} />
 
       <Text position={[0, 0, 0.485]} fontSize={0.025} color="#ffffff" outlineWidth={0.005} outlineColor="#000000">
         {node.name}
@@ -222,6 +218,8 @@ export const MountedUnit = React.memo(MountedUnitComponent, (prevProps, nextProp
     prevProps.node.slotIndex === nextProps.node.slotIndex &&
     prevProps.node.parentRackId === nextProps.node.parentRackId &&
     prevProps.node.isInfected === nextProps.node.isInfected &&
+    prevProps.node.temperature === nextProps.node.temperature &&
+    prevProps.node.wattage === nextProps.node.wattage &&
     prevProps.node.usedStorageTB === nextProps.node.usedStorageTB &&
     prevProps.node.totalStorageTB === nextProps.node.totalStorageTB &&
     prevProps.node.dataCategory === nextProps.node.dataCategory &&
