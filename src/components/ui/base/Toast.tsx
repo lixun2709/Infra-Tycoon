@@ -49,9 +49,9 @@ const ToastItem: React.FC<ToastItemProps> = ({ toast, acknowledgeAlert }) => {
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: -30, scale: 0.95 }}
+      initial={{ opacity: 0, y: 30, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ duration: 0.2 }}
       className={`
         pointer-events-auto border rounded-xl p-4 shadow-2xl backdrop-blur-xl flex items-start gap-3
@@ -84,18 +84,18 @@ export const ToastProvider: React.FC = () => {
   const alerts = useInfraStore(s => s.alerts)
   const acknowledgeAlert = useInfraStore(s => s.acknowledgeAlert)
 
-  // Display only active, unacknowledged notifications
+  // Display only the single latest active, unacknowledged notification
   const visibleAlerts = React.useMemo(() => {
-    return alerts.filter(a => !a.isAcknowledged).slice(0, 3)
+    return alerts.filter(a => !a.isAcknowledged).slice(-1)
   }, [alerts])
 
   return (
     <div 
       aria-live="polite"
       role="status"
-      className="fixed top-24 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4"
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4"
     >
-      <AnimatePresence>
+      <AnimatePresence mode="popLayout">
         {visibleAlerts.map(toast => (
           <ToastItem 
             key={toast.id} 
