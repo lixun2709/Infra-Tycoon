@@ -80,13 +80,34 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     const overloadedRackCount = payload.overloadedRackCount ?? 0
     const siteMetricsHistory = payload.siteMetricsHistory
 
+    const currentSiteId = get().currentSiteId
+    const siteRacks = updatedNodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
+    const totalPowerKW = siteRacks.reduce((sum, r) => sum + (r.currentPowerKW || 0), 0)
+
+    const chassisNodes = updatedNodes.filter(n => n.siteId === currentSiteId && n.type !== 'rack' && n.type !== 'cooling')
+    const totalRoomBTU = Math.round(
+      chassisNodes.reduce((sum, n) => {
+        const isRunning = n.systemState === 'running'
+        const isBooting = n.systemState === 'booting'
+        let heat = 0.5
+        if (isRunning) {
+          heat = Math.max(10.0, (n.wattage || 300) * 3.412 * (1.1 - 0.9))
+        } else if (isBooting) {
+          heat = Math.max(10.0, (n.wattage || 300) * 0.5 * 3.412 * (1.1 - 0.9))
+        }
+        return sum + heat
+      }, 0)
+    )
+
     set({ 
       nodes: updatedNodes, 
       applications: updatedApps,
       connections: updatedConnections,
       sites: updatedSites,
       overloadedRackCount,
-      siteMetricsHistory
+      siteMetricsHistory,
+      totalPowerKW,
+      totalRoomBTU
     })
 
     // Process background-fired alerts from the ObservabilitySystem
