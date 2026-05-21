@@ -24,7 +24,8 @@ export function Inspector() {
     repairHardware,
     toggleMaintenanceMode,
     technicianTickets,
-    timeFormat
+    timeFormat,
+    resetRackBreaker
   } = useInfraStore()
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
@@ -135,6 +136,26 @@ export function Inspector() {
                     </span>
                   </div>
                 </div>
+
+                {selectedNode.type === 'rack' && (selectedNode.status === 'power_overload' || selectedNode.breakerTripped) && (
+                  <div className="mt-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-lg">⚡</span>
+                      <div>
+                        <p className="text-[10px] font-black text-rose-400 uppercase tracking-wider">PDU BREAKER TRIPPED</p>
+                        <p className="text-[8px] text-rose-400/80 font-bold uppercase tracking-wider mt-0.5">
+                          Load exceeded safety limit. Grid power cut.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => resetRackBreaker(selectedNode.id)}
+                      className="w-full py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-[0_4px_12px_rgba(239,68,68,0.2)]"
+                    >
+                      Reset Circuit Breaker
+                    </button>
+                  </div>
+                )}
 
                 {selectedNode.totalStorageTB != null && selectedNode.totalStorageTB > 0 && (
                   <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
