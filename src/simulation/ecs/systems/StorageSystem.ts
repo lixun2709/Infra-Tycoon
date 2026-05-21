@@ -26,7 +26,44 @@ export class StorageSystem extends System {
         storage.baseUsedStorageTB = storage.usedStorageTB
         storage.baseIoPSLimit = storage.ioPSLimit
       }
+      if (storage.deduplicationEnabled === undefined) storage.deduplicationEnabled = false
+      if (storage.compressionEnabled === undefined) storage.compressionEnabled = false
+      if (storage.deduplicationRatio === undefined) storage.deduplicationRatio = 2.4
+      if (storage.compressionRatio === undefined) storage.compressionRatio = 1.5
+      if (storage.physicalUsedStorageTB === undefined) storage.physicalUsedStorageTB = storage.usedStorageTB
+      if (storage.writeAmplificationFactor === undefined) {
+        const raid = storage.raidLevel
+        if (raid === 'RAID6') storage.writeAmplificationFactor = 6.0
+        else if (raid === 'RAID5') storage.writeAmplificationFactor = 4.0
+        else if (raid === 'RAID1' || raid === 'RAID10') storage.writeAmplificationFactor = 2.0
+        else storage.writeAmplificationFactor = 1.0
+      }
     })
+
+    // Helper to compute path bottleneck bandwidth (in Gbps)
+    const findPathBandwidth = (start: string, end: string): number => {
+      if (start === end) return 100.0
+      const queue: { node: string; minBw: number }[] = [{ node: start, minBw: Infinity }]
+      const visited = new Set<string>([start])
+
+      while (queue.length > 0) {
+        const { node, minBw } = queue.shift()!
+        if (node === end) return minBw
+
+        activeConnections.forEach(c => {
+          let neighbor: string | null = null
+          if (c.startNodeId === node) neighbor = c.endNodeId
+          else if (c.endNodeId === node) neighbor = c.startNodeId
+
+          if (neighbor && !visited.has(neighbor)) {
+            visited.add(neighbor)
+            const edgeBw = c.bandwidthGbps ?? 10.0
+            queue.push({ node: neighbor, minBw: Math.min(minBw, edgeBw) })
+          }
+        })
+      }
+      return 0.0
+    }
 
     // 1. Process LUN & SAN Aggregation (Disk Shelf SAS/FC Cabling to SAN Controller)
     entities.forEach(controllerId => {
@@ -73,7 +110,13 @@ export class StorageSystem extends System {
         if (shelfStorage) {
           aggTotal += shelfStorage.totalStorageTB
           aggUsed += shelfStorage.usedStorageTB
-          aggLimit += shelfStorage.ioPSLimit
+          
+          // Cap shelf contribution based on path bandwidth (2000 IOPS per 1 Gbps)
+          const pathBw = findPathBandwidth(shelfId, controllerId)
+          const maxContributedIoPS = Math.floor(pathBw * 2000)
+          const cappedShelfIoPS = Math.min(shelfStorage.ioPSLimit, maxContributedIoPS)
+          
+          aggLimit += cappedShelfIoPS
         }
       })
 
@@ -95,31 +138,6 @@ export class StorageSystem extends System {
       }
     })
 
-    // Helper to compute path bottleneck bandwidth (in Gbps)
-    const findPathBandwidth = (start: string, end: string): number => {
-      if (start === end) return 100.0
-      const queue: { node: string; minBw: number }[] = [{ node: start, minBw: Infinity }]
-      const visited = new Set<string>([start])
-
-      while (queue.length > 0) {
-        const { node, minBw } = queue.shift()!
-        if (node === end) return minBw
-
-        activeConnections.forEach(c => {
-          let neighbor: string | null = null
-          if (c.startNodeId === node) neighbor = c.endNodeId
-          else if (c.endNodeId === node) neighbor = c.startNodeId
-
-          if (neighbor && !visited.has(neighbor)) {
-            visited.add(neighbor)
-            const edgeBw = c.bandwidthGbps ?? 1.0
-            queue.push({ node: neighbor, minBw: Math.min(minBw, edgeBw) })
-          }
-        })
-      }
-      return 0.0
-    }
-
     // 2. Drive degradation wear and RAID resilience failure machine
     entities.forEach(id => {
       const storage = storageMap.get(id)!
@@ -134,18 +152,26 @@ export class StorageSystem extends System {
         return
       }
 
-      // Drive wear rate is proportional to active I/O loads and tier multipliers
+      // RAID-aware Write Amplification Factor (WAF)
+      const raid = storage.raidLevel
+      let waf = 1.0
+      if (raid === 'RAID5') waf = 4.0
+      else if (raid === 'RAID6') waf = 6.0
+      else if (raid === 'RAID1' || raid === 'RAID10') waf = 2.0
+      storage.writeAmplificationFactor = waf
+
+      // Drive wear rate is proportional to active I/O loads, tier multipliers, and WAF
       let tierWearMult = 1.0
       if (storage.tier === 'nvme') tierWearMult = 0.2
       else if (storage.tier === 'ssd') tierWearMult = 0.5
 
       const wearIntensity = storage.ioPSUsed > 0 ? (storage.ioPSUsed / storage.ioPSLimit) : 0.05
-      const wearIncrement = Math.max(0.001, wearIntensity * 0.1) * dt * tierWearMult
+      const activeWaf = wearIntensity > 0.05 ? waf : 1.0
+      const wearIncrement = Math.max(0.001, wearIntensity * 0.1) * dt * tierWearMult * activeWaf
       storage.driveDegradation = Math.min(100, storage.driveDegradation + wearIncrement)
 
       // Disk Failure triggers
       if (storage.driveDegradation >= 99.0 && storage.storageStatus !== 'failed') {
-        const raid = storage.raidLevel
         storage.driveDegradation = 0.0 // Reset wear on failure
 
         if (raid === 'RAID0' || raid === 'JBOD') {
@@ -206,9 +232,26 @@ export class StorageSystem extends System {
         }
       }
 
-      // Rebuild mechanics
+      // Dynamic Rebuild mechanics
       if (storage.storageStatus === 'rebuilding') {
-        storage.rebuildProgress = Math.min(100, storage.rebuildProgress + (10 * dt))
+        let rebuildIncrement = 0
+        if (storage.tier === undefined) {
+          // Backward compatibility default rebuild rate
+          rebuildIncrement = 10.0 * dt
+        } else {
+          const baseRebuildRate = 5.0 // percent per second
+          let tierSpeedMult = 0.5
+          if (storage.tier === 'nvme') tierSpeedMult = 3.0
+          else if (storage.tier === 'ssd') tierSpeedMult = 1.5
+
+          let raidRebuildPenalty = 1.0
+          if (storage.raidLevel === 'RAID6') raidRebuildPenalty = 0.5
+          else if (storage.raidLevel === 'RAID5') raidRebuildPenalty = 0.7
+
+          rebuildIncrement = baseRebuildRate * tierSpeedMult * raidRebuildPenalty * dt
+        }
+        storage.rebuildProgress = Math.min(100, (storage.rebuildProgress ?? 0) + rebuildIncrement)
+        
         if (storage.rebuildProgress >= 100) {
           storage.storageStatus = 'healthy'
           storage.rebuildProgress = 0
@@ -236,6 +279,12 @@ export class StorageSystem extends System {
     // 3. Active data replication sync loop
     entities.forEach(id => {
       const storage = storageMap.get(id)!
+      
+      // Calculate physical space used after compression and deduplication
+      const dedup = storage.deduplicationEnabled ? (storage.deduplicationRatio ?? 2.4) : 1.0
+      const comp = storage.compressionEnabled ? (storage.compressionRatio ?? 1.5) : 1.0
+      storage.physicalUsedStorageTB = Number((storage.usedStorageTB / (dedup * comp)).toFixed(3))
+
       if (storage.replicationSourceId) {
         const srcId = storage.replicationSourceId
         const srcStorage = storageMap.get(srcId)
@@ -282,6 +331,19 @@ export class StorageSystem extends System {
         const storage = storageMap.get(hostId)
         if (storage) {
           storage.ioPSUsed += appIOPS
+        }
+      }
+    })
+
+    // Process deduplication/compression IOPS overhead
+    entities.forEach(id => {
+      const storage = storageMap.get(id)!
+      if (storage.ioPSUsed > 0) {
+        let overhead = 0.0
+        if (storage.deduplicationEnabled) overhead += 0.15
+        if (storage.compressionEnabled) overhead += 0.10
+        if (overhead > 0) {
+          storage.ioPSUsed = Math.floor(storage.ioPSUsed * (1.0 + overhead))
         }
       }
     })

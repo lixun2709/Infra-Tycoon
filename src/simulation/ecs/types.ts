@@ -112,6 +112,12 @@ export interface StorageComponent extends Component {
   baseTotalStorageTB?: number
   baseUsedStorageTB?: number
   baseIoPSLimit?: number
+  deduplicationEnabled?: boolean
+  compressionEnabled?: boolean
+  deduplicationRatio?: number
+  compressionRatio?: number
+  physicalUsedStorageTB?: number
+  writeAmplificationFactor?: number
 }
 
 // Telemetry Component: Per-entity performance and operational history

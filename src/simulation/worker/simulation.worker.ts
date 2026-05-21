@@ -271,7 +271,13 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           tier: node.tier ?? 'hdd',
           failedDrives: node.failedDrives ?? 0,
           replicationSourceId: node.replicationSourceId,
-          replicationProgress: node.replicationProgress ?? 0
+          replicationProgress: node.replicationProgress ?? 0,
+          deduplicationEnabled: node.deduplicationEnabled ?? false,
+          compressionEnabled: node.compressionEnabled ?? false,
+          deduplicationRatio: node.deduplicationRatio ?? 2.4,
+          compressionRatio: node.compressionRatio ?? 1.5,
+          physicalUsedStorageTB: node.physicalUsedStorageTB ?? node.usedStorageTB ?? 0,
+          writeAmplificationFactor: node.writeAmplificationFactor ?? 1.0
         } as StorageComponent)
       } else {
         const storage = world.getComponent<StorageComponent>('storage', node.id)
@@ -288,6 +294,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           storage.failedDrives = node.failedDrives ?? storage.failedDrives
           storage.replicationSourceId = node.replicationSourceId ?? storage.replicationSourceId
           storage.replicationProgress = node.replicationProgress ?? storage.replicationProgress
+          storage.deduplicationEnabled = node.deduplicationEnabled ?? storage.deduplicationEnabled
+          storage.compressionEnabled = node.compressionEnabled ?? storage.compressionEnabled
+          storage.deduplicationRatio = node.deduplicationRatio ?? storage.deduplicationRatio
+          storage.compressionRatio = node.compressionRatio ?? storage.compressionRatio
+          storage.physicalUsedStorageTB = node.physicalUsedStorageTB ?? storage.physicalUsedStorageTB
+          storage.writeAmplificationFactor = node.writeAmplificationFactor ?? storage.writeAmplificationFactor
         }
       }
     }
@@ -474,6 +486,12 @@ function sendSyncOutput() {
         ioPSLimit: storage?.ioPSLimit,
         ioPSUsed: storage?.ioPSUsed,
         driveDegradation: storage?.driveDegradation,
+        deduplicationEnabled: storage?.deduplicationEnabled,
+        compressionEnabled: storage?.compressionEnabled,
+        deduplicationRatio: storage?.deduplicationRatio,
+        compressionRatio: storage?.compressionRatio,
+        physicalUsedStorageTB: storage?.physicalUsedStorageTB,
+        writeAmplificationFactor: storage?.writeAmplificationFactor,
         fanSpeedPercent: comp.fanSpeedPercent,
         humidity: comp.humidity,
         containmentType: comp.containmentType,

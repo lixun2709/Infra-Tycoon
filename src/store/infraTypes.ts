@@ -127,6 +127,12 @@ export interface InfraNode {
   ioPSLimit?: number
   ioPSUsed?: number
   driveDegradation?: number
+  deduplicationEnabled?: boolean
+  compressionEnabled?: boolean
+  deduplicationRatio?: number
+  compressionRatio?: number
+  physicalUsedStorageTB?: number
+  writeAmplificationFactor?: number
   systemState: SystemState
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
   bootProgress: number

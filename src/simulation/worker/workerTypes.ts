@@ -47,6 +47,12 @@ export interface CompactNode {
   ioPSLimit?: number
   ioPSUsed?: number
   driveDegradation?: number
+  deduplicationEnabled?: boolean
+  compressionEnabled?: boolean
+  deduplicationRatio?: number
+  compressionRatio?: number
+  physicalUsedStorageTB?: number
+  writeAmplificationFactor?: number
   fanSpeedPercent?: number
   degradationPercent?: number
   healthStatus?: string
@@ -97,6 +103,12 @@ export interface SimSyncOutputPayload {
     ioPSLimit?: number
     ioPSUsed?: number
     driveDegradation?: number
+    deduplicationEnabled?: boolean
+    compressionEnabled?: boolean
+    deduplicationRatio?: number
+    compressionRatio?: number
+    physicalUsedStorageTB?: number
+    writeAmplificationFactor?: number
     fanSpeedPercent?: number
     breakerTripped?: boolean
     overloadSeconds?: number
