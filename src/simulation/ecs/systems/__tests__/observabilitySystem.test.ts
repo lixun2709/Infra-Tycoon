@@ -208,4 +208,106 @@ describe('Observability ECS System Core Tests', () => {
       expect(alerts[0]!.message).toContain('Interface Link Congestion Warning')
     })
   })
+
+  describe('Multi-Instance Isolation and Dynamic Customization', () => {
+    it('should maintain strict multi-instance isolation (no cross-contamination)', () => {
+      const worldA = new World()
+      const systemA = new ObservabilitySystem(worldA)
+
+      const worldB = new World()
+      const systemB = new ObservabilitySystem(worldB)
+
+      // Clear static delegates just in case
+      ObservabilitySystem.clear()
+
+      // Node A is hot in World A
+      const nodeA = 'node-a'
+      worldA.registerEntity(nodeA)
+      worldA.addComponent('transform', { entityId: nodeA, type: 'compute', name: 'Server A' } as TransformComponent)
+      worldA.addComponent('thermal', { entityId: nodeA, temperature: 80.0 } as ThermalComponent)
+
+      // Node B is cool in World B
+      const nodeB = 'node-b'
+      worldB.registerEntity(nodeB)
+      worldB.addComponent('transform', { entityId: nodeB, type: 'compute', name: 'Server B' } as TransformComponent)
+      worldB.addComponent('thermal', { entityId: nodeB, temperature: 25.0 } as ThermalComponent)
+
+      // Tick 3 times
+      for (let i = 0; i < 3; i++) {
+        systemA.update(1.0)
+        systemB.update(1.0)
+      }
+
+      const alertsA = systemA.flushAlerts()
+      const alertsB = systemB.flushAlerts()
+
+      expect(alertsA.length).toBe(1)
+      expect(alertsA[0]!.message).toContain('Server A')
+      expect(alertsB.length).toBe(0)
+
+      systemA.destroy()
+      systemB.destroy()
+    })
+
+    it('should intercept, format, and queue alerts directly from the event bus', () => {
+      const customWorld = new World()
+      const customSystem = new ObservabilitySystem(customWorld)
+
+      customWorld.eventBus.publish('system:alert', {
+        severity: 'critical',
+        message: 'Manual Event Bus Overload Alert',
+        nodeId: 'manual-entity-id'
+      })
+
+      const alerts = customSystem.flushAlerts()
+      expect(alerts.length).toBe(1)
+      expect(alerts[0]!.severity).toBe('critical')
+      expect(alerts[0]!.message).toBe('Manual Event Bus Overload Alert')
+      expect(alerts[0]!.nodeId).toBe('manual-entity-id')
+
+      customSystem.destroy()
+    })
+
+    it('should dynamically register and enable/disable custom rules at runtime', () => {
+      const customWorld = new World()
+      const customSystem = new ObservabilitySystem(customWorld)
+
+      // 1. Dynamic Registration
+      customSystem.enableRule('rule-thermal', false)
+      customSystem.registerRule({
+        id: 'rule-custom-test',
+        name: 'Custom Runtime Check',
+        metricType: 'temperature',
+        threshold: 95,
+        operator: 'gt',
+        ticksNeeded: 1,
+        severity: 'critical',
+        isActive: true
+      })
+
+      const entityId = 'node-hightemp'
+      customWorld.registerEntity(entityId)
+      customWorld.addComponent('transform', { entityId, type: 'compute', name: 'Hot Server' } as TransformComponent)
+      customWorld.addComponent('thermal', { entityId, temperature: 99.0 } as ThermalComponent)
+
+      customSystem.update(1.0)
+      let alerts = customSystem.flushAlerts()
+      expect(alerts.length).toBe(1)
+      expect(alerts[0]!.message).toContain('Custom Runtime Check')
+
+      // 2. Dynamic Disabling
+      customSystem.enableRule('rule-custom-test', false)
+      customSystem.update(1.0)
+      alerts = customSystem.flushAlerts()
+      expect(alerts.length).toBe(0)
+
+      // 3. Dynamic Enabling
+      customSystem.enableRule('rule-custom-test', true)
+      customSystem.update(1.0)
+      alerts = customSystem.flushAlerts()
+      expect(alerts.length).toBe(1)
+
+      customSystem.destroy()
+    })
+  })
 })

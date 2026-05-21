@@ -447,12 +447,14 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
 function sendSyncOutput() {
   const world = engine.getWorld()
   const telemetry = engine.getTelemetry()
-  
+  const obs = engine.getSystemManager().getSystem(ObservabilitySystem)
+  const alerts = obs ? obs.flushAlerts() : []
+
   const output: SimSyncOutputPayload = {
     nodes: [],
     applications: [],
     connections: [],
-    alerts: ObservabilitySystem.flushAlerts()
+    alerts
   }
 
   // Collect results from components

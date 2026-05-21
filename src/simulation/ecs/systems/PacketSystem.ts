@@ -2,7 +2,6 @@ import { System } from '../System'
 import type { TransformComponent, PowerComponent, ConnectionComponent } from '../types'
 import type { InfraNode, Connection } from '../../../store/infraTypes'
 import { simulateNetwork } from '../../../physics/network/simulation'
-import { ObservabilitySystem } from './ObservabilitySystem'
 
 /**
  * PacketSystem
@@ -10,9 +9,9 @@ import { ObservabilitySystem } from './ObservabilitySystem'
  * and link congestion buffering delay propagation.
  */
 export class PacketSystem extends System {
-  public static networkLoad = 0.0
+  public static networkLoad = 0.0 // internal dynamic networking rate metrics
 
-  public update(dt: number) {
+  public update(dt: number): void {
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
@@ -62,7 +61,7 @@ export class PacketSystem extends System {
         packetsDropped: conn.packetsDropped,
         isBlackholed: conn.isBlackholed,
         rateLimitGbps: conn.rateLimitGbps
-      })
+      } as Connection)
     })
 
     if (connections.length === 0) {
@@ -88,13 +87,6 @@ export class PacketSystem extends System {
           entityId: nodeId,
           message: `CRITICAL: Ransomware lateral propagation! Node [${transform.name || nodeId}] has been infected over network link.`,
           severity: 'critical'
-        })
-
-        // Push alert into ObservabilitySystem to notify the UI
-        ObservabilitySystem.pushFiredAlert({
-          severity: 'critical',
-          message: `CRITICAL: Ransomware lateral propagation! Node [${transform.name || nodeId}] has been infected over network link.`,
-          nodeId
         })
       }
     })

@@ -1,6 +1,5 @@
 import { System } from '../System'
 import type { RackComponent, PowerComponent, TransformComponent } from '../types'
-import { ObservabilitySystem } from './ObservabilitySystem'
 
 /**
  * RackSystem
@@ -36,7 +35,7 @@ export class RackSystem extends System {
                   // Collision detected: Slot is occupied by multiple compute nodes!
                   if (!checkedCollisionSlots.has(u)) {
                     checkedCollisionSlots.add(u)
-                    ObservabilitySystem.pushFiredAlert({
+                    this.world.eventBus.publish('system:alert', {
                       severity: 'warning',
                       message: `[RACK SLOT COLLISION] Server Rack [${transformMap.get(rackId)?.name || rackId}] has slot booking conflict at Slot U${u}!`,
                       nodeId: rackId
@@ -63,7 +62,7 @@ export class RackSystem extends System {
         if (load > maxLimit) {
           if (rack.status === 'online') {
             rack.status = 'power_overload'
-            ObservabilitySystem.pushFiredAlert({
+            this.world.eventBus.publish('system:alert', {
               severity: 'critical',
               message: `[RACK OVERLOAD] Server Rack [${transform?.name || id}] has exceeded its power limit! (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,
               nodeId: id
@@ -77,7 +76,7 @@ export class RackSystem extends System {
               `[RackSystem] NOMINAL RECOVERY on Rack Entity: ${id} (${transform?.name || 'Unnamed'}). ` +
               `Status transitioned from power_overload to online. Current Load: ${load.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW.`
             )
-            ObservabilitySystem.pushFiredAlert({
+            this.world.eventBus.publish('system:alert', {
               severity: 'info',
               message: `[RACK RECOVERY] Server Rack [${transform?.name || id}] power load recovered to normal levels. (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,
               nodeId: id

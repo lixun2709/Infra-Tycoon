@@ -1,5 +1,7 @@
 import { useInfraStore } from '../../store/useInfraStore'
 import { performanceMonitor } from '../PerformanceMonitor'
+import { simEngine } from '../SimulationEngine'
+import { ObservabilitySystem } from '../ecs/systems/ObservabilitySystem'
 import type { AlertRule } from './types'
 
 export class ObservabilityAlerting {
@@ -61,7 +63,8 @@ export class ObservabilityAlerting {
     const metrics = performanceMonitor.getMetrics()
     if (!metrics) return
 
-    for (const rule of this.rules) {
+    const activeRules = this.getRules()
+    for (const rule of activeRules) {
       if (!rule.isActive) continue
 
       if (rule.metricType === 'power') {
@@ -131,7 +134,8 @@ export class ObservabilityAlerting {
    * Helper to fetch active rules.
    */
   public static getRules(): AlertRule[] {
-    return [...this.rules]
+    const obs = simEngine.getSystemManager().getSystem(ObservabilitySystem)
+    return obs ? obs.getRules() : [...this.rules]
   }
 
   /**

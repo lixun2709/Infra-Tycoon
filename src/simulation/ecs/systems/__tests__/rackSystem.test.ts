@@ -16,6 +16,7 @@ describe('Rack Subsystem ECS Tests', () => {
 
   beforeEach(() => {
     world = new World()
+    new ObservabilitySystem(world)
     rackSystem = new RackSystem(world)
     powerSystem = new PowerSystem(world)
     ObservabilitySystem.clear()

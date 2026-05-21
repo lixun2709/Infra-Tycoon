@@ -24,6 +24,20 @@ export class SystemManager {
   }
 
   /**
+   * Retrieves a registered ECS system by its class constructor.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  public getSystem<T extends System>(systemClass: new (...args: any[]) => T): T | undefined {
+    let found: T | undefined
+    this.systems.forEach((_, system) => {
+      if (system instanceof systemClass) {
+        found = system as T
+      }
+    })
+    return found
+  }
+
+  /**
    * Dynamically enables/disables a registered system.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
