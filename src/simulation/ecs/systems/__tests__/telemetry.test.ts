@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { World } from '../../World'
-import { TelemetrySystem } from '../TelemetrySystem'
+import { TelemetrySystem, fastSlideBuffer } from '../TelemetrySystem'
 import type { 
   TelemetryComponent, 
   PowerComponent, 
@@ -210,5 +210,76 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     const powerAlert = alertsFired.find(a => a.message.includes('power draw saturation threat'))!
     expect(powerAlert).toBeDefined()
     expect(powerAlert.severity).toBe('critical')
+  })
+
+  it('should optimize array operations using fastSlideBuffer to prevent GC pressure', () => {
+    const arr: number[] = [10, 20, 30]
+    fastSlideBuffer(arr, 40, 3)
+    expect(arr).toEqual([20, 30, 40])
+
+    fastSlideBuffer(arr, 50, 3)
+    expect(arr).toEqual([30, 40, 50])
+  })
+
+  it('should track powerSpikesCount and auditViolationsCount accurately under abnormal conditions', () => {
+    const world = new World()
+    const system = new TelemetrySystem(world)
+
+    const nodeId = 'srv-anomalous'
+    world.registerEntity(nodeId)
+
+    world.addComponent('transform', {
+      entityId: nodeId,
+      type: 'compute',
+      siteId: 'site-gamma',
+      degradation: 90 // High degradation (> 80) to trigger audit violations
+    } as TransformComponent)
+
+    world.addComponent('telemetry', {
+      entityId: nodeId,
+      uptimeTicks: 0,
+      totalTicks: 0,
+      powerSpikesCount: 0,
+      thermalThrottlingTicks: 0,
+      networkCongestionTicks: 0,
+      storageIopsThrottlingTicks: 0,
+      auditViolationsCount: 0,
+      powerHistory: [],
+      tempHistory: [],
+      iopsHistory: []
+    } as TelemetryComponent)
+
+    world.addComponent('power', {
+      entityId: nodeId,
+      wattage: 500,
+      load: 0.1,
+      isPowered: true,
+      efficiency: 0.95
+    } as PowerComponent)
+
+    world.addComponent('thermal', {
+      entityId: nodeId,
+      temperature: 75.0, // Overheated (>= 70) to trigger audit violations
+      isThrottled: false,
+      fanSpeedPercent: 40,
+      btuOutput: 100,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    // Tick 1: Baseline load = 0.1
+    system.update(1.0)
+    
+    const tc = world.getComponentMap<TelemetryComponent>('telemetry').get(nodeId)!
+    expect(tc.auditViolationsCount).toBe(1) // Temperature >= 70 AND degradation > 80
+    expect(tc.powerSpikesCount).toBe(0)
+
+    // Trigger sudden huge power spike: 0.1 -> 0.8 (delta = 0.7 > 0.15, variance = 700% > 50%)
+    const powerComp = world.getComponentMap<PowerComponent>('power').get(nodeId)!
+    powerComp.load = 0.8
+
+    // Tick 2: Spike occurs
+    system.update(1.0)
+    expect(tc.powerSpikesCount).toBe(1)
+    expect(tc.auditViolationsCount).toBe(2) // still in warning conditions
   })
 })

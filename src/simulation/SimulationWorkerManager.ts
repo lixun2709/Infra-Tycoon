@@ -188,6 +188,7 @@ export class SimulationWorkerManager {
       driveDegradation: n.driveDegradation,
       fanSpeedPercent: n.fanSpeedPercent,
       degradationPercent: (n.degradation ?? 0) * 100, // Convert 0-1 range to 0-100%
+      containmentType: n.containmentType,
       healthStatus: n.healthStatus ?? 'healthy',
       isInfected: n.isInfected ?? false,
       isBlackholed: n.isBlackholed ?? false,

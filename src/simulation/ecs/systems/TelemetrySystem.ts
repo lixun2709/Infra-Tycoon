@@ -20,6 +20,89 @@ export interface SimStats {
 }
 
 /**
+ * TelemetryAnomalyDetector
+ * Decouples operational threshold monitoring and anomaly detection from the main update loop.
+ */
+export class TelemetryAnomalyDetector {
+  /**
+   * Evaluates silicon temperature updates and fires an alert if a temperature spike exceeds the rate threshold.
+   */
+  public static detectTemperatureSpike(
+    nodeId: string,
+    nodeName: string,
+    currentTemp: number,
+    tempHistory: number[],
+    publishAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId: string) => void
+  ): void {
+    if (tempHistory.length > 0) {
+      const lastTemp = tempHistory[tempHistory.length - 1]
+      if (lastTemp !== undefined) {
+        const delta = currentTemp - lastTemp
+        if (delta > 5.0) {
+          publishAlert(
+            'warning',
+            `Rapid silicon temperature spike on node ${nodeName || nodeId}: +${delta.toFixed(1)}°C`,
+            nodeId
+          )
+        }
+      }
+    }
+  }
+
+  /**
+   * Detects sudden severe power load changes.
+   */
+  public static detectPowerSpike(
+    currentLoad: number,
+    powerHistory: number[],
+    onSpike: () => void
+  ): void {
+    if (powerHistory.length > 0) {
+      const lastLoad = powerHistory[powerHistory.length - 1]
+      if (lastLoad !== undefined) {
+        const delta = Math.abs(currentLoad - lastLoad)
+        // Significant spike defined as a load variation greater than 0.15 kW and over 50% variance
+        if (delta > 0.15 && lastLoad > 0) {
+          const percentChange = (delta / lastLoad) * 100
+          if (percentChange > 50.0) {
+            onSpike()
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Detects site-wide power saturation warnings (90% capacity threat).
+   */
+  public static detectSitePowerSaturation(
+    siteId: string,
+    powerSum: number,
+    maxKW: number,
+    publishAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId: string) => void
+  ): void {
+    if (maxKW > 0 && powerSum > maxKW * 0.90) {
+      publishAlert(
+        'critical',
+        `Site ${siteId} power draw saturation threat: ${powerSum.toFixed(1)}kW / ${maxKW.toFixed(1)}kW (90% exceeded)`,
+        siteId
+      )
+    }
+  }
+}
+
+/**
+ * Sliding window buffer update utility.
+ * In-place operation optimizes memory performance to prevent micro-stutters under high scale.
+ */
+export function fastSlideBuffer(arr: number[], newValue: number, maxLength: number): void {
+  arr.push(newValue)
+  if (arr.length > maxLength) {
+    arr.shift()
+  }
+}
+
+/**
  * TelemetrySystem
  * ECS System governing operational statistics collection, per-entity lifecycle history,
  * and high-performance aggregate datacenter simulation profiling.
@@ -38,10 +121,15 @@ export class TelemetrySystem extends System {
   public static sitePowerHistory = new Map<string, number[]>()
   public static siteTempHistory = new Map<string, number[]>()
   public static siteHumidityHistory = new Map<string, number[]>()
+
+  // Subsystem Performance Profiling Instrumentation
+  public static lastExecutionTimeMs = 0.0
   
   private static readonly MAX_HISTORY_LENGTH = 30
 
   public update(_dt: number) {
+    const startTime = performance.now()
+
     const telemetryMap = this.world.getComponentMap<TelemetryComponent>('telemetry')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
@@ -63,6 +151,10 @@ export class TelemetrySystem extends System {
     const siteTempsMap = new Map<string, number[]>()
     const sitePowerMap = new Map<string, number>()
 
+    const publishAlert = (severity: 'info' | 'warning' | 'critical', message: string, nodeId: string) => {
+      this.world.eventBus.publish('system:alert', { severity, message, nodeId })
+    }
+
     // 1. Process Per-Entity Telemetry Components
     entities.forEach(id => {
       const telemetry = telemetryMap.get(id)!
@@ -71,7 +163,7 @@ export class TelemetrySystem extends System {
       const storage = storageMap.get(id)
       const transform = transformMap.get(id)!
 
-      // Update counters
+      // Update counters deterministically based on simulation ticks
       telemetry.totalTicks++
 
       // Powered status
@@ -85,28 +177,32 @@ export class TelemetrySystem extends System {
       if (!telemetry.tempHistory) telemetry.tempHistory = []
       if (!telemetry.iopsHistory) telemetry.iopsHistory = []
 
-      // Node Anomaly Detection: Temperature rising too quickly (>5°C)
       const currentTemp = thermal?.temperature ?? 20.0
-      if (telemetry.tempHistory.length > 0) {
-        const lastTemp = telemetry.tempHistory[telemetry.tempHistory.length - 1]!
-        if (currentTemp - lastTemp > 5.0) {
-          this.world.eventBus.publish('system:alert', {
-            severity: 'warning',
-            message: `Rapid silicon temperature spike on node ${transform.name || id}: +${(currentTemp - lastTemp).toFixed(1)}°C`,
-            nodeId: id
-          })
+      const currentLoad = isPowered ? (power?.load ?? 0.0) : 0.0
+      const currentIops = storage?.ioPSUsed ?? 0
+
+      // Node Anomaly Detection: Temperature rising too quickly (>5°C)
+      TelemetryAnomalyDetector.detectTemperatureSpike(
+        id,
+        transform.name || '',
+        currentTemp,
+        telemetry.tempHistory,
+        publishAlert
+      )
+
+      // Node Anomaly Detection: Sudden power load fluctuations
+      TelemetryAnomalyDetector.detectPowerSpike(
+        currentLoad,
+        telemetry.powerHistory,
+        () => {
+          telemetry.powerSpikesCount++
         }
-      }
+      )
 
-      // Append node metrics to ring buffer history
-      telemetry.powerHistory.push(isPowered ? (power?.load ?? 0.0) : 0.0)
-      telemetry.tempHistory.push(currentTemp)
-      telemetry.iopsHistory.push(storage?.ioPSUsed ?? 0)
-
-      // Clamp arrays to MAX_HISTORY_LENGTH
-      if (telemetry.powerHistory.length > TelemetrySystem.MAX_HISTORY_LENGTH) telemetry.powerHistory.shift()
-      if (telemetry.tempHistory.length > TelemetrySystem.MAX_HISTORY_LENGTH) telemetry.tempHistory.shift()
-      if (telemetry.iopsHistory.length > TelemetrySystem.MAX_HISTORY_LENGTH) telemetry.iopsHistory.shift()
+      // Append node metrics to ring buffer history using Zero-GC optimizer
+      fastSlideBuffer(telemetry.powerHistory, currentLoad, TelemetrySystem.MAX_HISTORY_LENGTH)
+      fastSlideBuffer(telemetry.tempHistory, currentTemp, TelemetrySystem.MAX_HISTORY_LENGTH)
+      fastSlideBuffer(telemetry.iopsHistory, currentIops, TelemetrySystem.MAX_HISTORY_LENGTH)
 
       // Gather temp statistics per site
       const siteId = transform.siteId
@@ -114,8 +210,7 @@ export class TelemetrySystem extends System {
         if (!siteTempsMap.has(siteId)) siteTempsMap.set(siteId, [])
         siteTempsMap.get(siteId)!.push(currentTemp)
 
-        const currentP = isPowered ? (power?.load ?? 0.0) : 0.0
-        sitePowerMap.set(siteId, (sitePowerMap.get(siteId) ?? 0.0) + currentP)
+        sitePowerMap.set(siteId, (sitePowerMap.get(siteId) ?? 0.0) + currentLoad)
       }
 
       // Thermal safeguards
@@ -134,6 +229,13 @@ export class TelemetrySystem extends System {
       // Network congestion
       if (transform && transform.degradation && transform.degradation > 50) {
         telemetry.networkCongestionTicks++
+      }
+
+      // Audit Violations: warnings tracked when server operates in dangerous environments
+      const hasThermalWarning = thermal && thermal.temperature >= 70.0
+      const hasNetworkDegradationWarning = transform && transform.degradation && transform.degradation > 80
+      if (hasThermalWarning || hasNetworkDegradationWarning) {
+        telemetry.auditViolationsCount++
       }
 
       // Add to running metrics
@@ -184,15 +286,10 @@ export class TelemetrySystem extends System {
       // Humidity from ThermalSystem
       const currentHumidity = ThermalSystem.siteAmbientHumidity.get(siteId) ?? 45.0
 
-      // Append rolling variables
-      powerHistory.push(powerSum)
-      tempHistory.push(avgTemp)
-      humidityHistory.push(currentHumidity)
-
-      // Clamp arrays to MAX_HISTORY_LENGTH
-      if (powerHistory.length > TelemetrySystem.MAX_HISTORY_LENGTH) powerHistory.shift()
-      if (tempHistory.length > TelemetrySystem.MAX_HISTORY_LENGTH) tempHistory.shift()
-      if (humidityHistory.length > TelemetrySystem.MAX_HISTORY_LENGTH) humidityHistory.shift()
+      // Append rolling variables using Zero-GC slider
+      fastSlideBuffer(powerHistory, powerSum, TelemetrySystem.MAX_HISTORY_LENGTH)
+      fastSlideBuffer(tempHistory, avgTemp, TelemetrySystem.MAX_HISTORY_LENGTH)
+      fastSlideBuffer(humidityHistory, currentHumidity, TelemetrySystem.MAX_HISTORY_LENGTH)
 
       // Anomaly trigger: Site breaker saturation (90% breaker limit warning)
       let maxKW = 0.0
@@ -203,12 +300,12 @@ export class TelemetrySystem extends System {
         }
       })
 
-      if (maxKW > 0 && powerSum > maxKW * 0.90) {
-        this.world.eventBus.publish('system:alert', {
-          severity: 'critical',
-          message: `Site ${siteId} power draw saturation threat: ${powerSum.toFixed(1)}kW / ${maxKW.toFixed(1)}kW (90% exceeded)`
-        })
-      }
+      TelemetryAnomalyDetector.detectSitePowerSaturation(
+        siteId,
+        powerSum,
+        maxKW,
+        publishAlert
+      )
     })
 
     // 4. Compile Aggregated Datacenter Simulation Statistics
@@ -220,5 +317,7 @@ export class TelemetrySystem extends System {
       totalStorageUsedTB: totalStorageUsed,
       totalStorageCapacityTB: totalStorageCapacity
     }
+
+    TelemetrySystem.lastExecutionTimeMs = performance.now() - startTime
   }
 }

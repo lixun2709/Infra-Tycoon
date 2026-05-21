@@ -49,7 +49,8 @@ describe('Simulation Worker Synchronization Subsystem', () => {
         installDate: Date.now(),
         degradation: 0.05,
         breakerTripped: false,
-        overloadSeconds: 0
+        overloadSeconds: 0,
+        containmentType: 'cold_aisle'
       } as unknown as InfraNode
     ]
 
@@ -91,6 +92,7 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     expect(compactedNode.name).toBe('Enterprise Rack A')
     expect(compactedNode.breakerTripped).toBe(false)
     expect(compactedNode.overloadSeconds).toBe(0)
+    expect(compactedNode.containmentType).toBe('cold_aisle')
 
     // Validate app compaction
     const compactedApp = payload.applications[0]
