@@ -8,33 +8,45 @@ export interface RouteResult {
   totalPacketLoss: number
 }
 
+export interface ShortestPathTree {
+  startNodeId: string
+  getPathTo(endNodeId: string): RouteResult
+}
+
 /**
- * findShortestPath
- * High-performance, self-contained Dijkstra pathfinder tailored for real-time 
- * network physics simulations. Computes optimal routes using traffic-engineering weights.
+ * computeTopologyFingerprint
+ * Creates a unique string signature representing the current graph structure,
+ * node state, and administrative overrides (blackholing / connection status).
  */
-export function findShortestPath(
+export function computeTopologyFingerprint(nodes: InfraNode[], connections: Connection[]): string {
+  const nodeParts = nodes
+    .map(n => `${n.id}:${n.systemState === 'off' ? '0' : '1'}:${n.isBlackholed ? '1' : '0'}`)
+    .sort()
+    .join(',')
+
+  const connParts = connections
+    .map(c => `${c.id}:${c.status === 'blocked' ? '1' : '0'}:${c.isBlackholed ? '1' : '0'}`)
+    .sort()
+    .join(',')
+
+  return `${nodeParts}|${connParts}`
+}
+
+/**
+ * findShortestPathsFromSource
+ * Executes a single-source Dijkstra pathfinding run to compute the shortest
+ * path tree from startNodeId to ALL other reachable nodes.
+ */
+export function findShortestPathsFromSource(
   startNodeId: string,
-  endNodeId: string,
   nodes: InfraNode[],
   connections: Connection[]
-): RouteResult {
-  if (startNodeId === endNodeId) {
-    return {
-      exists: true,
-      path: [startNodeId],
-      connectionIds: [],
-      totalLatencyMs: 0.0,
-      totalPacketLoss: 0.0
-    }
-  }
-
-  // Build high-performance adjacency list
-  // Map node ID to list of { adjacentNodeId: string, connection: Connection }
+): ShortestPathTree {
   const adj = new Map<string, Array<{ node: string; conn: Connection }>>()
   const activeNodes = new Set<string>()
 
   nodes.forEach(n => {
+    if (n.systemState === 'off') return
     activeNodes.add(n.id)
     adj.set(n.id, [])
   })
@@ -78,8 +90,7 @@ export function findShortestPath(
       }
     })
 
-    // If no reachable nodes left, or we reached destination
-    if (u === null || minDist === Infinity || u === endNodeId) {
+    if (u === null || minDist === Infinity) {
       break
     }
 
@@ -108,51 +119,136 @@ export function findShortestPath(
     }
   }
 
-  // Path reconstruction
-  if (!dist.has(endNodeId) || dist.get(endNodeId) === Infinity) {
-    return {
-      exists: false,
-      path: [],
-      connectionIds: [],
-      totalLatencyMs: 999.0,
-      totalPacketLoss: 1.0
-    }
-  }
-
-  const path: string[] = []
-  const connectionIds: string[] = []
-  let curr = endNodeId
-
-  while (curr !== startNodeId) {
-    const edge = prev.get(curr)
-    if (!edge) break
-    path.push(curr)
-    connectionIds.push(edge.connId)
-    curr = edge.nodeId
-  }
-
-  path.push(startNodeId)
-  path.reverse()
-  connectionIds.reverse()
-
-  // Calculate compounds
-  let totalLatencyMs = 0.0
-  let compoundSuccessRate = 1.0
-
-  connectionIds.forEach(connId => {
-    const conn = connections.find(c => c.id === connId)
-    if (conn) {
-      totalLatencyMs += conn.latencyMs ?? 1.0
-      const loss = conn.packetLoss ?? 0.0
-      compoundSuccessRate *= (1.0 - loss)
-    }
-  })
-
   return {
-    exists: true,
-    path,
-    connectionIds,
-    totalLatencyMs: Number(totalLatencyMs.toFixed(1)),
-    totalPacketLoss: Number((1.0 - compoundSuccessRate).toFixed(4))
+    startNodeId,
+    getPathTo(endNodeId: string): RouteResult {
+      const startNode = nodes.find(n => n.id === startNodeId)
+      const endNode = nodes.find(n => n.id === endNodeId)
+      if (startNode?.systemState === 'off' || endNode?.systemState === 'off') {
+        return {
+          exists: false,
+          path: [],
+          connectionIds: [],
+          totalLatencyMs: 999.0,
+          totalPacketLoss: 1.0
+        }
+      }
+
+      if (startNodeId === endNodeId) {
+        return {
+          exists: true,
+          path: [startNodeId],
+          connectionIds: [],
+          totalLatencyMs: 0.0,
+          totalPacketLoss: 0.0
+        }
+      }
+
+      if (!dist.has(endNodeId) || dist.get(endNodeId) === Infinity) {
+        return {
+          exists: false,
+          path: [],
+          connectionIds: [],
+          totalLatencyMs: 999.0,
+          totalPacketLoss: 1.0
+        }
+      }
+
+      const path: string[] = []
+      const connectionIds: string[] = []
+      let curr = endNodeId
+
+      while (curr !== startNodeId) {
+        const edge = prev.get(curr)
+        if (!edge) break
+        path.push(curr)
+        connectionIds.push(edge.connId)
+        curr = edge.nodeId
+      }
+
+      path.push(startNodeId)
+      path.reverse()
+      connectionIds.reverse()
+
+      // Calculate compounds
+      let totalLatencyMs = 0.0
+      let compoundSuccessRate = 1.0
+
+      connectionIds.forEach(connId => {
+        const conn = connections.find(c => c.id === connId)
+        if (conn) {
+          totalLatencyMs += conn.latencyMs ?? 1.0
+          const loss = conn.packetLoss ?? 0.0
+          compoundSuccessRate *= (1.0 - loss)
+        }
+      })
+
+      return {
+        exists: true,
+        path,
+        connectionIds,
+        totalLatencyMs: Number(totalLatencyMs.toFixed(1)),
+        totalPacketLoss: Number((1.0 - compoundSuccessRate).toFixed(4))
+      }
+    }
   }
+}
+
+/**
+ * NetworkRouteCache
+ * High-performance static routing cache. Automatically invalidates pre-computed path trees
+ * when the graph topology structure changes.
+ */
+export class NetworkRouteCache {
+  private static fingerprint = ''
+  private static cache = new Map<string, ShortestPathTree>()
+
+  public static getShortestPathTree(
+    startNodeId: string,
+    nodes: InfraNode[],
+    connections: Connection[]
+  ): ShortestPathTree {
+    const currentFingerprint = computeTopologyFingerprint(nodes, connections)
+
+    if (currentFingerprint !== this.fingerprint) {
+      this.fingerprint = currentFingerprint
+      this.cache.clear()
+    }
+
+    let tree = this.cache.get(startNodeId)
+    if (!tree) {
+      tree = findShortestPathsFromSource(startNodeId, nodes, connections)
+      this.cache.set(startNodeId, tree)
+    }
+
+    return tree
+  }
+
+  public static clear() {
+    this.fingerprint = ''
+    this.cache.clear()
+  }
+
+  public static getCacheSize(): number {
+    return this.cache.size
+  }
+
+  public static getFingerprint(): string {
+    return this.fingerprint
+  }
+}
+
+/**
+ * findShortestPath
+ * High-performance, self-contained Dijkstra pathfinder tailored for real-time 
+ * network physics simulations. Resolves routes optimally through SSSP caching.
+ */
+export function findShortestPath(
+  startNodeId: string,
+  endNodeId: string,
+  nodes: InfraNode[],
+  connections: Connection[]
+): RouteResult {
+  const tree = NetworkRouteCache.getShortestPathTree(startNodeId, nodes, connections)
+  return tree.getPathTo(endNodeId)
 }
