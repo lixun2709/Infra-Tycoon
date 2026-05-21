@@ -80,6 +80,7 @@ export interface PowerComponent extends Component {
   phase?: 'A' | 'B' | 'C'        // Phase connection for server nodes
   phaseLoadsWatts?: [number, number, number] // [A, B, C] Real Power
   phaseLoadsVA?: [number, number, number]    // [A, B, C] Apparent Power
+  systemState?: 'off' | 'booting' | 'running'
 }
 
 // Provisioning Component: OS/App lifecycle state

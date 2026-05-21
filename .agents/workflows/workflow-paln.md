@@ -10,7 +10,7 @@ Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
 prompts folder 
 
 
-Execute Day 50 only.
+Execute Day 51 only from Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md. 
 
 Requirements:
 - analyze repository first
@@ -27,7 +27,7 @@ Requirements:
 - generate implementation report in simple words
 - Once the tests pass and the work is verified, execute the following Git commands in the terminal to save the progress:
    - `git add .`
-   - `git commit -m "Version2 | Day 50 | : auto-completed implementation for Day 50 (Objective/Goal)"`
+   - `git commit -m "Version2 | Day 51 | : auto-completed implementation for Day 51 (Objective/Goal)"`
    - `git push`
 
 Stop after completion and give test steps to user to check manualy changes in step by step manner.

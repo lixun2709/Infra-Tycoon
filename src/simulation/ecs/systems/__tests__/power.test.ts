@@ -367,4 +367,55 @@ describe('Enterprise Power Subsystem ECS Tests', () => {
     expect(heavyServerPower.isPowered).toBe(false)
     expect(coolingPower.isPowered).toBe(false) // Physical dependency maintained!
   })
+
+  it('should respect soft-power systemState (off and booting) and scale wattage accordingly', () => {
+    const rackId = 'rack-soft'
+    const serverOffId = 'server-off'
+    const serverBootId = 'server-boot'
+    const serverRunId = 'server-run'
+
+    world.registerEntity(rackId)
+    world.registerEntity(serverOffId)
+    world.registerEntity(serverBootId)
+    world.registerEntity(serverRunId)
+
+    world.addComponent('transform', { entityId: rackId, type: 'rack', siteId: 'site-1' } as TransformComponent)
+    world.addComponent('power', { entityId: rackId, wattage: 0, load: 0, isPowered: true, upsMaxBatterySeconds: 0, upsBatterySeconds: 0 } as PowerComponent)
+    world.addComponent('rack', { entityId: rackId, maxPowerKW: 10.0, status: 'online' } as RackComponent)
+
+    // Off server (300W base, but turned off)
+    world.addComponent('transform', { entityId: serverOffId, type: 'compute', parentRackId: rackId, siteId: 'site-1' } as TransformComponent)
+    world.addComponent('power', { entityId: serverOffId, baseWattage: 300, isPowered: false, systemState: 'off', efficiency: 1.0 } as PowerComponent)
+
+    // Booting server (400W base, booting)
+    world.addComponent('transform', { entityId: serverBootId, type: 'compute', parentRackId: rackId, siteId: 'site-1' } as TransformComponent)
+    world.addComponent('power', { entityId: serverBootId, baseWattage: 400, isPowered: true, systemState: 'booting', efficiency: 1.0 } as PowerComponent)
+
+    // Running server (500W base, running)
+    world.addComponent('transform', { entityId: serverRunId, type: 'compute', parentRackId: rackId, siteId: 'site-1' } as TransformComponent)
+    world.addComponent('power', { entityId: serverRunId, baseWattage: 500, isPowered: true, systemState: 'running', efficiency: 1.0 } as PowerComponent)
+
+    powerSystem.update(1.0)
+
+    const offPower = world.getComponent<PowerComponent>('power', serverOffId)!
+    const bootPower = world.getComponent<PowerComponent>('power', serverBootId)!
+    const runPower = world.getComponent<PowerComponent>('power', serverRunId)!
+    const rackPower = world.getComponent<PowerComponent>('power', rackId)!
+
+    // Off server must draw 0W and remain unpowered
+    expect(offPower.isPowered).toBe(false)
+    expect(offPower.wattage).toBe(0)
+
+    // Booting server must be powered and draw exactly 50% base wattage (400 * 0.5 = 200W)
+    expect(bootPower.isPowered).toBe(true)
+    expect(bootPower.wattage).toBe(200.0) // 200W
+
+    // Running server must be powered and draw full base wattage (500W + fans idle or utilization)
+    expect(runPower.isPowered).toBe(true)
+    expect(runPower.wattage).toBeGreaterThanOrEqual(500.0)
+
+    // Aggregate rack load: 0W + 200W + (500W + fans/util) = ~700W+ => ~0.7kW+
+    expect(rackPower.load).toBeCloseTo((0 + 200 + runPower.wattage) / 1000.0, 2)
+  })
 })
+

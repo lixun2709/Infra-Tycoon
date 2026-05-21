@@ -204,10 +204,14 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         baseWattage: baseWattage,
         upsMaxBatterySeconds: node.uHeight === 0 ? 10.0 : 30.0,
         upsBatterySeconds: node.uHeight === 0 ? 10.0 : 30.0,
+        systemState: node.systemState as 'off' | 'booting' | 'running'
       } as PowerComponent)
     } else {
       const power = world.getComponent<PowerComponent>('power', node.id)
       if (power) {
+        if (node.systemState !== undefined) {
+          power.systemState = node.systemState as 'off' | 'booting' | 'running'
+        }
         const isPowered = node.systemState !== 'off' && !node.breakerTripped
         if (power.isPowered !== isPowered) power.isPowered = isPowered
         if (node.breakerTripped !== undefined && power.breakerTripped !== node.breakerTripped) {
@@ -335,6 +339,9 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           rack.maxPowerKW = hasPDU ? 15.0 : (node.maxPowerKW ?? 5.0)
           rack.hasHighDensityPDU = hasPDU
           rack.slotOccupancy = occupancy
+          if (node.status !== undefined && node.status !== rack.status) {
+            rack.status = node.status as 'online' | 'power_overload'
+          }
           // status and currentPowerKW are calculated inside worker systems, so do NOT overwrite them!
         }
       }
@@ -469,7 +476,7 @@ function sendSyncOutput() {
         isThrottled: comp.isThrottled,
         currentPowerKW: power?.load ?? 0,
         bootProgress: prov?.bootProgress ?? 0,
-        systemState: (power && !power.isPowered) ? 'off' : undefined,
+        systemState: power ? (power.isPowered ? power.systemState : 'off') : undefined,
         breakerTripped: power?.breakerTripped,
         overloadSeconds: power?.overloadSeconds,
         feedSource: power?.feedSource,

@@ -166,7 +166,7 @@ export class PowerSystem extends System {
 
       // Power state determination: inherit from parent rack or use grid + personal battery
       if (transform.parentRackId) {
-        power.isPowered = parentPowered
+        power.isPowered = parentPowered && power.systemState !== 'off'
       } else {
         // Standalone node UPS logic
         if (hasGridPower) {
@@ -208,8 +208,16 @@ export class PowerSystem extends System {
       const utilization = Math.min(100.0, runningApps.length * 30.0 + networkUtil)
       const fanSpeed = thermal?.fanSpeedPercent ?? 0.0
 
+      // Factor in booting power draw scale
+      let baseScale = 1.0
+      let util = utilization
+      if (power.systemState === 'booting') {
+        baseScale = 0.5
+        util = 0.0 // Booting nodes have 0% CPU utilization overhead from apps/network
+      }
+
       // Calculate internal DC hardware power draw
-      const internalDCWattage = power.baseWattage * (1.0 + (utilization / 100.0) * 0.5) + (fanSpeed / 100.0) * 50.0
+      const internalDCWattage = power.baseWattage * baseScale * (1.0 + (util / 100.0) * 0.5) + (fanSpeed / 100.0) * 50.0
 
       // Factor in PSU AC Conversion efficiency losses
       const efficiency = power.efficiency && power.efficiency > 0.5 && power.efficiency <= 1.0 ? power.efficiency : 0.85
@@ -357,6 +365,7 @@ export class PowerSystem extends System {
                   childPower.wattage = 0
                   childPower.load = 0
                   childPower.apparentPowerVA = 0
+                  childPower.systemState = 'off'
                 }
               }
             })
