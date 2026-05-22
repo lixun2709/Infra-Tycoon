@@ -6,7 +6,8 @@ import { ObservabilitySystem } from '../ObservabilitySystem'
 import type { 
   RackComponent, 
   PowerComponent, 
-  TransformComponent
+  TransformComponent,
+  ThermalComponent
 } from '../../types'
 
 describe('Rack Subsystem ECS Tests', () => {
@@ -53,7 +54,7 @@ describe('Rack Subsystem ECS Tests', () => {
       slotOccupancy: []
     } as RackComponent)
 
-    // Add server in rack with 3000W load
+    // Add server in rack with 900W load (below 1.0 kW threshold to avoid phase imbalance checking)
     world.addComponent('transform', {
       entityId: serverId,
       type: 'compute',
@@ -64,8 +65,8 @@ describe('Rack Subsystem ECS Tests', () => {
 
     world.addComponent('power', {
       entityId: serverId,
-      wattage: 3000, // 3 kW
-      load: 3.0,
+      wattage: 900, // 0.9 kW
+      load: 0.9,
       isPowered: true,
       efficiency: 1.0
     } as PowerComponent)
@@ -77,9 +78,9 @@ describe('Rack Subsystem ECS Tests', () => {
     const rackComp = world.getComponent<RackComponent>('rack', rackId)!
     const rackPower = world.getComponent<PowerComponent>('power', rackId)!
 
-    expect(rackPower.load).toBe(3.0) // 3 kW
+    expect(rackPower.load).toBe(0.9) // 0.9 kW
     expect(rackComp.status).toBe('online')
-    expect(rackComp.currentPowerKW).toBe(3.0)
+    expect(rackComp.currentPowerKW).toBe(0.9)
     expect(ObservabilitySystem.flushAlerts().length).toBe(0)
   })
 
@@ -114,22 +115,27 @@ describe('Rack Subsystem ECS Tests', () => {
       slotOccupancy: []
     } as RackComponent)
 
-    // Server exceeding rack capacity with 6000W load
-    world.addComponent('transform', {
-      entityId: serverId,
-      type: 'compute',
-      parentRackId: rackId,
-      slotIndex: 1,
-      siteId: 'site-1'
-    } as TransformComponent)
+    // Mount three servers of 2000W each across slots 1, 2, 3 (balanced phases: B, C, A)
+    // Total overload: 6.0 kW (exceeds 5.0 kW maxPowerKW limit)
+    for (let i = 0; i < 3; i++) {
+      const subServerId = `server-2-${i}`
+      world.registerEntity(subServerId)
+      world.addComponent('transform', {
+        entityId: subServerId,
+        type: 'compute',
+        parentRackId: rackId,
+        slotIndex: i + 1,
+        siteId: 'site-1'
+      } as TransformComponent)
 
-    world.addComponent('power', {
-      entityId: serverId,
-      wattage: 6000, // 6 kW
-      load: 6.0,
-      isPowered: true,
-      efficiency: 1.0
-    } as PowerComponent)
+      world.addComponent('power', {
+        entityId: subServerId,
+        wattage: 2000, // 2 kW each
+        load: 2.0,
+        isPowered: true,
+        efficiency: 1.0
+      } as PowerComponent)
+    }
 
     powerSystem.update(1.0)
     rackSystem.update(1.0)
@@ -178,8 +184,8 @@ describe('Rack Subsystem ECS Tests', () => {
 
     const serverPower = {
       entityId: serverId,
-      wattage: 3000, // 3 kW (safe now)
-      load: 3.0,
+      wattage: 900, // 0.9 kW (safe now, and below 1 kW to avoid phase imbalance checks)
+      load: 0.9,
       isPowered: true,
       efficiency: 1.0
     } as PowerComponent
@@ -280,5 +286,165 @@ describe('Rack Subsystem ECS Tests', () => {
     rackSystem.update(1.0)
 
     expect(rackComp.maxPowerKW).toBe(15.0)
+  })
+
+  it('should detect boundary violations for slots exceeding 42U', () => {
+    const rackId = 'rack-bound-test'
+    const serverId = 'server-oob'
+    world.registerEntity(rackId)
+    world.registerEntity(serverId)
+
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      name: 'OOB Rack',
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 5.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: false,
+      slotOccupancy: []
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    // Compute unit exceeding the top slot (U42 + 2U = slot 43 out of bounds)
+    world.addComponent('transform', {
+      entityId: serverId,
+      type: 'compute',
+      parentRackId: rackId,
+      slotIndex: 42,
+      uHeight: 2,
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    rackSystem.update(1.0)
+
+    const alerts = ObservabilitySystem.flushAlerts()
+    expect(alerts.length).toBe(1)
+    expect(alerts[0]!.severity).toBe('warning')
+    expect(alerts[0]!.message).toContain('[RACK BOUNDARY VIOLATION]')
+  })
+
+  it('should calculate equipment weights and report structural warning when limit exceeded', () => {
+    const rackId = 'rack-weight-test'
+    world.registerEntity(rackId)
+
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      name: 'Weight Rack',
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 5.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: false,
+      slotOccupancy: [],
+      maxWeightKG: 200.0 // Low limit for testing
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    // Mount 8 heavy Disk Shelves (40kg each = 320kg total)
+    for (let i = 1; i <= 8; i++) {
+      const serverId = `shelf-${i}`
+      world.registerEntity(serverId)
+      world.addComponent('transform', {
+        entityId: serverId,
+        type: 'compute',
+        catalogKey: 'DISK_SHELF_2U',
+        parentRackId: rackId,
+        slotIndex: i * 2,
+        uHeight: 2,
+        siteId: 'site-1'
+      } as TransformComponent)
+    }
+
+    rackSystem.update(1.0)
+
+    expect(rackComp.totalWeightKG).toBe(320.0)
+    expect(rackComp.weightStatus).toBe('structural_warning')
+
+    const alerts = ObservabilitySystem.flushAlerts()
+    expect(alerts.length).toBe(1)
+    expect(alerts[0]!.severity).toBe('warning')
+    expect(alerts[0]!.message).toContain('[RACK WEIGHT EXCEEDED]')
+  })
+
+  it('should derate PDU maxPowerKW limit under high ambient temperatures', () => {
+    const rackId = 'rack-derating-test'
+    world.registerEntity(rackId)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 10.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: false,
+      slotOccupancy: []
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    // Ambient temperature of 45C (10C above 35C threshold => 20% de-rating)
+    world.addComponent('thermal', {
+      entityId: rackId,
+      temperature: 45.0,
+      isThrottled: false,
+      fanSpeedPercent: 50.0,
+      btuOutput: 0.0,
+      lastUpdate: 0
+    } as ThermalComponent)
+
+    rackSystem.update(1.0)
+
+    expect(rackComp.deratedMaxPowerKW).toBe(8.0) // 10kW - 20% de-rating = 8kW
+  })
+
+  it('should detect phase imbalance and fire warnings under significant load', () => {
+    const rackId = 'rack-imbalance-test'
+    world.registerEntity(rackId)
+
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      name: 'Phase Rack',
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 15.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: true,
+      slotOccupancy: []
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    // Add power component with highly imbalanced phase loads (P_A: 3kW, P_B: 0.5kW, P_C: 0.5kW => Total: 4kW)
+    world.addComponent('power', {
+      entityId: rackId,
+      wattage: 4000,
+      load: 4.0,
+      isPowered: true,
+      efficiency: 1.0,
+      phaseLoadsWatts: [3000, 500, 500],
+      phaseLoadsVA: [3000, 500, 500]
+    } as PowerComponent)
+
+    rackSystem.update(1.0)
+
+    expect(rackComp.hasPhaseImbalance).toBe(true)
+
+    const alerts = ObservabilitySystem.flushAlerts()
+    expect(alerts.length).toBe(1)
+    expect(alerts[0]!.severity).toBe('warning')
+    expect(alerts[0]!.message).toContain('[PHASE IMBALANCE ALERT]')
   })
 })

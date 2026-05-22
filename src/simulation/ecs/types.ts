@@ -143,6 +143,14 @@ export interface RackComponent extends Component {
   status: 'online' | 'power_overload'
   hasHighDensityPDU: boolean
   slotOccupancy: boolean[]
+  // V2/Enterprise Additions
+  totalWeightKG?: number
+  maxWeightKG?: number
+  weightStatus?: 'nominal' | 'structural_warning'
+  pduTemperature?: number
+  humidity?: number
+  deratedMaxPowerKW?: number
+  hasPhaseImbalance?: boolean
 }
 
 export type ComponentMap<T extends Component> = Map<Entity, T>

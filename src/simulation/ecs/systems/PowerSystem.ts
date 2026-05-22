@@ -325,7 +325,8 @@ export class PowerSystem extends System {
           return
         }
 
-        const maxLimit = Number.isFinite(rackComp.maxPowerKW) && rackComp.maxPowerKW > 0 ? rackComp.maxPowerKW : 5.0
+        const nominalLimit = Number.isFinite(rackComp.maxPowerKW) && rackComp.maxPowerKW > 0 ? rackComp.maxPowerKW : 5.0
+        const maxLimit = (rackComp.deratedMaxPowerKW !== undefined && Number.isFinite(rackComp.deratedMaxPowerKW)) ? rackComp.deratedMaxPowerKW : nominalLimit
         const totalLoadKW = Number.isFinite(rackPower.load) && !Number.isNaN(rackPower.load) ? rackPower.load : 0.0
 
         // Each individual phase has a max rated capacity of maxPower / 3, with 15% imbalance tolerance
