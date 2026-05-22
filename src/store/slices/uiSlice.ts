@@ -4,6 +4,17 @@ import type { InfraState } from '../infraStoreTypes'
 import { audioManager } from '../../utils/AudioManager'
 import type { ThemeKey } from '../themeTypes'
 
+// Keep track of when alert types (by template and node) were acknowledged
+const acknowledgedAt = new Map<string, number>()
+
+export function normalizeAlertMessage(msg: string): string {
+  return msg.replace(/\d+(\.\d+)?/g, '#')
+}
+
+export function clearAlertSuppressions(): void {
+  acknowledgedAt.clear()
+}
+
 export interface UISlice {
   setNetworkLoad: (load: number) => void
   setNetworkManagerOpen: (open: boolean) => void
@@ -35,6 +46,17 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) =>
   setTimeFormat: (format) => set({ timeFormat: format }),
 
   pushAlert: (severity, message, nodeId) => {
+    // 10-minute suppression filter for acknowledged alerts (600,000ms)
+    const normalized = normalizeAlertMessage(message)
+    const key = `${severity}:${normalized}:${nodeId || ''}`
+    const lastAck = acknowledgedAt.get(key)
+    if (lastAck !== undefined) {
+      const elapsed = Date.now() - lastAck
+      if (elapsed < 10 * 60 * 1000) {
+        return // Suppress acknowledged recurring alert
+      }
+    }
+
     if (severity === 'critical') audioManager.playEffect('error')
     else if (severity === 'warning') audioManager.playEffect('alert')
     
@@ -52,14 +74,31 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) =>
   },
 
   acknowledgeAlert: (id) => {
-    set((state) => ({
-      alerts: state.alerts.map(a => a.id === id ? { ...a, isAcknowledged: true } : a)
-    }))
+    set((state) => {
+      const alert = state.alerts.find(a => a.id === id)
+      if (alert) {
+        const normalized = normalizeAlertMessage(alert.message)
+        const key = `${alert.severity}:${normalized}:${alert.nodeId || ''}`
+        acknowledgedAt.set(key, Date.now())
+      }
+      return {
+        alerts: state.alerts.map(a => a.id === id ? { ...a, isAcknowledged: true } : a)
+      }
+    })
   },
 
   acknowledgeAllAlerts: () => {
-    set((state) => ({
-      alerts: state.alerts.map(a => ({ ...a, isAcknowledged: true }))
-    }))
+    set((state) => {
+      state.alerts.forEach(alert => {
+        if (!alert.isAcknowledged) {
+          const normalized = normalizeAlertMessage(alert.message)
+          const key = `${alert.severity}:${normalized}:${alert.nodeId || ''}`
+          acknowledgedAt.set(key, Date.now())
+        }
+      })
+      return {
+        alerts: state.alerts.map(a => ({ ...a, isAcknowledged: true }))
+      }
+    })
   }
 })

@@ -103,4 +103,47 @@ describe('useInfraStore v2.0', () => {
     
     expect(useInfraStore.getState().deploymentQueue).toHaveLength(1)
   })
+
+  it('should suppress similar recurring alerts for 10 minutes once acknowledged', async () => {
+    useInfraStore.setState({ alerts: [] })
+    const { pushAlert, acknowledgeAlert } = useInfraStore.getState()
+    const { clearAlertSuppressions } = await import('../slices/uiSlice')
+    clearAlertSuppressions()
+
+    // 1. Push initial critical alert
+    pushAlert('critical', 'Site site-1 power draw saturation threat: 36.2kW / 30.0kW', 'site-1')
+    
+    let alerts = useInfraStore.getState().alerts
+    expect(alerts).toHaveLength(1)
+    const firstAlert = alerts[0]
+    if (!firstAlert) throw new Error('Alert not found')
+    expect(firstAlert.message).toBe('Site site-1 power draw saturation threat: 36.2kW / 30.0kW')
+    expect(firstAlert.isAcknowledged).toBe(false)
+
+    // 2. Acknowledge this alert
+    const firstAlertId = firstAlert.id
+    acknowledgeAlert(firstAlertId)
+    
+    alerts = useInfraStore.getState().alerts
+    const firstAlertAcked = alerts[0]
+    if (!firstAlertAcked) throw new Error('Alert not found')
+    expect(firstAlertAcked.isAcknowledged).toBe(true)
+
+    // 3. Try to push a similar alert (minor numerical variation) - should be suppressed
+    pushAlert('critical', 'Site site-1 power draw saturation threat: 38.5kW / 30.0kW', 'site-1')
+    
+    alerts = useInfraStore.getState().alerts
+    // Length should remain 1 because the second alert was suppressed
+    expect(alerts).toHaveLength(1)
+
+    // 4. Try to push a completely different alert - should NOT be suppressed
+    pushAlert('warning', 'Low relative humidity in room site-1 (18.5% RH)', 'site-1')
+    
+    alerts = useInfraStore.getState().alerts
+    expect(alerts).toHaveLength(2)
+    const secondAlert = alerts[0]
+    if (!secondAlert) throw new Error('Alert not found')
+    expect(secondAlert.message).toBe('Low relative humidity in room site-1 (18.5% RH)')
+    expect(secondAlert.isAcknowledged).toBe(false)
+  })
 })
