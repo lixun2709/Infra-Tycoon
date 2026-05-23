@@ -3,25 +3,18 @@ import * as THREE from 'three'
 import { Edges } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
 import { RACK_HEIGHT } from '../../../physics/dimensions'
+import { PREDEFINED_ROWS } from '../../../physics/zoning'
 
-interface RowSegment {
-  id: string
-  axis: 'X' | 'Z'
-  constantCoord: number // Z if axis is X, X if axis is Z
-  minCoord: number
-  maxCoord: number
-  racks: Array<{
-    id: string
-    position: THREE.Vector3
-    name: string
-  }>
-}
+// All permanent rows span from x = -8 to x = 8
+const MIN_X = -8
+const MAX_X = 8
+const ROW_LENGTH = (MAX_X - MIN_X) + 1.2 // 17.2
 
 export function OverheadPowerSystem() {
   const { nodes, currentSiteId } = useInfraStore()
 
-  // 1. Filter racks in the current active site room
-  const racks = useMemo(() => {
+  // Find all active racks in the current site room
+  const activeRacks = useMemo(() => {
     return nodes
       .filter(n => n.type === 'rack' && n.siteId === currentSiteId)
       .map(r => ({
@@ -31,177 +24,32 @@ export function OverheadPowerSystem() {
       }))
   }, [nodes, currentSiteId])
 
-  // 2. Cluster racks dynamically into contiguous row segments
-  const rowSegments = useMemo(() => {
-    if (racks.length === 0) return []
-
-    const xSegments: RowSegment[] = []
-    const groupedByZ: Record<number, typeof racks> = {}
-
-    racks.forEach(r => {
-      const z = Math.round(r.position.z)
-      if (!groupedByZ[z]) groupedByZ[z] = []
-      groupedByZ[z].push(r)
-    })
-
-    Object.entries(groupedByZ).forEach(([zStr, zRacks]) => {
-      const zVal = parseFloat(zStr)
-      zRacks.sort((a, b) => a.position.x - b.position.x)
-
-      let currentSegment: typeof racks = []
-      for (let i = 0; i < zRacks.length; i++) {
-        const rack = zRacks[i]
-        if (!rack) continue
-        if (currentSegment.length === 0) {
-          currentSegment.push(rack)
-        } else {
-          const prevRack = currentSegment[currentSegment.length - 1]
-          if (!prevRack) continue
-          if (rack.position.x - prevRack.position.x <= 1.5) {
-            currentSegment.push(rack)
-          } else {
-            const firstRack = currentSegment[0]
-            const lastRack = currentSegment[currentSegment.length - 1]
-            if (firstRack && lastRack) {
-              xSegments.push({
-                id: `x-row-${zVal}-${firstRack.id}`,
-                axis: 'X',
-                constantCoord: zVal,
-                minCoord: firstRack.position.x,
-                maxCoord: lastRack.position.x,
-                racks: currentSegment
-              })
-            }
-            currentSegment = [rack]
-          }
-        }
-      }
-      if (currentSegment.length > 0) {
-        const firstRack = currentSegment[0]
-        const lastRack = currentSegment[currentSegment.length - 1]
-        if (firstRack && lastRack) {
-          xSegments.push({
-            id: `x-row-${zVal}-${firstRack.id}`,
-            axis: 'X',
-            constantCoord: zVal,
-            minCoord: firstRack.position.x,
-            maxCoord: lastRack.position.x,
-            racks: currentSegment
-          })
-        }
-      }
-    })
-
-    const zSegments: RowSegment[] = []
-    const groupedByX: Record<number, typeof racks> = {}
-
-    racks.forEach(r => {
-      const x = Math.round(r.position.x)
-      if (!groupedByX[x]) groupedByX[x] = []
-      groupedByX[x].push(r)
-    })
-
-    Object.entries(groupedByX).forEach(([xStr, xRacks]) => {
-      const xVal = parseFloat(xStr)
-      xRacks.sort((a, b) => a.position.z - b.position.z)
-
-      let currentSegment: typeof racks = []
-      for (let i = 0; i < xRacks.length; i++) {
-        const rack = xRacks[i]
-        if (!rack) continue
-        if (currentSegment.length === 0) {
-          currentSegment.push(rack)
-        } else {
-          const prevRack = currentSegment[currentSegment.length - 1]
-          if (!prevRack) continue
-          if (rack.position.z - prevRack.position.z <= 1.5) {
-            currentSegment.push(rack)
-          } else {
-            const firstRack = currentSegment[0]
-            const lastRack = currentSegment[currentSegment.length - 1]
-            if (firstRack && lastRack) {
-              zSegments.push({
-                id: `z-row-${xVal}-${firstRack.id}`,
-                axis: 'Z',
-                constantCoord: xVal,
-                minCoord: firstRack.position.z,
-                maxCoord: lastRack.position.z,
-                racks: currentSegment
-              })
-            }
-            currentSegment = [rack]
-          }
-        }
-      }
-      if (currentSegment.length > 0) {
-        const firstRack = currentSegment[0]
-        const lastRack = currentSegment[currentSegment.length - 1]
-        if (firstRack && lastRack) {
-          zSegments.push({
-            id: `z-row-${xVal}-${firstRack.id}`,
-            axis: 'Z',
-            constantCoord: xVal,
-            minCoord: firstRack.position.z,
-            maxCoord: lastRack.position.z,
-            racks: currentSegment
-          })
-        }
-      }
-    })
-
-    // Deduplicate: If a rack belongs to a row of length > 1, prioritize it.
-    const finalSegments: RowSegment[] = []
-    const processedRackIds = new Set<string>()
-
-    xSegments.forEach(seg => {
-      if (seg.racks.length > 1) {
-        finalSegments.push(seg)
-        seg.racks.forEach(r => processedRackIds.add(r.id))
-      }
-    })
-
-    zSegments.forEach(seg => {
-      const unprocessed = seg.racks.filter(r => !processedRackIds.has(r.id))
-      if (unprocessed.length > 1) {
-        const firstRack = unprocessed[0]
-        const lastRack = unprocessed[unprocessed.length - 1]
-        if (firstRack && lastRack) {
-          finalSegments.push({
-            id: seg.id,
-            axis: 'Z',
-            constantCoord: seg.constantCoord,
-            minCoord: firstRack.position.z,
-            maxCoord: lastRack.position.z,
-            racks: unprocessed
-          })
-        }
-        unprocessed.forEach(r => processedRackIds.add(r.id))
-      }
-    })
-
-    racks.forEach(r => {
-      if (!processedRackIds.has(r.id)) {
-        finalSegments.push({
-          id: `single-${r.id}`,
-          axis: 'X',
-          constantCoord: r.position.z,
-          minCoord: r.position.x,
-          maxCoord: r.position.x,
-          racks: [r]
-        })
-        processedRackIds.add(r.id)
-      }
-    })
-
-    return finalSegments
-  }, [racks])
-
   // Constants for infrastructure proportions
   const CEILING_Y = 5.5
   const TRAY_Y = RACK_HEIGHT + 0.35 // 2.45
   const BUSWAY_Y = TRAY_Y + 0.25 // 2.70
   const MAIN_TRUNK_Y = TRAY_Y + 0.55 // 3.00
   const TRUNK_Z = -12.0 // Facility wall where main electrical distribution is anchored
+
+  // Determine spacing for support hangers (every 2 units, centered)
+  const hangerCoords = useMemo(() => {
+    const coords = []
+    for (let x = MIN_X; x <= MAX_X; x += 2) {
+      coords.push(x)
+    }
+    return coords
+  }, [])
+
+  // Determine spacing for ladder tray cross-rungs (every 0.4 units)
+  const rungCoords = useMemo(() => {
+    const coords = []
+    const startRung = MIN_X - 0.5
+    const endRung = MAX_X + 0.5
+    for (let r = startRung; r <= endRung; r += 0.4) {
+      coords.push(r)
+    }
+    return coords
+  }, [])
 
   return (
     <group>
@@ -285,163 +133,86 @@ export function OverheadPowerSystem() {
       </group>
 
       {/* ====================================================
-          ROW-SPECIFIC INFRASTRUCTURE (Busways, Trays, Hangers, Drops)
+          PERMANENT ROW INFRASTRUCTURE (Ladder Trays & Busways)
           ==================================================== */}
-      {rowSegments.map(row => {
-        const length = (row.maxCoord - row.minCoord) + 1.2
-        const centerCoord = (row.minCoord + row.maxCoord) / 2
-
-        // Determine spacing for support hangers (every 2 units, centered)
-        const hangers = []
-        for (let coord = Math.ceil(row.minCoord); coord <= Math.floor(row.maxCoord); coord += 2) {
-          hangers.push(coord)
-        }
-        if (hangers.length === 0) {
-          hangers.push(centerCoord)
-        }
-
-        // Determine spacing for ladder tray cross-rungs (every 0.4 units)
-        const rungs = []
-        const startRung = row.minCoord - 0.5
-        const endRung = row.maxCoord + 0.5
-        for (let rCoord = startRung; rCoord <= endRung; rCoord += 0.4) {
-          rungs.push(rCoord)
-        }
-
+      {PREDEFINED_ROWS.map(row => {
         return (
           <group key={row.id}>
             {/* 1. Ladder Tray (Suspended Steel Cable Grid) */}
-            {row.axis === 'X' ? (
-              <group position={[centerCoord, TRAY_Y, row.constantCoord]}>
-                {/* Steel Side Rail Front */}
-                <mesh castShadow position={[0, 0, -0.28]}>
-                  <boxGeometry args={[length, 0.04, 0.02]} />
-                  <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
-                  <Edges color="#64748b" />
+            <group position={[0, TRAY_Y, row.z]}>
+              {/* Steel Side Rail Front */}
+              <mesh castShadow position={[0, 0, -0.28]}>
+                <boxGeometry args={[ROW_LENGTH, 0.04, 0.02]} />
+                <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
+                <Edges color="#64748b" />
+              </mesh>
+              {/* Steel Side Rail Rear */}
+              <mesh castShadow position={[0, 0, 0.28]}>
+                <boxGeometry args={[ROW_LENGTH, 0.04, 0.02]} />
+                <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
+                <Edges color="#64748b" />
+              </mesh>
+              {/* Ladder Rungs */}
+              {rungCoords.map((rX, idx) => (
+                <mesh key={idx} position={[rX, 0, 0]}>
+                  <boxGeometry args={[0.02, 0.015, 0.54]} />
+                  <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
                 </mesh>
-                {/* Steel Side Rail Rear */}
-                <mesh castShadow position={[0, 0, 0.28]}>
-                  <boxGeometry args={[length, 0.04, 0.02]} />
-                  <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
-                  <Edges color="#64748b" />
-                </mesh>
-                {/* Ladder Rungs */}
-                {rungs.map((rCoord, idx) => (
-                  <mesh key={idx} position={[rCoord - centerCoord, 0, 0]}>
-                    <boxGeometry args={[0.02, 0.015, 0.54]} />
-                    <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
-                  </mesh>
-                ))}
-              </group>
-            ) : (
-              <group position={[row.constantCoord, TRAY_Y, centerCoord]}>
-                {/* Steel Side Rail Left */}
-                <mesh castShadow position={[-0.28, 0, 0]}>
-                  <boxGeometry args={[0.02, 0.04, length]} />
-                  <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
-                  <Edges color="#64748b" />
-                </mesh>
-                {/* Steel Side Rail Right */}
-                <mesh castShadow position={[0.28, 0, 0]}>
-                  <boxGeometry args={[0.02, 0.04, length]} />
-                  <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
-                  <Edges color="#64748b" />
-                </mesh>
-                {/* Ladder Rungs */}
-                {rungs.map((rCoord, idx) => (
-                  <mesh key={idx} position={[0, 0, rCoord - centerCoord]}>
-                    <boxGeometry args={[0.54, 0.015, 0.02]} />
-                    <meshStandardMaterial color="#334155" metalness={0.9} roughness={0.2} />
-                  </mesh>
-                ))}
-              </group>
-            )}
+              ))}
+            </group>
 
             {/* 2. Redundant A/B Electrical Busway Rails */}
-            {row.axis === 'X' ? (
-              <group position={[centerCoord, BUSWAY_Y, row.constantCoord]}>
-                {/* Feed A Rail (Muted Red) */}
-                <mesh castShadow position={[0, 0, -0.15]}>
-                  <boxGeometry args={[length, 0.08, 0.08]} />
-                  <meshStandardMaterial color="#991b1b" metalness={0.8} roughness={0.3} />
-                  <Edges color="#7f1d1d" />
-                </mesh>
-                {/* Feed B Rail (Muted Blue) */}
-                <mesh castShadow position={[0, 0, 0.15]}>
-                  <boxGeometry args={[length, 0.08, 0.08]} />
-                  <meshStandardMaterial color="#1e3a8a" metalness={0.8} roughness={0.3} />
-                  <Edges color="#172554" />
-                </mesh>
+            <group position={[0, BUSWAY_Y, row.z]}>
+              {/* Feed A Rail (Muted Red) */}
+              <mesh castShadow position={[0, 0, -0.15]}>
+                <boxGeometry args={[ROW_LENGTH, 0.08, 0.08]} />
+                <meshStandardMaterial color="#991b1b" metalness={0.8} roughness={0.3} />
+                <Edges color="#7f1d1d" />
+              </mesh>
+              {/* Feed B Rail (Muted Blue) */}
+              <mesh castShadow position={[0, 0, 0.15]}>
+                <boxGeometry args={[ROW_LENGTH, 0.08, 0.08]} />
+                <meshStandardMaterial color="#1e3a8a" metalness={0.8} roughness={0.3} />
+                <Edges color="#172554" />
+              </mesh>
 
-                {/* Section connection joints along the rails */}
-                {hangers.map((hCoord, idx) => (
-                  <group key={idx} position={[hCoord - centerCoord, 0, 0]}>
-                    <mesh position={[0, 0, -0.15]}>
-                      <boxGeometry args={[0.1, 0.09, 0.09]} />
-                      <meshStandardMaterial color="#64748b" metalness={0.9} />
-                    </mesh>
-                    <mesh position={[0, 0, 0.15]}>
-                      <boxGeometry args={[0.1, 0.09, 0.09]} />
-                      <meshStandardMaterial color="#64748b" metalness={0.9} />
-                    </mesh>
-                  </group>
-                ))}
-              </group>
-            ) : (
-              <group position={[row.constantCoord, BUSWAY_Y, centerCoord]}>
-                {/* Feed A Rail (Muted Red) */}
-                <mesh castShadow position={[-0.15, 0, 0]}>
-                  <boxGeometry args={[0.08, 0.08, length]} />
-                  <meshStandardMaterial color="#991b1b" metalness={0.8} roughness={0.3} />
-                  <Edges color="#7f1d1d" />
-                </mesh>
-                {/* Feed B Rail (Muted Blue) */}
-                <mesh castShadow position={[0.15, 0, 0]}>
-                  <boxGeometry args={[0.08, 0.08, length]} />
-                  <meshStandardMaterial color="#1e3a8a" metalness={0.8} roughness={0.3} />
-                  <Edges color="#172554" />
-                </mesh>
-
-                {/* Section connection joints along the rails */}
-                {hangers.map((hCoord, idx) => (
-                  <group key={idx} position={[0, 0, hCoord - centerCoord]}>
-                    <mesh position={[-0.15, 0, 0]}>
-                      <boxGeometry args={[0.09, 0.09, 0.1]} />
-                      <meshStandardMaterial color="#64748b" metalness={0.9} />
-                    </mesh>
-                    <mesh position={[0.15, 0, 0]}>
-                      <boxGeometry args={[0.09, 0.09, 0.1]} />
-                      <meshStandardMaterial color="#64748b" metalness={0.9} />
-                    </mesh>
-                  </group>
-                ))}
-              </group>
-            )}
+              {/* Section connection joints along the rails */}
+              {hangerCoords.map((hX, idx) => (
+                <group key={idx} position={[hX, 0, 0]}>
+                  <mesh position={[0, 0, -0.15]}>
+                    <boxGeometry args={[0.1, 0.09, 0.09]} />
+                    <meshStandardMaterial color="#64748b" metalness={0.9} />
+                  </mesh>
+                  <mesh position={[0, 0, 0.15]}>
+                    <boxGeometry args={[0.1, 0.09, 0.09]} />
+                    <meshStandardMaterial color="#64748b" metalness={0.9} />
+                  </mesh>
+                </group>
+              ))}
+            </group>
 
             {/* 3. Ceiling Unistrut Support Hangers */}
-            {hangers.map((hCoord, idx) => {
+            {hangerCoords.map((hX, idx) => {
               const rodHeight = CEILING_Y - TRAY_Y
               const rodCenterY = TRAY_Y + rodHeight / 2
-              const xPos = row.axis === 'X' ? hCoord : row.constantCoord
-              const zPos = row.axis === 'X' ? row.constantCoord : hCoord
 
               return (
-                <group key={idx} position={[xPos, rodCenterY, zPos]}>
+                <group key={idx} position={[hX, rodCenterY, row.z]}>
                   {/* Horizontal unistrut support channel under the tray */}
                   <mesh position={[0, -rodHeight / 2 - 0.02, 0]}>
-                    <boxGeometry args={[row.axis === 'X' ? 0.05 : 0.72, 0.03, row.axis === 'X' ? 0.72 : 0.05]} />
+                    <boxGeometry args={[0.05, 0.03, 0.72]} />
                     <meshStandardMaterial color="#475569" metalness={0.9} roughness={0.1} />
                     <Edges color="#334155" />
                   </mesh>
 
-                  {/* Threaded steel suspension rod Left/Rear */}
-                  <mesh position={[row.axis === 'X' ? 0 : -0.32, 0, row.axis === 'X' ? -0.32 : 0]}>
+                  {/* Threaded steel suspension rod Rear */}
+                  <mesh position={[0, 0, -0.32]}>
                     <boxGeometry args={[0.015, rodHeight, 0.015]} />
                     <meshStandardMaterial color="#64748b" metalness={0.9} roughness={0.1} />
                   </mesh>
 
-                  {/* Threaded steel suspension rod Right/Front */}
-                  <mesh position={[row.axis === 'X' ? 0 : 0.32, 0, row.axis === 'X' ? 0.32 : 0]}>
+                  {/* Threaded steel suspension rod Front */}
+                  <mesh position={[0, 0, 0.32]}>
                     <boxGeometry args={[0.015, rodHeight, 0.015]} />
                     <meshStandardMaterial color="#64748b" metalness={0.9} roughness={0.1} />
                   </mesh>
@@ -450,138 +221,82 @@ export function OverheadPowerSystem() {
             })}
 
             {/* 4. Physical Row Connection Feeder To Facility Electrical Main Trunks */}
-            {row.axis === 'X' ? (
-              // For X-running rows, run a bridge tray from its minCoord back to Z = -12 main trunks
-              <group position={[row.minCoord - 0.4, MAIN_TRUNK_Y - 0.15, (row.constantCoord + TRUNK_Z) / 2]}>
-                {/* Feeder tray connector */}
-                <mesh castShadow>
-                  <boxGeometry args={[0.3, 0.03, Math.abs(row.constantCoord - TRUNK_Z)]} />
-                  <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.3} />
-                  <Edges color="#475569" />
-                </mesh>
-                {/* Rigid insulated feeder conduits carrying massive sub-feeds */}
-                <mesh position={[-0.08, 0.05, 0]}>
-                  <boxGeometry args={[0.05, 0.05, Math.abs(row.constantCoord - TRUNK_Z)]} />
-                  <meshStandardMaterial color="#7f1d1d" metalness={0.8} />
-                </mesh>
-                <mesh position={[0.08, 0.05, 0]}>
-                  <boxGeometry args={[0.05, 0.05, Math.abs(row.constantCoord - TRUNK_Z)]} />
-                  <meshStandardMaterial color="#1e3a8a" metalness={0.8} />
-                </mesh>
-              </group>
-            ) : (
-              // For Z-running rows, extend the actual row busway lines all the way to Z = -12 main trunks
-              <group position={[row.constantCoord, BUSWAY_Y, (row.minCoord - 0.5 + TRUNK_Z) / 2]}>
-                {/* Extends Feed A busway back to main trunk */}
-                <mesh castShadow position={[-0.15, 0, 0]}>
-                  <boxGeometry args={[0.08, 0.08, Math.abs(row.minCoord - 0.5 - TRUNK_Z)]} />
-                  <meshStandardMaterial color="#991b1b" metalness={0.8} roughness={0.3} />
-                  <Edges color="#7f1d1d" />
-                </mesh>
-                {/* Extends Feed B busway back to main trunk */}
-                <mesh castShadow position={[0.15, 0, 0]}>
-                  <boxGeometry args={[0.08, 0.08, Math.abs(row.minCoord - 0.5 - TRUNK_Z)]} />
-                  <meshStandardMaterial color="#1e3a8a" metalness={0.8} roughness={0.3} />
-                  <Edges color="#172554" />
-                </mesh>
-                {/* Extends Ladder Tray */}
-                <mesh castShadow position={[0, -0.25, 0]}>
-                  <boxGeometry args={[0.6, 0.03, Math.abs(row.minCoord - 0.5 - TRUNK_Z)]} />
-                  <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.2} />
-                  <Edges color="#64748b" />
-                </mesh>
-              </group>
-            )}
+            {/* Runs a bridge unistrut-feeder duct from the left end of the row (x = -8.4) back to Z = -12 trunks */}
+            <group position={[MIN_X - 0.4, MAIN_TRUNK_Y - 0.15, (row.z + TRUNK_Z) / 2]}>
+              {/* Feeder tray connector */}
+              <mesh castShadow>
+                <boxGeometry args={[0.3, 0.03, Math.abs(row.z - TRUNK_Z)]} />
+                <meshStandardMaterial color="#334155" metalness={0.8} roughness={0.3} />
+                <Edges color="#475569" />
+              </mesh>
+              {/* Rigid insulated feeder conduits carrying massive sub-feeds */}
+              <mesh position={[-0.08, 0.05, 0]}>
+                <boxGeometry args={[0.05, 0.05, Math.abs(row.z - TRUNK_Z)]} />
+                <meshStandardMaterial color="#7f1d1d" metalness={0.8} />
+              </mesh>
+              <mesh position={[0.08, 0.05, 0]}>
+                <boxGeometry args={[0.05, 0.05, Math.abs(row.z - TRUNK_Z)]} />
+                <meshStandardMaterial color="#1e3a8a" metalness={0.8} />
+              </mesh>
+            </group>
+          </group>
+        )
+      })}
 
-            {/* ====================================================
-                RACK-LEVEL INDIVIDUAL POWER DROPS (Cables/Conduits)
-                ==================================================== */}
-            {row.racks.map(rack => {
-              const rX = rack.position.x
-              const rZ = rack.position.z
+      {/* ====================================================
+          RACK-LEVEL ACTIVE POWER DROPS (Cabled when Rack exists)
+          ==================================================== */}
+      {activeRacks.map(rack => {
+        const rX = rack.position.x
+        const rZ = rack.position.z
 
-              return (
-                <group key={rack.id}>
-                  {/* Feed A Drop Conduit (Branch off red busway) */}
-                  <group>
-                    {/* Horizontal branch conduit off busway duct */}
-                    <mesh position={[
-                      row.axis === 'X' ? rX - 0.15 : rX - 0.25,
-                      BUSWAY_Y,
-                      row.axis === 'X' ? rZ - 0.25 : rZ - 0.15
-                    ]}>
-                      <boxGeometry args={[
-                        row.axis === 'X' ? 0.04 : 0.2,
-                        0.04,
-                        row.axis === 'X' ? 0.2 : 0.04
-                      ]} />
-                      <meshStandardMaterial color="#991b1b" metalness={0.7} />
-                    </mesh>
-                    
-                    {/* Vertical conduit drop whip down to the top of the cabinet */}
-                    <mesh position={[
-                      row.axis === 'X' ? rX - 0.15 : rX - 0.35,
-                      (BUSWAY_Y + RACK_HEIGHT) / 2,
-                      row.axis === 'X' ? rZ - 0.35 : rZ - 0.15
-                    ]}>
-                      <boxGeometry args={[0.03, BUSWAY_Y - RACK_HEIGHT, 0.03]} />
-                      <meshStandardMaterial color="#b91c1c" metalness={0.8} roughness={0.2} />
-                      <Edges color="#7f1d1d" />
-                    </mesh>
+        return (
+          <group key={rack.id}>
+            {/* Feed A Drop Conduit (Branch off red busway) */}
+            <group>
+              {/* Horizontal branch conduit off busway duct */}
+              <mesh position={[rX - 0.15, BUSWAY_Y, rZ - 0.25]}>
+                <boxGeometry args={[0.04, 0.04, 0.2]} />
+                <meshStandardMaterial color="#991b1b" metalness={0.7} />
+              </mesh>
+              
+              {/* Vertical conduit drop whip down to the top of the cabinet */}
+              <mesh position={[rX - 0.15, (BUSWAY_Y + RACK_HEIGHT) / 2, rZ - 0.35]}>
+                <boxGeometry args={[0.03, BUSWAY_Y - RACK_HEIGHT, 0.03]} />
+                <meshStandardMaterial color="#b91c1c" metalness={0.8} roughness={0.2} />
+                <Edges color="#7f1d1d" />
+              </mesh>
 
-                    {/* Entrance junction box on the top of the rack */}
-                    <mesh position={[
-                      row.axis === 'X' ? rX - 0.15 : rX - 0.35,
-                      RACK_HEIGHT + 0.03,
-                      row.axis === 'X' ? rZ - 0.35 : rZ - 0.15
-                    ]}>
-                      <boxGeometry args={[0.08, 0.06, 0.08]} />
-                      <meshStandardMaterial color="#334155" metalness={0.9} />
-                      <Edges color="#475569" />
-                    </mesh>
-                  </group>
+              {/* Entrance junction box on the top of the rack */}
+              <mesh position={[rX - 0.15, RACK_HEIGHT + 0.03, rZ - 0.35]}>
+                <boxGeometry args={[0.08, 0.06, 0.08]} />
+                <meshStandardMaterial color="#334155" metalness={0.9} />
+                <Edges color="#475569" />
+              </mesh>
+            </group>
 
-                  {/* Feed B Drop Conduit (Branch off blue busway) */}
-                  <group>
-                    {/* Horizontal branch conduit off busway duct */}
-                    <mesh position={[
-                      row.axis === 'X' ? rX + 0.15 : rX + 0.25,
-                      BUSWAY_Y,
-                      row.axis === 'X' ? rZ + 0.25 : rZ + 0.15
-                    ]}>
-                      <boxGeometry args={[
-                        row.axis === 'X' ? 0.04 : 0.2,
-                        0.04,
-                        row.axis === 'X' ? 0.2 : 0.04
-                      ]} />
-                      <meshStandardMaterial color="#1e3a8a" metalness={0.7} />
-                    </mesh>
-                    
-                    {/* Vertical conduit drop whip down to the top of the cabinet */}
-                    <mesh position={[
-                      row.axis === 'X' ? rX + 0.15 : rX + 0.35,
-                      (BUSWAY_Y + RACK_HEIGHT) / 2,
-                      row.axis === 'X' ? rZ + 0.35 : rZ + 0.15
-                    ]}>
-                      <boxGeometry args={[0.03, BUSWAY_Y - RACK_HEIGHT, 0.03]} />
-                      <meshStandardMaterial color="#1d4ed8" metalness={0.8} roughness={0.2} />
-                      <Edges color="#172554" />
-                    </mesh>
+            {/* Feed B Drop Conduit (Branch off blue busway) */}
+            <group>
+              {/* Horizontal branch conduit off busway duct */}
+              <mesh position={[rX + 0.15, BUSWAY_Y, rZ + 0.25]}>
+                <boxGeometry args={[0.04, 0.04, 0.2]} />
+                <meshStandardMaterial color="#1e3a8a" metalness={0.7} />
+              </mesh>
+              
+              {/* Vertical conduit drop whip down to the top of the cabinet */}
+              <mesh position={[rX + 0.15, (BUSWAY_Y + RACK_HEIGHT) / 2, rZ + 0.35]}>
+                <boxGeometry args={[0.03, BUSWAY_Y - RACK_HEIGHT, 0.03]} />
+                <meshStandardMaterial color="#1d4ed8" metalness={0.8} roughness={0.2} />
+                <Edges color="#172554" />
+              </mesh>
 
-                    {/* Entrance junction box on the top of the rack */}
-                    <mesh position={[
-                      row.axis === 'X' ? rX + 0.15 : rX + 0.35,
-                      RACK_HEIGHT + 0.03,
-                      row.axis === 'X' ? rZ + 0.35 : rZ + 0.15
-                    ]}>
-                      <boxGeometry args={[0.08, 0.06, 0.08]} />
-                      <meshStandardMaterial color="#334155" metalness={0.9} />
-                      <Edges color="#475569" />
-                    </mesh>
-                  </group>
-                </group>
-              )
-            })}
+              {/* Entrance junction box on the top of the rack */}
+              <mesh position={[rX + 0.15, RACK_HEIGHT + 0.03, rZ + 0.35]}>
+                <boxGeometry args={[0.08, 0.06, 0.08]} />
+                <meshStandardMaterial color="#334155" metalness={0.9} />
+                <Edges color="#475569" />
+              </mesh>
+            </group>
           </group>
         )
       })}
