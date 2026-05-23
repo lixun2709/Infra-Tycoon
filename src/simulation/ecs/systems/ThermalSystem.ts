@@ -1,5 +1,5 @@
 import { System } from '../System'
-import type { ThermalComponent, PowerComponent, TransformComponent } from '../types'
+import type { ThermalComponent, PowerComponent, TransformComponent, RackComponent } from '../types'
 import { HARDWARE_CATALOG, type HardwareCatalogSpec } from '../../../physics/hardwareLibrary'
 
 /**
@@ -12,6 +12,8 @@ export class ThermalSystem extends System {
   public static siteAmbientHumidity = new Map<string, number>() // V2 room relative humidity %
 
   private accumulatedTime = 0.0 // V2 multiplayer-safe deterministic elapsed time (seconds)
+  private adjacentRackPairsBySite = new Map<string, [string, string][]>()
+  private lastRackEntitiesHashBySite = new Map<string, string>()
 
   private static CONDUCTION_COEFFICIENT = 0.05 / 9.0
   private static BASE_AMBIENT_TEMP = 22.0
@@ -281,7 +283,25 @@ export class ThermalSystem extends System {
       }
 
       const load = rackLoads.get(rackId) ?? { serverHeatBTU: 0, coolingBTU: 0 }
-      const netRackHeat = recircFraction * load.serverHeatBTU - load.coolingBTU
+
+      // Containment Airflow Impedance: Bypass leaks through empty slots without blanking panels
+      let emptySlotsWithoutPanels = 0
+      const rackComp = this.world.getComponent<RackComponent>('rack', rackId)
+      if (rackComp) {
+        if (!rackComp.blankingPanels) {
+          rackComp.blankingPanels = new Array(43).fill(true)
+        }
+        for (let u = 1; u <= 42; u++) {
+          const isOccupied = rackComp.slotOccupancy[u] ?? false
+          const hasPanel = rackComp.blankingPanels[u] ?? true
+          if (!isOccupied && !hasPanel) {
+            emptySlotsWithoutPanels++
+          }
+        }
+      }
+      const bypassAirflowFactor = Math.max(0.1, 1.0 - 0.05 * emptySlotsWithoutPanels)
+      const adjustedCoolingBTU = load.coolingBTU * bypassAirflowFactor
+      const netRackHeat = recircFraction * load.serverHeatBTU - adjustedCoolingBTU
 
       const currentRackTemp = rackThermal.temperature ?? roomAmbientTemp
       const rackTargetTemp = roomAmbientTemp + (netRackHeat / ThermalSystem.RACK_CONV_COEFF)
@@ -301,6 +321,77 @@ export class ThermalSystem extends System {
 
       rackThermal.accumulatedSimTime = this.accumulatedTime
       rackThermal.lastUpdate = Math.floor(this.accumulatedTime * 1000)
+    })
+
+    // 5.5 Localized Hot Aisle lateral convection between adjacent racks
+    const racksBySite = new Map<string, string[]>()
+    racks.forEach(id => {
+      const transform = transformMap.get(id)
+      if (transform) {
+        const sId = transform.siteId || 'default-site'
+        if (!racksBySite.has(sId)) {
+          racksBySite.set(sId, [])
+        }
+        racksBySite.get(sId)!.push(id)
+      }
+    })
+
+    racksBySite.forEach((rackIds, siteId) => {
+      const deltaTemp = new Map<string, number>()
+      rackIds.forEach(id => deltaTemp.set(id, 0))
+
+      const kConvection = 0.05 // lateral convection multiplier
+
+      // Cache adjacent neighbors to avoid O(N^2) math operations and square roots every frame
+      const siteHash = [...rackIds].sort().join(',')
+      const cachedHash = this.lastRackEntitiesHashBySite.get(siteId)
+
+      if (siteHash !== cachedHash) {
+        const pairs: [string, string][] = []
+        for (let i = 0; i < rackIds.length; i++) {
+          const rA = rackIds[i]!
+          const transA = transformMap.get(rA)
+          const posA = transA?.position
+          if (!posA) continue
+
+          for (let j = i + 1; j < rackIds.length; j++) {
+            const rB = rackIds[j]!
+            const transB = transformMap.get(rB)
+            const posB = transB?.position
+            if (!posB) continue
+
+            const dx = posA.x - posB.x
+            const dz = posA.z - posB.z
+            const dist = Math.sqrt(dx * dx + dz * dz)
+
+            // Racks are adjacent if distance <= 1.8 units in the horizontal plane
+            if (dist > 0 && dist <= 1.8) {
+              pairs.push([rA, rB])
+            }
+          }
+        }
+        this.adjacentRackPairsBySite.set(siteId, pairs)
+        this.lastRackEntitiesHashBySite.set(siteId, siteHash)
+      }
+
+      const pairs = this.adjacentRackPairsBySite.get(siteId) || []
+      pairs.forEach(([rA, rB]) => {
+        const tA = thermalMap.get(rA)
+        const tB = thermalMap.get(rB)
+        if (tA && tB) {
+          const flow = kConvection * (tB.temperature - tA.temperature) * dt
+          deltaTemp.set(rA, deltaTemp.get(rA)! + flow)
+          deltaTemp.set(rB, deltaTemp.get(rB)! - flow)
+        }
+      })
+
+      rackIds.forEach(id => {
+        const thermal = thermalMap.get(id)
+        if (thermal) {
+          const dT = deltaTemp.get(id) ?? 0
+          thermal.temperature = Math.max(16.0, Math.min(65.0, thermal.temperature + dT))
+        }
+      })
     })
 
     // 6. Compute new global Ambient Temperatures & Relative Humidity for each site room

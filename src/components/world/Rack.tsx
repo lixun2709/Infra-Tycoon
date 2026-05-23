@@ -1,4 +1,4 @@
-import React, { type ReactNode, useMemo, useRef } from 'react'
+import React, { type ReactNode, useMemo, useRef, useEffect } from 'react'
 import { Text, Edges, Line } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -98,6 +98,12 @@ function ContainmentFlowComponent({ containmentType, ambientTemp }: ContainmentF
     })
   }, [containmentType])
 
+  useEffect(() => {
+    return () => {
+      material.dispose()
+    }
+  }, [material])
+
   useFrame(({ clock }) => {
     if (!materialRef.current) return
     const time = clock.getElapsedTime()
@@ -140,6 +146,8 @@ function ContainmentFlowComponent({ containmentType, ambientTemp }: ContainmentF
 
 const ContainmentFlow = React.memo(ContainmentFlowComponent)
 
+
+
 function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', children }: RackProps) {
   const isOverload = status === 'power_overload'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
@@ -147,6 +155,8 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
   const { isHovered, interactionProps } = useInteractable(id, 'RACK')
   const activeTheme = useInfraStore(s => s.activeTheme)
   const themeSpec = THEMES[activeTheme]
+
+
 
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const sites = useInfraStore(s => s.sites)
@@ -174,6 +184,27 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
         />
       </mesh>
 
+
+      {/* Rear Exhaust Chassis Visual Details */}
+      <group position={[0, 0, -0.501]} rotation={[0, Math.PI, 0]}>
+        <lineSegments>
+          <edgesGeometry>
+            <planeGeometry args={[1, RACK_HEIGHT]} />
+          </edgesGeometry>
+          <lineBasicMaterial color="#334155" linewidth={1.5} />
+        </lineSegments>
+        <mesh>
+          <planeGeometry args={[0.96, RACK_HEIGHT * 0.98]} />
+          <meshStandardMaterial
+            color="#020617"
+            transparent
+            opacity={0.3}
+            metalness={0.9}
+            roughness={0.6}
+          />
+        </mesh>
+      </group>
+
       {containmentType && containmentType !== 'none' && (
         <>
           <mesh position={[0, 0, 0]}>
@@ -196,7 +227,78 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
         </>
       )}
 
+
+
       <USlotLines />
+
+      {/* 3-Phase PDU Strip on the Rear Side */}
+      <group position={[0.42, 0, -0.502]} rotation={[0, Math.PI, 0]}>
+        {/* Background track for the PDU strip */}
+        <mesh position={[0, 0, -0.001]}>
+          <planeGeometry args={[0.12, RACK_HEIGHT]} />
+          <meshStandardMaterial color="#111827" metalness={0.9} roughness={0.1} />
+        </mesh>
+        {/* Border edges around the PDU strip */}
+        <lineSegments>
+          <edgesGeometry>
+            <planeGeometry args={[0.12, RACK_HEIGHT]} />
+          </edgesGeometry>
+          <lineBasicMaterial color="#475569" linewidth={2} />
+        </lineSegments>
+        
+        {/* Outlets & Phase Partitions */}
+        {React.useMemo(() => {
+          const outlets: React.ReactNode[] = []
+          for (let j = 1; j <= RACK_U; j++) {
+            const slotY = -RACK_HEIGHT / 2 + (j - 0.5) * U_WORLD
+            const phase = ['A', 'B', 'C'][j % 3] as 'A' | 'B' | 'C'
+            const phaseColor = phase === 'A' ? '#f43f5e' : phase === 'B' ? '#06b6d4' : '#eab308'
+            outlets.push(
+              <group key={j} position={[0, slotY, 0.001]}>
+                {/* Glowing Outlet Slot */}
+                <mesh>
+                  <planeGeometry args={[0.045, U_WORLD * 0.6]} />
+                  <meshStandardMaterial 
+                    color={phaseColor}
+                    emissive={phaseColor}
+                    emissiveIntensity={1.4}
+                    transparent
+                    opacity={0.9}
+                  />
+                </mesh>
+                {/* U-Slot Index */}
+                <Text 
+                  position={[-0.032, 0, 0.001]} 
+                  fontSize={0.018} 
+                  color="#94a3b8"
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  {`${j}`}
+                </Text>
+                {/* Phase identifier badge */}
+                <Text 
+                  position={[0.032, 0, 0.001]} 
+                  fontSize={0.018} 
+                  color={phaseColor}
+                  anchorX="center"
+                  anchorY="middle"
+                  fontWeight="bold"
+                >
+                  {phase}
+                </Text>
+                {/* Horizontal partition border lines separating the outlets */}
+                <Line
+                  points={[[-0.06, U_WORLD / 2, 0.002], [0.06, U_WORLD / 2, 0.002]]}
+                  color="#1e293b"
+                  lineWidth={1}
+                />
+              </group>
+            )
+          }
+          return outlets
+        }, [])}
+      </group>
       <Text 
         {...interactionProps}
         position={[0, RACK_HEIGHT / 2 + 0.15, 0]} 
