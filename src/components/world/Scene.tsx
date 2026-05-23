@@ -7,6 +7,7 @@ import { CloudRenderer } from './renderers/CloudRenderer'
 import { OverlayRenderer, BlueprintPreview, DeployWave } from './renderers/OverlayRenderer'
 import { CableSystem } from './CableSystem'
 import { HeatMapOverlay } from './HeatMapOverlay'
+import { OverheadPowerSystem } from './renderers/OverheadPowerSystem'
 import { Rack } from './Rack'
 import { MountedUnit } from './MountedUnit'
 
@@ -36,6 +37,7 @@ export function Scene() {
       <DeployWave />
       <CableSystem />
       <HeatMapOverlay />
+      <OverheadPowerSystem />
       <OverlayRenderer />
 
       {racks.map((rack) => (
