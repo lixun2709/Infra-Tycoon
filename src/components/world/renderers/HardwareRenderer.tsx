@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -87,6 +87,7 @@ import { useInteractable } from '../../../hooks/useInteraction'
 function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
   const handlePortClick = useInfraStore(s => s.handlePortClick)
   const activePatchSource = useInfraStore(s => s.activePatchSource)
+  const [hoveredPortId, setHoveredPortId] = useState<string | null>(null)
   
   const scheme = useMemo(() => {
     switch(node.type) {
@@ -136,7 +137,7 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
           
           const portsInThisRow = (row === rowCount - 1) ? (portCount % portsPerRow || portsPerRow) : portsPerRow
           
-          const totalWidth = 0.88
+          const totalWidth = 0.68 // Centered horizontally to prevent overlaps with Zero-U PDU strip
           const spacingX = isHighDensity ? (totalWidth / (portsPerRow - 1)) * 0.95 : (portsInThisRow > 1 ? totalWidth / (portsInThisRow - 1) * 0.9 : 0.1)
           const spacingY = isHighDensity ? 0.025 : 0.045
           const portSize = isHighDensity ? 0.009 : 0.014
@@ -160,6 +161,8 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
 
               <mesh 
                 onClick={(e) => { e.stopPropagation(); handlePortClick(node.id, port.id); }}
+                onPointerOver={(e) => { e.stopPropagation(); setHoveredPortId(port.id); document.body.style.cursor = 'pointer'; }}
+                onPointerOut={(e) => { e.stopPropagation(); setHoveredPortId(null); document.body.style.cursor = 'default'; }}
                 position={[0, 0, 0.001]}
                 geometry={portGeometry}
                 scale={[portSize, portSize, 1]}
@@ -169,6 +172,52 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
               <Text position={[0, portSize * 0.6 + 0.003, 0.005]} fontSize={isHighDensity ? 0.0035 : 0.006} color="#94a3b8" anchorX="center" anchorY="bottom">
                 {port.label}
               </Text>
+
+              {/* High-Fidelity Floating Port Tooltip Billboard */}
+              {hoveredPortId === port.id && (
+                <Billboard position={[0, portSize * 1.6 + 0.02, 0.04]} follow={true}>
+                  {/* Tooltip Background Card */}
+                  <mesh>
+                    <planeGeometry args={[0.22, 0.08]} />
+                    <meshBasicMaterial 
+                      color="#090d16" 
+                      transparent 
+                      opacity={0.94} 
+                      depthTest={false} 
+                      depthWrite={false}
+                    />
+                  </mesh>
+                  {/* Tooltip Border Line */}
+                  <lineSegments>
+                    <edgesGeometry>
+                      <planeGeometry args={[0.22, 0.08]} />
+                    </edgesGeometry>
+                    <lineBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
+                  </lineSegments>
+                  {/* Floating Port Name Text */}
+                  <Text
+                    position={[0, 0.012, 0.002]}
+                    fontSize={0.016}
+                    color="#f8fafc"
+                    fontWeight="bold"
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {port.label.toUpperCase()}
+                  </Text>
+                  {/* Floating Port Status Text */}
+                  <Text
+                    position={[0, -0.015, 0.002]}
+                    fontSize={0.011}
+                    color={isPlugged ? "#38bdf8" : "#f59e0b"}
+                    anchorX="center"
+                    anchorY="middle"
+                    fontWeight="bold"
+                  >
+                    {isPlugged ? "CONNECTED" : "AVAILABLE"}
+                  </Text>
+                </Billboard>
+              )}
             </group>
           )
         })}
@@ -208,7 +257,7 @@ function PortVisualsSimplifiedComponent({ node, h }: { node: InfraNode, h: numbe
       </mesh>
 
       {/* Single Simplified Status LED indicator */}
-      <mesh position={[0.4, 0, 0.006]} geometry={portGeometry} scale={[0.015, 0.015, 1]}>
+      <mesh position={[0.35, 0, 0.006]} geometry={portGeometry} scale={[0.015, 0.015, 1]}>
         <meshStandardMaterial color={ledColor} emissive={ledColor} emissiveIntensity={2.0} />
       </mesh>
     </group>

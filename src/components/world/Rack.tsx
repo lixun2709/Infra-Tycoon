@@ -232,18 +232,18 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
       <USlotLines />
 
       {/* 3-Phase PDU Strip on the Rear Side */}
-      <group position={[0.42, 0, -0.502]} rotation={[0, Math.PI, 0]}>
+      <group position={[0.465, 0, -0.502]} rotation={[0, Math.PI, 0]}>
         {/* Background track for the PDU strip */}
         <mesh position={[0, 0, -0.001]}>
-          <planeGeometry args={[0.12, RACK_HEIGHT]} />
+          <planeGeometry args={[0.07, RACK_HEIGHT]} />
           <meshStandardMaterial color="#111827" metalness={0.9} roughness={0.1} />
         </mesh>
         {/* Border edges around the PDU strip */}
         <lineSegments>
           <edgesGeometry>
-            <planeGeometry args={[0.12, RACK_HEIGHT]} />
+            <planeGeometry args={[0.07, RACK_HEIGHT]} />
           </edgesGeometry>
-          <lineBasicMaterial color="#475569" linewidth={2} />
+          <lineBasicMaterial color="#475569" linewidth={1.5} />
         </lineSegments>
         
         {/* Outlets & Phase Partitions */}
@@ -257,7 +257,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
               <group key={j} position={[0, slotY, 0.001]}>
                 {/* Glowing Outlet Slot */}
                 <mesh>
-                  <planeGeometry args={[0.045, U_WORLD * 0.6]} />
+                  <planeGeometry args={[0.024, U_WORLD * 0.6]} />
                   <meshStandardMaterial 
                     color={phaseColor}
                     emissive={phaseColor}
@@ -268,8 +268,8 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
                 </mesh>
                 {/* U-Slot Index */}
                 <Text 
-                  position={[-0.032, 0, 0.001]} 
-                  fontSize={0.018} 
+                  position={[-0.022, 0, 0.001]} 
+                  fontSize={0.015} 
                   color="#94a3b8"
                   anchorX="center"
                   anchorY="middle"
@@ -278,8 +278,8 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
                 </Text>
                 {/* Phase identifier badge */}
                 <Text 
-                  position={[0.032, 0, 0.001]} 
-                  fontSize={0.018} 
+                  position={[0.022, 0, 0.001]} 
+                  fontSize={0.015} 
                   color={phaseColor}
                   anchorX="center"
                   anchorY="middle"
@@ -289,7 +289,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
                 </Text>
                 {/* Horizontal partition border lines separating the outlets */}
                 <Line
-                  points={[[-0.06, U_WORLD / 2, 0.002], [0.06, U_WORLD / 2, 0.002]]}
+                  points={[[-0.035, U_WORLD / 2, 0.002], [0.035, U_WORLD / 2, 0.002]]}
                   color="#1e293b"
                   lineWidth={1}
                 />

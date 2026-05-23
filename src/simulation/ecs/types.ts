@@ -18,6 +18,7 @@ export interface TransformComponent extends Component {
   name?: string
   catalogKey?: string
   uHeight?: number
+  position?: { x: number; y: number; z: number }
   // Dynamic network incident & state variables
   degradation?: number
   healthStatus?: string
@@ -143,6 +144,7 @@ export interface RackComponent extends Component {
   status: 'online' | 'power_overload'
   hasHighDensityPDU: boolean
   slotOccupancy: boolean[]
+  blankingPanels?: boolean[]
   // V2/Enterprise Additions
   totalWeightKG?: number
   maxWeightKG?: number
