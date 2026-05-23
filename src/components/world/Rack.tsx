@@ -251,7 +251,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
           const outlets: React.ReactNode[] = []
           for (let j = 1; j <= RACK_U; j++) {
             const slotY = -RACK_HEIGHT / 2 + (j - 0.5) * U_WORLD
-            const phase = ['A', 'B', 'C'][j % 3] as 'A' | 'B' | 'C'
+            const phase = ['A', 'B', 'C'][(j - 1) % 3] as 'A' | 'B' | 'C'
             const phaseColor = phase === 'A' ? '#f43f5e' : phase === 'B' ? '#06b6d4' : '#eab308'
             outlets.push(
               <group key={j} position={[0, slotY, 0.001]}>

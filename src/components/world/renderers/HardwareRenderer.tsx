@@ -175,14 +175,14 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
 
               {/* High-Fidelity Floating Port Tooltip Billboard */}
               {hoveredPortId === port.id && (
-                <Billboard position={[0, portSize * 1.6 + 0.02, 0.04]} follow={true}>
+                <Billboard position={[0, portSize * 1.6 + 0.015, 0.04]} follow={true}>
                   {/* Tooltip Background Card */}
                   <mesh>
-                    <planeGeometry args={[0.22, 0.08]} />
+                    <planeGeometry args={[0.13, 0.045]} />
                     <meshBasicMaterial 
                       color="#090d16" 
                       transparent 
-                      opacity={0.94} 
+                      opacity={0.95} 
                       depthTest={false} 
                       depthWrite={false}
                     />
@@ -190,14 +190,14 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
                   {/* Tooltip Border Line */}
                   <lineSegments>
                     <edgesGeometry>
-                      <planeGeometry args={[0.22, 0.08]} />
+                      <planeGeometry args={[0.13, 0.045]} />
                     </edgesGeometry>
                     <lineBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
                   </lineSegments>
                   {/* Floating Port Name Text */}
                   <Text
-                    position={[0, 0.012, 0.002]}
-                    fontSize={0.016}
+                    position={[0, 0.007, 0.002]}
+                    fontSize={0.0085}
                     color="#f8fafc"
                     fontWeight="bold"
                     anchorX="center"
@@ -207,8 +207,8 @@ function PortVisualsComponent({ node, h }: { node: InfraNode, h: number }) {
                   </Text>
                   {/* Floating Port Status Text */}
                   <Text
-                    position={[0, -0.015, 0.002]}
-                    fontSize={0.011}
+                    position={[0, -0.008, 0.002]}
+                    fontSize={0.006}
                     color={isPlugged ? "#38bdf8" : "#f59e0b"}
                     anchorX="center"
                     anchorY="middle"
