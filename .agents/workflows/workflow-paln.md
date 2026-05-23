@@ -2,31 +2,21 @@
 description: 
 ---
 
-Read:
+# =========================
 
-Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
-.ai folder
+# CONFIGURATION
 
-prompts folder 
+# =========================
 
+DAY=59
 
-Execute Day 58 only from Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md. 
+# =========================
 
-Requirements:
-- analyze repository first
-- create implementation plan
-- implement incrementally
-- maintain scalability
-- maintain ECS compatibility
-- maintain multiplayer compatibility
-- optimize performance
-- run lint
-- run typecheck
-- run build
-- fix all errors
-- generate implementation report in simple words
-- Once the tests pass and the work is verified, execute the following Git commands in the terminal to save the progress and in message replace goal/objective with day 57 goal:
-   - `git add .`Read and strictly follow:
+# EXECUTION PROMPT
+
+# =========================
+
+Read and strictly follow:
 
 1. Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
 2. Entire `.ai` folder
@@ -34,7 +24,7 @@ Requirements:
 
 You are executing ONLY:
 
-# Day 58
+# Day ${DAY}
 
 from:
 Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
@@ -48,7 +38,7 @@ DO NOT execute:
 * placeholder future architecture
 
 Stay strictly scoped to:
-Day 58 objective, deliverables, architecture, and verification requirements.
+Day ${DAY} objective, deliverables, architecture, and verification requirements.
 
 IMPORTANT EXECUTION RULES
 
@@ -80,7 +70,11 @@ NOT:
 * indie game developer
 * UI-only frontend developer
 
-PHASE 1 — REPOSITORY ANALYSIS (MANDATORY)
+# =========================================================
+
+# PHASE 1 — REPOSITORY ANALYSIS (MANDATORY)
+
+# =========================================================
 
 Before modifying ANYTHING:
 
@@ -112,11 +106,15 @@ Identify:
 * reusable abstractions
 
 You MUST understand:
-how Day 58 integrates into the existing ecosystem before implementation begins.
+how Day ${DAY} integrates into the existing ecosystem before implementation begins.
 
 DO NOT immediately code.
 
-PHASE 2 — IMPLEMENTATION PLAN (MANDATORY)
+# =========================================================
+
+# PHASE 2 — IMPLEMENTATION PLAN (MANDATORY)
+
+# =========================================================
 
 Before implementation:
 
@@ -145,7 +143,11 @@ WHY each implementation decision is architecturally correct.
 
 DO NOT implement before the plan is complete.
 
-PHASE 3 — IMPLEMENTATION EXECUTION
+# =========================================================
+
+# PHASE 3 — IMPLEMENTATION EXECUTION
+
+# =========================================================
 
 Implementation requirements:
 
@@ -173,7 +175,11 @@ All infrastructure behavior must:
 * synchronize deterministically
 * integrate architecturally
 
-PHASE 4 — ENTERPRISE-GRADE VALIDATION
+# =========================================================
+
+# PHASE 4 — ENTERPRISE-GRADE VALIDATION
+
+# =========================================================
 
 After implementation:
 
@@ -202,7 +208,11 @@ DO NOT leave:
 * dead code
 * broken abstractions
 
-PHASE 5 — REALISM & ARCHITECTURE VALIDATION
+# =========================================================
+
+# PHASE 5 — REALISM & ARCHITECTURE VALIDATION
+
+# =========================================================
 
 After tests pass:
 
@@ -223,13 +233,19 @@ Deeply verify:
 * networking realism
 
 Ensure:
-Day 58 improves the project architecturally —
+Day ${DAY} improves the project architecturally —
 NOT just visually.
 
-PHASE 6 — IMPLEMENTATION REPORT
+# =========================================================
+
+# PHASE 6 — IMPLEMENTATION REPORT
+
+# =========================================================
 
 After completion:
 
+Generate:
+`implementation_report_day_${DAY}.md`
 
 IMPORTANT:
 Write the report in:
@@ -238,7 +254,11 @@ simple human-understandable language.
 Avoid:
 overly academic explanations.
 
-PHASE 7 — GIT OPERATIONS
+# =========================================================
+
+# PHASE 7 — GIT OPERATIONS
+
+# =========================================================
 
 ONLY AFTER:
 
@@ -249,19 +269,22 @@ ONLY AFTER:
 * tests pass
 * validation is complete
 
-Note - objective in git commit message should be goal of day 58 
 Execute:
 
 git add .
 
-git commit -m "Version2 | Day 58 | auto-completed implementation for Day 58 (objective)"
+git commit -m "Version2 | Day ${DAY} | auto-completed implementation for Day ${DAY} objective"
 
 git push
 
 IMPORTANT:
 Do NOT skip verification before commit/push.
 
-PHASE 8 — FINAL OUTPUT
+# =========================================================
+
+# PHASE 8 — FINAL OUTPUT
+
+# =========================================================
 
 After everything is complete:
 
@@ -282,7 +305,11 @@ MANUAL TEST STEPS MUST:
 * verify infrastructure realism
 * verify no regressions occurred
 
-IMPORTANT GLOBAL RULES
+# =========================================================
+
+# IMPORTANT GLOBAL RULES
+
+# =========================================================
 
 DO NOT:
 
@@ -307,11 +334,14 @@ ALWAYS PRIORITIZE:
 * worker-thread correctness
 * realistic infrastructure behavior
 
-FINAL GOAL
+# =========================================================
+
+# FINAL GOAL
+
+# =========================================================
 
 The implementation must move Infra-Tycoon closer to:
 a believable enterprise datacenter operational digital twin —
 NOT a decorative infrastructure game.
 
-
-Stop after completion and give test steps to user to check manualy changes in step by step manner.
+Stop after completion and give test steps to user to check manually changes in step-by-step manner.
