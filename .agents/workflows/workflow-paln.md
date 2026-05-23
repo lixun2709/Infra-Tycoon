@@ -10,7 +10,7 @@ Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
 prompts folder 
 
 
-Execute Day 55 only from Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md. 
+Execute Day 56 only from Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md. 
 
 Requirements:
 - analyze repository first
@@ -25,9 +25,9 @@ Requirements:
 - run build
 - fix all errors
 - generate implementation report in simple words
-- Once the tests pass and the work is verified, execute the following Git commands in the terminal to save the progress and in message replace goal/objective with day 55 goal:
+- Once the tests pass and the work is verified, execute the following Git commands in the terminal to save the progress and in message replace goal/objective with day 56 goal:
    - `git add .`
-   - `git commit -m "Version2 | Day 55 | : auto-completed implementation for Day 55 ( Objective/Goal )"`
+   - `git commit -m "Version2 | Day 56 | : auto-completed implementation for Day 56 ( Objective/Goal )"`
    - `git push`
 
 Stop after completion and give test steps to user to check manualy changes in step by step manner.
