@@ -144,7 +144,7 @@ function getPortWorldPosition(node: InfraNode, portId: string, allNodes: InfraNo
   
   const portsInThisRow = (row === rowCount - 1) ? (portCount % portsPerRow || portsPerRow) : portsPerRow
   
-  const totalWidth = 0.88
+  const totalWidth = 0.68 // Centered horizontally to match PortVisuals centered layout
   const spacingX = isHighDensity ? (totalWidth / (portsPerRow - 1)) * 0.95 : (portsInThisRow > 1 ? totalWidth / (portsInThisRow - 1) * 0.9 : 0.1)
   const spacingY = isHighDensity ? 0.025 : 0.045
   
