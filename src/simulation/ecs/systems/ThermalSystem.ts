@@ -343,7 +343,15 @@ export class ThermalSystem extends System {
       const kConvection = 0.05 // lateral convection multiplier
 
       // Cache adjacent neighbors to avoid O(N^2) math operations and square roots every frame
-      const siteHash = [...rackIds].sort().join(',')
+      const siteHash = [...rackIds]
+        .sort()
+        .map(id => {
+          const pos = transformMap.get(id)?.position
+          const xStr = pos ? pos.x.toFixed(2) : '0'
+          const zStr = pos ? pos.z.toFixed(2) : '0'
+          return `${id}:${xStr},${zStr}`
+        })
+        .join('|')
       const cachedHash = this.lastRackEntitiesHashBySite.get(siteId)
 
       if (siteHash !== cachedHash) {
@@ -598,6 +606,18 @@ export class ThermalSystem extends System {
         const idA = rackNodes[i]
         const idB = rackNodes[i+1]
         if (!idA || !idB) continue
+
+        const transformA = transformMap.get(idA)
+        const transformB = transformMap.get(idB)
+        if (!transformA || !transformB) continue
+
+        const slotA = transformA.slotIndex ?? 0
+        const heightA = transformA.uHeight ?? 1
+        const slotB = transformB.slotIndex ?? 0
+
+        // Solid-to-solid conduction occurs if and only if Node B is stacked directly on top of Node A
+        const isTouching = slotB === slotA + heightA
+        if (!isTouching) continue
         
         const thermalA = thermalMap.get(idA)
         const thermalB = thermalMap.get(idB)

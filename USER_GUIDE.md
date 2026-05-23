@@ -110,6 +110,12 @@ Site rooms model large thermal inertia (representing the physical volume of conc
 - **Rack Temp**: Converges toward the site ambient plus localized net heat, governed by a 5-minute time constant (`RACK_TIME_CONSTANT = 300.0` seconds).
 - **Lateral Convection**: Heat transfers laterally between adjacent racks in close physical proximity (horizontal distance $\le 1.8$ units):
   $$\text{Lateral Flow} = k_{\text{convection}} \times (T_{\text{adjacent}} - T_{\text{rack}}) \times dt$$
+  To maintain background simulation performance, adjacent neighbor lists are cached. The caching signature (`siteHash`) incorporates the absolute rounded horizontal `(x, z)` coordinate positions of all active racks (rounded to two decimal places). If any rack is physically moved, added, or removed, the hash changes instantly, invalidating the cache and updating the local convective heat corridors.
+
+#### Solid-to-Solid Rack Server Conduction
+Within a cabinet, servers conduct heat directly through solid physical contact. To model physical realism, conduction is resolved in a high-performance single-pass $O(N)$ sweep:
+- **Direct Physical Touch**: Direct conduction occurs between stacked servers if and only if their chassis physically touch (i.e., $\text{slotB} == \text{slotA} + \text{uHeightA}$).
+- **Insulative Air Gap Bypass**: If there is any empty slot gap between adjacent server nodes ($\text{slotB} > \text{slotA} + \text{uHeightA}$), direct solid-to-solid conduction is bypassed entirely. The empty spaces act as thermal barriers, forcing heat to dissipate solely via the rack's localized convective micro-climate zones.
 
 #### Silicon Safety Safeguards & Active Ventilation
 Slotted servers generate internal heat based on workload utilization, which is dissipated by dynamic chassis fans:

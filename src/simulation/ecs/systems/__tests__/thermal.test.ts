@@ -481,4 +481,166 @@ describe('Thermodynamic Simulation Subsystem Core', () => {
     // Rack 2 (cold containment) has reduced recirculation, so it must stay much cooler than Rack 1 (no containment)
     expect(tempRack2).toBeLessThan(tempRack1)
   })
+
+  it('should invalidate adjacent convection pairs when a rack is physically relocated (position-aware convection cache)', () => {
+    const world = new World()
+    const system = new ThermalSystem(world)
+
+    const siteId = 'site-convection-cache'
+    const rackA = 'rack-a'
+    const rackB = 'rack-b'
+
+    world.registerEntity(rackA)
+    world.registerEntity(rackB)
+
+    // Initial position: Racks are adjacent (distance = 1.0)
+    world.addComponent('transform', {
+      entityId: rackA,
+      type: 'rack',
+      siteId,
+      position: { x: 0, y: 0, z: 0 }
+    } as TransformComponent)
+
+    world.addComponent('thermal', {
+      entityId: rackA,
+      temperature: 40.0,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    world.addComponent('transform', {
+      entityId: rackB,
+      type: 'rack',
+      siteId,
+      position: { x: 1.0, y: 0, z: 0 }
+    } as TransformComponent)
+
+    world.addComponent('thermal', {
+      entityId: rackB,
+      temperature: 20.0,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    // 1. First update: Racks are adjacent, so lateral convection should transfer heat
+    system.update(1.0)
+
+    const tempA1 = world.getComponent<ThermalComponent>('thermal', rackA)!.temperature
+    const tempB1 = world.getComponent<ThermalComponent>('thermal', rackB)!.temperature
+
+    expect(tempA1).toBeLessThan(40.0) // Rack A lost heat to Rack B
+    expect(tempB1).toBeGreaterThan(20.0) // Rack B gained heat from Rack A
+
+    // 2. Relocate Rack B far away (distance = 10.0)
+    const transformB = world.getComponent<TransformComponent>('transform', rackB)!
+    transformB.position = { x: 10.0, y: 0, z: 0 }
+
+    // Reset temperatures to baseline for a clean comparison
+    const thermalA = world.getComponent<ThermalComponent>('thermal', rackA)!
+    const thermalB = world.getComponent<ThermalComponent>('thermal', rackB)!
+    thermalA.temperature = 40.0
+    thermalB.temperature = 20.0
+
+    // 3. Second update: Cache should be invalidated and pairs updated. No lateral heat transfer should occur.
+    system.update(1.0)
+
+    const tempA2 = world.getComponent<ThermalComponent>('thermal', rackA)!.temperature
+    const tempB2 = world.getComponent<ThermalComponent>('thermal', rackB)!.temperature
+
+    // Without lateral convection flow, temperatures only change due to ambient relaxation (towards 22.0°C).
+    // Let's assert they are close to the expected ambient-relaxed temperatures, proving no lateral convection flow occurred.
+    expect(tempA2).toBeCloseTo(39.94, 2)
+    expect(tempB2).toBeCloseTo(20.01, 2)
+  })
+
+  it('should enforce height-aware contact-only server conduction and bypass conduction across empty air gaps', () => {
+    const world = new World()
+    const system = new ThermalSystem(world)
+
+    const siteId = 'site-conduction-gap'
+    const rackId = 'rack-1'
+    const srvA = 'srv-a'
+    const srvB = 'srv-b'
+
+    world.registerEntity(rackId)
+    world.registerEntity(srvA)
+    world.registerEntity(srvB)
+
+    // Setup rack
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      siteId,
+      position: { x: 0, y: 0, z: 0 }
+    } as TransformComponent)
+    world.addComponent('thermal', {
+      entityId: rackId,
+      temperature: 22.0,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    // Setup Server A at slot 1, uHeight 2
+    world.addComponent('transform', {
+      entityId: srvA,
+      type: 'compute',
+      siteId,
+      parentRackId: rackId,
+      slotIndex: 1,
+      uHeight: 2,
+      position: { x: 0, y: 0, z: 0 }
+    } as TransformComponent)
+
+    // Setup Server B at slot 3 (touching because 1 + 2 = 3)
+    world.addComponent('transform', {
+      entityId: srvB,
+      type: 'compute',
+      siteId,
+      parentRackId: rackId,
+      slotIndex: 3,
+      uHeight: 1,
+      position: { x: 0, y: 0, z: 0 }
+    } as TransformComponent)
+
+    // Initialize temperatures
+    world.addComponent('thermal', {
+      entityId: srvA,
+      temperature: 60.0,
+      fanSpeedPercent: 0,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    world.addComponent('thermal', {
+      entityId: srvB,
+      temperature: 30.0,
+      fanSpeedPercent: 0,
+      lastUpdate: Date.now()
+    } as ThermalComponent)
+
+    // 1. Case A: Touching. Conduction should occur.
+    system.update(1.0)
+
+    const tempA1 = world.getComponent<ThermalComponent>('thermal', srvA)!.temperature
+    const tempB1 = world.getComponent<ThermalComponent>('thermal', srvB)!.temperature
+
+    expect(tempA1).toBeLessThan(60.0) // Server A cooled down
+    expect(tempB1).toBeGreaterThan(30.0) // Server B warmed up
+
+    // 2. Case B: Move Server B to slot 4 (gap at slot 3). Conduction should be bypassed.
+    const transformB = world.getComponent<TransformComponent>('transform', srvB)!
+    transformB.slotIndex = 4
+
+    // Reset temperatures and run again
+    const thermalA = world.getComponent<ThermalComponent>('thermal', srvA)!
+    const thermalB = world.getComponent<ThermalComponent>('thermal', srvB)!
+    thermalA.temperature = 60.0
+    thermalB.temperature = 30.0
+
+    system.update(1.0)
+
+    const tempA2 = world.getComponent<ThermalComponent>('thermal', srvA)!.temperature
+    const tempB2 = world.getComponent<ThermalComponent>('thermal', srvB)!.temperature
+
+    // Conduction is bypassed, so their temperature changes are only due to ambient relaxation,
+    // not direct conduction flow between each other.
+    expect(tempB2).toBeLessThan(tempB1)
+    expect(tempA2).toBeGreaterThan(tempA1)
+  })
 })
