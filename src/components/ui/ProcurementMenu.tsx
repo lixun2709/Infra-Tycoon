@@ -57,20 +57,20 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
   const currentSiteName = sites.find(s => s.id === currentSiteId)?.name
 
   return (
-    <div className={`fixed bottom-8 z-[200] transition-all duration-300 ${selectedNodeId ? 'right-[352px]' : 'right-8'}`}>
+    <div className={`fixed bottom-8 z-[200] transition-all duration-500 ease-out ${selectedNodeId ? 'right-[360px]' : 'right-8'}`}>
       {/* Main Toggle Button */}
       <button 
         onClick={() => onToggle(!isOpen)}
-        className={`relative w-20 h-20 rounded-[2.5rem] flex items-center justify-center transition-all shadow-2xl ${isOpen ? 'bg-slate-800 rotate-90' : 'bg-teal-500 hover:bg-teal-400'}`}
+        className={`relative w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-300 glass-panel hover:scale-105 active:scale-95 ${isOpen ? 'border-teal-500/50 rotate-90 shadow-[0_0_20px_rgba(45,212,191,0.3)]' : 'border-teal-500/30 hover:border-teal-500/60'}`}
       >
-        {isOpen ? <X size={32} className="text-white" /> : <Box size={32} className="text-[#020617]" />}
+        {isOpen ? <X size={28} className="text-teal-400" /> : <Box size={28} className="text-teal-400" />}
       </button>
 
       {/* Deployment Quick Action (Inventory Staging) */}
       {deploymentQueue.length > 0 && !isOpen && (
         <div className="absolute bottom-24 right-0 flex flex-col items-end gap-3">
           {showQueueList && (
-            <div className="mb-2 w-72 bg-[#0a1536]/95 backdrop-blur-xl border border-white/10 rounded-[2rem] p-6 shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+            <div className="mb-2 w-72 glass-panel rounded-[2rem] p-6 animate-in slide-in-from-bottom-4 duration-300">
               <div className="flex items-center gap-3 mb-5 px-1">
                 <Box size={16} className="text-teal-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Staging</span>
@@ -114,7 +114,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
       {isOpen && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-12 bg-black/80 backdrop-blur-sm" onClick={() => onToggle(false)}>
           <div 
-            className="w-full max-w-5xl h-[80vh] bg-[#020617] border border-slate-800 rounded-[3rem] shadow-[0_50px_150px_rgba(0,0,0,1)] flex overflow-hidden"
+            className="w-full max-w-5xl h-[80vh] glass-panel rounded-[3rem] flex overflow-hidden shadow-2xl"
             onClick={e => e.stopPropagation()}
           >
             {/* Left Rail: Categories */}

@@ -58,7 +58,7 @@ export function Inspector() {
 
   return (
     <>
-      <div className="fixed right-0 top-16 h-[calc(100vh-64px)] w-80 glass-dark border-l border-white/10 flex flex-col z-40">
+      <div className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[320px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl transition-all duration-500">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-white/5 bg-white/5">
           <input

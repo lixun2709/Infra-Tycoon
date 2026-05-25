@@ -18,7 +18,7 @@ const V_TARGET_POS = new THREE.Vector3()
 const V_CAMERA_TARGET = new THREE.Vector3()
 const V_CAMERA_OFFSET = new THREE.Vector3(3, 2, 3)
 const V_MAP_POS = new THREE.Vector3(15, 12, 15)
-const V_SITE_POS = new THREE.Vector3(5, 4, 5)
+const V_SITE_POS = new THREE.Vector3(0, 6, 20)
 const V_ZERO = new THREE.Vector3(0, 0, 0)
 
 export function CameraController() {
@@ -31,6 +31,7 @@ export function CameraController() {
   
   const cameraMode = useInfraStore(s => s.cameraMode)
   const cameraFocusNodeId = useInfraStore(s => s.cameraFocusNodeId)
+  const cameraFocusPosition = useInfraStore(s => s.cameraFocusPosition)
   const setCameraMode = useInfraStore(s => s.setCameraMode)
   const focusOnNode = useInfraStore(s => s.focusOnNode)
   
@@ -79,12 +80,12 @@ export function CameraController() {
       return
     }
     
-    // Auto-release focus when node is deselected
-    if (cameraMode === 'INSPECT' && !selectedNodeId) {
+    // Auto-release focus when node and custom position are both deselected
+    if (cameraMode === 'INSPECT' && !selectedNodeId && !cameraFocusPosition) {
       cameraTelemetry.log('mode_change', 'Selection cleared. Resetting camera back to SITE_DEFAULT.')
       focusOnNode(null)
     }
-  }, [isGlobalMapOpen, currentSiteId, selectedNodeId, cameraMode, cameraFocusNodeId, setCameraMode, focusOnNode])
+  }, [isGlobalMapOpen, currentSiteId, selectedNodeId, cameraMode, cameraFocusNodeId, cameraFocusPosition, setCameraMode, focusOnNode])
 
   // High-performance Render Loop utilising preallocated vector pools
   useFrame((_, delta) => {
@@ -128,6 +129,14 @@ export function CameraController() {
             V_CAMERA_TARGET.copy(V_TARGET_POS).add(V_CAMERA_OFFSET)
             lerpCameraVec3(camera.position, V_CAMERA_TARGET, 5, delta, camera.position)
           }
+        } else if (cameraFocusPosition) {
+          // Smoothly pan OrbitControls target to look at the focused custom position
+          V_TARGET_POS.set(cameraFocusPosition.x, cameraFocusPosition.y, cameraFocusPosition.z)
+          lerpCameraVec3(orbitControls.target, V_TARGET_POS, 12, delta, orbitControls.target)
+          
+          // Smoothly zoom the camera position to maintain offset
+          V_CAMERA_TARGET.copy(V_TARGET_POS).add(V_CAMERA_OFFSET)
+          lerpCameraVec3(camera.position, V_CAMERA_TARGET, 5, delta, camera.position)
         }
         break
       }
@@ -167,6 +176,8 @@ export function CameraController() {
       zoomSpeed={1.5}
       minDistance={0.5}
       maxDistance={100}
+      minPolarAngle={Math.PI / 6}
+      maxPolarAngle={Math.PI / 2 - 0.05}
       enablePan={true}
       screenSpacePanning={true}
     />

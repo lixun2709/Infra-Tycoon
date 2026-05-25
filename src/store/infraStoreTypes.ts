@@ -4,6 +4,7 @@ import type {
   Connection, 
   CloudLink, 
   Site, 
+  DatacenterHall,
   InfraAlert, 
   AuditLog, 
   DnsRecord, 
@@ -92,6 +93,24 @@ export type InfraState = {
   setTheme: (theme: ThemeKey) => void
   timeFormat: '24h' | '12h'
   setTimeFormat: (format: '24h' | '12h') => void
+
+  // Facility Scaling & Architecture
+  facilityRowsCount: number
+  facilityColumnsCount: number
+  coolingZonesCount: number
+  powerBlocksCount: number
+  facilityWingsCount: number
+  hallWidthCount: number
+  hallLengthCount: number
+  halls: DatacenterHall[]
+
+  expandFacilityRow: () => void
+  expandFacilityColumns: () => void
+  expandCoolingZone: () => void
+  expandPowerBlock: () => void
+  expandFacilityWing: () => void
+  expandHall: () => void
+  expandHallDirection: (hx: number, hz: number, direction: 'N' | 'S' | 'E' | 'W') => void
   
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]

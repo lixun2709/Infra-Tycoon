@@ -72,7 +72,7 @@ export const MissionHUD = () => {
       <div className="pointer-events-auto flex items-center gap-2">
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-3 rounded-xl bg-[#0e0e12]/95 border border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-all flex items-center gap-3 shadow-2xl backdrop-blur-md"
+          className="p-3 rounded-xl glass-panel border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-all flex items-center gap-3 hover:scale-[1.02] active:scale-95"
         >
           <div className="p-1.5 rounded-lg bg-[#ff5a36]/10 border border-[#ff5a36]/20">
             <Target size={18} className={isCollapsed ? 'animate-pulse' : ''} />
@@ -84,7 +84,7 @@ export const MissionHUD = () => {
         <button
           onClick={cyclePosition}
           title="Reposition HUD Window"
-          className="p-3 rounded-xl bg-[#0e0e12]/95 border border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-all flex items-center justify-center shadow-2xl backdrop-blur-md"
+          className="p-3 rounded-xl glass-panel border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-all flex items-center justify-center hover:scale-[1.05] active:scale-95"
         >
           <Move size={18} />
         </button>
@@ -97,9 +97,9 @@ export const MissionHUD = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(10px)' }}
             animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(10px)' }}
-            className="pointer-events-auto w-[340px] overflow-hidden rounded-2xl bg-[#0c0c0f]/95 border border-[#ff5a36]/20 shadow-[0_32px_64px_rgba(0,0,0,0.9)] backdrop-blur-lg"
+            className="pointer-events-auto w-[340px] overflow-hidden rounded-[1.5rem] glass-panel border-[#ff5a36]/30 shadow-[0_12px_40px_rgba(255,90,54,0.15)]"
           >
-            <div className="relative px-6 py-5 border-b border-white/5 bg-white/[0.02]">
+            <div className="relative px-6 py-5 border-b border-white/5 bg-[#ff5a36]/5">
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-3">
                   <div className="p-2 rounded-lg bg-[#ff5a36]/10 border border-[#ff5a36]/20 text-[#ff5a36] shadow-[0_0_15px_rgba(255,90,54,0.15)]">

@@ -70,6 +70,12 @@ export type Site = {
   ambientTemp?: number
 }
 
+export interface DatacenterHall {
+  id: string
+  x: number
+  z: number
+}
+
 export type HardwarePort = {
   id: string
   type: PortType

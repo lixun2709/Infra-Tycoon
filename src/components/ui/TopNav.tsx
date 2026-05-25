@@ -65,7 +65,7 @@ export function TopNav({
   }
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[100] h-16 glass-dark border-b border-white/10 flex items-center justify-between px-8">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] h-[3.25rem] glass-panel rounded-[2rem] flex items-center justify-between px-5 gap-8 shadow-2xl">
       {/* Brand & Site Selector */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3 group cursor-default">

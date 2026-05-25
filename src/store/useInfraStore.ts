@@ -14,6 +14,8 @@ import { createAppSlice } from './slices/appSlice'
 import { createCameraSlice } from './slices/cameraSlice'
 import { createInteractionSlice } from './slices/interactionSlice'
 import { handleCommand } from './terminalLogic'
+import { audioManager } from '../utils/AudioManager'
+import { syncZoningWithStore } from '../physics/zoning'
 
 export const useInfraStore = create<InfraState>()(
   persist(
@@ -69,6 +71,16 @@ export const useInfraStore = create<InfraState>()(
       renderQuality: 'auto',
       activeTheme: 'cyberpunk',
 
+      // Facility Scaling & Architecture
+      facilityRowsCount: 4,
+      facilityColumnsCount: 17,
+      coolingZonesCount: 1,
+      powerBlocksCount: 1,
+      facilityWingsCount: 1,
+      hallWidthCount: 30,
+      hallLengthCount: 30,
+      halls: [{ id: 'hall-0-0', x: 0, z: 0 }],
+
       // --- ACTION SLICES ---
       ...createSimulationSlice(set, get, api),
       ...createUISlice(set, get, api),
@@ -111,6 +123,243 @@ export const useInfraStore = create<InfraState>()(
 
         set({ nodes: nextNodes })
         pushAlert('info', `[PDU RESET] Circuit breaker on Server Rack [${rack.name || rack.id}] has been reset successfully. Mounted nodes are powering back on.`, rackId)
+      },
+
+      expandFacilityRow: () => {
+        const { balance, pushAlert } = get()
+        const cost = 50000
+        if (balance < cost) {
+          pushAlert('warning', `Blocked row expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+        set(state => {
+          const nextRowsCount = state.facilityRowsCount + 1
+          syncZoningWithStore(nextRowsCount, state.facilityColumnsCount, state.halls)
+          return {
+            balance: state.balance - cost,
+            facilityRowsCount: nextRowsCount,
+            auditLogs: [
+              {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                type: 'LifecycleEvent',
+                message: `Facility row expanded. Row count is now ${nextRowsCount}.`,
+                sourceNodeId: 'site-1',
+                targetNodeId: 'site-1',
+                status: 'Allowed'
+              },
+              ...state.auditLogs
+            ]
+          }
+        })
+        pushAlert('info', `Row expansion purchased! Facility capacity expanded to ${get().facilityRowsCount} rows. -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
+      },
+
+      expandFacilityColumns: () => {
+        const { balance, pushAlert } = get()
+        const cost = 40000
+        if (balance < cost) {
+          pushAlert('warning', `Blocked lane expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+        set(state => {
+          const nextColumnsCount = state.facilityColumnsCount + 2
+          syncZoningWithStore(state.facilityRowsCount, nextColumnsCount, state.halls)
+          return {
+            balance: state.balance - cost,
+            facilityColumnsCount: nextColumnsCount,
+            auditLogs: [
+              {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                type: 'LifecycleEvent',
+                message: `Facility columns expanded. Lane count is now ${nextColumnsCount}.`,
+                sourceNodeId: 'site-1',
+                targetNodeId: 'site-1',
+                status: 'Allowed'
+              },
+              ...state.auditLogs
+            ]
+          }
+        })
+        pushAlert('info', `Additional rack lanes added! Maximum lane capacity is now ${get().facilityColumnsCount}. -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
+      },
+
+      expandCoolingZone: () => {
+        const { balance, pushAlert } = get()
+        const cost = 30000
+        if (balance < cost) {
+          pushAlert('warning', `Blocked cooling expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+        set(state => ({
+          balance: state.balance - cost,
+          coolingZonesCount: state.coolingZonesCount + 1,
+          auditLogs: [
+            {
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              type: 'LifecycleEvent',
+              message: `Cooling Zone ${state.coolingZonesCount + 1} commissioned.`,
+              sourceNodeId: 'site-1',
+              targetNodeId: 'site-1',
+              status: 'Allowed'
+            },
+            ...state.auditLogs
+          ]
+        }))
+        pushAlert('info', `Cooling capacity expanded! Heavy CRAC/CRAH zones added. -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
+      },
+
+      expandPowerBlock: () => {
+        const { balance, pushAlert } = get()
+        const cost = 40000
+        if (balance < cost) {
+          pushAlert('warning', `Blocked power expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+        set(state => ({
+          balance: state.balance - cost,
+          powerBlocksCount: state.powerBlocksCount + 1,
+          auditLogs: [
+            {
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              type: 'LifecycleEvent',
+              message: `Power block ${state.powerBlocksCount + 1} integrated.`,
+              sourceNodeId: 'site-1',
+              targetNodeId: 'site-1',
+              status: 'Allowed'
+            },
+            ...state.auditLogs
+          ]
+        }))
+        pushAlert('info', `UPS/Transformer block integrated! Primary electrical capacity increased. -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
+      },
+
+      expandFacilityWing: () => {
+        const { balance, pushAlert } = get()
+        const cost = 100000
+        if (balance < cost) {
+          pushAlert('warning', `Blocked facility wing expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+        set(state => ({
+          balance: state.balance - cost,
+          facilityWingsCount: state.facilityWingsCount + 1,
+          auditLogs: [
+            {
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              type: 'LifecycleEvent',
+              message: `Facility Wing B-${state.facilityWingsCount + 1} constructed.`,
+              sourceNodeId: 'site-1',
+              targetNodeId: 'site-1',
+              status: 'Allowed'
+            },
+            ...state.auditLogs
+          ]
+        }))
+        pushAlert('info', `Secondary facility wing constructed! Enterprise footprint significantly increased. -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
+      },
+
+      expandHall: () => {
+        const { balance, pushAlert } = get()
+        const cost = 80000
+        if (balance < cost) {
+          pushAlert('warning', `Blocked hall expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+        set(state => ({
+          balance: state.balance - cost,
+          hallWidthCount: state.hallWidthCount + 10,
+          hallLengthCount: state.hallLengthCount + 10,
+          auditLogs: [
+            {
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              type: 'LifecycleEvent',
+              message: `Hyperscaler deployment hall expanded to ${state.hallWidthCount + 10}x${state.hallLengthCount + 10}m.`,
+              sourceNodeId: 'site-1',
+              targetNodeId: 'site-1',
+              status: 'Allowed'
+            },
+            ...state.auditLogs
+          ]
+        }))
+        pushAlert('info', `Datacenter hall perimeter expanded! Space for deployment increased. -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
+      },
+
+      expandHallDirection: (hx: number, hz: number, direction: 'N' | 'S' | 'E' | 'W') => {
+        const { balance, halls, pushAlert } = get()
+        const cost = 150000
+
+        if (balance < cost) {
+          pushAlert('warning', `Blocked hall expansion: Insufficient funds ($${cost.toLocaleString()} required).`)
+          audioManager.playEffect('error')
+          return
+        }
+
+        let tx = hx
+        let tz = hz
+        if (direction === 'N') tz = hz - 1
+        else if (direction === 'S') tz = hz + 1
+        else if (direction === 'E') tx = hx + 1
+        else if (direction === 'W') tx = hx - 1
+
+        // Check boundary limits (5x5 grid, coordinate ranges -2 to 2)
+        if (Math.abs(tx) > 2 || Math.abs(tz) > 2) {
+          pushAlert('warning', `Blocked hall expansion: Campus size limit reached (Maximum 5x5 halls allowed).`)
+          audioManager.playEffect('error')
+          return
+        }
+
+        // Prevent overlapping
+        const isOccupied = halls.some(h => h.x === tx && h.z === tz)
+        if (isOccupied) {
+          pushAlert('warning', 'Blocked hall expansion: An active hall already occupies this coordinate.')
+          audioManager.playEffect('error')
+          return
+        }
+
+        const newHallId = `hall-${tx}-${tz}`
+        const newHall = { id: newHallId, x: tx, z: tz }
+        const nextHalls = [...halls, newHall]
+
+        // Synchronously update zoning so overhead wires and slots appear immediately
+        syncZoningWithStore(get().facilityRowsCount, get().facilityColumnsCount, nextHalls)
+
+        set(state => ({
+          balance: state.balance - cost,
+          halls: nextHalls,
+          auditLogs: [
+            {
+              id: crypto.randomUUID(),
+              timestamp: Date.now(),
+              type: 'LifecycleEvent',
+              message: `Campus expanded. Datacenter Hall commissioned at grid (${tx}, ${tz}).`,
+              sourceNodeId: 'site-1',
+              targetNodeId: 'site-1',
+              status: 'Allowed'
+            },
+            ...state.auditLogs
+          ]
+        }))
+
+        pushAlert('info', `Datacenter Hall Wing integrated at grid (${tx}, ${tz})! -$${cost.toLocaleString()}`)
+        audioManager.playEffect('success')
       }
     }),
     {
@@ -131,7 +380,15 @@ export const useInfraStore = create<InfraState>()(
         terminalStates: state.terminalStates,
         renderQuality: state.renderQuality,
         activeTheme: state.activeTheme,
-        timeFormat: state.timeFormat
+        timeFormat: state.timeFormat,
+        facilityRowsCount: state.facilityRowsCount,
+        facilityColumnsCount: state.facilityColumnsCount,
+        coolingZonesCount: state.coolingZonesCount,
+        powerBlocksCount: state.powerBlocksCount,
+        facilityWingsCount: state.facilityWingsCount,
+        hallWidthCount: state.hallWidthCount,
+        hallLengthCount: state.hallLengthCount,
+        halls: state.halls
       })
     }
   )
