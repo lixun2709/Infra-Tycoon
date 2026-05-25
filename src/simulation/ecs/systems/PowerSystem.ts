@@ -28,7 +28,6 @@ export class PowerSystem extends System {
     this.rackChildrenMap.clear()
     this.nodeAppCount.clear()
     this.nodeThroughput.clear()
-    super.clear()
   }
 
   public update(dt: number) {
@@ -249,6 +248,7 @@ export class PowerSystem extends System {
       if (children) {
         for (let i = 0; i < children.length; i++) {
           const id = children[i]
+          if (!id) continue
           const transform = transformMap.get(id)!
           if (transform.type === 'cooling') continue
 
@@ -340,6 +340,7 @@ export class PowerSystem extends System {
             if (children) {
               for (let i = 0; i < children.length; i++) {
                 const childId = children[i]
+                if (!childId) continue
                 const childPower = powerMap.get(childId)
                 if (childPower) {
                   childPower.isPowered = false

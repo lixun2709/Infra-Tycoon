@@ -122,7 +122,7 @@ export interface StorageComponent extends Component {
   writeAmplificationFactor?: number
 }
 
-import type { CircularBuffer } from '../../../utils/CircularBuffer'
+import type { CircularBuffer } from '../../utils/CircularBuffer'
 
 // Telemetry Component: Per-entity performance and operational history
 export interface TelemetryComponent extends Component {

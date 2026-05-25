@@ -202,8 +202,8 @@ function MaintenanceCart({ position, rotation = [0,0,0] }: { position: [number, 
       </mesh>
       {/* Wheels */}
       {[-0.6, 0.6].map(x => [-0.3, 0.3].map(z => (
-        <mesh key={`${x}-${z}`} position={[x, 0.1, z]} castShadow>
-          <cylinderGeometry args={[0.1, 0.1, 0.05, 16]} rotation={[Math.PI / 2, 0, 0]} />
+        <mesh key={`${x}-${z}`} position={[x, 0.1, z]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[0.1, 0.1, 0.05, 16]} />
           <meshStandardMaterial color="#1e293b" roughness={0.9} />
         </mesh>
       )))}
@@ -1074,7 +1074,7 @@ export function EnvironmentRenderer() {
               
               {/* Diagonal Cross-Bracing between Girders */}
               {boundaryCoords.slice(0, -1).map((zVal, idx) => {
-                const nextZ = boundaryCoords[idx + 1]
+                const nextZ = boundaryCoords[idx + 1] ?? 0
                 const distZ = nextZ - zVal
                 const midZ = zVal + distZ / 2
                 return (
