@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { World } from '../../World'
-import { TelemetrySystem, fastSlideBuffer } from '../TelemetrySystem'
+import { TelemetrySystem } from '../TelemetrySystem'
+import { CircularBuffer } from '../../../../utils/CircularBuffer'
 import type { 
   TelemetryComponent, 
   PowerComponent, 
@@ -183,13 +184,13 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
 
     const tc = world.getComponentMap<TelemetryComponent>('telemetry').get(nodeId)!
     expect(tc.tempHistory).toBeDefined()
-    expect(tc.tempHistory![0]).toBe(25.0)
-    expect(tc.powerHistory![0]).toBe(0.8)
+    expect(tc.tempHistory!.buffer[0]).toBeCloseTo(25.0, 5)
+    expect(tc.powerHistory!.buffer[0]).toBeCloseTo(0.8, 5)
 
     // Verify site-wide aggregates
     expect(TelemetrySystem.sitePowerHistory.has('site-beta')).toBe(true)
-    expect(TelemetrySystem.sitePowerHistory.get('site-beta')![0]).toBe(0.8)
-    expect(TelemetrySystem.siteTempHistory.get('site-beta')![0]).toBe(25.0)
+    expect(TelemetrySystem.sitePowerHistory.get('site-beta')!.buffer[0]).toBeCloseTo(0.8, 5)
+    expect(TelemetrySystem.siteTempHistory.get('site-beta')!.buffer[0]).toBeCloseTo(25.0, 5)
 
     // Trigger Anomaly: Rapid heat spike (+6°C in a single tick)
     const thermalComp = world.getComponentMap<ThermalComponent>('thermal').get(nodeId)!
@@ -198,7 +199,7 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     // Tick 2: Trigger temperature spike alarm & site power breaker capacity alarm (>90% of 0.5KW max budget)
     system.update(1.0)
 
-    expect(tc.tempHistory![1]).toBe(31.0)
+    expect(tc.tempHistory!.buffer[1]).toBe(31.0)
     expect(alertsFired.length).toBeGreaterThan(0)
     
     // Check if temperature spike alert was logged
@@ -210,15 +211,6 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     const powerAlert = alertsFired.find(a => a.message.includes('power draw saturation threat'))!
     expect(powerAlert).toBeDefined()
     expect(powerAlert.severity).toBe('critical')
-  })
-
-  it('should optimize array operations using fastSlideBuffer to prevent GC pressure', () => {
-    const arr: number[] = [10, 20, 30]
-    fastSlideBuffer(arr, 40, 3)
-    expect(arr).toEqual([20, 30, 40])
-
-    fastSlideBuffer(arr, 50, 3)
-    expect(arr).toEqual([30, 40, 50])
   })
 
   it('should track powerSpikesCount and auditViolationsCount accurately under abnormal conditions', () => {
@@ -244,9 +236,9 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
       networkCongestionTicks: 0,
       storageIopsThrottlingTicks: 0,
       auditViolationsCount: 0,
-      powerHistory: [],
-      tempHistory: [],
-      iopsHistory: []
+      powerHistory: new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH),
+      tempHistory: new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH),
+      iopsHistory: new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH)
     } as TelemetryComponent)
 
     world.addComponent('power', {

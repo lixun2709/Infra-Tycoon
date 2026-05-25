@@ -122,6 +122,8 @@ export interface StorageComponent extends Component {
   writeAmplificationFactor?: number
 }
 
+import type { CircularBuffer } from '../../../utils/CircularBuffer'
+
 // Telemetry Component: Per-entity performance and operational history
 export interface TelemetryComponent extends Component {
   uptimeTicks: number
@@ -132,9 +134,9 @@ export interface TelemetryComponent extends Component {
   storageIopsThrottlingTicks: number
   auditViolationsCount: number
   // V2/Enterprise rolling history ring buffers
-  powerHistory?: number[]
-  tempHistory?: number[]
-  iopsHistory?: number[]
+  powerHistory?: CircularBuffer
+  tempHistory?: CircularBuffer
+  iopsHistory?: CircularBuffer
 }
 
 // Rack Component: Power capacity, status, and physical slot layout
