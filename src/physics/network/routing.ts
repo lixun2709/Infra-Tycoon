@@ -13,24 +13,7 @@ export interface ShortestPathTree {
   getPathTo(endNodeId: string): RouteResult
 }
 
-/**
- * computeTopologyFingerprint
- * Creates a unique string signature representing the current graph structure,
- * node state, and administrative overrides (blackholing / connection status).
- */
-export function computeTopologyFingerprint(nodes: InfraNode[], connections: Connection[]): string {
-  const nodeParts = nodes
-    .map(n => `${n.id}:${n.systemState === 'off' ? '0' : '1'}:${n.isBlackholed ? '1' : '0'}`)
-    .sort()
-    .join(',')
-
-  const connParts = connections
-    .map(c => `${c.id}:${c.status === 'blocked' ? '1' : '0'}:${c.isBlackholed ? '1' : '0'}`)
-    .sort()
-    .join(',')
-
-  return `${nodeParts}|${connParts}`
-}
+import type { AdjacencyMap } from './types'
 
 /**
  * findShortestPathsFromSource
@@ -40,32 +23,14 @@ export function computeTopologyFingerprint(nodes: InfraNode[], connections: Conn
 export function findShortestPathsFromSource(
   startNodeId: string,
   nodes: InfraNode[],
-  connections: Connection[]
+  connections: Connection[],
+  adjMap: AdjacencyMap
 ): ShortestPathTree {
-  const adj = new Map<string, Array<{ node: string; conn: Connection }>>()
   const activeNodes = new Set<string>()
 
   nodes.forEach(n => {
-    if (n.systemState === 'off') return
+    if (n.systemState === 'off' || n.isBlackholed) return
     activeNodes.add(n.id)
-    adj.set(n.id, [])
-  })
-
-  // Add connections to the adjacency list
-  connections.forEach(conn => {
-    if (!conn || conn.status === 'blocked' || conn.isBlackholed) return
-    const u = conn.startNodeId
-    const v = conn.endNodeId
-
-    // Only route through active, non-blocked nodes
-    if (!activeNodes.has(u) || !activeNodes.has(v)) return
-
-    const startNode = nodes.find(n => n.id === u)
-    const endNode = nodes.find(n => n.id === v)
-    if (startNode?.isBlackholed || endNode?.isBlackholed) return
-
-    adj.get(u)!.push({ node: v, conn })
-    adj.get(v)!.push({ node: u, conn })
   })
 
   // Dijkstra data structures
@@ -96,12 +61,14 @@ export function findShortestPathsFromSource(
 
     visited.add(u)
 
-    const neighbors = adj.get(u) || []
-    for (const neighbor of neighbors) {
-      const v = neighbor.node
+    const neighbors = adjMap.nodeToConnections.get(u) || []
+    for (const connId of neighbors) {
+      const conn = adjMap.connectionMap.get(connId)
+      if (!conn || conn.status === 'blocked' || conn.isBlackholed) continue
+      
+      const v = conn.startNodeId === u ? conn.endNodeId : conn.startNodeId
+      if (!activeNodes.has(v)) continue
       if (visited.has(v)) continue
-
-      const conn = neighbor.conn
       const latency = conn.latencyMs ?? 1.0
       const loss = conn.packetLoss ?? 0.0
       const throughput = conn.throughputGbps ?? 0.0
@@ -175,7 +142,7 @@ export function findShortestPathsFromSource(
       let compoundSuccessRate = 1.0
 
       connectionIds.forEach(connId => {
-        const conn = connections.find(c => c.id === connId)
+        const conn = adjMap.connectionMap.get(connId)
         if (conn) {
           totalLatencyMs += conn.latencyMs ?? 1.0
           const loss = conn.packetLoss ?? 0.0
@@ -200,24 +167,24 @@ export function findShortestPathsFromSource(
  * when the graph topology structure changes.
  */
 export class NetworkRouteCache {
-  private static fingerprint = ''
+  private static fingerprint = -1
   private static cache = new Map<string, ShortestPathTree>()
 
   public static getShortestPathTree(
     startNodeId: string,
     nodes: InfraNode[],
-    connections: Connection[]
+    connections: Connection[],
+    adjMap: AdjacencyMap,
+    topologyHash: number
   ): ShortestPathTree {
-    const currentFingerprint = computeTopologyFingerprint(nodes, connections)
-
-    if (currentFingerprint !== this.fingerprint) {
-      this.fingerprint = currentFingerprint
+    if (topologyHash !== this.fingerprint) {
+      this.fingerprint = topologyHash
       this.cache.clear()
     }
 
     let tree = this.cache.get(startNodeId)
     if (!tree) {
-      tree = findShortestPathsFromSource(startNodeId, nodes, connections)
+      tree = findShortestPathsFromSource(startNodeId, nodes, connections, adjMap)
       this.cache.set(startNodeId, tree)
     }
 
@@ -225,7 +192,7 @@ export class NetworkRouteCache {
   }
 
   public static clear() {
-    this.fingerprint = ''
+    this.fingerprint = -1
     this.cache.clear()
   }
 
@@ -233,7 +200,7 @@ export class NetworkRouteCache {
     return this.cache.size
   }
 
-  public static getFingerprint(): string {
+  public static getFingerprint(): number {
     return this.fingerprint
   }
 }
@@ -247,8 +214,10 @@ export function findShortestPath(
   startNodeId: string,
   endNodeId: string,
   nodes: InfraNode[],
-  connections: Connection[]
+  connections: Connection[],
+  adjMap: AdjacencyMap,
+  topologyHash: number
 ): RouteResult {
-  const tree = NetworkRouteCache.getShortestPathTree(startNodeId, nodes, connections)
+  const tree = NetworkRouteCache.getShortestPathTree(startNodeId, nodes, connections, adjMap, topologyHash)
   return tree.getPathTo(endNodeId)
 }

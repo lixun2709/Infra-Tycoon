@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Edges, Text } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useInput } from '../../../contexts/InputContext'
 import { RACK_HEIGHT } from '../../../physics/dimensions'
 import { PREDEFINED_SLOTS, findNearestSlot } from '../../../physics/zoning'
@@ -98,7 +99,14 @@ export function FloorRenderer() {
     facilityColumnsCount,
     halls,
     expandHallDirection
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    placementMode: state.placementMode, 
+    nodes: state.nodes, 
+    currentSiteId: state.currentSiteId,
+    facilityColumnsCount: state.facilityColumnsCount,
+    halls: state.halls,
+    expandHallDirection: state.expandHallDirection
+  })))
   const { dispatchIntent } = useInput()
   const [ghostPos, setGhostPos] = useState<THREE.Vector3 | null>(null)
 

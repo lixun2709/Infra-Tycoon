@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import type { SaveMetadata } from '../../store/infraTypes'
 import { Save, FolderOpen, Trash2, X, Clock, Server } from 'lucide-react'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -9,7 +10,14 @@ interface SaveManagerProps {
 }
 
 export function SaveManager({ onClose }: SaveManagerProps) {
-  const { saveGame, loadGame, getAvailableSaves, pushAlert, sites, updateSite } = useInfraStore()
+  const { saveGame, loadGame, getAvailableSaves, pushAlert, sites, updateSite } = useInfraStore(useShallow(state => ({
+    saveGame: state.saveGame,
+    loadGame: state.loadGame,
+    getAvailableSaves: state.getAvailableSaves,
+    pushAlert: state.pushAlert,
+    sites: state.sites,
+    updateSite: state.updateSite
+  })))
   const [saves, setSaves] = useState<SaveMetadata[]>([])
   const currentSite = sites.find(s => s.id === useInfraStore.getState().currentSiteId)
   const [siteName, setSiteName] = useState(currentSite?.name || 'New Deployment')

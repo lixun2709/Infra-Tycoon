@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 
 // --------------------------------------------------------
 // Procedural Hierarchical Skeletal Geometries
@@ -343,7 +344,9 @@ function PersonnelActor({ initialPosition, role, bounds }: PersonnelProps) {
 }
 
 export function OperationalPersonnelSystem() {
-  const { halls } = useInfraStore()
+  const { halls } = useInfraStore(useShallow(state => ({
+    halls: state.halls
+  })))
 
   const personnel = useMemo(() => {
     const list = []

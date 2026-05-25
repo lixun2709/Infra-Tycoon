@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { 
   AlertCircle, 
   Scale, 
@@ -78,7 +79,14 @@ export function Dashboard({
     realTimePlayedSeconds, auditLogs,
     isHeatMapVisible, toggleHeatMap,
     timeFormat
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    nodes: state.nodes, alerts: state.alerts, acknowledgeAlert: state.acknowledgeAlert, acknowledgeAllAlerts: state.acknowledgeAllAlerts,
+    totalPowerKW: state.totalPowerKW,
+    networkLoad: state.networkLoad,
+    realTimePlayedSeconds: state.realTimePlayedSeconds, auditLogs: state.auditLogs,
+    isHeatMapVisible: state.isHeatMapVisible, toggleHeatMap: state.toggleHeatMap,
+    timeFormat: state.timeFormat
+  })))
 
   const formatUptime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600)

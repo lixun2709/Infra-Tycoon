@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import type { TerminalPane } from '../../store/terminalTypes'
 import { X, Plus, Maximize2, Minimize2, Terminal as TerminalIcon, GripHorizontal, Activity, Cpu, Shield } from 'lucide-react'
 
@@ -37,7 +38,11 @@ const TerminalLine: React.FC<{ text: string }> = ({ text }) => {
 }
 
 const NanoEditor: React.FC<{ pane: TerminalPane, siteId: string }> = ({ pane, siteId }) => {
-  const { terminalStates, writeTerminalFile, processCommand } = useInfraStore()
+  const { terminalStates, writeTerminalFile, processCommand } = useInfraStore(useShallow(state => ({
+    terminalStates: state.terminalStates,
+    writeTerminalFile: state.writeTerminalFile,
+    processCommand: state.processCommand
+  })))
   const siteState = terminalStates[siteId]
   const filePath = pane.context.targetId || 'unknown'
   const initialContent = siteState?.storedFiles[filePath] || ''
@@ -87,7 +92,10 @@ const NanoEditor: React.FC<{ pane: TerminalPane, siteId: string }> = ({ pane, si
 
 const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ nodeId, siteId }) => {
   const [tick, setTick] = useState(0)
-  const { nodes, processCommand } = useInfraStore()
+  const { nodes, processCommand } = useInfraStore(useShallow(state => ({
+    nodes: state.nodes,
+    processCommand: state.processCommand
+  })))
   const targetNode = nodeId ? nodes.find(n => n.id === nodeId) : null
 
   useEffect(() => {
@@ -226,7 +234,15 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     updateTerminalLayout,
     splitTerminalPane,
     setActivePane
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    processCommand: state.processCommand, 
+    addTerminalSession: state.addTerminalSession, 
+    closeTerminalSession: state.closeTerminalSession, 
+    setActiveSession: state.setActiveSession, 
+    updateTerminalLayout: state.updateTerminalLayout,
+    splitTerminalPane: state.splitTerminalPane,
+    setActivePane: state.setActivePane
+  })))
 
   const [localLayout, setLocalLayout] = useState({ 
     width: siteState?.layout.width || 850, 

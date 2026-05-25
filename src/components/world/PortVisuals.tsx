@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import type { InfraNode } from '../../store/infraTypes'
 import { StatusLED } from './StatusLED'
 
@@ -11,7 +12,13 @@ interface PortVisualsProps {
 }
 
 function PortVisualsComponent({ node, h, onSelect }: PortVisualsProps) {
-  const { handlePortClick, activePatchSource, selectedNodeId, connections, nodes } = useInfraStore()
+  const { handlePortClick, activePatchSource, selectedNodeId, connections, nodes } = useInfraStore(useShallow(state => ({
+    handlePortClick: state.handlePortClick,
+    activePatchSource: state.activePatchSource,
+    selectedNodeId: state.selectedNodeId,
+    connections: state.connections,
+    nodes: state.nodes
+  })))
   const [hoveredPortId, setHoveredPortId] = useState<string | null>(null)
   const isSelected = selectedNodeId === node.id
   

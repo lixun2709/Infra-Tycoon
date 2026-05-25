@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 
@@ -32,7 +33,15 @@ export function TopNav({
     isNetworkManagerOpen,
     timeFormat,
     setTimeFormat
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    currentSiteId: state.currentSiteId, 
+    sites: state.sites, 
+    setCurrentSiteId: state.setCurrentSiteId, 
+    realTimePlayedSeconds: state.realTimePlayedSeconds, 
+    isNetworkManagerOpen: state.isNetworkManagerOpen,
+    timeFormat: state.timeFormat,
+    setTimeFormat: state.setTimeFormat
+  })))
   const activeSite = sites.find(s => s.id === currentSiteId)
 
   const [localTime, setLocalTime] = useState(new Date())

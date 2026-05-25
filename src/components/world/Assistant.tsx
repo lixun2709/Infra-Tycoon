@@ -3,9 +3,14 @@ import { useFrame } from '@react-three/fiber'
 import { Float, Text, QuadraticBezierLine } from '@react-three/drei'
 import * as THREE from 'three'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 
 export const Assistant: React.FC = () => {
-  const { assistantTargetId, nodes, isAutoPilot } = useInfraStore()
+  const { assistantTargetId, nodes, isAutoPilot } = useInfraStore(useShallow(state => ({
+    assistantTargetId: state.assistantTargetId,
+    nodes: state.nodes,
+    isAutoPilot: state.isAutoPilot
+  })))
   const droidRef = useRef<THREE.Group>(null)
   
   const targetNode = useMemo(() => {

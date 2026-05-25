@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Text, Environment } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { audioManager } from '../../../utils/AudioManager'
 
 // --- 1. COMPUTER ROOM AIR HANDLER (CRAH) CABINET ---
@@ -585,7 +586,10 @@ function PlatformStairs({ position, rotation }: { position: [number, number, num
 
 // --- MAIN ENVIRONMENT RENDERER COMPONENT ---
 export function EnvironmentRenderer() {
-  const { totalRoomBTU, halls } = useInfraStore()
+  const { totalRoomBTU, halls } = useInfraStore(useShallow(state => ({
+    totalRoomBTU: state.totalRoomBTU,
+    halls: state.halls
+  })))
   const isHot = totalRoomBTU > 50000
 
   const CEILING_Y = 5.5

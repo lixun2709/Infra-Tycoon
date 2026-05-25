@@ -1,5 +1,6 @@
 import React from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Card, Button, Badge, Tabs } from './base'
@@ -26,7 +27,28 @@ export function Inspector() {
     technicianTickets,
     timeFormat,
     resetRackBreaker
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    nodes: state.nodes, 
+    connections: state.connections, 
+    selectedNodeId: state.selectedNodeId, 
+    activePatchSource: state.activePatchSource, 
+    handlePortClick: state.handlePortClick, 
+    updateNode: state.updateNode, 
+    removeNode: state.removeNode, 
+    removeConnection: state.removeConnection, 
+    pushAlert: state.pushAlert, 
+    sites: state.sites, 
+    alerts: state.alerts, 
+    installService: state.installService, 
+    toggleService: state.toggleService, 
+    advanceProvisioningState: state.advanceProvisioningState, 
+    powerOnNode: state.powerOnNode,
+    repairHardware: state.repairHardware,
+    toggleMaintenanceMode: state.toggleMaintenanceMode,
+    technicianTickets: state.technicianTickets,
+    timeFormat: state.timeFormat,
+    resetRackBreaker: state.resetRackBreaker
+  })))
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)

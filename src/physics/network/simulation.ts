@@ -20,6 +20,7 @@ export function simulateNetwork(
   nodes: InfraNode[],
   connections: Connection[],
   networkLoad: number,
+  topologyHash: number,
   dt = 1.0
 ): NetworkTickResult {
   // Phase 1: Demand Phase
@@ -29,7 +30,7 @@ export function simulateNetwork(
   const adjMap = buildAdjacencyMap(connections)
 
   // Phase 3: Congestion & Propagation Phase
-  const { updatedConnections, newlyInfectedNodeIds } = resolveCongestion(nodes, connections, demands, adjMap, dt)
+  const { updatedConnections, newlyInfectedNodeIds } = resolveCongestion(nodes, connections, demands, adjMap, topologyHash, dt)
 
   return {
     connections: updatedConnections,

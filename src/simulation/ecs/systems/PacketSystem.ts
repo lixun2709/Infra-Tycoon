@@ -3,6 +3,15 @@ import type { TransformComponent, PowerComponent, ConnectionComponent } from '..
 import type { InfraNode, Connection } from '../../../store/infraTypes'
 import { simulateNetwork } from '../../../physics/network/simulation'
 
+function fastStringHash(str: string): number {
+  let hash = 2166136261
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
 /**
  * PacketSystem
  * ECS System governing physical packet routing, cabling topology compilation,
@@ -26,6 +35,7 @@ export class PacketSystem extends System {
 
     // 1. Reconstruct lightweight, simulation-only node states from ECS using Object Pools
     let nodeIndex = 0
+    let topologyHash = 0
     transformMap.forEach((transform, id) => {
       const power = powerMap.get(id)
       
@@ -48,6 +58,9 @@ export class PacketSystem extends System {
       n.isBlackholed = transform.isBlackholed ?? false
       n.rateLimitGbps = transform.rateLimitGbps
       
+      const nHash = fastStringHash(id) ^ (n.systemState === 'off' ? 0 : 1) ^ (n.isBlackholed ? 2 : 0)
+      topologyHash = (topologyHash + nHash) >>> 0
+
       nodeIndex++
     })
     // Trim array length safely
@@ -82,6 +95,9 @@ export class PacketSystem extends System {
       c.isBlackholed = conn.isBlackholed
       c.rateLimitGbps = conn.rateLimitGbps
 
+      const cHash = fastStringHash(id) ^ (c.status === 'blocked' ? 1 : 0) ^ (c.isBlackholed ? 2 : 0)
+      topologyHash = (topologyHash + cHash) >>> 0
+
       connIndex++
     })
     if (this.connectionPool.length > connIndex) {
@@ -99,6 +115,7 @@ export class PacketSystem extends System {
       this.nodePool,
       this.connectionPool,
       PacketSystem.networkLoad,
+      topologyHash,
       dt
     )
 

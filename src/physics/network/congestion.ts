@@ -19,6 +19,7 @@ export function resolveCongestion(
   connections: Connection[],
   demands: NetworkDemand[],
   adjMap: AdjacencyMap,
+  topologyHash: number,
   dt = 1.0
 ): CongestionResult {
   const demandMap = new Map(demands.map(d => [d.nodeId, d]))
@@ -65,7 +66,7 @@ export function resolveCongestion(
       : nodes.filter(n => n.id !== sourceNode.id && n.type !== 'rack' && n.type !== 'cooling' && n.systemState !== 'off' && !n.isBlackholed)
 
     targetsToTry.forEach(target => {
-      const route = findShortestPath(sourceNode.id, target.id, nodes, connections)
+      const route = findShortestPath(sourceNode.id, target.id, nodes, connections, adjMap, topologyHash)
       if (route.exists && route.totalLatencyMs < minCost) {
         minCost = route.totalLatencyMs
         bestPathConnIds = route.connectionIds

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { HARDWARE_CATALOG, type HardwareCatalogKey, type HardwareCatalogSpec } from '../../physics/hardwareLibrary'
 import type { LucideIcon } from 'lucide-react'
 import { 
@@ -31,7 +32,13 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
     sites,
     currentSiteId,
     selectedNodeId
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    deploymentQueue: state.deploymentQueue,
+    setPlacementMode: state.setPlacementMode,
+    sites: state.sites,
+    currentSiteId: state.currentSiteId,
+    selectedNodeId: state.selectedNodeId
+  })))
 
   const [activeCategory, setActiveCategory] = useState<Category>('compute')
 

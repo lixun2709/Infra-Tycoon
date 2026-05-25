@@ -1,8 +1,13 @@
+
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { Html } from '@react-three/drei'
 
 export function HeatMapOverlay() {
-  const { nodes, isHeatMapVisible } = useInfraStore()
+  const { nodes, isHeatMapVisible } = useInfraStore(useShallow(state => ({
+    nodes: state.nodes,
+    isHeatMapVisible: state.isHeatMapVisible
+  })))
 
   if (!isHeatMapVisible) return null
 

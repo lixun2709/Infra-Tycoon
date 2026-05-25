@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { RACK_HEIGHT, U_WORLD } from '../../../physics/dimensions'
 
 export function OverlayRenderer() {
@@ -25,7 +26,10 @@ export function OverlayRenderer() {
 }
 
 export function BlueprintPreview() {
-  const { previewBlueprintId, blueprints } = useInfraStore()
+  const { previewBlueprintId, blueprints } = useInfraStore(useShallow(state => ({
+    previewBlueprintId: state.previewBlueprintId,
+    blueprints: state.blueprints
+  })))
   const blueprint = blueprints.find(b => b.id === previewBlueprintId)
   if (!blueprint) return null
 

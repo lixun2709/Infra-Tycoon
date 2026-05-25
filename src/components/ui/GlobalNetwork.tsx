@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import type { ServiceType } from '../../store/infraTypes'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 
@@ -14,7 +15,17 @@ export function GlobalNetwork() {
     patchConnection,
     removeConnection,
     getServiceStatus
-  } = useInfraStore()
+  } = useInfraStore(useShallow(state => ({
+    isNetworkManagerOpen: state.isNetworkManagerOpen, 
+    setNetworkManagerOpen: state.setNetworkManagerOpen, 
+    nodes: state.nodes, 
+    connections: state.connections, 
+    sites: state.sites,
+    currentSiteId: state.currentSiteId,
+    patchConnection: state.patchConnection,
+    removeConnection: state.removeConnection,
+    getServiceStatus: state.getServiceStatus
+  })))
   
   const [activeTab, setActiveTab] = useState<'topology' | 'patching' | 'services'>('topology')
   const [serviceSubTab, setServiceSubTab] = useState<'overview' | 'DHCP' | 'DNS' | 'NTP'>('overview')
@@ -32,7 +43,12 @@ export function GlobalNetwork() {
 
   const [tick, setTick] = useState(0)
 
-  const { dnsRecords, addDnsRecord, removeDnsRecord, autoPatchRack } = useInfraStore()
+  const { dnsRecords, addDnsRecord, removeDnsRecord, autoPatchRack } = useInfraStore(useShallow(state => ({
+    dnsRecords: state.dnsRecords, 
+    addDnsRecord: state.addDnsRecord, 
+    removeDnsRecord: state.removeDnsRecord, 
+    autoPatchRack: state.autoPatchRack
+  })))
 
   useEffect(() => {
     if (!isNetworkManagerOpen) return undefined

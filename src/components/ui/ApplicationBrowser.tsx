@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout, Rocket, X, Server, Database, Zap, Cpu } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
 
 interface ApplicationBrowserProps {
@@ -9,7 +10,13 @@ interface ApplicationBrowserProps {
 }
 
 export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps) {
-  const { applications, deployApplication, removeApplication, selectedNodeId, nodes } = useInfraStore()
+  const { applications, deployApplication, removeApplication, selectedNodeId, nodes } = useInfraStore(useShallow(state => ({
+    applications: state.applications,
+    deployApplication: state.deployApplication,
+    removeApplication: state.removeApplication,
+    selectedNodeId: state.selectedNodeId,
+    nodes: state.nodes
+  })))
   
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
   const nodeApps = applications.filter(a => a.nodeId === selectedNodeId)

@@ -13,6 +13,7 @@ import {
   X
 } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
 
 interface EconomyDashboardProps {
@@ -21,7 +22,14 @@ interface EconomyDashboardProps {
 }
 
 export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
-  const { balance, reputation, activeContracts, acceptContract, cancelContract, nodes } = useInfraStore()
+  const { balance, reputation, activeContracts, acceptContract, cancelContract, nodes } = useInfraStore(useShallow(state => ({
+    balance: state.balance,
+    reputation: state.reputation,
+    activeContracts: state.activeContracts,
+    acceptContract: state.acceptContract,
+    cancelContract: state.cancelContract,
+    nodes: state.nodes
+  })))
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active'>('overview')
 
   // Calculate MRR and MRE

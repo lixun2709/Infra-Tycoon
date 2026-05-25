@@ -1,9 +1,17 @@
 import { useState, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import type { Blueprint } from '../../store/infraTypes'
 
 export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const { blueprints, saveSiteAsBlueprint, applyBlueprint, exportToTerraform, runComplianceCheck, setPreviewBlueprint } = useInfraStore()
+  const { blueprints, saveSiteAsBlueprint, applyBlueprint, exportToTerraform, runComplianceCheck, setPreviewBlueprint } = useInfraStore(useShallow(state => ({
+    blueprints: state.blueprints,
+    saveSiteAsBlueprint: state.saveSiteAsBlueprint,
+    applyBlueprint: state.applyBlueprint,
+    exportToTerraform: state.exportToTerraform,
+    runComplianceCheck: state.runComplianceCheck,
+    setPreviewBlueprint: state.setPreviewBlueprint
+  })))
   const [blueprintName, setBlueprintName] = useState('')
   const [pendingDeployId, setPendingDeployId] = useState<string | null>(null)
 

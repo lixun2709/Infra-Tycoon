@@ -1,5 +1,6 @@
 import { Canvas } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { EnvironmentRenderer } from './renderers/EnvironmentRenderer'
 import { CameraController } from './renderers/CameraController'
 import { FloorRenderer } from './renderers/FloorRenderer'
@@ -17,7 +18,11 @@ import { useInput } from '../../contexts/InputContext'
 import { RenderStatsTracker } from './renderers/RenderStatsTracker'
 
 export function Scene() {
-  const { nodes, selectedNodeId, currentSiteId } = useInfraStore()
+  const { nodes, selectedNodeId, currentSiteId } = useInfraStore(useShallow(state => ({
+    nodes: state.nodes,
+    selectedNodeId: state.selectedNodeId,
+    currentSiteId: state.currentSiteId
+  })))
   const { dispatchIntent } = useInput()
   const racks = nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
 

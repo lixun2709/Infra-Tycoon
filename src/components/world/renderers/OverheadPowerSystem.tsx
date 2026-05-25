@@ -1,12 +1,19 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import {} from '@react-three/drei'
+import { useShallow } from 'zustand/react/shallow'
 import { useInfraStore } from '../../../store/useInfraStore'
 import { RACK_HEIGHT } from '../../../physics/dimensions'
 import { PREDEFINED_ROWS } from '../../../physics/zoning'
 
 export function OverheadPowerSystem() {
-  const { nodes, currentSiteId, facilityColumnsCount, hallWidthCount, halls } = useInfraStore()
+  const { nodes, currentSiteId, facilityColumnsCount, hallWidthCount, halls } = useInfraStore(useShallow(state => ({
+    nodes: state.nodes,
+    currentSiteId: state.currentSiteId,
+    facilityColumnsCount: state.facilityColumnsCount,
+    hallWidthCount: state.hallWidthCount,
+    halls: state.halls
+  })))
 
   const MIN_X = -Math.floor(facilityColumnsCount / 2)
   // Find all active racks in the current site room
