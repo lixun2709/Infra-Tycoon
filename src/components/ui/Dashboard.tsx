@@ -80,7 +80,7 @@ export function Dashboard({
     isHeatMapVisible, toggleHeatMap,
     timeFormat
   } = useInfraStore(useShallow(state => ({
-    nodes: state.nodes, alerts: state.alerts, acknowledgeAlert: state.acknowledgeAlert, acknowledgeAllAlerts: state.acknowledgeAllAlerts,
+    alerts: state.alerts, acknowledgeAlert: state.acknowledgeAlert, acknowledgeAllAlerts: state.acknowledgeAllAlerts,
     totalPowerKW: state.totalPowerKW,
     networkLoad: state.networkLoad,
     realTimePlayedSeconds: state.realTimePlayedSeconds, auditLogs: state.auditLogs,
@@ -101,6 +101,8 @@ export function Dashboard({
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
 
+  const nodes = useInfraStore.getState().nodes
+  useInfraStore(s => s.nodes.length)
   const allHardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
   const globalHealthyCount = allHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
   const globalHealthIndex = allHardware.length > 0 ? Math.round((globalHealthyCount / allHardware.length) * 100) : 100

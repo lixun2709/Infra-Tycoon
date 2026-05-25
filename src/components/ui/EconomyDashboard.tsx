@@ -22,14 +22,14 @@ interface EconomyDashboardProps {
 }
 
 export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
-  const { balance, reputation, activeContracts, acceptContract, cancelContract, nodes } = useInfraStore(useShallow(state => ({
+  const { balance, reputation, activeContracts, acceptContract, cancelContract } = useInfraStore(useShallow(state => ({
     balance: state.balance,
     reputation: state.reputation,
     activeContracts: state.activeContracts,
     acceptContract: state.acceptContract,
-    cancelContract: state.cancelContract,
-    nodes: state.nodes
+    cancelContract: state.cancelContract
   })))
+  useInfraStore(s => s.nodes.length)
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active'>('overview')
 
   // Calculate MRR and MRE
@@ -38,6 +38,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
     return sum + (bp?.monthlyMRR || 0)
   }, 0)
 
+  const nodes = useInfraStore.getState().nodes
   const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
   const estimatedMRE = (totalPowerKW * 0.12 * 30) + (nodes.filter(n => n.type === 'rack').length * 50 * 30)
 

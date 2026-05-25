@@ -14,10 +14,11 @@ export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps)
     applications: state.applications,
     deployApplication: state.deployApplication,
     removeApplication: state.removeApplication,
-    selectedNodeId: state.selectedNodeId,
-    nodes: state.nodes
+    selectedNodeId: state.selectedNodeId
   })))
+  useInfraStore(s => s.nodes.length) // trigger render when nodes are added
   
+  const nodes = useInfraStore.getState().nodes
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
   const nodeApps = applications.filter(a => a.nodeId === selectedNodeId)
 

@@ -92,11 +92,10 @@ const NanoEditor: React.FC<{ pane: TerminalPane, siteId: string }> = ({ pane, si
 
 const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ nodeId, siteId }) => {
   const [tick, setTick] = useState(0)
-  const { nodes, processCommand } = useInfraStore(useShallow(state => ({
-    nodes: state.nodes,
+  const { processCommand } = useInfraStore(useShallow(state => ({
     processCommand: state.processCommand
   })))
-  const targetNode = nodeId ? nodes.find(n => n.id === nodeId) : null
+  const targetNode = nodeId ? useInfraStore.getState().nodes.find(n => n.id === nodeId) : null
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000)
@@ -130,7 +129,7 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
       return x - Math.floor(x)
     }
 
-    const currentSiteNodes = nodes.filter(n => n.siteId === siteId).slice(0, 12)
+    const currentSiteNodes = useInfraStore.getState().nodes.filter(n => n.siteId === siteId).slice(0, 12)
 
     return {
       cpu: pseudoRand(1) * 10 + cpuBase,
@@ -140,7 +139,7 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
         mem: pseudoRand(i + 20) * 5
       }))
     }
-  }, [tick, targetNode, nodes, siteId])
+  }, [tick, siteId, targetNode])
 
   return (
     <div className="flex-1 bg-black p-8 font-mono text-[10px] space-y-4 overflow-hidden selection:bg-teal-500/20">
@@ -195,7 +194,7 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
                )
              })
            ) : (
-             nodes.filter(n => n.siteId === siteId).slice(0, 12).map((n, i) => {
+             useInfraStore.getState().nodes.filter(n => n.siteId === siteId).slice(0, 12).map((n, i) => {
                const metric = metrics.procMetrics[i]
                const cpuVal = metric ? metric.cpu : 0
                const memVal = metric ? metric.mem : 0
@@ -220,7 +219,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const siteState = useInfraStore(s => s.terminalStates[currentSiteId])
-  const nodes = useInfraStore(s => s.nodes)
+  useInfraStore(s => s.nodes.length)
 
   const topActiveSessionId = siteState?.activeSessionId
   const topActiveSession = siteState?.sessions?.find(s => s.id === topActiveSessionId)
@@ -293,9 +292,10 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   // Auto-attach to selected node
   useEffect(() => {
-    if (selectedNodeId && siteState?.sessions) {
+    if (selectedNodeId) {
+      const nodes = useInfraStore.getState().nodes
       const node = nodes.find(n => n.id === selectedNodeId)
-      if (node && node.type !== 'rack') {
+      if (node && node.type !== 'rack' && siteState?.sessions) {
         const existingSession = siteState.sessions.find(s => s.panes.some(p => p.context.targetId === selectedNodeId))
         if (existingSession) {
           setActiveSession(existingSession.id)
@@ -304,7 +304,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         }
       }
     }
-  }, [selectedNodeId, siteState?.sessions, nodes, addTerminalSession, setActiveSession])
+  }, [selectedNodeId, siteState?.sessions, addTerminalSession, setActiveSession])
 
   if (!siteState || !siteState.sessions || siteState.sessions.length === 0) return null
 
@@ -384,6 +384,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     } else if (e.key === 'Tab') {
       e.preventDefault()
       const commands = ['ls', 'cd', 'cat', 'pwd', 'clear', 'history', 'man', 'top', 'show', 'volume', 'sla', 'ssh', 'ping', 'nmap', 'exit', 'vserver', 'protection_status', 'iptables', 'alias', 'export', 'watch', 'nano']
+      const nodes = useInfraStore.getState().nodes
       const nodeIps = nodes.filter(n => n.siteId === currentSiteId).flatMap(n => n.ports.map(p => p.ip).filter(Boolean))
       const suggestions = [...commands, ...nodeIps] as string[]
       
@@ -404,7 +405,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }
 
   const renderPane = (pane: TerminalPane, isFocused: boolean) => {
-    const paneNode = pane.context.targetId ? nodes.find(n => n.id === pane.context.targetId) : null
+    const paneNode = pane.context.targetId ? useInfraStore.getState().nodes.find(n => n.id === pane.context.targetId) : null
     
     if (pane.context.mode === 'nano') return <NanoEditor key={pane.id} pane={pane} siteId={currentSiteId} />
     if (pane.context.mode === 'top') return <TopMonitor key={pane.id} nodeId={pane.context.targetId} siteId={currentSiteId} />

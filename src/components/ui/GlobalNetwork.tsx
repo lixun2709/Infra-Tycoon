@@ -18,7 +18,6 @@ export function GlobalNetwork() {
   } = useInfraStore(useShallow(state => ({
     isNetworkManagerOpen: state.isNetworkManagerOpen, 
     setNetworkManagerOpen: state.setNetworkManagerOpen, 
-    nodes: state.nodes, 
     connections: state.connections, 
     sites: state.sites,
     currentSiteId: state.currentSiteId,
@@ -26,6 +25,8 @@ export function GlobalNetwork() {
     removeConnection: state.removeConnection,
     getServiceStatus: state.getServiceStatus
   })))
+
+  const nodes = useInfraStore.getState().nodes
   
   const [activeTab, setActiveTab] = useState<'topology' | 'patching' | 'services'>('topology')
   const [serviceSubTab, setServiceSubTab] = useState<'overview' | 'DHCP' | 'DNS' | 'NTP'>('overview')
