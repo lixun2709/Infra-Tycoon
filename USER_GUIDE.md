@@ -557,3 +557,27 @@ The simulation engine can now track hardware telemetry across massive hyperscale
 
 **Operational Impact:**
 You will notice improved simulation framerate stability (no micro-stutters) when monitoring highly dense server racks. The alarm systems still operate identically, warning you of rapid temperature fluctuations or breaker power saturation, but they now execute in O(1) mathematical time.
+
+
+## Day 63: Observability System Optimization
+
+**What Changed:**
+The internal Observability ECS System (Alert Rules & Thresholds) was restructured to read directly from the core Telemetry subsystem instead of manually recalculating datacenter power, storage, and networking aggregates. The legacy static singleton bindings were severed.
+
+**Why it matters:**
+This removes redundant O(N) calculations running every frame across thousands of datacenter components, further eliminating CPU stutters. Additionally, severing static bindings enables the ECS World to run inside isolated WebWorkers in the future.
+
+**Operational Impact:**
+You will notice improved simulation framerate stability at high densities. Alert thresholds and alarms will trigger seamlessly across all dashboards utilizing the exact identical O(1) time-series values as the telemetry charts, guaranteeing perfect data parity.
+
+
+## Day 64: Rack System Optimization
+
+**What Changed:**
+The ECS Rack Subsystem was upgraded to utilize Zero-Allocation Array Pooling. Previously, calculating slot collisions and weight boundaries reallocated memory thousands of times per second. By persistent caching, the entire subsystem operates perfectly within O(1) bounds without requesting new memory blocks from the engine.
+
+**Why it matters:**
+This completely eliminates Minor Garbage Collection (GC) spikes that previously caused micro-stuttering during rendering and physical updates. The logic remains precisely deterministic, allowing it to sync perfectly over multiplayer network architectures.
+
+**Operational Impact:**
+Hardware boundaries (e.g. attempting to push a 4U server into a slot with only 2U free) still correctly throw [RACK SLOT COLLISION] errors, but the underlying evaluation logic executes in a fraction of a millisecond regardless of datacenter size.

@@ -1,11 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { World } from '../../World'
 import { ObservabilitySystem } from '../ObservabilitySystem'
+import { TelemetrySystem } from '../TelemetrySystem'
 import type { 
   ThermalComponent, 
-  PowerComponent, 
-  StorageComponent,
-  ConnectionComponent,
   TransformComponent
 } from '../../types'
 
@@ -16,7 +14,20 @@ describe('Observability ECS System Core Tests', () => {
   beforeEach(() => {
     world = new World()
     system = new ObservabilitySystem(world)
-    ObservabilitySystem.clear()
+
+    // Reset global telemetry stats to defaults before each test
+    TelemetrySystem.simStats = {
+      averageUptimeRatio: 1.0,
+      overheatedNodeCount: 0,
+      congestedLinkCount: 0,
+      totalPowerDrawKW: 0.0,
+      totalStorageUsedTB: 0.0,
+      totalStorageCapacityTB: 0.0
+    }
+  })
+
+  afterEach(() => {
+    system.destroy()
   })
 
   describe('Thermal Threshold Alerting', () => {
@@ -41,17 +52,17 @@ describe('Observability ECS System Core Tests', () => {
 
       // First tick
       system.update(1.0)
-      let alerts = ObservabilitySystem.flushAlerts()
+      let alerts = system.flushAlerts()
       expect(alerts.length).toBe(0) // Needs 3 ticks
 
       // Second tick
       system.update(1.0)
-      alerts = ObservabilitySystem.flushAlerts()
+      alerts = system.flushAlerts()
       expect(alerts.length).toBe(0)
 
       // Third tick
       system.update(1.0)
-      alerts = ObservabilitySystem.flushAlerts()
+      alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
       expect(alerts[0]!.severity).toBe('critical')
       expect(alerts[0]!.nodeId).toBe(nodeId)
@@ -61,7 +72,7 @@ describe('Observability ECS System Core Tests', () => {
 
       // Fourth tick (alert is already active, so should prevent spamming)
       system.update(1.0)
-      alerts = ObservabilitySystem.flushAlerts()
+      alerts = system.flushAlerts()
       expect(alerts.length).toBe(0)
     })
 
@@ -101,41 +112,26 @@ describe('Observability ECS System Core Tests', () => {
       // Tick 4 (Hot)
       system.update(1.0)
 
-      let alerts = ObservabilitySystem.flushAlerts()
+      let alerts = system.flushAlerts()
       expect(alerts.length).toBe(0) // Trigger reset on Tick 2, so Tick 3-4 only counted as 2 ticks
 
       // Tick 5 (Hot) -> Now should fire (3 ticks: Tick 3, 4, 5)
       system.update(1.0)
-      alerts = ObservabilitySystem.flushAlerts()
+      alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
     })
   })
 
   describe('Power Demand Alerting', () => {
-    it('should fire power grid demand warning after 2 ticks of high load', () => {
-      const nodeId = 'node-power-1'
-      world.registerEntity(nodeId)
-
-      world.addComponent('transform', {
-        entityId: nodeId,
-        type: 'compute',
-        siteId: 'site-1'
-      } as TransformComponent)
-
+    it('should fire power grid demand warning after 2 ticks of high load (using decoupled simStats)', () => {
       // High load (85kW, which is > 80kW threshold)
-      world.addComponent('power', {
-        entityId: nodeId,
-        wattage: 100,
-        load: 85.0,
-        isPowered: true,
-        efficiency: 0.95
-      } as PowerComponent)
+      TelemetrySystem.simStats.totalPowerDrawKW = 85.0
 
       system.update(1.0)
-      expect(ObservabilitySystem.flushAlerts().length).toBe(0) // Needs 2 ticks
+      expect(system.flushAlerts().length).toBe(0) // Needs 2 ticks
 
       system.update(1.0)
-      const alerts = ObservabilitySystem.flushAlerts()
+      const alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
       expect(alerts[0]!.severity).toBe('warning')
       expect(alerts[0]!.nodeId).toBeUndefined() // Global alert
@@ -144,36 +140,18 @@ describe('Observability ECS System Core Tests', () => {
   })
 
   describe('Storage Volume Exhaustion Alerting', () => {
-    it('should fire storage warning after 4 ticks above 90% capacity', () => {
-      const nodeId = 'node-storage-1'
-      world.registerEntity(nodeId)
-
-      world.addComponent('transform', {
-        entityId: nodeId,
-        type: 'storage',
-        siteId: 'site-1'
-      } as TransformComponent)
-
+    it('should fire storage warning after 4 ticks above 90% capacity (using decoupled simStats)', () => {
       // 95% full (95TB used of 100TB capacity)
-      world.addComponent('storage', {
-        entityId: nodeId,
-        totalStorageTB: 100.0,
-        usedStorageTB: 95.0,
-        ioPSLimit: 1000,
-        ioPSUsed: 0,
-        raidLevel: 'RAID5',
-        storageStatus: 'healthy',
-        rebuildProgress: 0,
-        driveDegradation: 0
-      } as StorageComponent)
+      TelemetrySystem.simStats.totalStorageCapacityTB = 100.0
+      TelemetrySystem.simStats.totalStorageUsedTB = 95.0
 
       for (let i = 0; i < 3; i++) {
         system.update(1.0)
-        expect(ObservabilitySystem.flushAlerts().length).toBe(0) // Needs 4 ticks
+        expect(system.flushAlerts().length).toBe(0) // Needs 4 ticks
       }
 
       system.update(1.0)
-      const alerts = ObservabilitySystem.flushAlerts()
+      const alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
       expect(alerts[0]!.severity).toBe('warning')
       expect(alerts[0]!.message).toContain('Storage Volume Exhaustion')
@@ -182,27 +160,15 @@ describe('Observability ECS System Core Tests', () => {
   })
 
   describe('Interface Link Congestion Alerting', () => {
-    it('should fire link congestion alert after 2 ticks of degraded connections', () => {
-      const connId = 'conn-1'
-      world.registerEntity(connId)
-
-      world.addComponent('connection', {
-        entityId: connId,
-        startNodeId: 'node-1',
-        startPortId: 'port-1',
-        endNodeId: 'node-2',
-        endPortId: 'port-2',
-        bandwidthGbps: 10,
-        throughputGbps: 9.5,
-        latencyMs: 10.0,
-        status: 'degraded' // > 0 degraded triggers
-      } as ConnectionComponent)
+    it('should fire link congestion alert after 2 ticks of degraded connections (using decoupled simStats)', () => {
+      // Degraded connection count > 0
+      TelemetrySystem.simStats.congestedLinkCount = 1
 
       system.update(1.0)
-      expect(ObservabilitySystem.flushAlerts().length).toBe(0) // Needs 2 ticks
+      expect(system.flushAlerts().length).toBe(0) // Needs 2 ticks
 
       system.update(1.0)
-      const alerts = ObservabilitySystem.flushAlerts()
+      const alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
       expect(alerts[0]!.severity).toBe('warning')
       expect(alerts[0]!.message).toContain('Interface Link Congestion Warning')
@@ -216,9 +182,6 @@ describe('Observability ECS System Core Tests', () => {
 
       const worldB = new World()
       const systemB = new ObservabilitySystem(worldB)
-
-      // Clear static delegates just in case
-      ObservabilitySystem.clear()
 
       // Node A is hot in World A
       const nodeA = 'node-a'

@@ -38,26 +38,36 @@ function getDeviceWeightKG(catalogKey?: string, uHeight?: number): number {
  * dynamic PDU capacity upgrades, and deterministic power overload state evaluations.
  */
 export class RackSystem extends System {
+  // O(1) persistent memory pool for mapping parent -> child transforms.
+  // Avoids catastrophic garbage collection overhead from recreating Maps and Arrays every 16ms.
+  private childrenByRackPool = new Map<string, string[]>()
+
   public update(_dt: number): void {
+    const startTime = performance.now()
+
     const rackMap = this.world.getComponentMap<RackComponent>('rack')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
 
-    // 1. High-Performance Pre-indexing: Map parentRackId to child entity IDs and their transform components in O(N)
-    const childrenByRack = new Map<string, string[]>()
+    // 1. High-Performance Pre-indexing: Map parentRackId to child entity IDs
+    // Instead of `new Map()`, we dynamically clear existing arrays to keep memory contiguous.
+    for (const arr of this.childrenByRackPool.values()) {
+      arr.length = 0
+    }
+
     transformMap.forEach((transform, entityId) => {
       if (transform.parentRackId) {
-        let list = childrenByRack.get(transform.parentRackId)
+        let list = this.childrenByRackPool.get(transform.parentRackId)
         if (!list) {
           list = []
-          childrenByRack.set(transform.parentRackId, list)
+          this.childrenByRackPool.set(transform.parentRackId, list)
         }
         list.push(entityId)
       }
     })
 
-    // 2. Perform validation and metrics calculations for each rack
+    // 2. Perform validation, structural limits, and breaker checks in a SINGLE unified O(N) sweep
     rackMap.forEach((rack, rackId) => {
       const rackTransform = transformMap.get(rackId)
       const rackThermal = thermalMap.get(rackId)
@@ -86,12 +96,22 @@ export class RackSystem extends System {
       }
       rack.deratedMaxPowerKW = rack.maxPowerKW * deRatingFactor
 
-      // Reset slot occupancy grid to all false (size 43 representing slots 1 to 42, 1-indexed)
-      const occupancy = new Array(43).fill(false)
-      rack.slotOccupancy = occupancy
+      // Persistent Array reuse: Prevent `new Array()` GC spikes
+      if (!rack.slotOccupancy || rack.slotOccupancy.length !== 43) {
+        rack.slotOccupancy = new Array(43).fill(false)
+      } else {
+        rack.slotOccupancy.fill(false)
+      }
 
-      const checkedCollisionSlots = new Set<number>()
-      const childrenIds = childrenByRack.get(rackId) ?? []
+      if (!rack.collisionOccupancy || rack.collisionOccupancy.length !== 43) {
+        rack.collisionOccupancy = new Array(43).fill(false)
+      } else {
+        rack.collisionOccupancy.fill(false)
+      }
+
+      const occupancy = rack.slotOccupancy
+      const collisions = rack.collisionOccupancy
+      const childrenIds = this.childrenByRackPool.get(rackId) ?? []
 
       // Iterate only through this rack's specific children
       childrenIds.forEach((childId) => {
@@ -120,8 +140,8 @@ export class RackSystem extends System {
           for (let u = slot; u < slot + height; u++) {
             if (u >= 1 && u <= 42) {
               if (occupancy[u]) {
-                if (!checkedCollisionSlots.has(u)) {
-                  checkedCollisionSlots.add(u)
+                if (!collisions[u]) {
+                  collisions[u] = true
                   this.world.eventBus.publish('system:alert', {
                     severity: 'warning',
                     message: `[RACK SLOT COLLISION] Server Rack [${rackTransform?.name || rackId}] has slot booking conflict at Slot U${u}!`,
@@ -181,18 +201,9 @@ export class RackSystem extends System {
         } else {
           rack.hasPhaseImbalance = false
         }
-      } else {
-        rack.hasPhaseImbalance = false
-      }
-    })
 
-    // 4. Perform breaker overload checks and dynamic load updates
-    rackMap.forEach((rack, id) => {
-      const power = powerMap.get(id)
-      const transform = transformMap.get(id)
-      
-      if (power) {
-        const load = power.load || 0.0 // computed in kW by PowerSystem
+        // 4. Perform breaker overload checks and dynamic load updates
+        const load = rackPower.load || 0.0 // computed in kW by PowerSystem
         const maxLimit = rack.deratedMaxPowerKW ?? rack.maxPowerKW
 
         if (load > maxLimit) {
@@ -200,28 +211,38 @@ export class RackSystem extends System {
             rack.status = 'power_overload'
             this.world.eventBus.publish('system:alert', {
               severity: 'critical',
-              message: `[RACK OVERLOAD] Server Rack [${transform?.name || id}] has exceeded its power limit! (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,
-              nodeId: id
+              message: `[RACK OVERLOAD] Server Rack [${rackTransform?.name || rackId}] has exceeded its power limit! (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,
+              nodeId: rackId
             })
           }
         } else {
           // Recovery alert only if load returns to normal AND breaker is not tripped
-          if (rack.status === 'power_overload' && !power.breakerTripped) {
+          if (rack.status === 'power_overload' && !rackPower.breakerTripped) {
             rack.status = 'online'
             console.log(
-              `[RackSystem] NOMINAL RECOVERY on Rack Entity: ${id} (${transform?.name || 'Unnamed'}). ` +
+              `[RackSystem] NOMINAL RECOVERY on Rack Entity: ${rackId} (${rackTransform?.name || 'Unnamed'}). ` +
               `Status transitioned from power_overload to online. Current Load: ${load.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW.`
             )
             this.world.eventBus.publish('system:alert', {
               severity: 'info',
-              message: `[RACK RECOVERY] Server Rack [${transform?.name || id}] power load recovered to normal levels. (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,
-              nodeId: id
+              message: `[RACK RECOVERY] Server Rack [${rackTransform?.name || rackId}] power load recovered to normal levels. (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,
+              nodeId: rackId
             })
           }
         }
         
         rack.currentPowerKW = load
+      } else {
+        rack.hasPhaseImbalance = false
       }
     })
+
+    const tEnd = performance.now()
+    if (Math.random() < 0.1) {
+      this.world.eventBus.publish('telemetry:system', {
+        subsystem: 'rack',
+        executionTimeMs: Number((tEnd - startTime).toFixed(2))
+      })
+    }
   }
 }

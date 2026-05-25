@@ -2,12 +2,10 @@ import { System } from '../System'
 import { World } from '../World'
 import type { 
   ThermalComponent, 
-  PowerComponent, 
-  StorageComponent,
-  ConnectionComponent,
   TransformComponent
 } from '../types'
 import type { AlertRule, AlertSeverity } from '../../observability/types'
+import { TelemetrySystem } from './TelemetrySystem'
 
 export interface FiredAlert {
   severity: AlertSeverity
@@ -16,29 +14,6 @@ export interface FiredAlert {
 }
 
 export class ObservabilitySystem extends System {
-  // For backward compatibility with existing tests
-  private static activeInstances = new Set<ObservabilitySystem>()
-
-  public static flushAlerts(): FiredAlert[] {
-    const alerts: FiredAlert[] = []
-    this.activeInstances.forEach(inst => {
-      alerts.push(...inst.flushAlerts())
-    })
-    return alerts
-  }
-
-  public static pushFiredAlert(alert: FiredAlert): void {
-    this.activeInstances.forEach(inst => {
-      inst.pushFiredAlert(alert)
-    })
-  }
-
-  public static clear(): void {
-    this.activeInstances.forEach(inst => {
-      inst.clear()
-    })
-  }
-
   private rules: AlertRule[] = [
     {
       id: 'rule-thermal',
@@ -93,7 +68,6 @@ export class ObservabilitySystem extends System {
 
   constructor(world: World) {
     super(world)
-    ObservabilitySystem.activeInstances.add(this)
 
     // Listen to local system:alert broadcasts on the ECS Event Bus
     this.world.eventBus.subscribe('system:alert', (evt) => {
@@ -112,7 +86,7 @@ export class ObservabilitySystem extends System {
    * Destroys the system and removes it from active tracking.
    */
   public destroy(): void {
-    ObservabilitySystem.activeInstances.delete(this)
+    this.clear()
   }
 
   /**
@@ -161,48 +135,33 @@ export class ObservabilitySystem extends System {
    * Evaluates all observability rules against active simulation components in the ECS world.
    */
   public update(_dt: number): void {
+    const startTime = performance.now()
+
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
-    const powerMap = this.world.getComponentMap<PowerComponent>('power')
-    const storageMap = this.world.getComponentMap<StorageComponent>('storage')
-    const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
 
     for (const rule of this.rules) {
       if (!rule.isActive) continue
 
       if (rule.metricType === 'power') {
-        let totalPower = 0
-        powerMap.forEach(p => {
-          if (p.isPowered) {
-            totalPower += p.load || 0.0
-          }
-        })
-        this.checkThreshold(rule, 'global', totalPower)
+        // O(1) Fetch from TelemetrySystem
+        this.checkThreshold(rule, 'global', TelemetrySystem.simStats.totalPowerDrawKW)
       } 
       else if (rule.metricType === 'network') {
-        let congestedLinks = 0
-        connectionMap.forEach(conn => {
-          if (conn.status === 'degraded') {
-            congestedLinks++
-          }
-        })
-        this.checkThreshold(rule, 'global', congestedLinks)
+        // O(1) Fetch from TelemetrySystem
+        this.checkThreshold(rule, 'global', TelemetrySystem.simStats.congestedLinkCount)
       } 
       else if (rule.metricType === 'storage') {
-        let totalStorageUsed = 0.0
-        let totalStorageCapacity = 0.0
-        storageMap.forEach(s => {
-          totalStorageUsed += s.usedStorageTB ?? 0.0
-          totalStorageCapacity += s.totalStorageTB ?? 0.0
-        })
+        // O(1) Fetch from TelemetrySystem
+        const totalStorageCapacity = TelemetrySystem.simStats.totalStorageCapacityTB
+        const totalStorageUsed = TelemetrySystem.simStats.totalStorageUsedTB
         const ratio = totalStorageCapacity > 0 ? totalStorageUsed / totalStorageCapacity : 0
         this.checkThreshold(rule, 'global', ratio)
       } 
       else if (rule.metricType === 'temperature') {
-        // Temperature check runs per individual chassis node!
+        // Temperature check runs per individual chassis node
         thermalMap.forEach((thermal, nodeId) => {
           const trans = transformMap.get(nodeId)
-          // Filter out rack and cooling entities (only check chassis nodes)
           if (trans && trans.type !== 'rack' && trans.type !== 'cooling') {
             const temp = thermal.temperature ?? 0
             this.checkThreshold(
@@ -214,6 +173,14 @@ export class ObservabilitySystem extends System {
           }
         })
       }
+    }
+
+    const tEnd = performance.now()
+    if (Math.random() < 0.1) {
+      this.world.eventBus.publish('telemetry:system', {
+        subsystem: 'observability',
+        executionTimeMs: Number((tEnd - startTime).toFixed(2))
+      })
     }
   }
 

@@ -155,6 +155,7 @@ export interface RackComponent extends Component {
   humidity?: number
   deratedMaxPowerKW?: number
   hasPhaseImbalance?: boolean
+  collisionOccupancy?: boolean[]
 }
 
 export type ComponentMap<T extends Component> = Map<Entity, T>

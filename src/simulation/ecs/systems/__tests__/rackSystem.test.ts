@@ -14,13 +14,13 @@ describe('Rack Subsystem ECS Tests', () => {
   let world: World
   let rackSystem: RackSystem
   let powerSystem: PowerSystem
+  let obsSystem: ObservabilitySystem
 
   beforeEach(() => {
     world = new World()
-    new ObservabilitySystem(world)
+    obsSystem = new ObservabilitySystem(world)
     rackSystem = new RackSystem(world)
     powerSystem = new PowerSystem(world)
-    ObservabilitySystem.clear()
   })
 
   it('should successfully calculate rack load and transition to online under safe limits', () => {
@@ -51,7 +51,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online',
       hasHighDensityPDU: false,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent)
 
     // Add server in rack with 900W load (below 1.0 kW threshold to avoid phase imbalance checking)
@@ -81,7 +82,7 @@ describe('Rack Subsystem ECS Tests', () => {
     expect(rackPower.load).toBe(0.9) // 0.9 kW
     expect(rackComp.status).toBe('online')
     expect(rackComp.currentPowerKW).toBe(0.9)
-    expect(ObservabilitySystem.flushAlerts().length).toBe(0)
+    expect(obsSystem.flushAlerts().length).toBe(0)
   })
 
   it('should trigger power_overload and push a critical alert when power load exceeds limit', () => {
@@ -112,7 +113,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online',
       hasHighDensityPDU: false,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent)
 
     // Mount three servers of 2000W each across slots 1, 2, 3 (balanced phases: B, C, A)
@@ -143,7 +145,7 @@ describe('Rack Subsystem ECS Tests', () => {
     const rackComp = world.getComponent<RackComponent>('rack', rackId)!
     expect(rackComp.status).toBe('power_overload')
 
-    const alerts = ObservabilitySystem.flushAlerts()
+    const alerts = obsSystem.flushAlerts()
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('critical')
     expect(alerts[0]!.message).toContain('[RACK OVERLOAD]')
@@ -178,7 +180,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 6.0,
       status: 'power_overload' as const,
       hasHighDensityPDU: false,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -203,7 +206,7 @@ describe('Rack Subsystem ECS Tests', () => {
     rackSystem.update(1.0)
 
     expect(rackComp.status).toBe('online')
-    const alerts = ObservabilitySystem.flushAlerts()
+    const alerts = obsSystem.flushAlerts()
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('info')
     expect(alerts[0]!.message).toContain('[RACK RECOVERY]')
@@ -231,7 +234,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online' as const,
       hasHighDensityPDU: false,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -263,7 +267,7 @@ describe('Rack Subsystem ECS Tests', () => {
     expect(rackComp.slotOccupancy[12]).toBe(false)
 
     // Verify collision alert
-    const alerts = ObservabilitySystem.flushAlerts()
+    const alerts = obsSystem.flushAlerts()
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('warning')
     expect(alerts[0]!.message).toContain('[RACK SLOT COLLISION]')
@@ -279,7 +283,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online' as const,
       hasHighDensityPDU: true,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -307,7 +312,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online' as const,
       hasHighDensityPDU: false,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -323,7 +329,7 @@ describe('Rack Subsystem ECS Tests', () => {
 
     rackSystem.update(1.0)
 
-    const alerts = ObservabilitySystem.flushAlerts()
+    const alerts = obsSystem.flushAlerts()
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('warning')
     expect(alerts[0]!.message).toContain('[RACK BOUNDARY VIOLATION]')
@@ -347,6 +353,7 @@ describe('Rack Subsystem ECS Tests', () => {
       status: 'online' as const,
       hasHighDensityPDU: false,
       slotOccupancy: [],
+      collisionOccupancy: [],
       maxWeightKG: 200.0 // Low limit for testing
     } as RackComponent
     world.addComponent('rack', rackComp)
@@ -371,7 +378,7 @@ describe('Rack Subsystem ECS Tests', () => {
     expect(rackComp.totalWeightKG).toBe(320.0)
     expect(rackComp.weightStatus).toBe('structural_warning')
 
-    const alerts = ObservabilitySystem.flushAlerts()
+    const alerts = obsSystem.flushAlerts()
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('warning')
     expect(alerts[0]!.message).toContain('[RACK WEIGHT EXCEEDED]')
@@ -387,7 +394,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online' as const,
       hasHighDensityPDU: false,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -423,7 +431,8 @@ describe('Rack Subsystem ECS Tests', () => {
       currentPowerKW: 0,
       status: 'online' as const,
       hasHighDensityPDU: true,
-      slotOccupancy: []
+      slotOccupancy: [],
+      collisionOccupancy: []
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -442,7 +451,7 @@ describe('Rack Subsystem ECS Tests', () => {
 
     expect(rackComp.hasPhaseImbalance).toBe(true)
 
-    const alerts = ObservabilitySystem.flushAlerts()
+    const alerts = obsSystem.flushAlerts()
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('warning')
     expect(alerts[0]!.message).toContain('[PHASE IMBALANCE ALERT]')
