@@ -7,6 +7,18 @@ import type { StorageComponent, PowerComponent, TransformComponent, ApplicationC
  * Models RAID redundancy states, capacity SAS/FC fabric aggregation, IOPS queuing, and drive wearing.
  */
 export class StorageSystem extends System {
+  // Pre-allocated object pools to prevent GC spikes
+  private adjMap = new Map<string, string[]>()
+  private bwMap = new Map<string, number>()
+  
+  // BFS pools
+  private pathVisited = new Set<string>()
+  private pathQueue: { node: string; minBw: number }[] = []
+  
+  private lunVisited = new Set<string>()
+  private lunQueue: string[] = []
+  private connectedShelves: string[] = []
+
   public update(dt: number) {
     const storageMap = this.world.getComponentMap<StorageComponent>('storage')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
@@ -16,7 +28,31 @@ export class StorageSystem extends System {
     const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
 
     const entities = this.world.getEntitiesWith(['storage', 'transform'])
-    const activeConnections = Array.from(connectionMap?.values() || []).filter(c => c.status !== 'blocked')
+
+    // Build Adjacency Map in O(N) using zero-allocation arrays
+    this.adjMap.clear()
+    this.bwMap.clear()
+
+    if (connectionMap) {
+      connectionMap.forEach((c) => {
+        if (c.status === 'blocked') return
+        const u = c.startNodeId
+        const v = c.endNodeId
+        
+        let uArr = this.adjMap.get(u)
+        if (!uArr) { uArr = []; this.adjMap.set(u, uArr) }
+        uArr.push(v)
+
+        let vArr = this.adjMap.get(v)
+        if (!vArr) { vArr = []; this.adjMap.set(v, vArr) }
+        vArr.push(u)
+
+        // Store bandwidth symmetrically (startNode_endNode)
+        const bw = c.bandwidthGbps ?? 10.0
+        this.bwMap.set(`${u}_${v}`, bw)
+        this.bwMap.set(`${v}_${u}`, bw)
+      })
+    }
 
     // 0. Maintain and reset baseline storage capacities for controllers/shelves
     entities.forEach(id => {
@@ -40,27 +76,30 @@ export class StorageSystem extends System {
       }
     })
 
-    // Helper to compute path bottleneck bandwidth (in Gbps)
+    // Helper to compute path bottleneck bandwidth (in Gbps) using object pools
     const findPathBandwidth = (start: string, end: string): number => {
       if (start === end) return 100.0
-      const queue: { node: string; minBw: number }[] = [{ node: start, minBw: Infinity }]
-      const visited = new Set<string>([start])
+      
+      this.pathVisited.clear()
+      this.pathQueue.length = 0
+      
+      this.pathQueue.push({ node: start, minBw: Infinity })
+      this.pathVisited.add(start)
 
-      while (queue.length > 0) {
-        const { node, minBw } = queue.shift()!
+      let queueIndex = 0
+      while (queueIndex < this.pathQueue.length) {
+        const { node, minBw } = this.pathQueue[queueIndex++]
         if (node === end) return minBw
 
-        activeConnections.forEach(c => {
-          let neighbor: string | null = null
-          if (c.startNodeId === node) neighbor = c.endNodeId
-          else if (c.endNodeId === node) neighbor = c.startNodeId
-
-          if (neighbor && !visited.has(neighbor)) {
-            visited.add(neighbor)
-            const edgeBw = c.bandwidthGbps ?? 10.0
-            queue.push({ node: neighbor, minBw: Math.min(minBw, edgeBw) })
+        const neighbors = this.adjMap.get(node) || []
+        for (let i = 0; i < neighbors.length; i++) {
+          const neighbor = neighbors[i]
+          if (!this.pathVisited.has(neighbor)) {
+            this.pathVisited.add(neighbor)
+            const edgeBw = this.bwMap.get(`${node}_${neighbor}`) ?? 10.0
+            this.pathQueue.push({ node: neighbor, minBw: Math.min(minBw, edgeBw) })
           }
-        })
+        }
       }
       return 0.0
     }
@@ -74,30 +113,33 @@ export class StorageSystem extends System {
       }
 
       // BFS to find all active connected disk shelves cabled to this controller
-      const queue: string[] = [controllerId]
-      const visited = new Set<string>([controllerId])
-      const connectedShelves: string[] = []
+      this.lunVisited.clear()
+      this.lunQueue.length = 0
+      this.connectedShelves.length = 0
 
-      while (queue.length > 0) {
-        const u = queue.shift()!
-        activeConnections.forEach(c => {
-          let neighbor: string | null = null
-          if (c.startNodeId === u) neighbor = c.endNodeId
-          else if (c.endNodeId === u) neighbor = c.startNodeId
+      this.lunQueue.push(controllerId)
+      this.lunVisited.add(controllerId)
 
-          if (neighbor && !visited.has(neighbor)) {
-            visited.add(neighbor)
+      let queueIndex = 0
+      while (queueIndex < this.lunQueue.length) {
+        const u = this.lunQueue[queueIndex++]
+        
+        const neighbors = this.adjMap.get(u) || []
+        for (let i = 0; i < neighbors.length; i++) {
+          const neighbor = neighbors[i]
+          if (!this.lunVisited.has(neighbor)) {
+            this.lunVisited.add(neighbor)
             const neighborTransform = transformMap.get(neighbor)
             if (neighborTransform) {
               if (neighborTransform.type === 'storage' && neighbor.includes('shelf')) {
-                connectedShelves.push(neighbor)
+                this.connectedShelves.push(neighbor)
               }
               if (neighborTransform.type === 'network' || neighborTransform.type === 'storage') {
-                queue.push(neighbor)
+                this.lunQueue.push(neighbor)
               }
             }
           }
-        })
+        }
       }
 
       // Aggregate capacity and IOPS from cabled shelves to this controller
@@ -105,7 +147,8 @@ export class StorageSystem extends System {
       let aggUsed = controllerStorage.baseUsedStorageTB ?? controllerStorage.usedStorageTB
       let aggLimit = controllerStorage.baseIoPSLimit ?? controllerStorage.ioPSLimit
 
-      connectedShelves.forEach(shelfId => {
+      for (let i = 0; i < this.connectedShelves.length; i++) {
+        const shelfId = this.connectedShelves[i]
         const shelfStorage = storageMap.get(shelfId)
         if (shelfStorage) {
           aggTotal += shelfStorage.totalStorageTB
@@ -118,7 +161,7 @@ export class StorageSystem extends System {
           
           aggLimit += cappedShelfIoPS
         }
-      })
+      }
 
       controllerStorage.totalStorageTB = aggTotal
       controllerStorage.usedStorageTB = aggUsed
