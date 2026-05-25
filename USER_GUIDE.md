@@ -581,3 +581,15 @@ This completely eliminates Minor Garbage Collection (GC) spikes that previously 
 
 **Operational Impact:**
 Hardware boundaries (e.g. attempting to push a 4U server into a slot with only 2U free) still correctly throw [RACK SLOT COLLISION] errors, but the underlying evaluation logic executes in a fraction of a millisecond regardless of datacenter size.
+
+
+## Day 65: Cooling System Optimization
+
+**What Changed:**
+The ECS Thermal Subsystem was heavily upgraded. Similar to the Rack optimization, the Cooling system now utilizes Zero-Allocation persistent caching for tracking server heat BTUs, CRAC cooling BTUs, and rack micro-climate properties. It no longer builds expensive string hashes every frame to calculate physics.
+
+**Why it matters:**
+Datacenter thermal calculations are extremely complex, taking into account airflow bypass, N+1 redundancy lead-lag staging, throttling curves, and lateral rack convection. Doing this via throwing away 30,000 objects per frame in memory crippled the JavaScript Engine. With standard Zero-Allocation Data Structures in place, the engine scales natively to handle millions of physics properties simultaneously.
+
+**Operational Impact:**
+The physical equations have not changed—meaning CRAC units still accurately spin up their fans, hardware still dynamically throttles when overheating, and moisture still drops when things get dry. However, the simulation can now execute its logic perfectly predictably, allowing high server counts to sync online without hitching.

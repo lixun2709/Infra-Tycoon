@@ -2,6 +2,15 @@ import { System } from '../System'
 import type { ThermalComponent, PowerComponent, TransformComponent, RackComponent } from '../types'
 import { HARDWARE_CATALOG, type HardwareCatalogSpec } from '../../../physics/hardwareLibrary'
 
+class LoadStats {
+  serverHeatBTU = 0
+  coolingBTU = 0
+  reset() {
+    this.serverHeatBTU = 0
+    this.coolingBTU = 0
+  }
+}
+
 /**
  * ThermalSystem
  * ECS implementation of thermodynamic simulation.
@@ -27,7 +36,38 @@ export class ThermalSystem extends System {
   private static RECIRCULATION_HOT_AISLE = 0.15
   private static RECIRCULATION_COLD_AISLE = 0.05
 
+  // Zero-Allocation Object Pools for ECS Optimization
+  private racksPool: string[] = []
+  private coolingUnitsPool: string[] = []
+  private chassisNodesPool: string[] = []
+  
+  private cracUnitsBySitePool = new Map<string, string[]>()
+  private siteStandbyMapPool = new Map<string, Set<string>>()
+  private siteLoadsPool = new Map<string, LoadStats>()
+  private rackLoadsPool = new Map<string, LoadStats>()
+  private racksBySitePool = new Map<string, string[]>()
+  private rackChildrenMapPool = new Map<string, string[]>()
+  private activeHeatBySitePool = new Map<string, number>()
+  private deltaTempPool = new Map<string, number>()
+
+  public clear() {
+    // Allows resetting the state entirely when World is torn down in tests
+    ThermalSystem.siteAmbientTemps.clear()
+    ThermalSystem.siteAmbientHumidity.clear()
+    this.cracUnitsBySitePool.clear()
+    this.siteStandbyMapPool.clear()
+    this.siteLoadsPool.clear()
+    this.rackLoadsPool.clear()
+    this.racksBySitePool.clear()
+    this.rackChildrenMapPool.clear()
+    this.activeHeatBySitePool.clear()
+    this.deltaTempPool.clear()
+    this.accumulatedTime = 0.0
+  }
+
   public update(dt: number) {
+    const startTime = performance.now()
+
     // 1. Advance deterministic time tracking
     this.accumulatedTime += dt
 
@@ -37,25 +77,33 @@ export class ThermalSystem extends System {
 
     const entities = this.world.getEntitiesWith(['thermal', 'transform'])
 
-    // Separate lists for organization
-    const racks: string[] = []
-    const coolingUnits: string[] = []
-    const chassisNodes: string[] = []
+    // Clear pooled arrays without GC allocations
+    this.racksPool.length = 0
+    this.coolingUnitsPool.length = 0
+    this.chassisNodesPool.length = 0
+    this.activeHeatBySitePool.clear()
+
+    for (const arr of this.cracUnitsBySitePool.values()) arr.length = 0
+    for (const set of this.siteStandbyMapPool.values()) set.clear()
+    for (const stats of this.siteLoadsPool.values()) stats.reset()
+    for (const stats of this.rackLoadsPool.values()) stats.reset()
+    for (const arr of this.racksBySitePool.values()) arr.length = 0
+    for (const arr of this.rackChildrenMapPool.values()) arr.length = 0
+    this.deltaTempPool.clear()
 
     entities.forEach(id => {
       const transform = transformMap.get(id)!
       if (transform.type === 'rack') {
-        racks.push(id)
+        this.racksPool.push(id)
       } else if (transform.type === 'cooling') {
-        coolingUnits.push(id)
+        this.coolingUnitsPool.push(id)
       } else {
-        chassisNodes.push(id)
+        this.chassisNodesPool.push(id)
       }
     })
 
     // Pre-calculate server heat loads by site for Lead-Lag scheduler and N+1 calculations
-    const activeHeatBySite = new Map<string, number>()
-    chassisNodes.forEach(id => {
+    this.chassisNodesPool.forEach(id => {
       const transform = transformMap.get(id)!
       const power = powerMap.get(id)
       const siteId = transform.siteId || 'default-site'
@@ -66,28 +114,28 @@ export class ThermalSystem extends System {
         const efficiency = power.efficiency ?? 0.8
         serverHeatBTU = Math.max(10.0, power.wattage * 3.412 * (1.1 - efficiency))
       }
-      activeHeatBySite.set(siteId, (activeHeatBySite.get(siteId) ?? 0) + serverHeatBTU)
+      this.activeHeatBySitePool.set(siteId, (this.activeHeatBySitePool.get(siteId) ?? 0) + serverHeatBTU)
     })
 
     // Group CRAC units by site room
-    const cracUnitsBySite = new Map<string, string[]>()
-    coolingUnits.forEach(id => {
+    this.coolingUnitsPool.forEach(id => {
       const transform = transformMap.get(id)!
       const siteId = transform.siteId || 'default-site'
-      if (!cracUnitsBySite.has(siteId)) {
-        cracUnitsBySite.set(siteId, [])
+      let list = this.cracUnitsBySitePool.get(siteId)
+      if (!list) {
+        list = []
+        this.cracUnitsBySitePool.set(siteId, list)
       }
-      cracUnitsBySite.get(siteId)!.push(id)
+      list.push(id)
     })
 
     // V2 Lead-Lag Redundancy Scheduler
     // Cycle standby assignments every 60 simulated seconds for even degradation
     const currentCycle = Math.floor(this.accumulatedTime / 60.0)
-    const siteStandbyMap = new Map<string, Set<string>>()
 
-    cracUnitsBySite.forEach((units, siteId) => {
+    this.cracUnitsBySitePool.forEach((units, siteId) => {
       const roomAmbientTemp = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
-      const roomHeatLoad = activeHeatBySite.get(siteId) ?? 0
+      const roomHeatLoad = this.activeHeatBySitePool.get(siteId) ?? 0
 
       // Sort units deterministically by entityId for multiplayer stability
       const sortedUnits = [...units].sort()
@@ -96,7 +144,11 @@ export class ThermalSystem extends System {
         return sum + (thermal ? Math.abs(thermal.btuOutput) : 0)
       }, 0)
 
-      const standbySet = new Set<string>()
+      let standbySet = this.siteStandbyMapPool.get(siteId)
+      if (!standbySet) {
+        standbySet = new Set<string>()
+        this.siteStandbyMapPool.set(siteId, standbySet)
+      }
 
       // Standby criteria: We have N+1 redundant capacity, room is not overheating (>26°C), and we have multiple CRACs
       if (sortedUnits.length >= 2 && roomAmbientTemp < 26.0 && totalCoolingCapacity > roomHeatLoad * 1.5) {
@@ -120,24 +172,32 @@ export class ThermalSystem extends System {
           }
         }
       }
-      siteStandbyMap.set(siteId, standbySet)
     })
 
     // 2. Initialize loads for sites and racks
-    const siteLoads = new Map<string, { serverHeatBTU: number; coolingBTU: number }>()
-    const rackLoads = new Map<string, { serverHeatBTU: number; coolingBTU: number }>()
-
-    racks.forEach(id => {
-      rackLoads.set(id, { serverHeatBTU: 0, coolingBTU: 0 })
+    this.racksPool.forEach(id => {
+      let stats = this.rackLoadsPool.get(id)
+      if (!stats) {
+        stats = new LoadStats()
+        this.rackLoadsPool.set(id, stats)
+      } else {
+        stats.reset()
+      }
     })
 
     // Initialize site loads
-    cracUnitsBySite.forEach((_, siteId) => {
-      siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
+    this.cracUnitsBySitePool.forEach((_, siteId) => {
+      let stats = this.siteLoadsPool.get(siteId)
+      if (!stats) {
+        stats = new LoadStats()
+        this.siteLoadsPool.set(siteId, stats)
+      } else {
+        stats.reset()
+      }
     })
 
     // 3. Process Cooling units - calculate dynamic efficiency, throttling, and safety shutdowns
-    coolingUnits.forEach(id => {
+    this.coolingUnitsPool.forEach(id => {
       const transform = transformMap.get(id)!
       const power = powerMap.get(id)
       const thermal = thermalMap.get(id)!
@@ -145,7 +205,7 @@ export class ThermalSystem extends System {
       const siteId = transform.siteId || 'default-site'
       const roomAmbientTemp = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
 
-      const isStandby = siteStandbyMap.get(siteId)?.has(id) ?? false
+      const isStandby = this.siteStandbyMapPool.get(siteId)?.has(id) ?? false
       thermal.isStandby = isStandby
 
       const isRunning = (power?.isPowered ?? false) && !isStandby
@@ -207,7 +267,7 @@ export class ThermalSystem extends System {
       if (isRunning && effectiveCoolingBTU > 0) {
         if (transform.parentRackId) {
           // In-Row CRAC cooling specific rack micro-climate
-          const rackLoad = rackLoads.get(transform.parentRackId)
+          const rackLoad = this.rackLoadsPool.get(transform.parentRackId)
           if (rackLoad) {
             // Apply aisle containment cooling efficiency factor (calibrated bounded engineering parameters)
             const parentRackThermal = thermalMap.get(transform.parentRackId)
@@ -223,10 +283,12 @@ export class ThermalSystem extends System {
         }
         
         // Add to general site loads
-        if (!siteLoads.has(siteId)) {
-          siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
+        let siteLoad = this.siteLoadsPool.get(siteId)
+        if (!siteLoad) {
+          siteLoad = new LoadStats()
+          this.siteLoadsPool.set(siteId, siteLoad)
         }
-        siteLoads.get(siteId)!.coolingBTU += effectiveCoolingBTU
+        siteLoad.coolingBTU += effectiveCoolingBTU
       }
 
       // CRAC unit reported temperature relaxation convergence
@@ -239,7 +301,7 @@ export class ThermalSystem extends System {
     })
 
     // 4. Process active server heat generation loads
-    chassisNodes.forEach(id => {
+    this.chassisNodesPool.forEach(id => {
       const transform = transformMap.get(id)!
       const power = powerMap.get(id)
 
@@ -254,21 +316,23 @@ export class ThermalSystem extends System {
 
       // Add to specific rack load if mounted in a rack
       if (transform.parentRackId) {
-        const rackLoad = rackLoads.get(transform.parentRackId)
+        const rackLoad = this.rackLoadsPool.get(transform.parentRackId)
         if (rackLoad) {
           rackLoad.serverHeatBTU += serverHeatBTU
         }
       }
 
       // Add to general site loads
-      if (!siteLoads.has(siteId)) {
-        siteLoads.set(siteId, { serverHeatBTU: 0, coolingBTU: 0 })
+      let siteLoad = this.siteLoadsPool.get(siteId)
+      if (!siteLoad) {
+        siteLoad = new LoadStats()
+        this.siteLoadsPool.set(siteId, siteLoad)
       }
-      siteLoads.get(siteId)!.serverHeatBTU += serverHeatBTU
+      siteLoad.serverHeatBTU += serverHeatBTU
     })
 
     // 5. Calculate Rack Micro-climate Thermal Zone states
-    racks.forEach(rackId => {
+    this.racksPool.forEach(rackId => {
       const rackThermal = thermalMap.get(rackId)!
       const rackTransform = transformMap.get(rackId)!
       const siteId = rackTransform.siteId || 'default-site'
@@ -282,7 +346,7 @@ export class ThermalSystem extends System {
         recircFraction = ThermalSystem.RECIRCULATION_HOT_AISLE
       }
 
-      const load = rackLoads.get(rackId) ?? { serverHeatBTU: 0, coolingBTU: 0 }
+      const load = this.rackLoadsPool.get(rackId) ?? { serverHeatBTU: 0, coolingBTU: 0 }
 
       // Containment Airflow Impedance: Bypass leaks through empty slots without blanking panels
       let emptySlotsWithoutPanels = 0
@@ -324,34 +388,35 @@ export class ThermalSystem extends System {
     })
 
     // 5.5 Localized Hot Aisle lateral convection between adjacent racks
-    const racksBySite = new Map<string, string[]>()
-    racks.forEach(id => {
+    this.racksPool.forEach(id => {
       const transform = transformMap.get(id)
       if (transform) {
         const sId = transform.siteId || 'default-site'
-        if (!racksBySite.has(sId)) {
-          racksBySite.set(sId, [])
+        let list = this.racksBySitePool.get(sId)
+        if (!list) {
+          list = []
+          this.racksBySitePool.set(sId, list)
         }
-        racksBySite.get(sId)!.push(id)
+        list.push(id)
       }
     })
 
-    racksBySite.forEach((rackIds, siteId) => {
-      const deltaTemp = new Map<string, number>()
-      rackIds.forEach(id => deltaTemp.set(id, 0))
+    this.racksBySitePool.forEach((rackIds, siteId) => {
+      rackIds.forEach(id => this.deltaTempPool.set(id, 0))
 
       const kConvection = 0.05 // lateral convection multiplier
 
       // Cache adjacent neighbors to avoid O(N^2) math operations and square roots every frame
-      const siteHash = [...rackIds]
-        .sort()
-        .map(id => {
-          const pos = transformMap.get(id)?.position
-          const xStr = pos ? pos.x.toFixed(2) : '0'
-          const zStr = pos ? pos.z.toFixed(2) : '0'
-          return `${id}:${xStr},${zStr}`
-        })
-        .join('|')
+      let siteHash = ""
+      const sortedIds = [...rackIds].sort()
+      for(let i=0; i<sortedIds.length; i++) {
+         const pos = transformMap.get(sortedIds[i]!)?.position
+         if (pos) {
+             // Basic primitive string builder instead of excessive interpolation
+             siteHash += sortedIds[i] + Math.round(pos.x*10) + Math.round(pos.z*10)
+         }
+      }
+      
       const cachedHash = this.lastRackEntitiesHashBySite.get(siteId)
 
       if (siteHash !== cachedHash) {
@@ -388,22 +453,22 @@ export class ThermalSystem extends System {
         const tB = thermalMap.get(rB)
         if (tA && tB) {
           const flow = kConvection * (tB.temperature - tA.temperature) * dt
-          deltaTemp.set(rA, deltaTemp.get(rA)! + flow)
-          deltaTemp.set(rB, deltaTemp.get(rB)! - flow)
+          this.deltaTempPool.set(rA, this.deltaTempPool.get(rA)! + flow)
+          this.deltaTempPool.set(rB, this.deltaTempPool.get(rB)! - flow)
         }
       })
 
       rackIds.forEach(id => {
         const thermal = thermalMap.get(id)
         if (thermal) {
-          const dT = deltaTemp.get(id) ?? 0
+          const dT = this.deltaTempPool.get(id) ?? 0
           thermal.temperature = Math.max(16.0, Math.min(65.0, thermal.temperature + dT))
         }
       })
     })
 
     // 6. Compute new global Ambient Temperatures & Relative Humidity for each site room
-    siteLoads.forEach((load, siteId) => {
+    this.siteLoadsPool.forEach((load, siteId) => {
       const currentAmbient = ThermalSystem.siteAmbientTemps.get(siteId) ?? ThermalSystem.BASE_AMBIENT_TEMP
       const currentHumidity = ThermalSystem.siteAmbientHumidity.get(siteId) ?? 45.0
 
@@ -418,7 +483,7 @@ export class ThermalSystem extends System {
 
       // Dynamic Relative Humidity (RH) calculations
       // Count active running CRAC units in this site room
-      const cracList = cracUnitsBySite.get(siteId) ?? []
+      const cracList = this.cracUnitsBySitePool.get(siteId) ?? []
       let activeCoolingEfficiencySum = 0
       cracList.forEach(cracId => {
         const p = powerMap.get(cracId)
@@ -462,7 +527,7 @@ export class ThermalSystem extends System {
     })
 
     // 7. Process per-entity server thermodynamics (using rack micro-climate as its local ambient temperature!)
-    chassisNodes.forEach(id => {
+    this.chassisNodesPool.forEach(id => {
       const thermal = thermalMap.get(id)!
       const power = powerMap.get(id)
       const transform = transformMap.get(id)!
@@ -583,20 +648,20 @@ export class ThermalSystem extends System {
     })
 
     // 8. Conduction between adjacent entities in the same rack (optimized O(N) single-pass grouping)
-    const rackChildrenMap = new Map<string, string[]>()
-
-    chassisNodes.forEach(id => {
+    this.chassisNodesPool.forEach(id => {
       const transform = transformMap.get(id)!
       if (transform.parentRackId) {
-        if (!rackChildrenMap.has(transform.parentRackId)) {
-          rackChildrenMap.set(transform.parentRackId, [])
+        let list = this.rackChildrenMapPool.get(transform.parentRackId)
+        if (!list) {
+          list = []
+          this.rackChildrenMapPool.set(transform.parentRackId, list)
         }
-        rackChildrenMap.get(transform.parentRackId)!.push(id)
+        list.push(id)
       }
     })
 
-    racks.forEach(rackId => {
-      const rackNodes = rackChildrenMap.get(rackId)
+    this.racksPool.forEach(rackId => {
+      const rackNodes = this.rackChildrenMapPool.get(rackId)
       if (!rackNodes || rackNodes.length < 2) return
 
       // Sort only local rack nodes by slotIndex
@@ -629,5 +694,13 @@ export class ThermalSystem extends System {
         thermalB.temperature += diff
       }
     })
+
+    const tEnd = performance.now()
+    if (Math.random() < 0.1) {
+      this.world.eventBus.publish('telemetry:system', {
+        subsystem: 'thermal',
+        executionTimeMs: Number((tEnd - startTime).toFixed(2))
+      })
+    }
   }
 }
