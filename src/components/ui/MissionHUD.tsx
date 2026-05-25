@@ -8,7 +8,8 @@ import { Button } from './base/Button'
 
 export const MissionHUD = () => {
   const { missions, activeMissionId, startMission } = useMissionStore()
-  const { selectedNodeId, totalRoomBTU } = useInfraStore()
+  const selectedNodeId = useInfraStore(state => state.selectedNodeId)
+  const hasThermalWarning = useInfraStore(state => state.totalRoomBTU > 50000)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [positionMode, setPositionMode] = useState<'bottom-left' | 'top-left' | 'bottom-right' | 'top-right'>('bottom-left')
   
@@ -45,7 +46,6 @@ export const MissionHUD = () => {
       transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
     }
 
-    const hasThermalWarning = totalRoomBTU > 50000
     const isInspectorOpen = !!selectedNodeId
 
     if (positionMode.includes('bottom')) {
@@ -68,11 +68,18 @@ export const MissionHUD = () => {
   }
 
   return (
-    <div style={getPositionStyle()}>
+    <div 
+      style={getPositionStyle()}
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+      onWheel={(e) => e.stopPropagation()}
+    >
       <div className="pointer-events-auto flex items-center gap-2">
         <button 
-          onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-3 rounded-xl glass-panel border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-all flex items-center gap-3 hover:scale-[1.02] active:scale-95"
+          onClick={(e) => { e.stopPropagation(); setIsCollapsed(!isCollapsed); }}
+          className="p-3 rounded-xl glass-panel border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-colors duration-200 flex items-center gap-3"
         >
           <div className="p-1.5 rounded-lg bg-[#ff5a36]/10 border border-[#ff5a36]/20">
             <Target size={18} className={isCollapsed ? 'animate-pulse' : ''} />
@@ -84,7 +91,7 @@ export const MissionHUD = () => {
         <button
           onClick={cyclePosition}
           title="Reposition HUD Window"
-          className="p-3 rounded-xl glass-panel border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-all flex items-center justify-center hover:scale-[1.05] active:scale-95"
+          className="p-3 rounded-xl glass-panel border-[#ff5a36]/30 text-[#ff5a36] hover:text-[#ff7b5c] hover:border-[#ff7b5c]/50 transition-colors duration-200 flex items-center justify-center"
         >
           <Move size={18} />
         </button>
@@ -94,9 +101,10 @@ export const MissionHUD = () => {
         {!isCollapsed && (
           <motion.div
             key={activeMission.id}
-            initial={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(10px)' }}
-            animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-            exit={{ opacity: 0, y: 20, scale: 0.95, filter: 'blur(10px)' }}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 15 }}
+            transition={{ type: "tween", duration: 0.2 }}
             className="pointer-events-auto w-[340px] overflow-hidden rounded-[1.5rem] glass-panel border-[#ff5a36]/30 shadow-[0_12px_40px_rgba(255,90,54,0.15)]"
           >
             <div className="relative px-6 py-5 border-b border-white/5 bg-[#ff5a36]/5">
