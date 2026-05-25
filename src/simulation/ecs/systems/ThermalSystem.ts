@@ -2,6 +2,27 @@ import { System } from '../System'
 import type { ThermalComponent, PowerComponent, TransformComponent, RackComponent } from '../types'
 import { HARDWARE_CATALOG, type HardwareCatalogSpec } from '../../../physics/hardwareLibrary'
 
+function fastStringHash(str: string): number {
+  let hash = 2166136261
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+function hashInt(val: number, hash: number): number {
+  hash ^= (val & 0xFF)
+  hash = Math.imul(hash, 16777619)
+  hash ^= ((val >> 8) & 0xFF)
+  hash = Math.imul(hash, 16777619)
+  hash ^= ((val >> 16) & 0xFF)
+  hash = Math.imul(hash, 16777619)
+  hash ^= ((val >> 24) & 0xFF)
+  hash = Math.imul(hash, 16777619)
+  return hash >>> 0
+}
+
 class LoadStats {
   serverHeatBTU = 0
   coolingBTU = 0
@@ -22,7 +43,7 @@ export class ThermalSystem extends System {
 
   private accumulatedTime = 0.0 // V2 multiplayer-safe deterministic elapsed time (seconds)
   private adjacentRackPairsBySite = new Map<string, [string, string][]>()
-  private lastRackEntitiesHashBySite = new Map<string, string>()
+  private lastRackEntitiesHashBySite = new Map<string, number>()
 
   private static CONDUCTION_COEFFICIENT = 0.05 / 9.0
   private static BASE_AMBIENT_TEMP = 22.0
@@ -407,14 +428,16 @@ export class ThermalSystem extends System {
       const kConvection = 0.05 // lateral convection multiplier
 
       // Cache adjacent neighbors to avoid O(N^2) math operations and square roots every frame
-      let siteHash = ""
-      const sortedIds = [...rackIds].sort()
-      for(let i=0; i<sortedIds.length; i++) {
-         const pos = transformMap.get(sortedIds[i]!)?.position
-         if (pos) {
-             // Basic primitive string builder instead of excessive interpolation
-             siteHash += sortedIds[i] + Math.round(pos.x*10) + Math.round(pos.z*10)
-         }
+      let siteHash = 0
+      for (let i = 0; i < rackIds.length; i++) {
+        const rId = rackIds[i]!
+        const pos = transformMap.get(rId)?.position
+        if (pos) {
+          const h1 = fastStringHash(rId)
+          const h2 = hashInt(Math.round(pos.x * 10), h1)
+          const h3 = hashInt(Math.round(pos.z * 10), h2)
+          siteHash = (siteHash + h3) >>> 0
+        }
       }
       
       const cachedHash = this.lastRackEntitiesHashBySite.get(siteId)
