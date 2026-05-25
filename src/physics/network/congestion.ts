@@ -2,7 +2,7 @@ import type { Connection, InfraNode } from '../../store/infraTypes'
 import type { AdjacencyMap } from './types'
 import type { NetworkDemand } from './types'
 import { INCIDENT_PROFILES } from './types'
-import { findShortestPath } from './routing'
+import { NetworkRouteCache } from './routing'
 
 export interface CongestionResult {
   updatedConnections: Connection[]
@@ -65,8 +65,11 @@ export function resolveCongestion(
       ? possibleTargets
       : nodes.filter(n => n.id !== sourceNode.id && n.type !== 'rack' && n.type !== 'cooling' && n.systemState !== 'off' && !n.isBlackholed)
 
+    // Obtain the globally cached Single-Source Shortest Path (SSSP) tree for this source node
+    const tree = NetworkRouteCache.getShortestPathTree(sourceNode.id, nodes, connections, adjMap, topologyHash)
+
     targetsToTry.forEach(target => {
-      const route = findShortestPath(sourceNode.id, target.id, nodes, connections, adjMap, topologyHash)
+      const route = tree.getPathTo(target.id)
       if (route.exists && route.totalLatencyMs < minCost) {
         minCost = route.totalLatencyMs
         bestPathConnIds = route.connectionIds
