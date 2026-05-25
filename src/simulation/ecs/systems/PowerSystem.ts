@@ -15,40 +15,77 @@ export class PowerSystem extends System {
     B: true
   }
 
+  // Zero-Allocation Pools
+  private racksPool: string[] = []
+  private deviceNodesPool: string[] = []
+  private rackChildrenMap = new Map<string, string[]>()
+  private nodeAppCount = new Map<string, number>()
+  private nodeThroughput = new Map<string, number>()
+
+  public clear() {
+    this.racksPool.length = 0
+    this.deviceNodesPool.length = 0
+    this.rackChildrenMap.clear()
+    this.nodeAppCount.clear()
+    this.nodeThroughput.clear()
+    super.clear()
+  }
+
   public update(dt: number) {
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
+    const appMap = this.world.getComponentMap<ApplicationComponent>('application')
+    const connMap = this.world.getComponentMap<ConnectionComponent>('connection')
     const entities = this.world.getEntitiesWith(['power', 'transform'])
 
-    // Separate racks and node entities
-    const racks: string[] = []
-    const deviceNodes: string[] = []
+    this.racksPool.length = 0
+    this.deviceNodesPool.length = 0
+    this.rackChildrenMap.clear()
+    this.nodeAppCount.clear()
+    this.nodeThroughput.clear()
 
+    // 0. Pre-aggregation Passes O(N)
     entities.forEach(id => {
       const transform = transformMap.get(id)!
       if (transform.type === 'rack') {
-        racks.push(id)
+        this.racksPool.push(id)
       } else {
-        deviceNodes.push(id)
+        this.deviceNodesPool.push(id)
+        if (transform.parentRackId) {
+          let children = this.rackChildrenMap.get(transform.parentRackId)
+          if (!children) {
+            children = []
+            this.rackChildrenMap.set(transform.parentRackId, children)
+          }
+          children.push(id)
+        }
+      }
+    })
+
+    appMap.forEach((app) => {
+      if (app.status === 'running') {
+        this.nodeAppCount.set(app.nodeId, (this.nodeAppCount.get(app.nodeId) || 0) + 1)
+      }
+    })
+
+    connMap.forEach((conn) => {
+      const tp = conn.throughputGbps ?? 0
+      if (tp > 0) {
+        if (conn.startNodeId) this.nodeThroughput.set(conn.startNodeId, (this.nodeThroughput.get(conn.startNodeId) || 0) + tp)
+        if (conn.endNodeId) this.nodeThroughput.set(conn.endNodeId, (this.nodeThroughput.get(conn.endNodeId) || 0) + tp)
       }
     })
 
     // 1. Process UPS battery status and main power status for each Rack PDU
-    racks.forEach(rackId => {
+    this.racksPool.forEach(rackId => {
       const rackPower = powerMap.get(rackId)!
       const rackComp = this.world.getComponent<RackComponent>('rack', rackId)
 
       if (rackPower && rackComp) {
-        // Initialize UPS capacity
-        if (rackPower.upsMaxBatterySeconds === undefined) {
-          rackPower.upsMaxBatterySeconds = 30.0
-        }
-        if (rackPower.upsBatterySeconds === undefined) {
-          rackPower.upsBatterySeconds = rackPower.upsMaxBatterySeconds
-        }
+        if (rackPower.upsMaxBatterySeconds === undefined) rackPower.upsMaxBatterySeconds = 30.0
+        if (rackPower.upsBatterySeconds === undefined) rackPower.upsBatterySeconds = rackPower.upsMaxBatterySeconds
 
-        // Breaker Tripped status
         if (rackPower.breakerTripped) {
           rackPower.isPowered = false
           rackPower.load = 0
@@ -58,32 +95,20 @@ export class PowerSystem extends System {
           return
         }
 
-        // Check utility feeds for this rack PDU
         const rackFeed = rackPower.feedSource ?? 'both'
         let hasGridPower = true
-        if (rackFeed === 'A' && !PowerSystem.facilityFeeds.A) {
-          hasGridPower = false
-        } else if (rackFeed === 'B' && !PowerSystem.facilityFeeds.B) {
-          hasGridPower = false
-        } else if (rackFeed === 'both' && !PowerSystem.facilityFeeds.A && !PowerSystem.facilityFeeds.B) {
-          hasGridPower = false
-        }
+        if (rackFeed === 'A' && !PowerSystem.facilityFeeds.A) hasGridPower = false
+        else if (rackFeed === 'B' && !PowerSystem.facilityFeeds.B) hasGridPower = false
+        else if (rackFeed === 'both' && !PowerSystem.facilityFeeds.A && !PowerSystem.facilityFeeds.B) hasGridPower = false
 
         if (hasGridPower) {
-          // Normal state: Grid is supplying power. PDU is online and UPS is charging.
           rackPower.isPowered = true
-          // UPS battery charges back up at 2x rate
-          rackPower.upsBatterySeconds = Math.min(
-            rackPower.upsMaxBatterySeconds,
-            rackPower.upsBatterySeconds + dt * 2.0
-          )
+          rackPower.upsBatterySeconds = Math.min(rackPower.upsMaxBatterySeconds, rackPower.upsBatterySeconds + dt * 2.0)
         } else {
-          // Outage state: Grid is down. UPS battery discharge kicks in to prevent instant crash.
           if (rackPower.upsBatterySeconds > 0) {
             rackPower.isPowered = true
             rackPower.upsBatterySeconds = Math.max(0, rackPower.upsBatterySeconds - dt)
             
-            // Publish transient power alert if battery is dropping
             if (rackPower.upsBatterySeconds < rackPower.upsMaxBatterySeconds - dt && rackPower.upsBatterySeconds > 0) {
               const remaining = Math.round(rackPower.upsBatterySeconds)
               if (remaining % 10 === 0 || remaining <= 5) {
@@ -95,7 +120,6 @@ export class PowerSystem extends System {
               }
             }
           } else {
-            // UPS backup depleted
             rackPower.isPowered = false
             rackPower.load = 0
             rackPower.apparentPowerVA = 0
@@ -105,45 +129,30 @@ export class PowerSystem extends System {
     })
 
     // 2. Process Power Feed Losses and Dynamic Wattage Scaling for computing/device nodes
-    deviceNodes.forEach(id => {
+    this.deviceNodesPool.forEach(id => {
       const transform = transformMap.get(id)!
       const power = powerMap.get(id)!
       const thermal = thermalMap.get(id)
 
-      // Initialize and validate base wattage using catalog specifications
       if (power.baseWattage === undefined || !Number.isFinite(power.baseWattage) || Number.isNaN(power.baseWattage) || power.baseWattage <= 0) {
         const catalogSpec = transform.catalogKey ? HARDWARE_CATALOG[transform.catalogKey as keyof typeof HARDWARE_CATALOG] : null
         power.baseWattage = catalogSpec ? catalogSpec.wattage : (power.wattage && Number.isFinite(power.wattage) && power.wattage > 0 ? power.wattage : 300)
       }
       power.baseWattage = Math.max(50, Math.min(15000, power.baseWattage))
 
-      // Dynamically compute slot-based alternating phase layout to adapt to node placement and moves
-      power.phase = transform.slotIndex !== undefined
-        ? (['A', 'B', 'C'][transform.slotIndex % 3] as 'A' | 'B' | 'C')
-        : 'A'
+      power.phase = transform.slotIndex !== undefined ? (['A', 'B', 'C'][transform.slotIndex % 3] as 'A' | 'B' | 'C') : 'A'
 
-      // Standby UPS battery default for standalone nodes (10s if not slotted in a rack)
       if (!transform.parentRackId) {
-        if (power.upsMaxBatterySeconds === undefined) {
-          power.upsMaxBatterySeconds = 10.0
-        }
-        if (power.upsBatterySeconds === undefined) {
-          power.upsBatterySeconds = power.upsMaxBatterySeconds
-        }
+        if (power.upsMaxBatterySeconds === undefined) power.upsMaxBatterySeconds = 10.0
+        if (power.upsBatterySeconds === undefined) power.upsBatterySeconds = power.upsMaxBatterySeconds
       }
 
-      // Check grid power feeds for standalone devices
       const feed = power.feedSource ?? 'both'
       let hasGridPower = true
-      if (feed === 'A' && !PowerSystem.facilityFeeds.A) {
-        hasGridPower = false
-      } else if (feed === 'B' && !PowerSystem.facilityFeeds.B) {
-        hasGridPower = false
-      } else if (feed === 'both' && !PowerSystem.facilityFeeds.A && !PowerSystem.facilityFeeds.B) {
-        hasGridPower = false
-      }
+      if (feed === 'A' && !PowerSystem.facilityFeeds.A) hasGridPower = false
+      else if (feed === 'B' && !PowerSystem.facilityFeeds.B) hasGridPower = false
+      else if (feed === 'both' && !PowerSystem.facilityFeeds.A && !PowerSystem.facilityFeeds.B) hasGridPower = false
 
-      // Check if breaker is tripped (either direct breaker or parent rack breaker)
       let parentPowered = true
       let parentTripped = false
       if (transform.parentRackId) {
@@ -164,11 +173,9 @@ export class PowerSystem extends System {
         return
       }
 
-      // Power state determination: inherit from parent rack or use grid + personal battery
       if (transform.parentRackId) {
         power.isPowered = parentPowered && power.systemState !== 'off'
       } else {
-        // Standalone node UPS logic
         if (hasGridPower) {
           power.isPowered = true
           power.upsBatterySeconds = Math.min(power.upsMaxBatterySeconds!, power.upsBatterySeconds! + dt * 2.0)
@@ -189,65 +196,43 @@ export class PowerSystem extends System {
         return
       }
 
-      // Compute dynamic utilization based on running applications deployed on this node
-      const runningApps = this.world.getEntitiesWith(['application']).filter(appId => {
-        const app = this.world.getComponent<ApplicationComponent>('application', appId)
-        return app?.nodeId === id && app?.status === 'running'
-      })
+      const appCount = this.nodeAppCount.get(id) || 0
+      const tp = this.nodeThroughput.get(id) || 0
+      const networkUtil = Math.min(100.0, tp * 10.0)
 
-      // Fetch connection map and compute node network processing overhead
-      const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
-      let nodeThroughput = 0.0
-      connectionMap.forEach(conn => {
-        if (conn.startNodeId === id || conn.endNodeId === id) {
-          nodeThroughput += conn.throughputGbps ?? 0.0
-        }
-      })
-      const networkUtil = Math.min(100.0, nodeThroughput * 10.0) // 10% CPU utilization per 1 Gbps
-
-      const utilization = Math.min(100.0, runningApps.length * 30.0 + networkUtil)
+      const utilization = Math.min(100.0, appCount * 30.0 + networkUtil)
       const fanSpeed = thermal?.fanSpeedPercent ?? 0.0
 
-      // Factor in booting power draw scale
       let baseScale = 1.0
       let util = utilization
       if (power.systemState === 'booting') {
         baseScale = 0.5
-        util = 0.0 // Booting nodes have 0% CPU utilization overhead from apps/network
+        util = 0.0
       }
 
-      // Calculate internal DC hardware power draw
       const internalDCWattage = power.baseWattage * baseScale * (1.0 + (util / 100.0) * 0.5) + (fanSpeed / 100.0) * 50.0
-
-      // Factor in PSU AC Conversion efficiency losses
       const efficiency = power.efficiency && power.efficiency > 0.5 && power.efficiency <= 1.0 ? power.efficiency : 0.85
       let dynamicWattage = internalDCWattage / efficiency
 
-      // Validate dynamic wattage bounds to prevent explosive calculations
       if (!Number.isFinite(dynamicWattage) || Number.isNaN(dynamicWattage) || dynamicWattage < 0) {
         dynamicWattage = power.baseWattage
       }
       
-      // Node wattage capacity bound: Clamp absolute maximum draw per single compute/node to 15.0 kW (dense GPU server)
       dynamicWattage = Math.max(10, Math.min(15000, dynamicWattage))
 
-      // Calculate Dynamic Power Factor PFC curve (improves under heavy utilization)
       const powerFactor = Math.max(0.85, Math.min(0.99, 0.85 + 0.13 * (utilization / 100.0)))
       power.powerFactor = powerFactor
 
-      // Calculate Apparent Power S (VA)
       let apparentPower = dynamicWattage / powerFactor
-      if (!Number.isFinite(apparentPower) || Number.isNaN(apparentPower)) {
-        apparentPower = dynamicWattage
-      }
+      if (!Number.isFinite(apparentPower) || Number.isNaN(apparentPower)) apparentPower = dynamicWattage
       power.apparentPowerVA = apparentPower
 
       power.wattage = dynamicWattage
-      power.load = dynamicWattage / 1000.0 // kWE
+      power.load = dynamicWattage / 1000.0
     })
 
     // 3. Sum child power draw to compile 3-Phase PDU rack loads
-    racks.forEach(rackId => {
+    this.racksPool.forEach(rackId => {
       const rackPower = powerMap.get(rackId)!
       if (!rackPower.isPowered) {
         rackPower.load = 0
@@ -257,48 +242,48 @@ export class PowerSystem extends System {
         return
       }
 
-      // Local 3-phase accumulator [Phase A, Phase B, Phase C]
-      const phaseWatts: [number, number, number] = [0, 0, 0]
-      const phaseVA: [number, number, number] = [0, 0, 0]
+      let pWatts0 = 0, pWatts1 = 0, pWatts2 = 0
+      let pVA0 = 0, pVA1 = 0, pVA2 = 0
 
-      deviceNodes.forEach(id => {
-        const transform = transformMap.get(id)!
-        if (transform.parentRackId === rackId) {
-          // Exclude cooling/facility cooling units from IT PDU power aggregation
-          if (transform.type === 'cooling') {
-            return
-          }
+      const children = this.rackChildrenMap.get(rackId)
+      if (children) {
+        for (let i = 0; i < children.length; i++) {
+          const id = children[i]
+          const transform = transformMap.get(id)!
+          if (transform.type === 'cooling') continue
 
           const childPower = powerMap.get(id)
           if (childPower && childPower.isPowered) {
             const serverPhase = childPower.phase ?? 'A'
-            const phaseIndex = serverPhase === 'A' ? 0 : serverPhase === 'B' ? 1 : 2
-            
             const cWattage = Number.isFinite(childPower.wattage) && !Number.isNaN(childPower.wattage) ? childPower.wattage : 0
             const cVA = (childPower.apparentPowerVA !== undefined && Number.isFinite(childPower.apparentPowerVA) && !Number.isNaN(childPower.apparentPowerVA)) ? childPower.apparentPowerVA : cWattage
             
-            phaseWatts[phaseIndex] += cWattage
-            phaseVA[phaseIndex] += cVA
+            if (serverPhase === 'A') {
+              pWatts0 += cWattage; pVA0 += cVA
+            } else if (serverPhase === 'B') {
+              pWatts1 += cWattage; pVA1 += cVA
+            } else {
+              pWatts2 += cWattage; pVA2 += cVA
+            }
           }
         }
-      })
+      }
 
-      // Sum totals
-      let totalWatts = phaseWatts[0] + phaseWatts[1] + phaseWatts[2]
-      let totalVA = phaseVA[0] + phaseVA[1] + phaseVA[2]
+      let totalWatts = pWatts0 + pWatts1 + pWatts2
+      let totalVA = pVA0 + pVA1 + pVA2
 
-      // Clamp aggregate rack capacity bounds to 150 kW (extremely dense GPU/AI cooling containment racks)
       totalWatts = Math.max(0, Math.min(150000, totalWatts))
       totalVA = Math.max(0, Math.min(150000, totalVA))
 
-      // Recalculate phases if sum was clamped (unlikely under normal usage, but good protection)
-      for (let i = 0; i < 3; i++) {
-        if (!Number.isFinite(phaseWatts[i]) || Number.isNaN(phaseWatts[i])) phaseWatts[i] = 0
-        if (!Number.isFinite(phaseVA[i]) || Number.isNaN(phaseVA[i])) phaseVA[i] = 0
-      }
+      if (!Number.isFinite(pWatts0) || Number.isNaN(pWatts0)) pWatts0 = 0
+      if (!Number.isFinite(pWatts1) || Number.isNaN(pWatts1)) pWatts1 = 0
+      if (!Number.isFinite(pWatts2) || Number.isNaN(pWatts2)) pWatts2 = 0
+      if (!Number.isFinite(pVA0) || Number.isNaN(pVA0)) pVA0 = 0
+      if (!Number.isFinite(pVA1) || Number.isNaN(pVA1)) pVA1 = 0
+      if (!Number.isFinite(pVA2) || Number.isNaN(pVA2)) pVA2 = 0
 
-      rackPower.phaseLoadsWatts = phaseWatts
-      rackPower.phaseLoadsVA = phaseVA
+      rackPower.phaseLoadsWatts = [pWatts0, pWatts1, pWatts2]
+      rackPower.phaseLoadsVA = [pVA0, pVA1, pVA2]
 
       rackPower.wattage = totalWatts
       rackPower.apparentPowerVA = totalVA
@@ -306,15 +291,14 @@ export class PowerSystem extends System {
     })
 
     // 4. Update Rack status, timers, and trigger phase or total overload breaker trips
-    racks.forEach(rackId => {
+    this.racksPool.forEach(rackId => {
       const rackPower = powerMap.get(rackId)!
       const transform = transformMap.get(rackId)
       const rackComp = this.world.getComponent<RackComponent>('rack', rackId)
 
       if (rackPower && rackComp) {
-        // High-fidelity transition logging: Detect breaker reset transition
         if (rackComp.status === 'power_overload' && !rackPower.breakerTripped) {
-          console.log(`[PowerSystem] Detected BREAKER RESET or recovery initiation on Rack: ${rackId} (${transform?.name || 'Unnamed'}). Re-evaluating power loads...`)
+          console.log(`[PowerSystem] Detected BREAKER RESET or recovery initiation on Rack: ${rackId}. Re-evaluating...`)
         }
 
         if (rackPower.breakerTripped) {
@@ -329,7 +313,6 @@ export class PowerSystem extends System {
         const maxLimit = (rackComp.deratedMaxPowerKW !== undefined && Number.isFinite(rackComp.deratedMaxPowerKW)) ? rackComp.deratedMaxPowerKW : nominalLimit
         const totalLoadKW = Number.isFinite(rackPower.load) && !Number.isNaN(rackPower.load) ? rackPower.load : 0.0
 
-        // Each individual phase has a max rated capacity of maxPower / 3, with 15% imbalance tolerance
         const maxPhaseLimitKW = (maxLimit / 3.0) * 1.15
 
         const phaseA_KW = (rackPower.phaseLoadsWatts?.[0] ?? 0) / 1000.0
@@ -337,17 +320,14 @@ export class PowerSystem extends System {
         const phaseC_KW = (rackPower.phaseLoadsWatts?.[2] ?? 0) / 1000.0
         const maxPhaseKW = Math.max(phaseA_KW, phaseB_KW, phaseC_KW)
 
-        // Overload checking: either total load exceeds maxLimit OR any phase exceeds single-phase capacity
         const isTotalOverloaded = totalLoadKW > maxLimit
         const isPhaseOverloaded = maxPhaseKW > maxPhaseLimitKW
         const isOverloaded = isTotalOverloaded || isPhaseOverloaded
 
         if (isOverloaded) {
-          const prevOverloadTime = rackPower.overloadSeconds ?? 0
-          const nextOverloadTime = prevOverloadTime + dt
+          const nextOverloadTime = (rackPower.overloadSeconds ?? 0) + dt
           rackPower.overloadSeconds = nextOverloadTime
 
-          // Sustain overload for 10 seconds triggers PDU physical circuit breaker trip
           if (nextOverloadTime >= 10.0) {
             rackPower.breakerTripped = true
             rackPower.isPowered = false
@@ -356,10 +336,10 @@ export class PowerSystem extends System {
             rackPower.overloadSeconds = 0
             rackComp.status = 'power_overload'
 
-            // Force all children inside rack off
-            deviceNodes.forEach(childId => {
-              const childTransform = transformMap.get(childId)!
-              if (childTransform.parentRackId === rackId) {
+            const children = this.rackChildrenMap.get(rackId)
+            if (children) {
+              for (let i = 0; i < children.length; i++) {
+                const childId = children[i]
                 const childPower = powerMap.get(childId)
                 if (childPower) {
                   childPower.isPowered = false
@@ -369,9 +349,8 @@ export class PowerSystem extends System {
                   childPower.systemState = 'off'
                 }
               }
-            })
+            }
 
-            // Construct specific details of breaker trip reasons
             let tripMessage = `CRITICAL: Rack PDU Breaker TRIPPED on [${transform?.name || rackId}] due to prolonged `
             if (isPhaseOverloaded && !isTotalOverloaded) {
               tripMessage += `Phase Imbalance! Max phase load exceeded safety limit (${maxPhaseKW.toFixed(2)} kW > ${maxPhaseLimitKW.toFixed(2)} kW).`
@@ -379,23 +358,10 @@ export class PowerSystem extends System {
               tripMessage += `total power overload (${totalLoadKW.toFixed(2)} kW > ${maxLimit.toFixed(2)} kW)!`
             }
 
-            // High-fidelity debug instrumentation logging when breaker trips
             console.log(
-              `[PowerSystem] BREAKER TRIP TRIGGERED on Rack Entity: ${rackId} (${transform?.name || 'Unnamed'}). ` +
-              `Total Load: ${totalLoadKW.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW. ` +
-              `Phase A: ${phaseA_KW.toFixed(2)} kW, Phase B: ${phaseB_KW.toFixed(2)} kW, Phase C: ${phaseC_KW.toFixed(2)} kW. ` +
-              `Overload source: ${isTotalOverloaded ? 'Total Load Exceeded' : ''}${isTotalOverloaded && isPhaseOverloaded ? ' & ' : ''}${isPhaseOverloaded ? 'Phase Imbalance Exceeded' : ''}. ` +
-              `Slotted devices count: ${deviceNodes.filter(id => transformMap.get(id)?.parentRackId === rackId).length}. ` +
-              `Slotted non-cooling active devices: [${
-                deviceNodes.filter(id => {
-                  const t = transformMap.get(id)!
-                  const p = powerMap.get(id)
-                  return t.parentRackId === rackId && t.type !== 'cooling' && p?.isPowered
-                }).map(id => `${id} (${transformMap.get(id)?.name || 'unnamed'}: ${(powerMap.get(id)?.wattage ?? 0).toFixed(0)}W on Phase ${powerMap.get(id)?.phase ?? 'A'}`).join(', ')
-              }]`
+              `[PowerSystem] BREAKER TRIP TRIGGERED on Rack Entity: ${rackId}. Total Load: ${totalLoadKW.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW.`
             )
 
-            // Publish alert to main event stream
             this.world.eventBus.publish('system:alert', {
               entityId: rackId,
               message: tripMessage,
@@ -403,7 +369,6 @@ export class PowerSystem extends System {
             })
           }
         } else {
-          // Recover overload counter if draw returns below threshold
           rackPower.overloadSeconds = 0
         }
       }
