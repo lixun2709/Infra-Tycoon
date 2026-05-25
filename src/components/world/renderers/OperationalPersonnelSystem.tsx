@@ -51,10 +51,16 @@ function PersonnelActor({ initialPosition, role, bounds }: PersonnelProps) {
   const headGroupRef = useRef<THREE.Group>(null)
 
   // Wandering State
-  const [targetPos, setTargetPos] = useState(new THREE.Vector3(...initialPosition))
+  // Wandering State
+  const [targetPos] = useState(new THREE.Vector3(...initialPosition))
   const [currentPos] = useState(new THREE.Vector3(...initialPosition))
   const [isWalking, setIsWalking] = useState(false)
-  const waitTimer = useRef(Math.random() * 5.0)
+  const waitTimer = useRef(0)
+  
+  // Set initial random wait timer on mount only
+  React.useEffect(() => {
+    waitTimer.current = Math.random() * 5.0
+  }, [])
 
   // High-End Materials
   const materials = useMemo(() => {
@@ -128,16 +134,18 @@ function PersonnelActor({ initialPosition, role, bounds }: PersonnelProps) {
 
     // Forward Kinematics Animation
     const t = state.clock.getElapsedTime()
+      
+      if (chestRef.current) {
+        chestRef.current.rotation.z = Math.sin(t * 6.0) * 0.05 // Sway
+        chestRef.current.rotation.y = Math.sin(t * 6.0) * 0.1  // Twist
+      }
 
-    if (isWalking) {
+      // Legs (Thigh swings forward/back, Knee bends backwards)
+      if (isWalking) {
       const w = t * 6.0 // walk speed
       
       // Root Bobbing
       if (rootRef.current) rootRef.current.position.y = Math.abs(Math.sin(w)) * 0.05
-      if (chestRef.current) {
-        chestRef.current.rotation.z = Math.sin(w) * 0.05 // Sway
-        chestRef.current.rotation.y = Math.sin(w) * 0.1  // Twist
-      }
 
       // Legs (Thigh swings forward/back, Knee bends backwards)
       if (lHipRef.current) lHipRef.current.rotation.x = Math.sin(w) * 0.6
@@ -203,7 +211,6 @@ function PersonnelActor({ initialPosition, role, bounds }: PersonnelProps) {
   const pelvisY = bootY + calfLen + thighLen // ~0.51
   
   const chestLen = 0.22
-  const chestY = pelvisY + 0.15
   
   const uArmLen = 0.18
   const lArmLen = 0.18

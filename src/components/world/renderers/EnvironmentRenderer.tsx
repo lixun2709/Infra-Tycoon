@@ -770,7 +770,7 @@ export function EnvironmentRenderer() {
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.005, 0]} receiveShadow>
         <planeGeometry args={[300, 300]} />
         <meshStandardMaterial 
-          color="#121625"
+          color="#f8fafc"
           map={groundTexture || undefined}
           roughness={0.18} 
           metalness={0.65} 
