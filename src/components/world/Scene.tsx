@@ -3,7 +3,7 @@ import { useInfraStore } from '../../store/useInfraStore'
 import { EnvironmentRenderer } from './renderers/EnvironmentRenderer'
 import { CameraController } from './renderers/CameraController'
 import { FloorRenderer } from './renderers/FloorRenderer'
-
+import { OperationalPersonnelSystem } from './renderers/OperationalPersonnelSystem'
 import { OverlayRenderer, BlueprintPreview, DeployWave } from './renderers/OverlayRenderer'
 import { CableSystem } from './CableSystem'
 import { HeatMapOverlay } from './HeatMapOverlay'
@@ -32,7 +32,7 @@ export function Scene() {
       <CameraController />
       <EnvironmentRenderer />
       
-      
+      <OperationalPersonnelSystem />
       {/* Elevate all room-specific assets and active racks by +1.6m */}
       <group position={[0, 1.6, 0]}>
         <FloorRenderer />
