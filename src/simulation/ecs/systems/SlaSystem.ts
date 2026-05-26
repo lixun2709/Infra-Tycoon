@@ -22,6 +22,7 @@ export class SlaSystem extends System {
 
     // Precompute healthy running applications (O(N) operation instead of O(N^4))
     const healthyAppCounts = new Map<string, number>()
+    const healthyAppFaultDomains = new Map<string, Set<string>>()
     const failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, other: number }>()
 
     apps.forEach((app) => {
@@ -44,6 +45,14 @@ export class SlaSystem extends System {
 
         if (isPowered && !isMaintenance && !isBlackholed && !isIsolated && !isRansomwareLocked) {
           healthyAppCounts.set(app.appId, (healthyAppCounts.get(app.appId) || 0) + 1)
+          
+          let domainSet = healthyAppFaultDomains.get(app.appId)
+          if (!domainSet) {
+             domainSet = new Set<string>()
+             healthyAppFaultDomains.set(app.appId, domainSet)
+          }
+          // Fault domain is rack if known, otherwise the node itself
+          domainSet.add(transform?.parentRackId || app.nodeId)
         } else {
           const reasons = failedAppReasons.get(app.appId)!
           if (isRansomwareLocked) reasons.ransomware++
@@ -66,7 +75,15 @@ export class SlaSystem extends System {
       let isHealthy = true
 
       for (const req of blueprint.requirements) {
-        const activeCount = healthyAppCounts.get(req.appId) || 0
+        let activeCount = healthyAppCounts.get(req.appId) || 0
+        
+        // SLA Redundancy Enforcement:
+        // True High-Availability requires fault-domain diversity.
+        if (req.redundant) {
+           const domains = healthyAppFaultDomains.get(req.appId)?.size || 0
+           activeCount = Math.min(activeCount, domains)
+        }
+        
         if (activeCount < req.count) {
           isHealthy = false
           

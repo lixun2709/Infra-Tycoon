@@ -23,10 +23,11 @@ export class IncidentSystem implements System {
         }
 
         // Check resolution conditions implicitly based on node states
-        const allResolved = incident.affectedNodes.every(nodeId => this.isNodeHealthy(world, nodeId))
+        const allResolved = incident.affectedNodes.length > 0 ? incident.affectedNodes.every(nodeId => this.isNodeHealthy(world, nodeId)) : false
         
-        // If an explicit RTO is given, we check if elapsed passed RTO and penalize if not resolved
-        if (incident.rtoTargetSeconds && incident.elapsedSeconds > incident.rtoTargetSeconds && !allResolved) {
+        const rtoTarget = incident.rtoTargetSeconds || 300 // Fallback 5-minute RTO
+
+        if (incident.elapsedSeconds > rtoTarget && !allResolved) {
           // RTO violation
           world.publish('incident:rto_violation', { incidentId: incident.incidentId })
           
@@ -34,9 +35,11 @@ export class IncidentSystem implements System {
             incident.hasAlertedRto = true
             world.eventBus.publish('system:alert', {
               entityId: incident.incidentId,
-              message: `DR Drill FAILED: Target RTO of ${incident.rtoTargetSeconds}s missed for incident ${incident.type}.`,
+              message: `CRITICAL SLA VIOLATION: Target RTO of ${rtoTarget}s missed for incident ${incident.type}. CASCADE FAILURE TRIGGERED.`,
               severity: 'error'
             })
+            
+            this.triggerCascadeFailure(world, incident)
           }
         }
 
@@ -235,5 +238,36 @@ export class IncidentSystem implements System {
       message: `Chaos Event: Spontaneous ${incidentType.replace('_', ' ')} detected on node.`,
       severity: 'warning'
     })
+  }
+
+  private triggerCascadeFailure(world: World, sourceIncident: IncidentComponent) {
+    const transforms = world.getComponents<TransformComponent>('TransformComponent')
+    if (!transforms) return
+
+    // Find a healthy node in the same site, or any healthy node to break
+    let cascadeTarget: string | null = null
+    const sourceSiteId = sourceIncident.siteId || (sourceIncident.affectedNodes.length > 0 ? transforms.get(sourceIncident.affectedNodes[0])?.siteId : null)
+
+    transforms.forEach((t, entityId) => {
+      if (t.healthStatus === 'nominal' && !sourceIncident.affectedNodes.includes(entityId)) {
+        if (!cascadeTarget || (sourceSiteId && t.siteId === sourceSiteId && Math.random() > 0.5)) {
+          cascadeTarget = entityId
+        }
+      }
+    })
+
+    if (cascadeTarget) {
+      const targetTransform = transforms.get(cascadeTarget)
+      if (targetTransform) {
+        targetTransform.healthStatus = 'critical'
+        targetTransform.degradation = 1.0 // Permanent catastrophic fatigue
+        
+        world.eventBus.publish('system:alert', {
+          entityId: cascadeTarget,
+          message: `Cascade Hardware Failure: Collateral damage due to unresolved ${sourceIncident.type} incident!`,
+          severity: 'critical'
+        })
+      }
+    }
   }
 }

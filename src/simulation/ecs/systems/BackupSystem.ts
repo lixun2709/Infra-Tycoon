@@ -54,6 +54,9 @@ export class BackupSystem extends System {
 
         if (isFailing) {
           backup.backupStatus = 'unprotected'
+          
+          const transform = this.world.getComponentMap<TransformComponent>('transform').get(id)
+          if (transform) transform.isThrottled = false
         } else {
           const timeSince = Date.now() - backup.lastBackupTime
           // Assume backups take 30 simulation seconds to complete
@@ -85,6 +88,9 @@ export class BackupSystem extends System {
 
             backup.backupStatus = 'protected'
             backup.corruptionState = 'clean'
+            
+            const transform = this.world.getComponentMap<TransformComponent>('transform').get(id)
+            if (transform) transform.isThrottled = false
           }
         }
       }
@@ -154,6 +160,10 @@ export class BackupSystem extends System {
             backup.backupStatus = 'backing_up'
             backup.lastBackupTime = time
             backup.backupTargetId = targetId
+            
+            // Backup Storm Network Congestion: Heavily throttle the node's network interfaces
+            const transform = this.world.getComponentMap<TransformComponent>('transform').get(id)
+            if (transform) transform.isThrottled = true
             // We could deduct some storage capacity from the target, but we'll leave that to StorageSystem
           }
         }
