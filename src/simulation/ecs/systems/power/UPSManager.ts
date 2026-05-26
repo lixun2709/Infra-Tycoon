@@ -41,13 +41,16 @@ export class UPSManager {
         power.upsBatterySeconds = Math.max(0, power.upsBatterySeconds - dt)
         
         if (power.upsBatterySeconds < power.upsMaxBatterySeconds - dt && power.upsBatterySeconds > 0) {
-          const remaining = Math.round(power.upsBatterySeconds)
-          if (remaining % 10 === 0 || remaining <= 5) {
-            eventBus.publish('system:alert', {
-              entityId: rackId,
-              message: `WARNING: Utility power loss! Rack PDU [${transform?.name || rackId}] running on UPS backup battery (${remaining}s remaining).`,
-              severity: 'warning'
-            })
+          const remaining = Math.ceil(power.upsBatterySeconds)
+          if (remaining !== power.lastUpsAlertSecond) {
+            if (remaining % 10 === 0 || remaining <= 5) {
+              power.lastUpsAlertSecond = remaining
+              eventBus.publish('system:alert', {
+                entityId: rackId,
+                message: `WARNING: Utility power loss! Rack PDU [${transform?.name || rackId}] running on UPS backup battery (${remaining}s remaining).`,
+                severity: 'warning'
+              })
+            }
           }
         }
       } else {

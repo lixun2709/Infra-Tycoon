@@ -80,6 +80,7 @@ export interface PowerComponent extends Component {
   apparentPowerVA?: number
   upsBatterySeconds?: number     // Current battery backup charge (seconds)
   upsMaxBatterySeconds?: number  // Maximum battery capacity (default: 30s)
+  lastUpsAlertSecond?: number    // Tracks last fired UPS alert to prevent event flooding
   phase?: 'A' | 'B' | 'C'        // Phase connection for server nodes
   phaseLoadsWatts?: [number, number, number] // [A, B, C] Real Power
   phaseLoadsVA?: [number, number, number]    // [A, B, C] Apparent Power

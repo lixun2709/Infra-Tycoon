@@ -689,3 +689,11 @@ The thermodynamic logic controlling Computer Room Air Conditioning (CRAC) units 
 
 **Why it matters:**
 Consolidating thermal logic eliminates structural drift and guarantees that cooling units degrade, flow, and chill the ambient room uniformly. Because calculations like chilled water consumption (waterFlowLPM) and exponential temperature decay now happen inside a single unified frame within CRACManager, the simulation handles sudden thermal spikes (like an entire rack powering on instantly) smoothly and accurately, mirroring actual thermodynamics without risking engine desynchronization across WebWorkers.
+
+## Day 84: Core Datacenter Simulation - Power Systems Event Flow
+
+**What Changed:**
+Power system event messaging logic (specifically UPS backup countdown alerts and Breaker status alerts) was refactored for enterprise-level performance. The backend PowerComponent now tracks a strict lastUpsAlertSecond variable, which forces the UPSManager to only emit a single notification when a battery crosses specific full-integer thresholds (e.g. 10s remaining, 9s, 8s...). Furthermore, hidden console log flooding within BreakerManager's active tick loop has been entirely removed, leaving the global eventBus as the exclusive method for handling critical alerts.
+
+**Why it matters:**
+Previously, UPS alerts fired multiple times per second because the simulation processes dozens of frames per second, spamming the user interface and saturating the Web Worker's synchronization bus with duplicate messaging. By restricting notification throughput and purging non-performant console.log statements from hot ECS loops, the Power Systems subsystem is now highly optimized and won't lock up memory when a datacenter's grid fully collapses.

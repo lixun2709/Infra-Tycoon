@@ -15,9 +15,7 @@ export class BreakerManager {
     powerMap: Map<string, PowerComponent>,
     eventBus: ECSEventBus
   ) {
-    if (rackComp.status === 'power_overload' && !rackPower.breakerTripped) {
-      console.log(`[PowerSystem] Detected BREAKER RESET or recovery initiation on Rack: ${rackId}. Re-evaluating...`)
-    }
+
 
     if (rackPower.breakerTripped) {
       rackPower.isPowered = false
@@ -76,9 +74,7 @@ export class BreakerManager {
           tripMessage += `total power overload (${totalLoadKW.toFixed(2)} kW > ${maxLimit.toFixed(2)} kW)!`
         }
 
-        console.log(
-          `[PowerSystem] BREAKER TRIP TRIGGERED on Rack Entity: ${rackId}. Total Load: ${totalLoadKW.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW.`
-        )
+
 
         eventBus.publish('system:alert', {
           entityId: rackId,
