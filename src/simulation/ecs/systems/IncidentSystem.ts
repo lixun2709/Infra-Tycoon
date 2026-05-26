@@ -73,8 +73,21 @@ export class IncidentSystem implements System {
     const targetSiteId = incident.siteId
     
     if (targetSiteId) {
+      const storageMap = world.getComponents<import('../types').StorageComponent>('StorageComponent')
+
       transforms.forEach((transform, nodeId) => {
         if (transform.siteId === targetSiteId) {
+          // Check storage replication for RPO
+          if (storageMap && incident.elapsedSeconds < 10) {
+            const storage = storageMap.get(nodeId)
+            if (storage && !storage.replicationSourceId) {
+              // No replication configured, RPO violated instantly
+              if (incident.rpoTargetSeconds !== undefined) {
+                 world.publish('incident:rpo_violation', { incidentId: incident.incidentId })
+              }
+            }
+          }
+
           // Keep power on but blackhole network
           if (incident.elapsedSeconds < 10) {
             transform.isBlackholed = true
@@ -83,6 +96,16 @@ export class IncidentSystem implements System {
           }
         }
       })
+
+      // Enforce RPO failure
+      if (incident.rpoTargetSeconds !== undefined && incident.elapsedSeconds > incident.rpoTargetSeconds && !incident.isResolved) {
+         incident.isResolved = true
+         world.eventBus.publish('system:alert', {
+            entityId: incident.incidentId,
+            message: `DR Drill FAILED: RPO Target of ${incident.rpoTargetSeconds}s violated (Storage sync lost or split-brain).`,
+            severity: 'error'
+         })
+      }
     } else {
       // Legacy node-based drill fallback
       incident.affectedNodes.forEach(nodeId => {
@@ -113,11 +136,19 @@ export class IncidentSystem implements System {
 
     let failedNodesCount = 0
     let lastSiteId = ''
+    let detectedRootCause = 'Unknown'
     
     transforms.forEach((t, entityId) => {
       if (t.healthStatus === 'critical' || t.degradation && t.degradation > 0.8) {
         failedNodesCount++
         lastSiteId = t.siteId
+
+        const power = world.getComponent<PowerComponent>(entityId, 'PowerComponent')
+        const thermal = world.getComponent<import('../types').ThermalComponent>(entityId, 'ThermalComponent')
+        
+        if (power && power.breakerTripped) detectedRootCause = 'Rack Power Overload'
+        else if (thermal && thermal.temperature > 85) detectedRootCause = 'Thermal Runaway'
+        else if (detectedRootCause === 'Unknown') detectedRootCause = 'Hardware Degradation'
       }
 
       // Chaos Engineering: Spontaneous Anomalies (0.001% chance per node per tick)
@@ -155,14 +186,16 @@ export class IncidentSystem implements System {
       if (!alreadyTracked) {
         const incidentId = `inc-${Date.now()}`
         const newIncident: IncidentComponent = {
-          entityId: incidentId,
           incidentId,
-          type: 'power_outage',
+          type: detectedRootCause === 'Thermal Runaway' ? 'thermal_runaway' : 'power_outage',
           severity: 'high',
+          rootCause: detectedRootCause,
           affectedNodes: [],
           elapsedSeconds: 0,
-          isResolved: false
+          isResolved: false,
+          siteId: lastSiteId
         }
+        world.registerEntity(incidentId)
         world.addComponent(incidentId, 'IncidentComponent', newIncident)
         world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastSiteId })
       }
@@ -182,16 +215,17 @@ export class IncidentSystem implements System {
       if (!alreadyTracked) {
         const incidentId = `inc-rw-${Date.now()}`
         const newIncident: IncidentComponent = {
-          entityId: incidentId,
           incidentId,
           type: 'ransomware',
           severity: 'critical',
+          rootCause: 'Malware Exposure',
           affectedNodes: [],
           elapsedSeconds: 0,
-          isResolved: false
+          isResolved: false,
+          siteId: lastLockedSiteId
         }
         world.registerEntity(incidentId)
-        world.addComponent('IncidentComponent', newIncident)
+        world.addComponent(incidentId, 'IncidentComponent', newIncident)
         world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastLockedSiteId })
       }
     }

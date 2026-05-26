@@ -1,6 +1,9 @@
 # Changelog
 
 ### Added
+- **DR Drills (RPO Validation)**: DR Drills now strictly evaluate Recovery Point Objectives (RPO). Storage split-brain scenarios are automatically detected if replication is broken during isolation events.
+- **Ticketing Priority Queue**: `TicketingSystem` now supports P1-P4 SLA priorities. Emergency tickets override queue limits to ensure critical systems recover rapidly.
+- **Incident Root Cause Analysis**: Replaced naive anomaly detection with intelligent clustering. Mass failures are traced to a single root cause (e.g., Rack Power Overload) preventing alert fatigue.
 - **Ransomware Microsegmentation**: Added `microsegmentationEnabled` and `isImmutable` backup rules to severely restrict malware lateral spread. Zero-Day exploits introduced.
 - **VMware DRS CPU Overcommit**: Hypervisor now dynamically tracks vCPU overcommit against pCPUs. Ratios above 4:1 impose CPU Ready Time degradation penalties.
 - **Storage vMotion (svMotion)**: DRS now actively evacuates VMs from datastores reaching 90% utilization.

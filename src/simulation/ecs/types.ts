@@ -207,6 +207,7 @@ export interface HypervisorComponent extends Component {
 export interface TicketComponent extends Component {
   ticketId: string
   type: 'drive' | 'cpu' | 'motherboard' | 'psu' | 'network' | 'power'
+  priority?: 'P1' | 'P2' | 'P3' | 'P4'
   elapsedSeconds: number
   totalSeconds: number
   status: 'queued' | 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
@@ -217,9 +218,11 @@ export interface IncidentComponent extends Component {
   incidentId: string
   type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway'
   severity: 'low' | 'medium' | 'high' | 'critical'
+  rootCause?: string // Root cause tracker
   affectedNodes: string[]
   elapsedSeconds: number
   rtoTargetSeconds?: number // Recovery Time Objective
+  rpoTargetSeconds?: number // Recovery Point Objective (For Storage Replication)
   isResolved: boolean
   hasAlertedRto?: boolean
   siteId?: string

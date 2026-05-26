@@ -24,12 +24,24 @@ export class TicketingSystem implements System {
       }
     })
 
-    ticketComponents.forEach((ticket, entityId) => {
+    // Pre-sort tickets by priority (P1 > P2 > P3 > P4 > undefined) and deterministically by ID
+    const sortedTickets = Array.from(ticketComponents.entries()).sort((a, b) => {
+      const pA = a[1].priority || 'P4'
+      const pB = b[1].priority || 'P4'
+      if (pA < pB) return -1
+      if (pA > pB) return 1
+      return a[0].localeCompare(b[0])
+    })
+
+    sortedTickets.forEach(([entityId, ticket]) => {
       // Advance ticket progress deterministically based on dt
       if (ticket.status !== 'completed') {
         // If it's queued or brand new, check if we have technician capacity
         if (ticket.status === 'queued' || ticket.elapsedSeconds === 0) {
-          if (activeTickets >= this.maxTechnicians) {
+          // P1 tickets override maxTechnicians limits slightly (up to 2x capacity) in emergencies
+          const currentLimit = ticket.priority === 'P1' ? this.maxTechnicians * 2 : this.maxTechnicians
+          
+          if (activeTickets >= currentLimit) {
             ticket.status = 'queued'
             return // Skip advancing dt, the ticket is waiting for a technician
           } else {
