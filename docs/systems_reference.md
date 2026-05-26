@@ -3,6 +3,12 @@
 ## Thermal System
 Models the BTU emission of components. Racks trap heat (micro-climates) which transfers to the room ambient zone. CRAC units extract room BTU. Overheating causes silicon degradation and immediate asset failure.
 
+Architecturally, the Thermal System is divided into purely functional modules:
+- **CRACManager**: Extracts Lead-Lag redundancy scheduling, evaluates N+1 availability, calculates standby assignments, and computes CRAC unit BTU extraction and thermal throttling.
+- **RoomAmbientEngine**: Simulates massive room-level thermal inertia, BTU dispersion, and localized environmental relative humidity calculations.
+- **RackMicroclimate**: Computes isolated hot-aisle/cold-aisle containment recirculation, localized adjacent rack conduction, and rack-specific convection heat trapping.
+- **DeviceThermalCalculator**: Computes per-server heat generation based on dynamic workloads, scales fan speeds based on target equilibrium curves, and processes CPU thermal throttling and critical hardware failures.
+
 ## Power System
 Models a 3-Phase electrical distribution network. Compute nodes draw Apparent Power (VA) based on utilization. Racks balance load across A/B/C phases. Imbalance or exceeding the PDU breaker limit causes a hard power trip. 
 

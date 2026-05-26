@@ -630,3 +630,14 @@ The datacenter footprint is dynamic and fully configurable by the operator throu
 - **Construct Facility Wing**: Constructs a completely independent colocation hall adjacent to the main campus for massive capacity scaling.
 
 All expansions require significant capital expenditure, directly impacting the operator's economy.
+
+## Day 78: Core Datacenter Simulation - Thermal Subsystem Modularization
+
+**What Changed:**
+The ECS Thermal Subsystem was structurally reorganized into distinct, stateless functional modules (CRACManager, RoomAmbientEngine, RackMicroclimate, and DeviceThermalCalculator). The massive monolith of ThermalSystem.ts was transformed into an orchestration layer that delegates calculation to these purely deterministic functions.
+
+**Why it matters:**
+This architectural change strictly enforces zero-allocation physics processing and guarantees execution isolation for the WebWorker layers. Breaking out the massive physics calculations ensures deterministic scaling and prepares the thermodynamics systems for deterministic lockstep multiplayer without compromising architectural integrity.
+
+**Operational Impact:**
+The actual Datacenter thermodynamic calculations remain identical. Racks continue to build up localized heat due to recirculation, CRAC units still scale efficiently with redundancy (N+1), and servers naturally throttle based on localized heat indexes. The codebase is now strictly aligned with enterprise standard operational paradigms.
