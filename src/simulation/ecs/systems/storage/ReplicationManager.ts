@@ -1,5 +1,4 @@
-import type { StorageComponent } from '../types'
-import { ComponentMap } from '../ComponentMap'
+import type { StorageComponent, ComponentMap } from '../../types'
 import { SANAggregator } from './SANAggregator'
 
 export class ReplicationManager {
@@ -7,7 +6,7 @@ export class ReplicationManager {
    * Processes active data replication sync loop syncing data transfer across available bandwidth.
    */
   public static processReplication(
-    entities: string[],
+    entities: readonly string[],
     storageMap: ComponentMap<StorageComponent>,
     adjMap: Map<string, string[]>,
     bwMap: Map<string, number>,

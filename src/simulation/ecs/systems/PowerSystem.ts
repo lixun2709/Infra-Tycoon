@@ -49,7 +49,7 @@ export class PowerSystem extends System {
 
     // 0. Pre-aggregation Passes O(N)
     for (let i = 0; i < entities.length; i++) {
-      const id = entities[i]
+      const id = entities[i]!
       const transform = transformMap.get(id)!
       if (transform.type === 'rack') {
         this.racksPool.push(id)
@@ -82,7 +82,7 @@ export class PowerSystem extends System {
 
     // 1. Process UPS battery status and main power status for each Rack PDU
     for (let i = 0; i < this.racksPool.length; i++) {
-      const rackId = this.racksPool[i]
+      const rackId = this.racksPool[i]!
       const rackPower = powerMap.get(rackId)!
       const rackComp = this.world.getComponent<RackComponent>('rack', rackId)
 
@@ -101,7 +101,7 @@ export class PowerSystem extends System {
 
     // 2. Process Power Feed Losses and Dynamic Wattage Scaling for computing/device nodes
     for (let i = 0; i < this.deviceNodesPool.length; i++) {
-      const id = this.deviceNodesPool[i]
+      const id = this.deviceNodesPool[i]!
       const transform = transformMap.get(id)!
       const power = powerMap.get(id)!
       const thermal = thermalMap.get(id)
@@ -140,7 +140,7 @@ export class PowerSystem extends System {
 
     // 3. Sum child power draw to compile 3-Phase PDU rack loads
     for (let i = 0; i < this.racksPool.length; i++) {
-      const rackId = this.racksPool[i]
+      const rackId = this.racksPool[i]!
       const rackPower = powerMap.get(rackId)!
       const children = this.rackChildrenMap.get(rackId)
 
@@ -149,7 +149,7 @@ export class PowerSystem extends System {
 
     // 4. Update Rack status, timers, and trigger phase or total overload breaker trips
     for (let i = 0; i < this.racksPool.length; i++) {
-      const rackId = this.racksPool[i]
+      const rackId = this.racksPool[i]!
       const rackPower = powerMap.get(rackId)!
       const transform = transformMap.get(rackId)
       const rackComp = this.world.getComponent<RackComponent>('rack', rackId)

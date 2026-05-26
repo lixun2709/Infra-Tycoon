@@ -1,18 +1,17 @@
-import type { StorageComponent, PowerComponent, TransformComponent } from '../types'
-import { ComponentMap } from '../ComponentMap'
-import { EventBus } from '../../../core/EventBus'
+import type { StorageComponent, PowerComponent, TransformComponent, ComponentMap } from '../../types'
+import { ECSEventBus } from '../../EventBus'
 
 export class RAIDManager {
   /**
    * Processes drive wear degradation, Write Amplification Factor (WAF), RAID failure thresholds, and rebuilding.
    */
   public static processRAIDStatus(
-    entities: string[],
+    entities: readonly string[],
     storageMap: ComponentMap<StorageComponent>,
     powerMap: ComponentMap<PowerComponent>,
     transformMap: ComponentMap<TransformComponent>,
     dt: number,
-    eventBus: EventBus
+    eventBus: ECSEventBus
   ) {
     entities.forEach(id => {
       const storage = storageMap.get(id)!

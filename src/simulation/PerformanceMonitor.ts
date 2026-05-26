@@ -49,6 +49,8 @@ export interface PerformanceMetrics {
     totalPowerDrawKW: number
     totalStorageUsedTB: number
     totalStorageCapacityTB: number
+    pue?: number
+    wue?: number
   }
 }
 
@@ -85,7 +87,9 @@ export class PerformanceMonitor {
       congestedLinkCount: 0,
       totalPowerDrawKW: 0.0,
       totalStorageUsedTB: 0.0,
-      totalStorageCapacityTB: 0.0
+      totalStorageCapacityTB: 0.0,
+      pue: 1.0,
+      wue: 0.0
     }
   }
 
@@ -193,6 +197,8 @@ export class PerformanceMonitor {
       totalPowerDrawKW: number
       totalStorageUsedTB: number
       totalStorageCapacityTB: number
+      pue?: number
+      wue?: number
     }
   ) {
     this.metrics.simTickTime = simTickTime

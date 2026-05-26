@@ -1,5 +1,5 @@
 import type { PowerComponent, TransformComponent, RackComponent } from '../../types'
-import type { EventBus } from '../../EventBus'
+import { ECSEventBus } from '../../EventBus'
 
 export class BreakerManager {
   /**
@@ -13,7 +13,7 @@ export class BreakerManager {
     transform: TransformComponent | undefined,
     children: string[] | undefined,
     powerMap: Map<string, PowerComponent>,
-    eventBus: EventBus
+    eventBus: ECSEventBus
   ) {
     if (rackComp.status === 'power_overload' && !rackPower.breakerTripped) {
       console.log(`[PowerSystem] Detected BREAKER RESET or recovery initiation on Rack: ${rackId}. Re-evaluating...`)

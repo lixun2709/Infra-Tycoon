@@ -1,5 +1,5 @@
 import type { PowerComponent, TransformComponent, RackComponent } from '../../types'
-import type { EventBus } from '../../EventBus'
+import { ECSEventBus } from '../../EventBus'
 
 export class UPSManager {
   /**
@@ -12,7 +12,7 @@ export class UPSManager {
     rackComp: RackComponent,
     transform: TransformComponent | undefined,
     facilityFeeds: { A: boolean; B: boolean },
-    eventBus: EventBus
+    eventBus: ECSEventBus
   ) {
     if (power.upsMaxBatterySeconds === undefined) power.upsMaxBatterySeconds = 30.0
     if (power.upsBatterySeconds === undefined) power.upsBatterySeconds = power.upsMaxBatterySeconds

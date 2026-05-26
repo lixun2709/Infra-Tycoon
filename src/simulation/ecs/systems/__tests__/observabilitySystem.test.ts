@@ -22,7 +22,9 @@ describe('Observability ECS System Core Tests', () => {
       congestedLinkCount: 0,
       totalPowerDrawKW: 0.0,
       totalStorageUsedTB: 0.0,
-      totalStorageCapacityTB: 0.0
+      totalStorageCapacityTB: 0.0,
+      pue: 1.0,
+      wue: 0.0
     }
     
     system = new ObservabilitySystem(world, mockTelemetrySystem)

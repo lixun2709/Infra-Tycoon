@@ -1,5 +1,4 @@
-import type { StorageComponent, ApplicationComponent, ThermalComponent } from '../types'
-import { ComponentMap } from '../ComponentMap'
+import type { StorageComponent, ApplicationComponent, ThermalComponent, ComponentMap } from '../../types'
 
 export class IOPSCalculator {
   /**
@@ -7,8 +6,8 @@ export class IOPSCalculator {
    * and handles cascading thermal thrashing.
    */
   public static processIOPSAndThrashing(
-    storageEntities: string[],
-    appEntities: string[],
+    storageEntities: readonly string[],
+    appEntities: readonly string[],
     storageMap: ComponentMap<StorageComponent>,
     appMap: ComponentMap<ApplicationComponent>,
     thermalMap: ComponentMap<ThermalComponent>,

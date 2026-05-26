@@ -1,5 +1,4 @@
-import type { StorageComponent, TransformComponent } from '../types'
-import { ComponentMap } from '../ComponentMap'
+import type { StorageComponent, TransformComponent, ComponentMap } from '../../types'
 
 export class SANAggregator {
   // BFS pools
@@ -48,7 +47,7 @@ export class SANAggregator {
    * Discovers and aggregates capacity and IOPS from cabled disk shelves to their SAN controllers.
    */
   public static processSANAggregation(
-    entities: string[],
+    entities: readonly string[],
     storageMap: ComponentMap<StorageComponent>,
     transformMap: ComponentMap<TransformComponent>,
     adjMap: Map<string, string[]>,
