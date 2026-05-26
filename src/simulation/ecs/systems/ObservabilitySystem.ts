@@ -71,50 +71,66 @@ export class ObservabilitySystem extends System {
     return ObservabilityAlerting.getRules()
   }
 
+  // Instrumentation
+  public lastExecutionTimeMs = 0.0
+  private executionTickCounter = 0
+
   /**
    * Evaluates all observability rules against active simulation components in the ECS world.
    */
   public update(_dt: number): void {
     const startTime = performance.now()
 
-    const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
-    const transformMap = this.world.getComponentMap<TransformComponent>('transform')
+    this.executionTickCounter++
+    const shouldEvaluate = this.executionTickCounter % 60 === 0
 
-    const simStats = this.telemetrySys?.simStats
+    if (shouldEvaluate) {
+      const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
+      const transformMap = this.world.getComponentMap<TransformComponent>('transform')
 
-    for (const rule of ObservabilityAlerting.getRules()) {
-      if (!rule.isActive) continue
+      const simStats = this.telemetrySys?.simStats
       
-      ObservabilityRulesEngine.initializeRule(rule.id)
+      const activeRules = ObservabilityAlerting.getRules().filter(r => r.isActive)
+      const tempRules: typeof activeRules = []
 
-      if (rule.metricType === 'power') {
-        // O(1) Fetch from TelemetrySystem
-        ObservabilityRulesEngine.checkThreshold(rule, 'global', simStats?.totalPowerDrawKW ?? 0, this.firedAlerts)
-      } 
-      else if (rule.metricType === 'network') {
-        // O(1) Fetch from TelemetrySystem
-        ObservabilityRulesEngine.checkThreshold(rule, 'global', simStats?.congestedLinkCount ?? 0, this.firedAlerts)
-      } 
-      else if (rule.metricType === 'storage') {
-        // O(1) Fetch from TelemetrySystem
-        const totalStorageCapacity = simStats?.totalStorageCapacityTB ?? 0
-        const totalStorageUsed = simStats?.totalStorageUsedTB ?? 0
-        const ratio = totalStorageCapacity > 0 ? totalStorageUsed / totalStorageCapacity : 0
-        ObservabilityRulesEngine.checkThreshold(rule, 'global', ratio, this.firedAlerts)
-      } 
-      else if (rule.metricType === 'temperature') {
-        // Temperature check runs per individual chassis node
+      for (const rule of activeRules) {
+        ObservabilityRulesEngine.initializeRule(rule.id)
+
+        if (rule.metricType === 'power') {
+          // O(1) Fetch from TelemetrySystem
+          ObservabilityRulesEngine.checkThreshold(rule, 'global', simStats?.totalPowerDrawKW ?? 0, this.firedAlerts)
+        } 
+        else if (rule.metricType === 'network') {
+          // O(1) Fetch from TelemetrySystem
+          ObservabilityRulesEngine.checkThreshold(rule, 'global', simStats?.congestedLinkCount ?? 0, this.firedAlerts)
+        } 
+        else if (rule.metricType === 'storage') {
+          // O(1) Fetch from TelemetrySystem
+          const totalStorageCapacity = simStats?.totalStorageCapacityTB ?? 0
+          const totalStorageUsed = simStats?.totalStorageUsedTB ?? 0
+          const ratio = totalStorageCapacity > 0 ? totalStorageUsed / totalStorageCapacity : 0
+          ObservabilityRulesEngine.checkThreshold(rule, 'global', ratio, this.firedAlerts)
+        } 
+        else if (rule.metricType === 'temperature') {
+          tempRules.push(rule)
+        }
+      }
+
+      // O(Nodes) inverted architecture: loop nodes once, evaluate all temp rules
+      if (tempRules.length > 0) {
         thermalMap.forEach((thermal, nodeId) => {
           const trans = transformMap.get(nodeId)
           if (trans && trans.type !== 'rack' && trans.type !== 'cooling') {
             const temp = thermal.temperature ?? 0
-            ObservabilityRulesEngine.checkThreshold(
-              rule, 
-              nodeId, 
-              temp, 
-              this.firedAlerts,
-              trans.name || nodeId.slice(0, 8)
-            )
+            for (const rule of tempRules) {
+              ObservabilityRulesEngine.checkThreshold(
+                rule, 
+                nodeId, 
+                temp, 
+                this.firedAlerts,
+                trans.name || nodeId.slice(0, 8)
+              )
+            }
           }
         })
       }

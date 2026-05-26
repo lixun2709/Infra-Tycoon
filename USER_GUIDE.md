@@ -737,3 +737,11 @@ The background telemetry engine—responsible for detecting power spikes, thermal 
 
 **Why it matters:**
 Previously, deploying a facility with thousands of active devices would severely drag CPU performance because the engine would log temperature data 60 times a second for every single machine. By throttling this to a realistic 1Hz polling rate, the engine clears millions of background operations a minute. When combined with O(1) site aggregation, large-scale metrics compilation is virtually instantaneous.
+
+## Day 90: Core Datacenter Simulation - Observability Scale-Out
+
+**What Changed:**
+The Observability Alerting subsystem—which controls triggering visual alarms when things like server temperature or power capacities exceed acceptable thresholds—has been entirely rewritten to support enterprise-scale facilities.
+
+**Why it matters:**
+Previously, deploying custom alerts caused immense CPU stuttering because the simulation evaluated every active rule against every server 60 times a second. The new architecture executes these checks at an optimized 1-second cadence (1Hz) and utilizes an "inverted loop" architecture. This means whether you have 10 custom alerts or 1,000 custom alerts against 10,000 servers, the system only scans the datacenter topology *once* per second. It allows you to build massive multi-site grids without alert congestion crashing your frame rate!

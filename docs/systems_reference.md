@@ -70,3 +70,9 @@ The Packet Simulation subsystem resolves traffic loads via the Dijkstra Single-S
 ### Telemetry Sampling & Aggregation
 The Telemetry system captures hundreds of metrics (temperature, power, throughput, IOPS) per node across the facility. To prevent exponential CPU saturation (O(N) history recording at 60Hz), the metric capture pipelines and anomaly detectors operate on a decoupled 1Hz sampling schedule (	his.executionTickCounter % 60 === 0).
 Furthermore, O(Sites * Racks) nested loops for calculating site-wide power breaker saturation have been flattened. Site Max Power bounds are now dynamically mapped in a pre-calculation pass (O(R)) before iterating over the rolling site histories, allowing enterprise-scale facilities to run thousands of racks without halting the ECS loop.
+### Observability Subsystem Optimization (Day 90)
+The Observability subsystem performs threshold rule evaluation across datacenter nodes to emit operational alerts (Thermal Warnings, Power Saturation, etc). Previously, these checks evaluated at 60Hz and iterated in O(Rules * Nodes) patterns, leading to extreme CPU load on heavily populated sites.
+
+**Key Refactors:**
+- **1Hz Polling Throttle**: Subsystem metrics rules engine evaluates strictly on a 1Hz clock cycle (executionTickCounter % 60 === 0).
+- **O(N) Inverted Thermal Evaluation**: Instead of querying the 	hermalMap loop repeatedly per active temperature alerting rule, the subsystem filters active rules ahead of time and completes a single O(N) scan. This ensures 1000 rules against 10,000 servers is executed efficiently, avoiding 10,000,000 mapping allocations per tick.

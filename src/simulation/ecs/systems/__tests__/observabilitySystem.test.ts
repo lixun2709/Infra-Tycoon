@@ -55,16 +55,19 @@ describe('Observability ECS System Core Tests', () => {
       } as ThermalComponent)
 
       // First tick
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       let alerts = system.flushAlerts()
       expect(alerts.length).toBe(0) // Needs 3 ticks
 
       // Second tick
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       alerts = system.flushAlerts()
       expect(alerts.length).toBe(0)
 
       // Third tick
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
@@ -75,6 +78,7 @@ describe('Observability ECS System Core Tests', () => {
       expect(alerts[0]!.message).toContain('compute-server-1')
 
       // Fourth tick (alert is already active, so should prevent spamming)
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       alerts = system.flushAlerts()
       expect(alerts.length).toBe(0)
@@ -101,25 +105,30 @@ describe('Observability ECS System Core Tests', () => {
       world.addComponent('thermal', thermal)
 
       // Tick 1 (Hot)
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       
       // Tick 2 (Cooled down)
       thermal.temperature = 65.0
       world.addComponent('thermal', thermal)
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
 
       // Tick 3 (Hot again)
       thermal.temperature = 75.0
       world.addComponent('thermal', thermal)
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
 
       // Tick 4 (Hot)
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
 
       let alerts = system.flushAlerts()
       expect(alerts.length).toBe(0) // Trigger reset on Tick 2, so Tick 3-4 only counted as 2 ticks
 
       // Tick 5 (Hot) -> Now should fire (3 ticks: Tick 3, 4, 5)
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
@@ -131,9 +140,11 @@ describe('Observability ECS System Core Tests', () => {
       // High load (85kW, which is > 80kW threshold)
       mockTelemetrySystem.simStats.totalPowerDrawKW = 85.0
 
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       expect(system.flushAlerts().length).toBe(0) // Needs 2 ticks
 
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       const alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
@@ -150,10 +161,12 @@ describe('Observability ECS System Core Tests', () => {
       mockTelemetrySystem.simStats.totalStorageUsedTB = 95.0
 
       for (let i = 0; i < 3; i++) {
+        ;(system as any).executionTickCounter = 59
         system.update(1.0)
         expect(system.flushAlerts().length).toBe(0) // Needs 4 ticks
       }
 
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       const alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
@@ -168,9 +181,11 @@ describe('Observability ECS System Core Tests', () => {
       // Degraded connection count > 0
       mockTelemetrySystem.simStats.congestedLinkCount = 1
 
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       expect(system.flushAlerts().length).toBe(0) // Needs 2 ticks
 
+      ;(system as any).executionTickCounter = 59
       system.update(1.0)
       const alerts = system.flushAlerts()
       expect(alerts.length).toBe(1)
@@ -199,12 +214,24 @@ describe('Observability ECS System Core Tests', () => {
       worldB.addComponent('transform', { entityId: nodeB, type: 'compute', name: 'Server B' } as TransformComponent)
       worldB.addComponent('thermal', { entityId: nodeB, temperature: 25.0 } as ThermalComponent)
 
-      // Tick 3 times
-      for (let i = 0; i < 3; i++) {
-        systemA.update(1.0)
-        systemB.update(1.0)
-      }
+      // Tick 1
+      ;(systemA as any).executionTickCounter = 59
+      systemA.update(1.0)
+      ;(systemB as any).executionTickCounter = 59
+      systemB.update(1.0)
 
+      // Tick 2
+      ;(systemA as any).executionTickCounter = 59
+      systemA.update(1.0)
+      ;(systemB as any).executionTickCounter = 59
+      systemB.update(1.0)
+
+      // Tick 3 (A should fire)
+      ;(systemA as any).executionTickCounter = 59
+      systemA.update(1.0)
+      ;(systemB as any).executionTickCounter = 59
+      systemB.update(1.0)
+      
       const alertsA = systemA.flushAlerts()
       const alertsB = systemB.flushAlerts()
 
@@ -257,6 +284,7 @@ describe('Observability ECS System Core Tests', () => {
       customWorld.addComponent('transform', { entityId, type: 'compute', name: 'Hot Server' } as TransformComponent)
       customWorld.addComponent('thermal', { entityId, temperature: 99.0 } as ThermalComponent)
 
+      ;(customSystem as any).executionTickCounter = 59
       customSystem.update(1.0)
       let alerts = customSystem.flushAlerts()
       expect(alerts.length).toBe(1)
@@ -264,12 +292,14 @@ describe('Observability ECS System Core Tests', () => {
 
       // 2. Dynamic Disabling
       customSystem.enableRule('rule-custom-test', false)
+      ;(customSystem as any).executionTickCounter = 59
       customSystem.update(1.0)
       alerts = customSystem.flushAlerts()
       expect(alerts.length).toBe(0)
 
       // 3. Dynamic Enabling
       customSystem.enableRule('rule-custom-test', true)
+      ;(customSystem as any).executionTickCounter = 59
       customSystem.update(1.0)
       alerts = customSystem.flushAlerts()
       expect(alerts.length).toBe(1)
