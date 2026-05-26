@@ -23,7 +23,6 @@ export interface MiscSlice {
   resetState: () => void
   fixState: () => void
   updateSite: (id: string, updates: Partial<Site>) => void
-  processAutoBackups: () => void
   simulateRandomFailure: () => void
   simulateDataCorruption: () => void
   generateFinalReport: () => { score: number, grade: string, breakdown: unknown }
@@ -359,19 +358,6 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     }
   },
 
-  processAutoBackups: () => {
-    const { nodes, pushAlert, updateNode } = get()
-    let backedUpCount = 0
-    nodes.forEach(n => {
-      if ((n.type === 'compute' || n.type === 'storage' || n.type === 'backup') && n.backupStatus === 'unprotected') {
-        updateNode(n.id, { backupStatus: 'protected' })
-        backedUpCount++
-      }
-    })
-    if (backedUpCount > 0) {
-      pushAlert('info', `Backup Cycle Complete: ${backedUpCount} nodes secured.`)
-    }
-  },
 
   simulateRandomFailure: () => {
     const { nodes, pushAlert, updateNode } = get()
@@ -394,7 +380,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     if (target.isImmutable) {
       pushAlert('info', `Threat blocked on ${target.name} by Immutable Snapshots.`)
     } else {
-      updateNode(target.id, { isInfected: true })
+      updateNode(target.id, { infectionState: 'infected' })
       pushAlert('critical', `Data Corruption: ${target.name} infected by ransomware!`)
     }
   },

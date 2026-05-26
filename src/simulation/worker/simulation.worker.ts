@@ -91,7 +91,7 @@ function processQueue() {
  */
 function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const world = engine.getWorld()
-  const { nodes, applications, connections, networkLoad } = payload
+  const { nodes, applications, virtualMachines, contracts, connections, networkLoad } = payload
 
   // Track global network load deterministically inside the PacketSystem
   if (networkLoad !== undefined) {
@@ -102,6 +102,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const incomingIds = new Set<string>()
   nodes.forEach(node => incomingIds.add(node.id))
   applications.forEach(app => incomingIds.add(app.id))
+  if (virtualMachines) {
+    virtualMachines.forEach(vm => incomingIds.add(vm.id))
+  }
+  if (contracts) {
+    contracts.forEach(contract => incomingIds.add(contract.id))
+  }
   if (connections) {
     connections.forEach(conn => incomingIds.add(conn.id))
   }
@@ -142,7 +148,6 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         uHeight: node.uHeight,
         degradation: node.degradationPercent,
         healthStatus: node.healthStatus,
-        isInfected: node.isInfected,
         isBlackholed: node.isBlackholed,
         rateLimitGbps: node.rateLimitGbps
       } as TransformComponent)
@@ -158,7 +163,6 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         transform.uHeight = node.uHeight
         transform.degradation = node.degradationPercent
         transform.healthStatus = node.healthStatus
-        transform.isInfected = node.isInfected
         transform.isBlackholed = node.isBlackholed
         transform.rateLimitGbps = node.rateLimitGbps
       }
@@ -308,6 +312,42 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       }
     }
 
+
+    // 4.6.5 Update Backup Component
+    if (node.type === 'compute' || node.type === 'storage' || node.type === 'backup') {
+      if (!world.hasComponent('backup', node.id)) {
+        world.addComponent('backup', {
+          entityId: node.id,
+          backupStatus: node.backupStatus ?? 'unprotected',
+          lastBackupTime: node.lastBackupTime ?? 0,
+          corruptionState: node.corruptionState ?? 'clean'
+        } as import('../ecs/types').BackupComponent)
+      } else {
+        const backup = world.getComponent<import('../ecs/types').BackupComponent>('backup', node.id)
+        if (backup) {
+          if (node.backupStatus !== undefined) backup.backupStatus = node.backupStatus
+          if (node.lastBackupTime !== undefined) backup.lastBackupTime = node.lastBackupTime
+          if (node.corruptionState !== undefined) backup.corruptionState = node.corruptionState
+        }
+      }
+    }
+
+    // 4.6.6 Update Security Component
+    if (!world.hasComponent('security', node.id)) {
+      world.addComponent('security', {
+        entityId: node.id,
+        infectionState: node.infectionState ?? 'clean',
+        infectionProgress: 0,
+        encryptionRate: 0.05,
+        isIsolated: false
+      } as import('../ecs/types').SecurityComponent)
+    } else {
+      const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', node.id)
+      if (security) {
+        if (node.infectionState !== undefined) security.infectionState = node.infectionState
+      }
+    }
+
     // 4.7 Update Rack Component
     if (node.type === 'rack') {
       const hasPDU = nodes.some(n => n.parentRackId === node.id && n.catalogKey === 'HIGH_DENSITY_PDU_1U')
@@ -442,6 +482,62 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       }
     })
   }
+  // 5.2 Update Contract Components
+  if (contracts) {
+    contracts.forEach(contract => {
+      if (!world.hasComponent('contract', contract.id)) {
+        world.registerEntity(contract.id)
+        
+        world.addComponent('contract', {
+          entityId: contract.id,
+          blueprintId: contract.blueprintId,
+          totalTicks: contract.totalTicks,
+          uptimeTicks: contract.uptimeTicks,
+          accumulatedPenalty: contract.accumulatedPenalty,
+          currentStatus: contract.currentStatus
+        } as import('../ecs/types').ContractComponent)
+      } else {
+        const existing = world.getComponent<import('../ecs/types').ContractComponent>('contract', contract.id)
+        if (existing) {
+          existing.blueprintId = contract.blueprintId
+          existing.totalTicks = contract.totalTicks
+          existing.uptimeTicks = contract.uptimeTicks
+          existing.accumulatedPenalty = contract.accumulatedPenalty
+          existing.currentStatus = contract.currentStatus
+        }
+      }
+    })
+  }
+  // 5.3 Update Virtual Machines
+  if (virtualMachines) {
+    virtualMachines.forEach(vm => {
+      if (!world.hasComponent('vm', vm.id)) {
+        world.registerEntity(vm.id)
+        
+        world.addComponent('vm', {
+          entityId: vm.id,
+          nodeId: vm.nodeId,
+          status: vm.status,
+          cpuCores: vm.cpuCores,
+          memoryGB: vm.memoryGB,
+          storageGB: vm.storageGB,
+          migratingToNodeId: vm.migratingToNodeId,
+          migrationProgress: vm.migrationProgress
+        } as import('../ecs/types').VmComponent)
+      } else {
+        const existing = world.getComponent<import('../ecs/types').VmComponent>('vm', vm.id)
+        if (existing) {
+          existing.nodeId = vm.nodeId
+          existing.status = vm.status
+          existing.migratingToNodeId = vm.migratingToNodeId
+          // Migration progress is simulation-driven, don't overwrite if it's currently migrating unless it's null
+          if (vm.migrationProgress === undefined) {
+            existing.migrationProgress = undefined
+          }
+        }
+      }
+    })
+  }
 }
 
 function sendSyncOutput() {
@@ -453,6 +549,8 @@ function sendSyncOutput() {
   const output: SimSyncOutputPayload = {
     nodes: [],
     applications: [],
+    contracts: [],
+    virtualMachines: [],
     connections: [],
     alerts
   }
@@ -464,12 +562,18 @@ function sendSyncOutput() {
   const provMap = world.getComponentMap<ProvisioningComponent>('provisioning')
   const storageMap = world.getComponentMap<StorageComponent>('storage')
   const appMap = world.getComponentMap<ApplicationComponent>('application')
+  const contractMap = world.getComponentMap<import('../ecs/types').ContractComponent>('contract')
+  const vmMap = world.getComponentMap<import('../ecs/types').VmComponent>('vm')
   const connectionMap = world.getComponentMap<ConnectionComponent>('connection')
+  const backupMap = world.getComponentMap<import('../ecs/types').BackupComponent>('backup')
+  const securityMap = world.getComponentMap<import('../ecs/types').SecurityComponent>('security')
 
   thermalMap.forEach((comp, id) => {
     const power = powerMap.get(id)
     const prov = provMap.get(id)
     const storage = storageMap.get(id)
+    const backup = backupMap.get(id)
+    const security = securityMap.get(id)
     const transform = transformMap.get(id)
     if (power || prov) { // Only for hardware, not for apps-as-entities
       output.nodes.push({
@@ -506,8 +610,11 @@ function sendSyncOutput() {
         containmentType: comp.containmentType,
         isStandby: comp.isStandby,
         accumulatedSimTime: comp.accumulatedSimTime,
-        isInfected: transform?.isInfected,
-        isBlackholed: transform?.isBlackholed
+        infectionState: security?.infectionState,
+        isBlackholed: transform?.isBlackholed,
+        backupStatus: backup?.backupStatus,
+        lastBackupTime: backup?.lastBackupTime,
+        corruptionState: backup?.corruptionState
       })
     }
   })
@@ -517,6 +624,26 @@ function sendSyncOutput() {
       id,
       status: comp.status,
       progress: comp.progress
+    })
+  })
+
+  contractMap.forEach((comp, id) => {
+    output.contracts.push({
+      id,
+      totalTicks: comp.totalTicks,
+      uptimeTicks: comp.uptimeTicks,
+      accumulatedPenalty: comp.accumulatedPenalty,
+      currentStatus: comp.currentStatus
+    })
+  })
+
+  vmMap.forEach((comp, id) => {
+    output.virtualMachines!.push({
+      id,
+      nodeId: comp.nodeId,
+      status: comp.status,
+      migratingToNodeId: comp.migratingToNodeId,
+      migrationProgress: comp.migrationProgress
     })
   })
 

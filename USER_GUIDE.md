@@ -745,3 +745,6 @@ The Observability Alerting subsystem—which controls triggering visual alarms whe
 
 **Why it matters:**
 Previously, deploying custom alerts caused immense CPU stuttering because the simulation evaluated every active rule against every server 60 times a second. The new architecture executes these checks at an optimized 1-second cadence (1Hz) and utilizes an "inverted loop" architecture. This means whether you have 10 custom alerts or 1,000 custom alerts against 10,000 servers, the system only scans the datacenter topology *once* per second. It allows you to build massive multi-site grids without alert congestion crashing your frame rate!
+
+### Day 91: Operations Realism (SLA Systems)
+SLA requirement checks and penalty accounting are now processed deterministically inside the ECS WebWorker. The SLA system now correctly enforces power and maintenance compliance (applications running on powered-off servers will fail SLAs!). ECS O(N) evaluation enables thousands of active contracts on large-scale multiplayer datacenters without UI freezing.

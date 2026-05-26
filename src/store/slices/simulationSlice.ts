@@ -21,7 +21,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
   },
 
   handleWorkerOutput: (payload) => {
-    const { nodes, applications, connections } = get()
+    const { nodes, applications, virtualMachines, connections, activeContracts } = get()
     
     // Update nodes with telemetry data
     let updatedNodes = nodes.map(node => {
@@ -40,6 +40,18 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       }
       return app
     })
+
+    // Update virtual machines with status and migration progress
+    let updatedVMs = virtualMachines
+    if (payload.virtualMachines) {
+      updatedVMs = virtualMachines.map(vm => {
+        const update = payload.virtualMachines!.find(v => v.id === vm.id)
+        if (update) {
+          return { ...vm, ...update }
+        }
+        return vm
+      })
+    }
 
     // Update cabled connection links asynchronously from worker output
     let updatedConnections = connections
@@ -101,10 +113,26 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       }, 0)
     )
 
+
+
+    // Sync contracts from worker
+    let updatedContractsStore = activeContracts
+    if (payload.contracts) {
+      updatedContractsStore = activeContracts.map(contract => {
+        const update = payload.contracts!.find(c => c.id === contract.id)
+        if (update) {
+          return { ...contract, ...update }
+        }
+        return contract
+      })
+    }
+
     set({ 
-      nodes: updatedNodes, 
+      nodes: updatedNodes,
       applications: updatedApps,
+      virtualMachines: updatedVMs,
       connections: updatedConnections,
+      activeContracts: updatedContractsStore,
       sites: updatedSites,
       overloadedRackCount,
       siteMetricsHistory,
@@ -127,8 +155,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       set({ _lastTelemetry: telemetry } as Partial<InfraState>)
     })
     
-    const { nodes, applications, connections, networkLoad } = get()
-    simWorkerManager.init(nodes, applications, connections, networkLoad)
+    const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad } = get()
+    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad)
 
     // Start centralized non-React Simulation Engine run loop (Day 28)
     simulationCoordinator.start(1000)
@@ -136,10 +164,10 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
   processTick: (dt = 1.0) => {
     // 0. Request Worker Tick (Asynchronous)
-    simWorkerManager.syncInput(get().nodes, get().applications, get().connections, get().networkLoad)
+    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad)
     simWorkerManager.requestTick(dt)
     
-    const { nodes, applications, activeContracts, realTimePlayedSeconds, balance, reputation } = get()
+    const { nodes, activeContracts, realTimePlayedSeconds, balance, reputation } = get()
 
     // 1. Core Simulation Updates (Decoupled from UI)
     get().processAging()
@@ -198,33 +226,22 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       const blueprint = CONTRACT_CATALOG[contract.blueprintId]
       if (!blueprint) return contract
 
-      // Check requirements
-      let isHealthy = true
-      blueprint.requirements.forEach(req => {
-        const runningApps = applications.filter(a => {
-          if (a.appId !== req.appId || a.status !== 'running') return false
-          const parentNode = nodes.find(n => n.id === a.nodeId)
-          return parentNode ? !parentNode.maintenanceMode : true
-        })
-        if (runningApps.length < req.count) isHealthy = false
-      })
-
-      const newAccumulatedPenalty = isHealthy 
-        ? contract.accumulatedPenalty 
-        : contract.accumulatedPenalty + (blueprint.penaltyPerTick * dt)
+      // The ECS worker evaluates requirements exactly once per second,
+      // tracking totalTicks, uptimeTicks, currentStatus, and accumulatedPenalty.
+      // We only read these deterministically computed values here.
 
       if (isMonthEnd) {
         monthlyRevenue += blueprint.monthlyMRR
-        monthlyPenalty += newAccumulatedPenalty
+        monthlyPenalty += contract.accumulatedPenalty
+        
+        // Reset penalty upon monthly billing cycle
+        return {
+          ...contract,
+          accumulatedPenalty: 0
+        }
       }
 
-      return {
-        ...contract,
-        totalTicks: contract.totalTicks + 1,
-        uptimeTicks: isHealthy ? contract.uptimeTicks + 1 : contract.uptimeTicks,
-        currentStatus: isHealthy ? 'healthy' as const : 'violating' as const,
-        accumulatedPenalty: isMonthEnd ? 0 : newAccumulatedPenalty
-      }
+      return contract
     })
 
     // 3. Operational Expenses

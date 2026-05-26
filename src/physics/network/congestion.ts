@@ -3,12 +3,10 @@ import type { AdjacencyMap } from './types'
 import type { NetworkDemand } from './types'
 
 import { TrafficRouter } from './modules/TrafficRouter'
-import { MalwarePropagator } from './modules/MalwarePropagator'
 import { QoSEngine } from './modules/QoSEngine'
 
 export interface CongestionResult {
   updatedConnections: Connection[]
-  newlyInfectedNodeIds: string[]
 }
 
 /**
@@ -30,11 +28,9 @@ export function resolveCongestion(
   // 1. Compile Graph Adjacency & Compute Flow Aggregation via Shortest Paths
   const accumulatedThroughput = TrafficRouter.routeTraffic(nodes, connections, demands, adjMap, topologyHash)
 
-  // 2. Incident Lateral Propagation Model
-  const newlyInfectedNodeIds = MalwarePropagator.propagate(nodes, adjMap, dt)
-
+  // 2. Incident Lateral Propagation Model (Moved to ECS SecuritySystem)
   // 3. Resolve congestion metrics on links based on accumulated Dijkstra flows
   const updatedConnections = QoSEngine.resolveMetrics(connections, accumulatedThroughput, nodes, demands, dt)
 
-  return { updatedConnections, newlyInfectedNodeIds }
+  return { updatedConnections }
 }

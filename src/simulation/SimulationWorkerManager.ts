@@ -1,5 +1,5 @@
 import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload, SimInitPayload, SimSyncInputPayload } from './worker/workerTypes'
-import type { InfraNode, ApplicationDeployment, Connection } from '../store/infraTypes'
+import type { InfraNode, ApplicationDeployment, Connection, ActiveContract, VirtualMachine, PodData } from '../store/infraTypes'
 import { performanceMonitor } from './PerformanceMonitor'
 
 /**
@@ -18,7 +18,9 @@ export class SimulationWorkerManager {
   private heartbeatInterval: number | null = null
   private lastNodes: InfraNode[] = []
   private lastApps: ApplicationDeployment[] = []
+  private lastVMs: VirtualMachine[] = []
   private lastConnections: Connection[] = []
+  private lastContracts: ActiveContract[] = []
   private lastNetworkLoad: number = 0
   
   private restartAttempts = 0
@@ -137,7 +139,7 @@ export class SimulationWorkerManager {
         this.start()
         // Re-initialize with last known state
         if (this.lastNodes.length > 0) {
-          this.init(this.lastNodes, this.lastApps, this.lastConnections, this.lastNetworkLoad)
+          this.init(this.lastNodes, this.lastApps, this.lastVMs, this.lastConnections, this.lastContracts, [], this.lastNetworkLoad)
         }
       }, 1000 * this.restartAttempts) // Exponential backoff-ish
     } else {
@@ -147,11 +149,14 @@ export class SimulationWorkerManager {
   }
 
   private compactState(
-    nodes: InfraNode[],
-    applications: ApplicationDeployment[],
-    connections: Connection[],
+    nodes: InfraNode[], 
+    applications: ApplicationDeployment[], 
+    connections: Connection[], 
+    contracts: ActiveContract[],
+    virtualMachines: VirtualMachine[],
+    pods: PodData[],
     networkLoad: number
-  ) {
+  ): SimInitPayload {
     const start = performance.now()
     const compactNodes = nodes.map(n => ({
       id: n.id,
@@ -190,9 +195,13 @@ export class SimulationWorkerManager {
       degradationPercent: (n.degradation ?? 0) * 100, // Convert 0-1 range to 0-100%
       containmentType: n.containmentType,
       healthStatus: n.healthStatus ?? 'healthy',
-      isInfected: n.isInfected ?? false,
+      infectionState: n.infectionState ?? 'clean',
       isBlackholed: n.isBlackholed ?? false,
-      rateLimitGbps: n.rateLimitGbps
+      rateLimitGbps: n.rateLimitGbps,
+      maintenanceMode: n.maintenanceMode ?? false,
+      backupStatus: n.backupStatus,
+      lastBackupTime: n.lastBackupTime,
+      corruptionState: n.corruptionState
     }))
 
     const compactApps = applications.map(a => ({
@@ -201,6 +210,17 @@ export class SimulationWorkerManager {
       nodeId: a.nodeId,
       status: a.status,
       progress: a.progress
+    }))
+
+    const compactVMs = virtualMachines.map(v => ({
+      id: v.id,
+      nodeId: v.nodeId,
+      status: v.status,
+      cpuCores: v.cpuCores,
+      memoryGB: v.memoryGB,
+      storageGB: v.storageGB,
+      migratingToNodeId: v.migratingToNodeId,
+      migrationProgress: v.migrationProgress
     }))
 
     // Compact cabled connection links to minimum required wire frame
@@ -225,10 +245,32 @@ export class SimulationWorkerManager {
       rateLimitGbps: c.rateLimitGbps
     }))
 
+    const compactContracts = contracts.map(c => ({
+      id: c.id,
+      blueprintId: c.blueprintId,
+      totalTicks: c.totalTicks,
+      uptimeTicks: c.uptimeTicks,
+      accumulatedPenalty: c.accumulatedPenalty,
+      currentStatus: c.currentStatus
+    }))
+
+    const compactPods = pods.map(p => ({
+      id: p.id,
+      nodeId: p.nodeId,
+      clusterId: p.clusterId,
+      status: p.status,
+      cpuReq: p.cpuReq,
+      memoryReq: p.memoryReq,
+      serviceName: p.serviceName
+    }))
+
     const compacted = {
       nodes: compactNodes,
       applications: compactApps,
       connections: compactConnections,
+      contracts: compactContracts,
+      virtualMachines: compactVMs,
+      pods: compactPods,
       networkLoad
     }
     const timeMs = performance.now() - start
@@ -241,22 +283,26 @@ export class SimulationWorkerManager {
     return compacted
   }
 
-  public init(nodes: InfraNode[], applications: ApplicationDeployment[], connections: Connection[] = [], networkLoad: number = 0) {
+  public init(nodes: InfraNode[], applications: ApplicationDeployment[], virtualMachines: VirtualMachine[] = [], connections: Connection[] = [], contracts: ActiveContract[] = [], pods: PodData[] = [], networkLoad: number = 0) {
     this.lastNodes = nodes
     this.lastApps = applications
+    this.lastVMs = virtualMachines
     this.lastConnections = connections
+    this.lastContracts = contracts
     this.lastNetworkLoad = networkLoad
-    const compacted = this.compactState(nodes, applications, connections, networkLoad)
+    const compacted = this.compactState(nodes, applications, connections, contracts, virtualMachines, pods, networkLoad)
     this.sendTransferable('INIT', compacted)
     this.restartAttempts = 0 // Reset on successful user-triggered init
   }
 
-  public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[], connections: Connection[] = [], networkLoad: number = 0) {
+  public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[], virtualMachines: VirtualMachine[] = [], connections: Connection[] = [], contracts: ActiveContract[] = [], pods: PodData[] = [], networkLoad: number = 0) {
     this.lastNodes = nodes
     this.lastApps = applications
+    this.lastVMs = virtualMachines
     this.lastConnections = connections
+    this.lastContracts = contracts
     this.lastNetworkLoad = networkLoad
-    const compacted = this.compactState(nodes, applications, connections, networkLoad)
+    const compacted = this.compactState(nodes, applications, connections, contracts, virtualMachines, pods, networkLoad)
     this.sendTransferable('SYNC_INPUT', compacted)
   }
 

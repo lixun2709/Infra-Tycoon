@@ -1,11 +1,13 @@
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
-import type { ApplicationDeployment } from '../infraTypes'
+import type { ApplicationDeployment, VirtualMachine } from '../infraTypes'
 import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
 
 export interface AppSlice {
   deployApplication: (appId: string, nodeId: string) => void
   removeApplication: (id: string) => void
+  deployVirtualMachine: (vmId: string, nodeId: string, config: Omit<VirtualMachine, 'id' | 'nodeId' | 'status' | 'uptimeTicks'>) => void
+  startVMotion: (vmId: string, targetNodeId: string) => void
 }
 
 export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, get) => ({
@@ -55,5 +57,38 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
     set(state => ({
       applications: state.applications.filter(a => a.id !== id)
     }))
+  },
+
+  deployVirtualMachine: (vmId, nodeId, config) => {
+    const newVm: VirtualMachine = {
+      ...config,
+      id: vmId,
+      nodeId,
+      status: 'booting',
+      uptimeTicks: 0,
+      migratingToNodeId: undefined,
+      migrationProgress: undefined
+    }
+
+    set(state => ({
+      virtualMachines: [...state.virtualMachines, newVm]
+    }))
+    get().pushAlert('info', `Deploying VM ${config.name} to ${nodeId.slice(0,8)}`)
+  },
+
+  startVMotion: (vmId, targetNodeId) => {
+    set(state => {
+      const vm = state.virtualMachines.find(v => v.id === vmId)
+      if (!vm || vm.status !== 'running') {
+        get().pushAlert('warning', `VM ${vmId} is not eligible for vMotion.`)
+        return state
+      }
+      return {
+        virtualMachines: state.virtualMachines.map(v => 
+          v.id === vmId ? { ...v, status: 'migrating', migratingToNodeId: targetNodeId, migrationProgress: 0 } : v
+        )
+      }
+    })
+    get().pushAlert('info', `Initiated vMotion for VM ${vmId} to ${targetNodeId.slice(0,8)}`)
   }
 })

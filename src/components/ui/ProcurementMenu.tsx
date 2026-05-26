@@ -64,7 +64,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
   const currentSiteName = sites.find(s => s.id === currentSiteId)?.name
 
   return (
-    <div className={`fixed bottom-8 z-[200] transition-all duration-500 ease-out ${selectedNodeId ? 'right-[360px]' : 'right-8'}`}>
+    <div className={`fixed bottom-8 z-[200] transition-all duration-500 ease-out ${selectedNodeId ? 'right-[576px]' : 'right-8'}`}>
       {/* Main Toggle Button */}
       <button 
         onClick={() => onToggle(!isOpen)}

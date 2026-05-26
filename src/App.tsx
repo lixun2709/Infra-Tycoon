@@ -110,7 +110,7 @@ function App() {
   }, [activeTheme])
   const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
   const placementMode = useInfraStore((s) => s.placementMode)
-  const processAutoBackups = useInfraStore((s) => s.processAutoBackups)
+
   const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
   const pendingType = useInfraStore(s => s.pendingRackType)
   const cloudBurstingActive = useInfraStore(s => s.cloudBurstingActive)
@@ -149,12 +149,6 @@ function App() {
     syncZoningWithStore(facilityRowsCount, facilityColumnsCount, halls)
   }, [facilityRowsCount, facilityColumnsCount, halls])
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      processAutoBackups()
-    }, 15000)
-    return () => clearInterval(interval)
-  }, [processAutoBackups])
 
   useEffect(() => {
     if (placementMode && pendingType && pendingType !== 'RACK_42U') {
@@ -341,7 +335,7 @@ function App() {
         </div>
       </div>
 
-      <div className={`fixed bottom-8 z-[200] transition-all duration-500 ease-out ${selectedNodeId ? 'right-[440px]' : 'right-28'}`}>
+      <div className={`fixed bottom-8 z-[200] transition-all duration-500 ease-out ${selectedNodeId ? 'right-[656px]' : 'right-28'}`}>
         <button 
           onClick={() => setIsAppBrowserOpen(!isAppBrowserOpen)}
           aria-label={isAppBrowserOpen ? "Close Application Browser" : "Open Application Browser"}

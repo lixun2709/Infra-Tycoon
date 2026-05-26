@@ -31,6 +31,7 @@ export class PacketSystem extends System {
     const tStart = performance.now()
 
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
+    const securityMap = this.world.getComponentMap<import('../types').SecurityComponent>('security')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const connectionMap = this.world.getComponentMap<ConnectionComponent>('connection')
 
@@ -51,7 +52,7 @@ export class PacketSystem extends System {
       n.parentRackId = transform.parentRackId
       n.slotIndex = transform.slotIndex
       n.systemState = power?.isPowered ? 'running' : 'off'
-      n.isInfected = transform.isInfected ?? false
+      n.infectionState = securityMap.get(id)?.infectionState ?? 'clean'
       n.healthStatus = (transform.healthStatus as unknown as InfraNode['healthStatus']) ?? 'healthy'
       n.degradation = transform.degradation ?? 0
       n.wattage = power?.wattage ?? 0
@@ -112,7 +113,7 @@ export class PacketSystem extends System {
     }
 
     // 3. Invoke deterministic aggregate-flow physical calculation forwarding dt
-    const { connections: updatedConnections, newlyInfectedNodeIds } = simulateNetwork(
+    const { connections: updatedConnections } = simulateNetwork(
       this.nodePool,
       this.connectionPool,
       PacketSystem.networkLoad,
@@ -122,22 +123,7 @@ export class PacketSystem extends System {
 
     const tSimulation = performance.now()
 
-    // 4. Handle newly infected nodes via lateral spread
-    newlyInfectedNodeIds.forEach(nodeId => {
-      const transform = transformMap.get(nodeId)
-      if (transform) {
-        transform.isInfected = true
-
-        // Notify the ECS Event Bus
-        this.world.eventBus.publish('system:alert', {
-          entityId: nodeId,
-          message: `CRITICAL: Ransomware lateral propagation! Node [${transform.name || nodeId}] has been infected over network link.`,
-          severity: 'critical'
-        })
-      }
-    })
-
-    // 5. Propagate updated properties back to ECS components
+    // 4. Propagate updated properties back to ECS components
     let totalDrops = 0
     updatedConnections.forEach(conn => {
       const existing = connectionMap.get(conn.id)

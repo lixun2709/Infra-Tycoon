@@ -128,7 +128,7 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
       }
 
       // Heavy ransomware demand (2.0 Gbps traffic spikes past 1.0 Gbps limits)
-      const heavyNode = { ...nodeA, isInfected: true }
+      const heavyNode = { ...nodeA, infectionState: 'infected' as const }
       const nodes = [heavyNode, nodeB]
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])

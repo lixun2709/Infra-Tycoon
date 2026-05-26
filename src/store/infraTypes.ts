@@ -184,6 +184,29 @@ export interface InfraNode {
   // V2 network options
   isBlackholed?: boolean
   rateLimitGbps?: number
+  hypervisorConfig?: {
+    isESXi: boolean
+    cpuOvercommitRatio: number
+    memoryOvercommitRatio: number
+    maxVms?: number
+  }
+  infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
+  lastBackupTime?: number
+  corruptionState?: 'clean' | 'corrupted' | 'ransomware'
+}
+
+export interface VirtualMachine {
+  id: string
+  nodeId: string
+  status: 'powered_off' | 'booting' | 'running' | 'migrating' | 'error'
+  cpuCores: number
+  memoryGB: number
+  storageGB: number
+  name: string
+  guestOS?: string
+  uptimeTicks?: number
+  migratingToNodeId?: string
+  migrationProgress?: number
 }
 
 export interface PostMortem {
@@ -231,6 +254,16 @@ export interface SaveMetadata {
   timestamp: number
   siteName: string
   nodeCount: number
+}
+
+export interface PodData {
+  id: string
+  nodeId: string
+  clusterId: string
+  status: 'pending' | 'running' | 'terminating' | 'crashloop'
+  cpuReq: number
+  memoryReq: number
+  serviceName: string
 }
 
 export type ApplicationDeployment = {

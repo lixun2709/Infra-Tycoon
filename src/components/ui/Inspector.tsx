@@ -27,7 +27,8 @@ export function Inspector() {
     toggleMaintenanceMode,
     technicianTickets,
     timeFormat,
-    resetRackBreaker
+    resetRackBreaker,
+    virtualMachines
   } = useInfraStore(useShallow(state => ({
     nodes: state.nodes, 
     connections: state.connections, 
@@ -48,10 +49,11 @@ export function Inspector() {
     toggleMaintenanceMode: state.toggleMaintenanceMode,
     technicianTickets: state.technicianTickets,
     timeFormat: state.timeFormat,
-    resetRackBreaker: state.resetRackBreaker
+    resetRackBreaker: state.resetRackBreaker,
+    virtualMachines: state.virtualMachines
   })))
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
-  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
+  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle' | 'virtualization'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
   const [metrics, setMetrics] = React.useState(performanceMonitor.getMetrics())
 
@@ -90,7 +92,7 @@ export function Inspector() {
 
   return (
     <>
-      <div className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[380px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl transition-all duration-500">
+      <div className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[520px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl transition-all duration-500">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-white/5 bg-white/5">
           <input
@@ -120,6 +122,7 @@ export function Inspector() {
             { id: 'details', label: 'details' },
             { id: 'thermal', label: 'thermal' },
             { id: 'services', label: 'services' },
+            { id: 'virtualization', label: 'virtualization' },
             { id: 'lifecycle', label: 'lifecycle' },
             { id: 'alerts', label: 'alerts' }
           ]}
@@ -695,6 +698,86 @@ export function Inspector() {
                   </Card>
                 ))}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'virtualization' && (
+            <div className="space-y-4">
+              {selectedNode.hypervisorConfig ? (
+                <>
+                  <Card title="Hypervisor Host Details" glass={false} className="bg-transparent">
+                    <div className="flex justify-between">
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Type</span>
+                      <span className="text-[10px] font-mono text-emerald-400">ESXi Enterprise</span>
+                    </div>
+                  </Card>
+                  
+                  <div className="space-y-2">
+                    <h3 className="text-[9px] text-slate-500 font-black uppercase tracking-widest px-1">Running Virtual Machines</h3>
+                    {virtualMachines.filter(vm => vm.nodeId === selectedNode.id).length === 0 && (
+                      <p className="text-[10px] text-slate-500 italic px-1">No VMs currently deployed on this host.</p>
+                    )}
+                    {virtualMachines.filter(vm => vm.nodeId === selectedNode.id).map(vm => (
+                      <Card key={vm.id} className="bg-transparent border-slate-700/50" glass={false}>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-2 h-2 rounded-full ${
+                                vm.status === 'running' ? 'bg-emerald-500 shadow-[0_0_8px_var(--primary)]' :
+                                vm.status === 'migrating' ? 'bg-amber-400 animate-pulse' :
+                                vm.status === 'booting' ? 'bg-sky-400 animate-pulse' :
+                                'bg-rose-500'
+                              }`} />
+                              <div>
+                                <p className="text-[11px] font-black uppercase text-white">{vm.name}</p>
+                                <p className="text-[9px] text-slate-500 font-mono mt-0.5">{vm.guestOS} • {vm.cpuCores} vCPU • {vm.memoryGB}GB RAM</p>
+                              </div>
+                            </div>
+                            <Badge variant={vm.status === 'running' ? 'ghost' : 'info'} className="text-[8px] uppercase">
+                              {vm.status}
+                            </Badge>
+                          </div>
+                          
+                          {vm.status === 'migrating' && (
+                            <div className="mt-2">
+                              <div className="flex justify-between text-[8px] text-amber-400 mb-1 font-mono uppercase tracking-widest">
+                                <span>vMotion in progress</span>
+                                <span>{Math.round(vm.migrationProgress ?? 0)}%</span>
+                              </div>
+                              <div className="w-full bg-slate-900 rounded-full h-1 overflow-hidden">
+                                <div 
+                                  className="bg-amber-400 h-1 transition-all duration-1000 ease-linear"
+                                  style={{ width: `${vm.migrationProgress ?? 0}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-[10px] text-slate-500 italic mb-4">This node is not configured as a Hypervisor host.</p>
+                  {selectedNode.type === 'compute' && (
+                    <Button 
+                      variant="primary" 
+                      className="text-[9px] uppercase font-black px-4 py-2"
+                      onClick={() => updateNode(selectedNode.id, {
+                        hypervisorConfig: {
+                          maxVms: 50,
+                          memoryOvercommitRatio: 1.5,
+                          cpuOvercommitRatio: 4.0,
+                          isESXi: true
+                        }
+                      })}
+                    >
+                      Install ESXi Hypervisor
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

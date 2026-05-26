@@ -7,8 +7,13 @@ import { ApplicationSystem } from './ecs/systems/ApplicationSystem'
 import { StorageSystem } from './ecs/systems/StorageSystem'
 import { PacketSystem } from './ecs/systems/PacketSystem'
 import { TelemetrySystem } from './ecs/systems/TelemetrySystem'
+import { BackupSystem } from './ecs/systems/BackupSystem'
+import { SecuritySystem } from './ecs/systems/SecuritySystem'
 import { ObservabilitySystem } from './ecs/systems/ObservabilitySystem'
 import { ObservabilityTracer } from './observability/ObservabilityTracer'
+import { SlaSystem } from './ecs/systems/SlaSystem'
+import { HypervisorSystem } from './ecs/systems/HypervisorSystem'
+import { KubernetesSystem } from './ecs/systems/KubernetesSystem'
 import { SystemManager } from './ecs/SystemManager'
 
 /**
@@ -28,17 +33,22 @@ export class SimulationEngine {
 
     // Register active simulation systems with strict priority execution
     this.systemManager.registerSystem(new PowerSystem(this.world), 10)
+    this.systemManager.registerSystem(new HypervisorSystem(this.world), 12)
     this.systemManager.registerSystem(new RackSystem(this.world), 15)
     this.systemManager.registerSystem(new ThermalSystem(this.world), 20)
     this.systemManager.registerSystem(new StorageSystem(this.world), 25)
     this.systemManager.registerSystem(new PacketSystem(this.world), 28)
     this.systemManager.registerSystem(new ProvisioningSystem(this.world), 30)
+    this.systemManager.registerSystem(new KubernetesSystem(this.world), 31) // K8s evaluates node health and schedules pods
     this.systemManager.registerSystem(new ApplicationSystem(this.world), 15) // Apps
     
     const telemetrySys = new TelemetrySystem(this.world)
     this.systemManager.registerSystem(telemetrySys, 20) // Telemetry stats
 
+    this.systemManager.registerSystem(new SecuritySystem(this.world), 25) // Security before network/packet
     this.systemManager.registerSystem(new ObservabilitySystem(this.world, telemetrySys), 30) // Alerts based on Telemetry
+    this.systemManager.registerSystem(new BackupSystem(this.world), 32) // Backup evaluates before SLA
+    this.systemManager.registerSystem(new SlaSystem(this.world), 35) // SLA evaluates after all apps and telemetry
   }
 
   public getWorld() {

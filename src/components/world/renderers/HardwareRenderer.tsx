@@ -240,7 +240,7 @@ function PortVisualsSimplifiedComponent({ node, h }: { node: InfraNode, h: numbe
   }, [node.type])
 
   const { interactionProps } = useInteractable(node.id, 'NODE')
-  const isCritical = node.healthStatus === 'critical' || node.isInfected
+  const isCritical = node.healthStatus === 'critical' || (node.infectionState && node.infectionState !== 'clean')
   const isDegraded = node.healthStatus === 'degraded' || node.degradation > 0
   const ledColor = isCritical ? '#ef4444' : (isDegraded ? '#eab308' : '#10b981')
 

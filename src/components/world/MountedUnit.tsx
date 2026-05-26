@@ -103,7 +103,7 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
   const renderTier2 = () => (
     <mesh geometry={chassisGeometry} scale={[1, h, 1]} {...interactionProps}>
       <meshStandardMaterial
-        color={node.isInfected ? '#4a044e' : color}
+        color={node.infectionState && node.infectionState !== 'clean' ? '#4a044e' : color}
         metalness={0.2}
         roughness={0.8}
         transparent={opacity < 1}
@@ -117,7 +117,7 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
     <group>
       <mesh geometry={chassisGeometry} scale={[1, h, 1]} {...interactionProps}>
         <meshStandardMaterial
-          color={node.isInfected ? '#4a044e' : color}
+          color={node.infectionState && node.infectionState !== 'clean' ? '#4a044e' : color}
           metalness={0.3}
           roughness={0.6}
           transparent={opacity < 1}
@@ -141,7 +141,7 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
     <group>
       <mesh geometry={chassisGeometry} scale={[1, h, 1]} {...interactionProps}>
         <meshStandardMaterial
-          color={node.isInfected ? '#4a044e' : color}
+          color={node.infectionState && node.infectionState !== 'clean' ? '#4a044e' : color}
           metalness={0.4}
           roughness={0.4}
           transparent={opacity < 1}
@@ -217,7 +217,7 @@ export const MountedUnit = React.memo(MountedUnitComponent, (prevProps, nextProp
     prevProps.node.degradation === nextProps.node.degradation &&
     prevProps.node.slotIndex === nextProps.node.slotIndex &&
     prevProps.node.parentRackId === nextProps.node.parentRackId &&
-    prevProps.node.isInfected === nextProps.node.isInfected &&
+    prevProps.node.infectionState === nextProps.node.infectionState &&
     prevProps.node.temperature === nextProps.node.temperature &&
     prevProps.node.wattage === nextProps.node.wattage &&
     prevProps.node.usedStorageTB === nextProps.node.usedStorageTB &&

@@ -36,7 +36,7 @@ export function calculateNodeDemand(node: InfraNode, networkLoad: number): Netwo
   let multiplier = 1.0
 
   // Apply incident modifier profile
-  if (node.isInfected) {
+  if (node.infectionState && node.infectionState !== 'clean') {
     activeIncident = 'ransomware'
     multiplier = INCIDENT_PROFILES.ransomware!.trafficMultiplier
   } else if (node.healthStatus === 'critical' || node.degradation > 80) {

@@ -22,9 +22,9 @@ export interface TransformComponent extends Component {
   // Dynamic network incident & state variables
   degradation?: number
   healthStatus?: string
-  isInfected?: boolean
   isBlackholed?: boolean
   rateLimitGbps?: number
+  maintenanceMode?: boolean
 }
 
 // Connection Component: Network link state
@@ -166,3 +166,68 @@ export interface RackComponent extends Component {
 }
 
 export type ComponentMap<T extends Component> = Map<Entity, T>
+
+// Contract Component: SLA and Billing tracking
+export interface ContractComponent extends Component {
+  blueprintId: string
+  totalTicks: number
+  uptimeTicks: number
+  accumulatedPenalty: number
+  currentStatus: 'healthy' | 'violating'
+}
+
+// Backup Component: Handles data protection and corruption states
+export interface BackupComponent extends Component {
+  backupStatus: 'protected' | 'unprotected' | 'backing_up'
+  lastBackupTime: number
+  backupTargetId?: string
+  corruptionState?: 'clean' | 'corrupted' | 'ransomware'
+}
+
+// Security Component: Handles enterprise threat states like ransomware and lateral propagation
+export interface SecurityComponent extends Component {
+  infectionState: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
+  infectionProgress: number
+  encryptionRate: number
+  isIsolated: boolean
+}
+
+// Hypervisor Component: Node-level ESXi properties
+export interface HypervisorComponent extends Component {
+  isESXi: boolean
+  cpuOvercommitRatio: number
+  memoryOvercommitRatio: number
+}
+
+// VM Component: Individual Virtual Machine state running inside the ECS
+export interface KubernetesNodeComponent extends Component {
+  role: 'master' | 'worker'
+  clusterId: string
+  maxPods: number
+  cpuCapacity: number
+  memoryCapacity: number
+  cpuAllocatable?: number
+  memoryAllocatable?: number
+  kubeletStatus: 'running' | 'degraded' | 'offline'
+}
+
+export interface PodComponent extends Component {
+  nodeId: string
+  clusterId: string
+  status: 'pending' | 'running' | 'terminating' | 'crashloop'
+  cpuReq: number
+  memoryReq: number
+  serviceName: string
+  evictionTimer?: number
+  restartCount?: number
+}
+
+export interface VmComponent extends Component {
+  nodeId: string // The ESXi host ID
+  status: 'powered_off' | 'booting' | 'running' | 'migrating' | 'error'
+  cpuCores: number
+  memoryGB: number
+  storageGB: number
+  migratingToNodeId?: string // Target node during vMotion
+  migrationProgress?: number // 0-100
+}

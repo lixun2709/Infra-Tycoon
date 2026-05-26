@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { findShortestPath } from '../routing'
-import { resolveCongestion } from '../congestion'
 import { buildAdjacencyMap } from '../topology'
 import type { InfraNode, Connection } from '../../../store/infraTypes'
 import * as THREE from 'three'
@@ -166,71 +165,4 @@ describe('Enterprise Network V2 Systems Integration Tests', () => {
     expect(result.totalLatencyMs).toBe(15.0)
   })
 
-  it('should propagate ransomware laterally over active, non-blocked connections', () => {
-    const infectedNodeA: InfraNode = {
-      ...nodeA,
-      isInfected: true
-    }
-
-    const healthyNodeB: InfraNode = {
-      ...nodeB,
-      isInfected: false
-    }
-
-    const conn: Connection = {
-      id: 'conn-a-b',
-      startNodeId: 'node-a',
-      startPortId: 'p1',
-      endNodeId: 'node-b',
-      endPortId: 'p1',
-      bandwidthGbps: 10,
-      throughputGbps: 0,
-      latencyMs: 2.0,
-      packetLoss: 0.0
-    }
-
-    const testNodes = [infectedNodeA, healthyNodeB]
-    const conns = [conn]
-    const adjMap = buildAdjacencyMap(conns)
-
-    // Run congestion with dt = 100 to ensure high propagation chance
-    const result = resolveCongestion(testNodes, conns, [], adjMap, 1, 100.0)
-    
-    // Node B should be infected laterally over the network connection
-    expect(result.newlyInfectedNodeIds).toContain('node-b')
-  })
-
-  it('should NOT propagate ransomware laterally if adjacent connection is blocked or blackholed', () => {
-    const infectedNodeA: InfraNode = {
-      ...nodeA,
-      isInfected: true
-    }
-
-    const healthyNodeB: InfraNode = {
-      ...nodeB,
-      isInfected: false
-    }
-
-    const conn: Connection = {
-      id: 'conn-a-b',
-      startNodeId: 'node-a',
-      startPortId: 'p1',
-      endNodeId: 'node-b',
-      endPortId: 'p1',
-      bandwidthGbps: 10,
-      throughputGbps: 0,
-      latencyMs: 2.0,
-      packetLoss: 0.0,
-      isBlackholed: true // blocked / blackholed!
-    }
-
-    const testNodes = [infectedNodeA, healthyNodeB]
-    const conns = [conn]
-    const adjMap = buildAdjacencyMap(conns)
-
-    const result = resolveCongestion(testNodes, conns, [], adjMap, 1, 100.0)
-    
-    // Node B should NOT be infected because the link is blackholed/offline
-    expect(result.newlyInfectedNodeIds).not.toContain('node-b')
-  })
-})
+});

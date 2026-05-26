@@ -5,7 +5,6 @@ import { resolveCongestion } from './congestion'
 
 export interface NetworkTickResult {
   connections: Connection[]
-  newlyInfectedNodeIds: string[]
 }
 
 /**
@@ -30,10 +29,9 @@ export function simulateNetwork(
   const adjMap = buildAdjacencyMap(connections)
 
   // Phase 3: Congestion & Propagation Phase
-  const { updatedConnections, newlyInfectedNodeIds } = resolveCongestion(nodes, connections, demands, adjMap, topologyHash, dt)
+  const { updatedConnections } = resolveCongestion(nodes, connections, demands, adjMap, topologyHash, dt)
 
   return {
-    connections: updatedConnections,
-    newlyInfectedNodeIds
+    connections: updatedConnections
   }
 }

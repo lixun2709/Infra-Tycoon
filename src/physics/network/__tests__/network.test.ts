@@ -57,7 +57,7 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
     })
 
     it('should apply ransomware multipliers during security incidents', () => {
-      const infectedNode = { ...mockComputeNode, isInfected: true }
+      const infectedNode = { ...mockComputeNode, infectionState: 'infected' as const }
       const demand = calculateNodeDemand(infectedNode, 0)
       // 0.8 base * 2.5 ransomware multiplier = 2.0 Gbps
       expect(demand.demandGbps).toBeCloseTo(2.0, 2)
@@ -130,7 +130,7 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
       }
 
       // Infected node generating 2.0 Gbps (exceeds 1 Gbps bandwidth)
-      const infectedNode = { ...mockComputeNode, isInfected: true }
+      const infectedNode = { ...mockComputeNode, infectionState: 'infected' as const }
       const nodes = [infectedNode, mockSwitchNode]
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])
@@ -216,7 +216,7 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
       }
 
       // Infected compute node generating 2.0 Gbps (exceeds 1.0 Gbps bandwidth)
-      const overloadedNode = { ...mockComputeNode, isInfected: true }
+      const overloadedNode = { ...mockComputeNode, infectionState: 'infected' as const }
       const nodes = [overloadedNode, mockSwitchNode]
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])

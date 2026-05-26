@@ -57,9 +57,13 @@ export interface CompactNode {
   fanSpeedPercent?: number
   degradationPercent?: number
   healthStatus?: string
-  isInfected?: boolean
   isBlackholed?: boolean
   rateLimitGbps?: number
+  maintenanceMode?: boolean
+  backupStatus?: 'protected' | 'unprotected' | 'backing_up'
+  lastBackupTime?: number
+  corruptionState?: 'clean' | 'corrupted' | 'ransomware'
+  infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
 }
 
 export interface CompactApplication {
@@ -70,9 +74,42 @@ export interface CompactApplication {
   progress: number
 }
 
+export interface CompactContract {
+  id: string
+  blueprintId: string
+  totalTicks: number
+  uptimeTicks: number
+  accumulatedPenalty: number
+  currentStatus: 'healthy' | 'violating'
+}
+
+export interface CompactPod {
+  id: string
+  nodeId: string
+  clusterId: string
+  status: 'pending' | 'running' | 'terminating' | 'crashloop'
+  cpuReq: number
+  memoryReq: number
+  serviceName: string
+}
+
+export interface CompactVirtualMachine {
+  id: string
+  nodeId: string
+  status: 'powered_off' | 'booting' | 'running' | 'migrating' | 'error'
+  cpuCores: number
+  memoryGB: number
+  storageGB: number
+  migratingToNodeId?: string
+  migrationProgress?: number
+}
+
 export interface SimInitPayload {
   nodes: CompactNode[]
   applications: CompactApplication[]
+  contracts: CompactContract[]
+  virtualMachines: CompactVirtualMachine[]
+  pods: CompactPod[]
   connections: Connection[]
   networkLoad: number
 }
@@ -80,6 +117,9 @@ export interface SimInitPayload {
 export interface SimSyncInputPayload {
   nodes: CompactNode[]
   applications: CompactApplication[]
+  contracts: CompactContract[]
+  virtualMachines: CompactVirtualMachine[]
+  pods: CompactPod[]
   connections: Connection[]
   networkLoad: number
 }
@@ -119,8 +159,12 @@ export interface SimSyncOutputPayload {
     containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
     isStandby?: boolean
     accumulatedSimTime?: number
-    isInfected?: boolean
+    infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
+    infectionProgress?: number
     isBlackholed?: boolean
+    backupStatus?: 'protected' | 'unprotected' | 'backing_up'
+    lastBackupTime?: number
+    corruptionState?: 'clean' | 'corrupted' | 'ransomware'
     coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
     waterFlowLPM?: number
   }>
@@ -128,6 +172,20 @@ export interface SimSyncOutputPayload {
     id: string
     status: string
     progress: number
+  }>
+  virtualMachines?: Array<{
+    id: string
+    nodeId: string
+    status: 'powered_off' | 'booting' | 'running' | 'migrating' | 'error'
+    migratingToNodeId?: string
+    migrationProgress?: number
+  }>
+  contracts: Array<{
+    id: string
+    totalTicks: number
+    uptimeTicks: number
+    accumulatedPenalty: number
+    currentStatus: 'healthy' | 'violating'
   }>
   connections: Connection[]
   siteAmbientTemps?: Record<string, number>

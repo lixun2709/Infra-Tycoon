@@ -44,12 +44,12 @@ export const Tabs: React.FC<TabsProps> = ({
 
   if (variant === 'underline') {
     return (
-      <div className={`flex overflow-x-auto no-scrollbar ${className}`}>
+      <div className={`flex w-full ${className}`}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => onChange(tab.id)}
-            className={`flex-1 min-w-[70px] py-3 px-4 text-[9px] uppercase tracking-[0.2em] font-black transition-all border-b-2 flex items-center justify-center gap-2 ${
+            className={`flex-1 min-w-max py-3 px-2 text-[8px] sm:text-[9px] uppercase tracking-[0.1em] sm:tracking-[0.2em] font-black transition-all border-b-2 flex items-center justify-center gap-2 whitespace-nowrap ${
               activeTab === tab.id
                 ? 'text-teal-400 border-teal-500 bg-teal-500/5'
                 : 'text-slate-500 border-transparent hover:text-slate-300'

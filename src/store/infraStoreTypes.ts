@@ -17,7 +17,8 @@ import type {
   ServiceStatus,
   SaveMetadata,
   ActiveContract,
-  TechnicianTicket
+  TechnicianTicket,
+  VirtualMachine
 } from './infraTypes'
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
@@ -67,6 +68,7 @@ export type InfraState = {
   
   // v5.0 Service Layer
   applications: ApplicationDeployment[]
+  virtualMachines: VirtualMachine[]
   technicianTickets: TechnicianTicket[]
   
   // Day 6: Enterprise Management Console
@@ -123,7 +125,6 @@ export type InfraState = {
   setNetworkManagerOpen: (open: boolean) => void
   setCurrentSiteId: (siteId: string) => void
   setMousePosition: (pos: Vector3 | null) => void
-  processAutoBackups: () => void
   acknowledgeAllAlerts: () => void
   pushAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId?: string) => void
   acknowledgeAlert: (id: string) => void
@@ -157,6 +158,8 @@ export type InfraState = {
   // v5.0 Service Layer Actions
   deployApplication: (appId: string, nodeId: string) => void
   removeApplication: (id: string) => void
+  deployVirtualMachine: (vmId: string, nodeId: string, config: Omit<VirtualMachine, 'id' | 'nodeId' | 'status' | 'uptimeTicks'>) => void
+  startVMotion: (vmId: string, targetNodeId: string) => void
   
   // Infrastructure Core Actions
   processTick: (dt?: number) => void

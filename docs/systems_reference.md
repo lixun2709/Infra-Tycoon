@@ -76,3 +76,11 @@ The Observability subsystem performs threshold rule evaluation across datacenter
 **Key Refactors:**
 - **1Hz Polling Throttle**: Subsystem metrics rules engine evaluates strictly on a 1Hz clock cycle (executionTickCounter % 60 === 0).
 - **O(N) Inverted Thermal Evaluation**: Instead of querying the 	hermalMap loop repeatedly per active temperature alerting rule, the subsystem filters active rules ahead of time and completes a single O(N) scan. This ensures 1000 rules against 10,000 servers is executed efficiently, avoiding 10,000,000 mapping allocations per tick.
+
+## SLA System
+Evaluates and bills customer contracts against running applications and SLAs.
+
+Architecturally, the SLA System was refactored in Day 91 to scale gracefully using O(N) evaluation inside the ECS framework rather than looping inside the UI layer. It features:
+- **Deterministic Accounting**: Ensures contracts perfectly correlate to the underlying physical operational status of their hosting servers.
+- **Operational Realism**: Verifies application health directly against simulated power grids and maintenance states.
+- **Multiplayer Ready**: By separating simulation state into the web worker, SLA evaluations are now robust against player desync.
