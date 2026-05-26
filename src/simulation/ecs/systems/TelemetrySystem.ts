@@ -202,30 +202,34 @@ export class TelemetrySystem extends System {
       const currentLoad = isPowered ? (power?.load ?? 0.0) : 0.0
       const currentIops = storage?.ioPSUsed ?? 0
 
-      // Node Anomaly Detection: Temperature rising too quickly (>5°C)
-      TelemetryAnomalyDetector.detectTemperatureSpike(
-        id,
-        transform.name || '',
-        currentTemp,
-        telemetry.tempHistory,
-        this.thresholds,
-        publishAlert
-      )
+      const shouldSampleHistory = this.executionTickCounter % 60 === 0
 
-      // Node Anomaly Detection: Sudden power load fluctuations
-      TelemetryAnomalyDetector.detectPowerSpike(
-        currentLoad,
-        telemetry.powerHistory,
-        this.thresholds,
-        () => {
-          telemetry.powerSpikesCount++
-        }
-      )
+      if (shouldSampleHistory) {
+        // Node Anomaly Detection: Temperature rising too quickly (>5°C)
+        TelemetryAnomalyDetector.detectTemperatureSpike(
+          id,
+          transform.name || '',
+          currentTemp,
+          telemetry.tempHistory,
+          this.thresholds,
+          publishAlert
+        )
 
-      // Append node metrics to ring buffer history using Zero-GC optimizer
-      telemetry.powerHistory.push(currentLoad)
-      telemetry.tempHistory.push(currentTemp)
-      telemetry.iopsHistory.push(currentIops)
+        // Node Anomaly Detection: Sudden power load fluctuations
+        TelemetryAnomalyDetector.detectPowerSpike(
+          currentLoad,
+          telemetry.powerHistory,
+          this.thresholds,
+          () => {
+            telemetry.powerSpikesCount++
+          }
+        )
+
+        // Append node metrics to ring buffer history using Zero-GC optimizer
+        telemetry.powerHistory.push(currentLoad)
+        telemetry.tempHistory.push(currentTemp)
+        telemetry.iopsHistory.push(currentIops)
+      }
 
       // Gather temp statistics per site
       const siteId = transform.siteId
@@ -297,6 +301,17 @@ export class TelemetrySystem extends System {
       }
     })
 
+    // Pre-compute maxKW per site in O(R) time instead of O(S * R)
+    const siteMaxKWMap = new Map<string, number>()
+    rackMap.forEach(rack => {
+      const transComp = transformMap.get(rack.entityId)
+      if (transComp && transComp.siteId) {
+        siteMaxKWMap.set(transComp.siteId, (siteMaxKWMap.get(transComp.siteId) ?? 0) + rack.maxPowerKW)
+      }
+    })
+
+    const shouldSampleHistorySite = this.executionTickCounter % 60 === 0
+
     // 3. Compile Site-Wide rolling historical aggregates
     this.sitePowerSum.forEach((powerSum, siteId) => {
       // Initialize rolling maps
@@ -316,27 +331,23 @@ export class TelemetrySystem extends System {
       // Humidity from ThermalSystem
       const currentHumidity = ThermalSystem.siteAmbientHumidity.get(siteId) ?? 45.0
 
-      // Append rolling variables using Zero-GC slider
-      powerHistory.push(powerSum)
-      tempHistory.push(avgTemp)
-      humidityHistory.push(currentHumidity)
+      if (shouldSampleHistorySite) {
+        // Append rolling variables using Zero-GC slider
+        powerHistory.push(powerSum)
+        tempHistory.push(avgTemp)
+        humidityHistory.push(currentHumidity)
 
-      // Anomaly trigger: Site breaker saturation
-      let maxKW = 0.0
-      rackMap.forEach(rack => {
-        const transComp = transformMap.get(rack.entityId)
-        if (transComp && transComp.siteId === siteId) {
-          maxKW += rack.maxPowerKW
-        }
-      })
+        // Anomaly trigger: Site breaker saturation
+        const maxKW = siteMaxKWMap.get(siteId) ?? 0.0
 
-      TelemetryAnomalyDetector.detectSitePowerSaturation(
-        siteId,
-        powerSum,
-        maxKW,
-        this.thresholds,
-        publishAlert
-      )
+        TelemetryAnomalyDetector.detectSitePowerSaturation(
+          siteId,
+          powerSum,
+          maxKW,
+          this.thresholds,
+          publishAlert
+        )
+      }
     })
 
     // 4. Compile Aggregated Datacenter Simulation Statistics

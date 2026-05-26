@@ -180,6 +180,7 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     })
 
     // Tick 1: baseline temperature of 25.0°C
+    ;(system as any).executionTickCounter = 0
     system.update(1.0)
 
     const tc = world.getComponentMap<TelemetryComponent>('telemetry').get(nodeId)!
@@ -197,6 +198,7 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     thermalComp.temperature = 31.0
 
     // Tick 2: Trigger temperature spike alarm & site power breaker capacity alarm (>90% of 0.5KW max budget)
+    ;(system as any).executionTickCounter = 60
     system.update(1.0)
 
     expect(tc.tempHistory!.buffer[1]).toBe(31.0)
@@ -259,6 +261,7 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     } as ThermalComponent)
 
     // Tick 1: Baseline load = 0.1
+    ;(system as any).executionTickCounter = 0
     system.update(1.0)
     
     const tc = world.getComponentMap<TelemetryComponent>('telemetry').get(nodeId)!
@@ -270,6 +273,7 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     powerComp.load = 0.8
 
     // Tick 2: Spike occurs
+    ;(system as any).executionTickCounter = 60
     system.update(1.0)
     expect(tc.powerSpikesCount).toBe(1)
     expect(tc.auditViolationsCount).toBe(2) // still in warning conditions

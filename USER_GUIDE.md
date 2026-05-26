@@ -729,3 +729,11 @@ The underlying networking algorithm controlling packet flow across switches, rou
 
 **Why it matters:**
 Previously, deploying massive datacenters with tens of thousands of network cables would cause exponential slowdowns as the game tried to calculate the single shortest path across a giant web. By converting to a Priority Queue and caching paths into O(1) indexed lookups, the networking engine can route simulated web traffic instantaneously, preserving 60 FPS while setting the stage for perfectly synchronized multiplayer data flow without drifting.
+
+## Day 89: Core Datacenter Simulation - Telemetry Optimization
+
+**What Changed:**
+The background telemetry engine—responsible for detecting power spikes, thermal throttling, and generating metric graphs—has been fundamentally optimized. Metric sampling now operates on a robust 1Hz (1-second) window instead of measuring data on every graphical frame. Furthermore, evaluating site-wide power breaker thresholds is now cached seamlessly across the entire facility instead of looping inside individual racks.
+
+**Why it matters:**
+Previously, deploying a facility with thousands of active devices would severely drag CPU performance because the engine would log temperature data 60 times a second for every single machine. By throttling this to a realistic 1Hz polling rate, the engine clears millions of background operations a minute. When combined with O(1) site aggregation, large-scale metrics compilation is virtually instantaneous.
