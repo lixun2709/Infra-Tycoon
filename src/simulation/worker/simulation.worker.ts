@@ -351,6 +351,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', node.id)
       if (security) {
         if (node.infectionState !== undefined) security.infectionState = node.infectionState
+        if (node.isIsolated !== undefined) security.isIsolated = node.isIsolated
       }
     }
 
@@ -671,6 +672,8 @@ function sendSyncOutput() {
         isStandby: comp.isStandby,
         accumulatedSimTime: comp.accumulatedSimTime,
         infectionState: security?.infectionState,
+        infectionProgress: security?.infectionProgress,
+        isIsolated: security?.isIsolated,
         isBlackholed: transform?.isBlackholed,
         backupStatus: backup?.backupStatus,
         lastBackupTime: backup?.lastBackupTime,

@@ -193,6 +193,7 @@ export interface InfraNode {
   infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
   lastBackupTime?: number
   corruptionState?: 'clean' | 'corrupted' | 'ransomware'
+  isIsolated?: boolean
 }
 
 export interface VirtualMachine {

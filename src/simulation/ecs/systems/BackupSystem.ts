@@ -1,5 +1,5 @@
 import { System } from '../System'
-import type { BackupComponent, StorageComponent, PowerComponent, SecurityComponent } from '../types'
+import type { BackupComponent, StorageComponent, PowerComponent, SecurityComponent, TransformComponent } from '../types'
 
 /**
  * BackupSystem
@@ -25,10 +25,42 @@ export class BackupSystem extends System {
     backupMap.forEach((backup, id) => {
       // If currently backing up, increment progress (simulate time-based completion)
       if (backup.backupStatus === 'backing_up') {
-        const timeSince = Date.now() - backup.lastBackupTime
-        // Assume backups take 30 simulation seconds to complete
-        if (timeSince > 30.0) {
-          backup.backupStatus = 'protected'
+        let isFailing = false
+        
+        // Storage capacity check
+        if (backup.backupTargetId) {
+          const targetStorage = storageMap.get(backup.backupTargetId)
+          if (targetStorage && targetStorage.usedStorageTB >= targetStorage.totalStorageTB) {
+            isFailing = true
+            backup.corruptionState = 'corrupted'
+            this.world.eventBus.publish('system:alert', {
+              entityId: id,
+              message: `Backup Failed: Target storage full.`,
+              severity: 'warning'
+            })
+          }
+        }
+        
+        // Network blackhole check
+        const transform = this.world.getComponentMap<TransformComponent>('transform').get(id)
+        if (transform && transform.isBlackholed) {
+           isFailing = true
+           this.world.eventBus.publish('system:alert', {
+              entityId: id,
+              message: `Backup Failed: Network path blocked.`,
+              severity: 'warning'
+           })
+        }
+
+        if (isFailing) {
+          backup.backupStatus = 'unprotected'
+        } else {
+          const timeSince = Date.now() - backup.lastBackupTime
+          // Assume backups take 30 simulation seconds to complete
+          if (timeSince > 30.0) {
+            backup.backupStatus = 'protected'
+            backup.corruptionState = 'clean'
+          }
         }
       }
 

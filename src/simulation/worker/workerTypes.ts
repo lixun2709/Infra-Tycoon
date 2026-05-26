@@ -64,6 +64,7 @@ export interface CompactNode {
   lastBackupTime?: number
   corruptionState?: 'clean' | 'corrupted' | 'ransomware'
   infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
+  isIsolated?: boolean
 }
 
 export interface CompactApplication {
@@ -165,6 +166,7 @@ export interface SimSyncOutputPayload {
     accumulatedSimTime?: number
     infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
     infectionProgress?: number
+    isIsolated?: boolean
     isBlackholed?: boolean
     backupStatus?: 'protected' | 'unprotected' | 'backing_up'
     lastBackupTime?: number

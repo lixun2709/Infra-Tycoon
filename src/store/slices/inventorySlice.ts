@@ -19,6 +19,9 @@ export interface InventorySlice {
   advanceProvisioningState: (id: string) => void
   installService: (nodeId: string, type: ServiceType) => void
   toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
+  isolateNode: (id: string) => void
+  formatNode: (id: string) => void
+  triggerRansomwareSimulation: () => void
 }
 
 export const createInventorySlice: StateCreator<InfraState, [], [], InventorySlice> = (set, get) => ({
@@ -246,5 +249,42 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
         services: n.services.map(s => s.id === serviceId ? { ...s, status } : s)
       } : n)
     }))
+  },
+
+  isolateNode: (id) => {
+    const { updateNode, pushAlert } = get()
+    updateNode(id, { isIsolated: true })
+    pushAlert('warning', 'Node has been logically isolated from the network.')
+    audioManager.playEffect('click')
+  },
+
+  formatNode: (id) => {
+    const { updateNode, pushAlert } = get()
+    updateNode(id, { 
+      infectionState: 'clean', 
+      corruptionState: 'clean',
+      backupStatus: 'unprotected',
+      systemState: 'off',
+      bootProgress: 0,
+      provisioningState: 'patched' // Require bootstrap again
+    })
+    pushAlert('success', 'Node drives formatted. Ransomware removed. System requires reprovisioning.')
+    audioManager.playEffect('success')
+  },
+
+  triggerRansomwareSimulation: () => {
+    const { nodes, pushAlert } = get()
+    const targetNodes = nodes.filter(n => n.type === 'compute' && n.systemState === 'running')
+    if (targetNodes.length === 0) {
+      pushAlert('error', 'Ransomware drill failed: No active compute nodes available to infect.')
+      return
+    }
+    
+    // Pick a random target
+    const target = targetNodes[Math.floor(Math.random() * targetNodes.length)]
+    get().updateNode(target.id, { infectionState: 'exposed' })
+    
+    pushAlert('critical', 'RANSOMWARE DRILL INITIATED: Malicious payload injected into network.')
+    audioManager.playEffect('error')
   }
 })

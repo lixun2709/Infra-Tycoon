@@ -175,6 +175,9 @@ export type InfraState = {
   removeNode: (id: string) => void
   updateNode: (id: string, updates: Partial<InfraNode>) => void
   advanceProvisioningState: (id: string) => void
+  isolateNode: (id: string) => void
+  formatNode: (id: string) => void
+  triggerRansomwareSimulation: () => void
   
   // Day 7: Logical Networking
   verifyService: (nodeId: string, type: ServiceType) => boolean

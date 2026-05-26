@@ -1,5 +1,5 @@
 import { System } from '../System'
-import type { ApplicationComponent, ContractComponent, PowerComponent, TransformComponent } from '../types'
+import type { ApplicationComponent, ContractComponent, PowerComponent, TransformComponent, SecurityComponent } from '../types'
 import { CONTRACT_CATALOG } from '../../../physics/contractLibrary'
 
 export class SlaSystem extends System {
@@ -27,13 +27,17 @@ export class SlaSystem extends System {
       if (app.status === 'running') {
         const power = powerMap.get(app.nodeId)
         const transform = transformMap.get(app.nodeId)
+        const security = this.world.getComponentMap<SecurityComponent>('security').get(app.nodeId)
         
         // Operational Realism: App is only "running" if the physical hardware has power
-        // and is not currently administratively taken down for maintenance.
+        // and is not currently administratively taken down for maintenance, isolated, or locked by ransomware.
         const isPowered = power ? power.isPowered : false
         const isMaintenance = transform ? transform.maintenanceMode : false
+        const isBlackholed = transform ? transform.isBlackholed : false
+        const isIsolated = security ? security.isIsolated : false
+        const isRansomwareLocked = security ? security.infectionState === 'locked' : false
 
-        if (isPowered && !isMaintenance) {
+        if (isPowered && !isMaintenance && !isBlackholed && !isIsolated && !isRansomwareLocked) {
           healthyAppCounts.set(app.appId, (healthyAppCounts.get(app.appId) || 0) + 1)
         }
       }
@@ -66,6 +70,14 @@ export class SlaSystem extends System {
         // Let's assume this is evaluated exactly once per second, so penalty is 1 penalty unit per second.
         contract.accumulatedPenalty += blueprint.penaltyPerTick
         contract.currentStatus = 'violating'
+
+        if (contract.accumulatedPenalty > 1000000) {
+           this.world.eventBus.publish('system:alert', {
+             entityId: contract.entityId,
+             message: `CRITICAL: SLA Bankruptcy! Contract ${blueprint.name} has exceeded $1,000,000 in penalties.`,
+             severity: 'critical'
+           })
+        }
       }
     })
   }
