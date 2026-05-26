@@ -22,6 +22,8 @@ export class ThermalSystem extends System {
   private adjacentRackPairsBySite = new Map<string, [string, string][]>()
   private lastRackEntitiesHashBySite = new Map<string, number>()
 
+  private executionTickCounter = 0
+
   // Zero-Allocation Object Pools for ECS Optimization
   private racksPool: string[] = []
   private coolingUnitsPool: string[] = []
@@ -151,6 +153,7 @@ export class ThermalSystem extends System {
       powerMap,
       transformMap,
       this.accumulatedTime,
+      dt,
       this.world.eventBus
     )
 
@@ -195,50 +198,10 @@ export class ThermalSystem extends System {
       this.world.eventBus
     )
 
-    // CRAC unit reported temperature relaxation convergence (needs to happen after Room Ambient Engine calculates temps)
-    this.coolingUnitsPool.forEach(id => {
-      const transform = transformMap.get(id)!
-      const power = powerMap.get(id)
-      const thermal = thermalMap.get(id)!
-
-      const siteId = transform.siteId || 'default-site'
-      const roomAmbientTemp = ThermalGlobals.siteAmbientTemps.get(siteId) ?? ThermalGlobals.BASE_AMBIENT_TEMP
-
-      const isStandby = this.siteStandbyMapPool.get(siteId)?.has(id) ?? false
-      const isRunning = (power?.isPowered ?? false) && !isStandby
-      
-      let efficiency = 1.0
-      if (isRunning) {
-        if (roomAmbientTemp > 60.0) {
-          efficiency = 0.0
-        } else if (roomAmbientTemp > 40.0) {
-          efficiency = Math.max(0.2, 1.0 - 0.04 * (roomAmbientTemp - 40.0))
-        }
-      } else {
-        efficiency = 0.0
-      }
-
-      // Calculate chilled water flow required to neutralize this BTU (approx 0.005 LPM per BTU/hr)
-      const degradationFactor = Math.max(0.0, Math.min(1.0, 1.0 - (transform.degradation ?? 0.0) / 100.0))
-      const effectiveCoolingBTU = Math.abs(thermal.btuOutput) * efficiency * degradationFactor
-      
-      if (effectiveCoolingBTU > 0) {
-        thermal.waterFlowLPM = effectiveCoolingBTU * 0.005
-      } else {
-        thermal.waterFlowLPM = 0
-      }
-
-      // CRAC unit reported temperature relaxation convergence
-      const currentCracTemp = thermal.temperature ?? roomAmbientTemp
-      const cracTarget = roomAmbientTemp - (isRunning ? 10.0 * efficiency : 0.0)
-      const cracAlpha = 1.0 - Math.exp(-dt / 60.0) // 1 minute time constant
-      thermal.temperature = Math.max(18.0, currentCracTemp + (cracTarget - currentCracTemp) * cracAlpha)
-      thermal.accumulatedSimTime = this.accumulatedTime
-      thermal.lastUpdate = Math.floor(this.accumulatedTime * 1000)
-    })
-
     const tEnd = performance.now()
-    if (Math.random() < 0.1) {
+    this.executionTickCounter++
+    
+    if (this.executionTickCounter % 10 === 0) {
       this.world.eventBus.publish('telemetry:system', {
         subsystem: 'thermal',
         executionTimeMs: Number((tEnd - startTime).toFixed(2))

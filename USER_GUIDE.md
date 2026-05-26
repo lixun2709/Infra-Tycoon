@@ -681,3 +681,11 @@ The RackSystem was upgraded to implement robust state transition throttling. Pri
 
 **Why it matters:**
 In massive simulations with thousands of interacting components, a minor misconfiguration (such as overlapping server slots) would previously choke the distributed tracer and central event bus with thousands of duplicate alerts per second. By intelligently suppressing event duplication via ECS state trackers, simulation workers maintain absolute flatline performance even when datacenters suffer from chaotic layout configurations. The removal of Math.random() preserves WebWorker multiplayer determinism.
+
+## Day 83: Core Datacenter Simulation - Cooling Systems Stabilization
+
+**What Changed:**
+The thermodynamic logic controlling Computer Room Air Conditioning (CRAC) units was significantly refactored. Previously, ThermalSystem handled CRAC temperature target relaxation and chilled water flow calculations internally, while CRACManager handled unit redundancy and throttling. These distinct systems have now been seamlessly unified. CRACManager acts as the single source of truth for the entire cooling lifecycle. Additionally, global random generators were stripped from the thermal loop.
+
+**Why it matters:**
+Consolidating thermal logic eliminates structural drift and guarantees that cooling units degrade, flow, and chill the ambient room uniformly. Because calculations like chilled water consumption (waterFlowLPM) and exponential temperature decay now happen inside a single unified frame within CRACManager, the simulation handles sudden thermal spikes (like an entire rack powering on instantly) smoothly and accurately, mirroring actual thermodynamics without risking engine desynchronization across WebWorkers.

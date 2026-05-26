@@ -18,6 +18,7 @@ export class CRACManager {
     powerMap: ComponentMap<PowerComponent>,
     transformMap: ComponentMap<TransformComponent>,
     accumulatedTime: number,
+    dt: number,
     eventBus: ECSEventBus
   ) {
     // V2 Lead-Lag Redundancy Scheduler
@@ -132,6 +133,20 @@ export class CRACManager {
       // Degradation scale factor (1.0 - degradationPercent / 100)
       const degradationFactor = Math.max(0.0, Math.min(1.0, 1.0 - (transform.degradation ?? 0.0) / 100.0))
       const effectiveCoolingBTU = Math.abs(thermal.btuOutput) * efficiency * degradationFactor
+
+      if (effectiveCoolingBTU > 0) {
+        thermal.waterFlowLPM = effectiveCoolingBTU * 0.005
+      } else {
+        thermal.waterFlowLPM = 0
+      }
+
+      // CRAC unit reported temperature relaxation convergence
+      const currentCracTemp = thermal.temperature ?? roomAmbientTemp
+      const cracTarget = roomAmbientTemp - (isRunning ? 10.0 * efficiency : 0.0)
+      const cracAlpha = 1.0 - Math.exp(-dt / 60.0) // 1 minute time constant
+      thermal.temperature = Math.max(18.0, currentCracTemp + (cracTarget - currentCracTemp) * cracAlpha)
+      thermal.accumulatedSimTime = accumulatedTime
+      thermal.lastUpdate = Math.floor(accumulatedTime * 1000)
 
       if (isRunning && effectiveCoolingBTU > 0) {
         if (transform.parentRackId) {
