@@ -182,6 +182,7 @@ export interface BackupComponent extends Component {
   lastBackupTime: number
   backupTargetId?: string
   corruptionState?: 'clean' | 'corrupted' | 'ransomware'
+  isImmutable?: boolean // Enterprise feature: cannot be corrupted by ransomware
 }
 
 // Security Component: Handles enterprise threat states like ransomware and lateral propagation
@@ -190,7 +191,9 @@ export interface SecurityComponent extends Component {
   infectionProgress: number
   encryptionRate: number
   isIsolated: boolean
-  isImmutable?: boolean // Enterprise feature: cannot be encrypted
+  isImmutable?: boolean // Cannot be encrypted
+  microsegmentationEnabled?: boolean // Reduces lateral spread chance
+  infectionType?: 'worm' | 'targeted' | 'zero_day'
 }
 
 // Hypervisor Component: Node-level ESXi properties
@@ -226,6 +229,7 @@ export interface IncidentComponent extends Component {
 export interface KubernetesNodeComponent extends Component {
   role: 'master' | 'worker'
   clusterId: string
+  totalMasters?: number // Total masters configured for quorum calculation
   maxPods: number
   cpuCapacity: number
   memoryCapacity: number
@@ -237,9 +241,10 @@ export interface KubernetesNodeComponent extends Component {
 export interface PodComponent extends Component {
   nodeId: string
   clusterId: string
-  status: 'pending' | 'running' | 'terminating' | 'crashloop'
+  status: 'pending' | 'running' | 'terminating' | 'crashloop' | 'oomkilled'
   cpuReq: number
   memoryReq: number
+  memoryLimit?: number
   serviceName: string
   evictionTimer?: number
   restartCount?: number

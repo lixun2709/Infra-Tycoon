@@ -98,7 +98,7 @@ export class BackupSystem extends System {
       // Handle ransomware/corruption propagation
       const security = this.world.getComponentMap<SecurityComponent>('security').get(id)
       if (security && security.infectionState && security.infectionState !== 'clean') {
-        if (backup.corruptionState !== 'ransomware') {
+        if (!backup.isImmutable && backup.corruptionState !== 'ransomware') {
           backup.corruptionState = 'ransomware'
           // A ransomware infection immediately invalidates unprotected backups
           if (backup.backupStatus !== 'backing_up') {

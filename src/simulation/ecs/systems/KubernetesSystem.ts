@@ -39,10 +39,57 @@ export class KubernetesSystem extends System {
       }
     }
 
+    // Determine cluster quorums before processing pods
+    const clusterQuorums = new Map<string, boolean>()
+    for (const [clusterId, cluster] of clusters.entries()) {
+       let totalMasters = 0
+       for (const masterId of cluster.masters) {
+          const masterNode = k8sNodes.get(masterId)
+          if (masterNode && masterNode.totalMasters) {
+             totalMasters = Math.max(totalMasters, masterNode.totalMasters)
+          }
+       }
+       if (totalMasters === 0) totalMasters = cluster.masters.length || 1
+       const quorum = Math.floor(totalMasters / 2) + 1
+       clusterQuorums.set(clusterId, cluster.masters.length >= quorum)
+    }
+
     if (pods) {
-      for (const [, pod] of pods.entries()) {
+      for (const [podId, pod] of pods.entries()) {
+        const hasQuorum = clusterQuorums.get(pod.clusterId) ?? false
+
+        // Pod Level OOMKilled simulation (Jitter)
+        if (pod.status === 'running' && pod.memoryLimit) {
+           // Simulate fluctuating memory usage (+0% to +50% of request)
+           const currentMemoryUsage = pod.memoryReq * (1.0 + Math.random() * 0.5)
+           if (currentMemoryUsage > pod.memoryLimit) {
+              pod.status = 'oomkilled'
+              pod.evictionTimer = 0
+              pod.restartCount = (pod.restartCount || 0) + 1
+              this.world.eventBus.publish('system:alert', {
+                 entityId: podId,
+                 message: `Pod ${podId.slice(0, 8)} OOMKilled: Usage ${currentMemoryUsage.toFixed(1)}MB exceeded limit ${pod.memoryLimit}MB`,
+                 severity: 'warning'
+              })
+           }
+        } else if (pod.status === 'oomkilled' || pod.status === 'crashloop') {
+           if (pod.evictionTimer !== undefined) {
+              pod.evictionTimer += _deltaTime
+              // Exponential backoff or simple backoff before restart (e.g., 30s)
+              if (pod.evictionTimer >= 30) {
+                 pod.status = 'pending'
+                 pod.evictionTimer = 0
+              }
+           } else {
+              pod.evictionTimer = 0
+           }
+        }
+
         if (offlineNodes.has(pod.nodeId)) {
-           if (pod.status !== 'crashloop' && pod.status !== 'terminating') {
+           // If we don't have quorum, the API server is read-only, so the node controller cannot evict pods.
+           if (!hasQuorum) continue;
+
+           if (pod.status !== 'crashloop' && pod.status !== 'terminating' && pod.status !== 'oomkilled') {
              pod.status = 'crashloop'
              pod.evictionTimer = 0
              pod.restartCount = (pod.restartCount || 0) + 1
@@ -58,14 +105,15 @@ export class KubernetesSystem extends System {
            } else {
              pod.evictionTimer = 0
            }
-        } else if (pod.status === 'crashloop' && pod.nodeId !== '') {
+        } else if ((pod.status === 'crashloop' || pod.status === 'oomkilled') && pod.nodeId !== '' && hasQuorum) {
            pod.status = 'running'
            pod.evictionTimer = 0
         }
       }
 
       for (const [clusterId, cluster] of clusters.entries()) {
-         if (cluster.masters.length === 0) continue 
+         const hasQuorum = clusterQuorums.get(clusterId) ?? false
+         if (!hasQuorum) continue // etcd Quorum Loss: Control Plane Read-Only 
 
          const unscheduledPods = []
          for (const [podId, pod] of pods.entries()) {

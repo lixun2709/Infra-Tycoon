@@ -1,7 +1,11 @@
 # Changelog
 
-## [v2.2.0] - 2026-05-25
 ### Added
+- **Ransomware Microsegmentation**: Added `microsegmentationEnabled` and `isImmutable` backup rules to severely restrict malware lateral spread. Zero-Day exploits introduced.
+- **VMware DRS CPU Overcommit**: Hypervisor now dynamically tracks vCPU overcommit against pCPUs. Ratios above 4:1 impose CPU Ready Time degradation penalties.
+- **Storage vMotion (svMotion)**: DRS now actively evacuates VMs from datastores reaching 90% utilization.
+- **Kubernetes Quorum Mechanics**: Losing etcd quorum (`cluster.masters.length < totalMasters / 2 + 1`) halts scheduling and evictions, forcing the control plane to read-only.
+- **Kubernetes OOMKilled Simulation**: Pods now dynamically jitter memory usage; breaching `memoryLimit` immediately terminates the pod with `OOMKilled` status and applies crashloop backoffs.
 - Comprehensive documentation synchronization for enterprise features.
 - In-App Document Center mapping via AST.
 - Dynamic rendering LOD based on camera zoom and active node count.

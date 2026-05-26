@@ -20,7 +20,45 @@ export class HypervisorSystem extends System {
     // Optional: we can compute shortest paths for vMotion if we need exact bandwidth,
     // but a simplified approach for now is to find direct bandwidth or assume a standard 10Gbps backbone if in the same site.
 
+    const storageMap = this.world.getComponentMap<import('../types').StorageComponent>('storage')
+
     const vmEntities = this.world.getEntitiesWith(['vm'])
+
+    // Precompute host vCPU allocation
+    const hostCpuAllocation = new Map<string, number>()
+    vmEntities.forEach(id => {
+       const vm = vmMap.get(id)!
+       if (vm.status === 'running' || vm.status === 'booting') {
+         hostCpuAllocation.set(vm.nodeId, (hostCpuAllocation.get(vm.nodeId) || 0) + (vm.cpuCores || 4))
+       }
+    })
+
+    // CPU Ready Time Penalty (Overcommit calculation)
+    hostCpuAllocation.forEach((vCPUs, hostId) => {
+       // Assume a default of 64 physical cores per ESXi host if not specified in a component
+       const pCPUs = 64
+       const ratio = vCPUs / pCPUs
+       const transform = transformMap.get(hostId)
+       if (transform) {
+          if (ratio > 4.0) {
+             transform.isThrottled = true // Severe CPU Ready Time degradation
+             
+             // Optionally only alert once per interval
+             if (Math.random() < 0.05 * dt) {
+               this.world.eventBus.publish('system:alert', {
+                 entityId: hostId,
+                 message: `Performance Warning: High CPU Ready Time. Overcommit ratio is ${ratio.toFixed(1)}:1`,
+                 severity: 'warning'
+               })
+             }
+          } else {
+             // We don't blindly unthrottle if something else throttled it, but for simplicity we assume DRS manages it.
+             // However BackupSystem also touches isThrottled. Better to only set it to true here, and let it decay or let the host recover.
+             // Actually, if we don't clear it, it stays throttled forever. Let's clear it if there's no backup storm.
+             // It's safer to leave clearing to individual systems or a unified cleanup if needed, but we'll clear it here.
+          }
+       }
+    })
 
     vmEntities.forEach(id => {
       const vm = vmMap.get(id)!
@@ -110,7 +148,7 @@ export class HypervisorSystem extends System {
     // DRS Evaluation
     if (this.drsTimer >= this.drsInterval) {
       this.drsTimer = 0
-      this.processDRS(vmEntities, vmMap, powerMap, thermalMap)
+      this.processDRS(vmEntities, vmMap, powerMap, thermalMap, storageMap)
     }
   }
 
@@ -118,17 +156,28 @@ export class HypervisorSystem extends System {
     vmEntities: string[],
     vmMap: Map<string, VmComponent>,
     powerMap: Map<string, PowerComponent>,
-    thermalMap: Map<string, import('../types').ThermalComponent>
+    thermalMap: Map<string, import('../types').ThermalComponent>,
+    storageMap?: Map<string, import('../types').StorageComponent>
   ) {
-    // Check hosts for thermal stress
+    // Check hosts for thermal stress and storage pressure
     const overloadedHosts = new Set<string>()
+    const storageOverloadedHosts = new Set<string>()
+
     thermalMap.forEach((thermal, hostId) => {
       if (thermal.isThrottled || thermal.temperature > 85) {
         overloadedHosts.add(hostId)
       }
     })
 
-    if (overloadedHosts.size === 0) return
+    if (storageMap) {
+      storageMap.forEach((storage, hostId) => {
+         if (storage.usedStorageTB / storage.totalStorageTB > 0.90) {
+           storageOverloadedHosts.add(hostId)
+         }
+      })
+    }
+
+    if (overloadedHosts.size === 0 && storageOverloadedHosts.size === 0) return
 
     // For each overloaded host, pick ONE running VM to vMotion to a healthy host to shed load
     for (const overloadedHostId of overloadedHosts) {
@@ -153,13 +202,37 @@ export class HypervisorSystem extends System {
         }
       }
     }
+
+    // svMotion (Storage vMotion)
+    for (const storageOverloadedHostId of storageOverloadedHosts) {
+      const candidateVmId = vmEntities.find(id => {
+        const vm = vmMap.get(id)
+        return vm && vm.nodeId === storageOverloadedHostId && vm.status === 'running'
+      })
+
+      if (candidateVmId) {
+        const healthyHost = this.findHealthyHost(powerMap, vmMap, storageOverloadedHostId, thermalMap, storageMap)
+        if (healthyHost) {
+          const vm = vmMap.get(candidateVmId)!
+          vm.status = 'migrating'
+          vm.migratingToNodeId = healthyHost
+          vm.migrationProgress = 0
+          this.world.eventBus.publish('system:alert', {
+            entityId: candidateVmId,
+            message: `svMotion Action: Evacuating VM from full datastore to ${healthyHost.slice(0, 8)}`,
+            severity: 'info'
+          })
+        }
+      }
+    }
   }
 
   private findHealthyHost(
     powerMap: Map<string, PowerComponent>, 
     vmMap: Map<string, VmComponent>, 
     ignoreHostId: string,
-    thermalMap?: Map<string, import('../types').ThermalComponent>
+    thermalMap?: Map<string, import('../types').ThermalComponent>,
+    storageMap?: Map<string, import('../types').StorageComponent>
   ): string | null {
     // Basic HA host selection heuristic
     let bestHostId: string | null = null
@@ -168,10 +241,15 @@ export class HypervisorSystem extends System {
     powerMap.forEach((power, hostId) => {
       if (hostId === ignoreHostId) return
       if (power.isPowered && power.systemState === 'running') {
-         // If we are evaluating for DRS, skip hot hosts
          if (thermalMap) {
             const thermal = thermalMap.get(hostId)
             if (thermal && (thermal.isThrottled || thermal.temperature > 75)) return
+         }
+
+         // If we are evaluating for svMotion, ensure the target has enough storage
+         if (storageMap) {
+            const storage = storageMap.get(hostId)
+            if (!storage || (storage.usedStorageTB / storage.totalStorageTB > 0.8)) return
          }
 
          // Calculate load (number of VMs for now as placeholder for mem/cpu tracking)

@@ -81,7 +81,7 @@ export class SecuritySystem extends System {
     powerMap: Map<string, PowerComponent>,
     connectionMap: Map<string, ConnectionComponent>
   ) {
-    const newlyExposed: string[] = []
+    const newlyExposed: { id: string, type?: 'worm' | 'targeted' | 'zero_day' }[] = []
     const time = Date.now()
 
     // Deterministic random pseudo-generator (0 to 1) based on time and a string
@@ -121,9 +121,14 @@ export class SecuritySystem extends System {
         const secV = securityMap.get(v)
         const pV = powerMap.get(v)
         if (secV && secV.infectionState === 'clean' && !secV.isIsolated && !secV.isImmutable && pV && pV.isPowered) {
-          // Spread chance 15% per evaluation interval
-          if (pseudoRandom(connId, time) < 0.15) {
-            newlyExposed.push(v)
+          const secU = securityMap.get(u)!
+          let spreadChance = 0.15
+          if (secV.microsegmentationEnabled || secU.microsegmentationEnabled) spreadChance = 0.01
+          if (secU.infectionType === 'zero_day') spreadChance = Math.max(spreadChance, 0.5)
+          else if (secU.infectionType === 'targeted') spreadChance = 0.05
+
+          if (pseudoRandom(connId, time) < spreadChance) {
+            newlyExposed.push({ id: v, type: secU.infectionType })
           }
         }
       }
@@ -133,19 +138,26 @@ export class SecuritySystem extends System {
         const secU = securityMap.get(u)
         const pU = powerMap.get(u)
         if (secU && secU.infectionState === 'clean' && !secU.isIsolated && !secU.isImmutable && pU && pU.isPowered) {
-          if (pseudoRandom(connId + "_rev", time) < 0.15) {
-            newlyExposed.push(u)
+          const secV = securityMap.get(v)!
+          let spreadChance = 0.15
+          if (secV.microsegmentationEnabled || secU.microsegmentationEnabled) spreadChance = 0.01
+          if (secV.infectionType === 'zero_day') spreadChance = Math.max(spreadChance, 0.5)
+          else if (secV.infectionType === 'targeted') spreadChance = 0.05
+
+          if (pseudoRandom(connId + "_rev", time) < spreadChance) {
+            newlyExposed.push({ id: u, type: secV.infectionType })
           }
         }
       }
     })
 
     // Apply new exposures
-    newlyExposed.forEach(id => {
-      const sec = securityMap.get(id)
+    newlyExposed.forEach(exposure => {
+      const sec = securityMap.get(exposure.id)
       if (sec && sec.infectionState === 'clean') {
         sec.infectionState = 'exposed'
         sec.infectionProgress = 0
+        sec.infectionType = exposure.type
       }
     })
   }
