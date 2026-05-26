@@ -22,8 +22,13 @@ export class SlaSystem extends System {
 
     // Precompute healthy running applications (O(N) operation instead of O(N^4))
     const healthyAppCounts = new Map<string, number>()
+    const failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, other: number }>()
 
     apps.forEach((app) => {
+      if (!failedAppReasons.has(app.appId)) {
+        failedAppReasons.set(app.appId, { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: 0 })
+      }
+
       if (app.status === 'running') {
         const power = powerMap.get(app.nodeId)
         const transform = transformMap.get(app.nodeId)
@@ -39,7 +44,17 @@ export class SlaSystem extends System {
 
         if (isPowered && !isMaintenance && !isBlackholed && !isIsolated && !isRansomwareLocked) {
           healthyAppCounts.set(app.appId, (healthyAppCounts.get(app.appId) || 0) + 1)
+        } else {
+          const reasons = failedAppReasons.get(app.appId)!
+          if (isRansomwareLocked) reasons.ransomware++
+          else if (isIsolated) reasons.isolated++
+          else if (isBlackholed) reasons.blackholed++
+          else if (!isPowered) reasons.power++
+          else reasons.other++
         }
+      } else {
+        const reasons = failedAppReasons.get(app.appId)!
+        reasons.other++
       }
     })
 
@@ -54,7 +69,24 @@ export class SlaSystem extends System {
         const activeCount = healthyAppCounts.get(req.appId) || 0
         if (activeCount < req.count) {
           isHealthy = false
-          break // Fail fast
+          
+          const deficit = req.count - activeCount
+          const reasons = failedAppReasons.get(req.appId) || { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: deficit }
+          
+          let penaltyForThisTick = 0
+          const totalFailing = reasons.ransomware + reasons.isolated + reasons.blackholed + reasons.power + reasons.other
+          const ratio = totalFailing > 0 ? (deficit / totalFailing) : 1
+          
+          penaltyForThisTick += (reasons.ransomware * ratio) * 500
+          penaltyForThisTick += ((reasons.isolated + reasons.blackholed) * ratio) * 300
+          penaltyForThisTick += (reasons.power * ratio) * 150
+          penaltyForThisTick += (reasons.other * ratio) * 50
+          
+          // Use maximum of blueprint base penalty or the dynamic penalty
+          contract.accumulatedPenalty += Math.max(blueprint.penaltyPerTick, penaltyForThisTick)
+          contract.currentStatus = 'violating'
+          
+          break // Found first failing requirement, we only apply one penalty per contract per tick
         }
       }
 
@@ -63,14 +95,6 @@ export class SlaSystem extends System {
         contract.uptimeTicks += 1
         contract.currentStatus = 'healthy'
       } else {
-        // Accumulate penalty based on `dt` per tick or total missing time?
-        // Since this evaluates once every 60 ticks (1 second), dt here is usually 1.0 (or total elapsed time for 60 frames, which is ~1s).
-        // For simplicity and exact determinism matching the old system, we add `blueprint.penaltyPerTick`
-        // (Note: the old system ran this 60 times a second and scaled penalty by dt, so we scale by 60 * dt or just blueprint.penaltyPerTick since this simulates 1 second of failure).
-        // Let's assume this is evaluated exactly once per second, so penalty is 1 penalty unit per second.
-        contract.accumulatedPenalty += blueprint.penaltyPerTick
-        contract.currentStatus = 'violating'
-
         if (contract.accumulatedPenalty > 1000000) {
            this.world.eventBus.publish('system:alert', {
              entityId: contract.entityId,

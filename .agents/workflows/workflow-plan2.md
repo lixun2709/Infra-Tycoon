@@ -4,7 +4,7 @@ description:
 
 # CONFIGURATION
 
-DAY= 100
+DAY= 106
 
 # EXECUTION PROMPT
 

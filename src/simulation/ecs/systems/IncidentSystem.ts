@@ -91,10 +91,15 @@ export class IncidentSystem implements System {
     let failedNodesCount = 0
     let lastSiteId = ''
     
-    transforms.forEach((t) => {
+    transforms.forEach((t, entityId) => {
       if (t.healthStatus === 'critical' || t.degradation && t.degradation > 0.8) {
         failedNodesCount++
         lastSiteId = t.siteId
+      }
+
+      // Chaos Engineering: Spontaneous Anomalies (0.001% chance per node per tick)
+      if (Math.random() < 0.00001 && t.healthStatus === 'nominal') {
+        this.spawnChaosIncident(world, entityId)
       }
     })
 
@@ -126,5 +131,48 @@ export class IncidentSystem implements System {
         world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastSiteId })
       }
     }
+  }
+
+  private spawnChaosIncident(world: World, targetNodeId: string) {
+    const activeIncidents = world.getComponents<IncidentComponent>('IncidentComponent')
+    let activeCount = 0
+    if (activeIncidents) {
+      activeIncidents.forEach(inc => { if (!inc.isResolved) activeCount++ })
+    }
+    
+    // Don't overwhelm the player with too many simultaneous chaos events
+    if (activeCount >= 3) return
+
+    const incidentId = `chaos-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    const typeRoll = Math.random()
+    const incidentType = typeRoll > 0.5 ? 'network_outage' : 'thermal_runaway'
+
+    const newIncident: IncidentComponent = {
+      entityId: incidentId,
+      incidentId,
+      type: incidentType,
+      severity: 'medium',
+      affectedNodes: [targetNodeId],
+      elapsedSeconds: 0,
+      isResolved: false
+    }
+
+    world.registerEntity(incidentId)
+    world.addComponent('IncidentComponent', newIncident)
+
+    // Execute the fault immediately
+    if (incidentType === 'network_outage') {
+      const conn = world.getComponent<import('../types').ConnectionComponent>(targetNodeId, 'ConnectionComponent')
+      if (conn) conn.status = 'blocked'
+    } else {
+      const thermal = world.getComponent<import('../types').ThermalComponent>(targetNodeId, 'ThermalComponent')
+      if (thermal) thermal.temperature += 40
+    }
+
+    world.eventBus.publish('system:alert', {
+      entityId: targetNodeId,
+      message: `Chaos Event: Spontaneous ${incidentType.replace('_', ' ')} detected on node.`,
+      severity: 'warning'
+    })
   }
 }

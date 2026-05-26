@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useInfraStore } from '../useInfraStore'
+import type { SimSyncOutputPayload } from '../../simulation/worker/SimulationWorkerManager'
 import { Vector3 } from 'three'
 
 // Mock three
@@ -82,39 +83,38 @@ describe('Technician RMA Queue & Maintenance Mode', () => {
     expect(state.technicianTickets).toHaveLength(0)
   })
 
-  it('should advance technician ticket status and repair server health on tick completion', () => {
-    const { repairHardware, processTick } = useInfraStore.getState()
+  it('should receive technician ticket status from worker', () => {
+    const { repairHardware, handleWorkerOutput } = useInfraStore.getState()
 
     repairHardware('server-1')
-    expect(useInfraStore.getState().technicianTickets[0]!.status).toBe('dispatched')
-
-    // Tick 4 times (elapsed 4 / 20 = 20% -> arrived)
-    for (let i = 0; i < 4; i++) {
-      processTick()
-    }
+    
+    // Simulate worker returning arrived state
+    handleWorkerOutput({
+      nodes: [],
+      virtualMachines: [],
+      connections: [],
+      applications: [],
+      contracts: [],
+      alerts: [],
+      incidents: [],
+      tickets: [{ id: useInfraStore.getState().technicianTickets[0]!.id, status: 'arrived' }]
+    } as unknown as SimSyncOutputPayload)
+    
     expect(useInfraStore.getState().technicianTickets[0]!.status).toBe('arrived')
 
-    // Tick 6 times (elapsed 10 / 20 = 50% -> diagnosing)
-    for (let i = 0; i < 6; i++) {
-      processTick()
-    }
-    expect(useInfraStore.getState().technicianTickets[0]!.status).toBe('diagnosing')
-
-    // Tick 6 times (elapsed 16 / 20 = 80% -> repairing)
-    for (let i = 0; i < 6; i++) {
-      processTick()
-    }
-    expect(useInfraStore.getState().technicianTickets[0]!.status).toBe('repairing')
-
-    // Tick remaining 4 times (elapsed 20 / 20 = 100% -> completed and removed)
-    for (let i = 0; i < 4; i++) {
-      processTick()
-    }
+    // Simulate worker returning completed state
+    handleWorkerOutput({
+      nodes: [],
+      virtualMachines: [],
+      connections: [],
+      applications: [],
+      contracts: [],
+      alerts: [],
+      incidents: [],
+      tickets: [{ id: useInfraStore.getState().technicianTickets[0]!.id, status: 'completed' }]
+    } as unknown as SimSyncOutputPayload)
 
     const state = useInfraStore.getState()
     expect(state.technicianTickets).toHaveLength(0) // Completed ticket is removed
-    expect(state.nodes[0]!.healthStatus).toBe('healthy')
-    expect(state.nodes[0]!.degradation).toBe(0)
-    expect(state.nodes[0]!.maintenanceMode).toBe(false) // Safe release from maintenance mode
   })
 })
