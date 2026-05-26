@@ -58,6 +58,31 @@ export class BackupSystem extends System {
           const timeSince = Date.now() - backup.lastBackupTime
           // Assume backups take 30 simulation seconds to complete
           if (timeSince > 30.0) {
+            // Success! Deduct capacity from target
+            if (backup.backupTargetId) {
+              const targetStorage = storageMap.get(backup.backupTargetId)
+              const sourceStorage = storageMap.get(id)
+              
+              if (targetStorage) {
+                // Determine size to backup. Default to 1TB if no source storage info.
+                let backupSizeTB = sourceStorage ? sourceStorage.usedStorageTB : 1.0
+                
+                // Deduplication logic
+                if (targetStorage.deduplicationEnabled) {
+                   const ratio = targetStorage.deduplicationRatio || 0.5
+                   backupSizeTB = backupSizeTB * ratio
+                }
+                
+                // Compression logic
+                if (targetStorage.compressionEnabled) {
+                   const cRatio = targetStorage.compressionRatio || 0.7
+                   backupSizeTB = backupSizeTB * cRatio
+                }
+
+                targetStorage.usedStorageTB += backupSizeTB
+              }
+            }
+
             backup.backupStatus = 'protected'
             backup.corruptionState = 'clean'
           }

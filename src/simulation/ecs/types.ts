@@ -190,6 +190,7 @@ export interface SecurityComponent extends Component {
   infectionProgress: number
   encryptionRate: number
   isIsolated: boolean
+  isImmutable?: boolean // Enterprise feature: cannot be encrypted
 }
 
 // Hypervisor Component: Node-level ESXi properties

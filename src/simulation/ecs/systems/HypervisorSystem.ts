@@ -6,11 +6,16 @@ import type { VmComponent, PowerComponent, TransformComponent, SecurityComponent
  * ECS implementation of VMware ESXi simulation and vMotion logic.
  */
 export class HypervisorSystem extends System {
+  private drsTimer = 0
+  private drsInterval = 5.0 // Evaluate DRS every 5 seconds
+
   public update(dt: number) {
+    this.drsTimer += dt
     const vmMap = this.world.getComponentMap<VmComponent>('vm')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
     const securityMap = this.world.getComponentMap<SecurityComponent>('security')
+    const thermalMap = this.world.getComponentMap<import('../types').ThermalComponent>('thermal')
 
     // Optional: we can compute shortest paths for vMotion if we need exact bandwidth,
     // but a simplified approach for now is to find direct bandwidth or assume a standard 10Gbps backbone if in the same site.
@@ -101,9 +106,61 @@ export class HypervisorSystem extends System {
         }
       }
     })
+
+    // DRS Evaluation
+    if (this.drsTimer >= this.drsInterval) {
+      this.drsTimer = 0
+      this.processDRS(vmEntities, vmMap, powerMap, thermalMap)
+    }
   }
 
-  private findHealthyHost(powerMap: Map<string, PowerComponent>, vmMap: Map<string, VmComponent>, ignoreHostId: string): string | null {
+  private processDRS(
+    vmEntities: string[],
+    vmMap: Map<string, VmComponent>,
+    powerMap: Map<string, PowerComponent>,
+    thermalMap: Map<string, import('../types').ThermalComponent>
+  ) {
+    // Check hosts for thermal stress
+    const overloadedHosts = new Set<string>()
+    thermalMap.forEach((thermal, hostId) => {
+      if (thermal.isThrottled || thermal.temperature > 85) {
+        overloadedHosts.add(hostId)
+      }
+    })
+
+    if (overloadedHosts.size === 0) return
+
+    // For each overloaded host, pick ONE running VM to vMotion to a healthy host to shed load
+    for (const overloadedHostId of overloadedHosts) {
+      // Find a running VM on this host
+      const candidateVmId = vmEntities.find(id => {
+        const vm = vmMap.get(id)
+        return vm && vm.nodeId === overloadedHostId && vm.status === 'running'
+      })
+
+      if (candidateVmId) {
+        const healthyHost = this.findHealthyHost(powerMap, vmMap, overloadedHostId, thermalMap)
+        if (healthyHost) {
+          const vm = vmMap.get(candidateVmId)!
+          vm.status = 'migrating'
+          vm.migratingToNodeId = healthyHost
+          vm.migrationProgress = 0
+          this.world.eventBus.publish('system:alert', {
+            entityId: candidateVmId,
+            message: `DRS Action: Evacuating VM from thermally stressed host to ${healthyHost.slice(0, 8)}`,
+            severity: 'info'
+          })
+        }
+      }
+    }
+  }
+
+  private findHealthyHost(
+    powerMap: Map<string, PowerComponent>, 
+    vmMap: Map<string, VmComponent>, 
+    ignoreHostId: string,
+    thermalMap?: Map<string, import('../types').ThermalComponent>
+  ): string | null {
     // Basic HA host selection heuristic
     let bestHostId: string | null = null
     let minLoad = Infinity
@@ -111,6 +168,12 @@ export class HypervisorSystem extends System {
     powerMap.forEach((power, hostId) => {
       if (hostId === ignoreHostId) return
       if (power.isPowered && power.systemState === 'running') {
+         // If we are evaluating for DRS, skip hot hosts
+         if (thermalMap) {
+            const thermal = thermalMap.get(hostId)
+            if (thermal && (thermal.isThrottled || thermal.temperature > 75)) return
+         }
+
          // Calculate load (number of VMs for now as placeholder for mem/cpu tracking)
          let activeVMs = 0
          vmMap.forEach(vm => {

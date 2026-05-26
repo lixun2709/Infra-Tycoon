@@ -103,6 +103,19 @@ export class IncidentSystem implements System {
       }
     })
 
+    const securityComponents = world.getComponents<import('../types').SecurityComponent>('SecurityComponent')
+    let lockedNodesCount = 0
+    let lastLockedSiteId = ''
+    if (securityComponents) {
+      securityComponents.forEach((sec, entityId) => {
+        if (sec.infectionState === 'locked') {
+           lockedNodesCount++
+           const t = transforms.get(entityId)
+           if (t) lastLockedSiteId = t.siteId
+        }
+      })
+    }
+
     // If more than 5 nodes are heavily degraded or failed, trigger a power/thermal outage incident
     // We would need to deduplicate so we don't spawn thousands of incidents.
     if (failedNodesCount > 5) {
@@ -129,6 +142,34 @@ export class IncidentSystem implements System {
         }
         world.addComponent(incidentId, 'IncidentComponent', newIncident)
         world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastSiteId })
+      }
+    }
+
+    if (lockedNodesCount >= 2) {
+      const activeIncidents = world.getComponents<IncidentComponent>('IncidentComponent')
+      let alreadyTracked = false
+      if (activeIncidents) {
+        activeIncidents.forEach(inc => {
+          if (!inc.isResolved && inc.type === 'ransomware') {
+            alreadyTracked = true
+          }
+        })
+      }
+
+      if (!alreadyTracked) {
+        const incidentId = `inc-rw-${Date.now()}`
+        const newIncident: IncidentComponent = {
+          entityId: incidentId,
+          incidentId,
+          type: 'ransomware',
+          severity: 'critical',
+          affectedNodes: [],
+          elapsedSeconds: 0,
+          isResolved: false
+        }
+        world.registerEntity(incidentId)
+        world.addComponent('IncidentComponent', newIncident)
+        world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastLockedSiteId })
       }
     }
   }

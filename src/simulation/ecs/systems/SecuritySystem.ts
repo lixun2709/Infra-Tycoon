@@ -60,6 +60,11 @@ export class SecuritySystem extends System {
             message: `CRITICAL: System Locked! Ransom demanded.`,
             severity: 'critical'
           })
+          
+          // Trigger ransomware incident event
+          this.world.eventBus.publish('incident:ransomware_locked', {
+            nodeId: id
+          })
         }
       }
     })
@@ -115,7 +120,7 @@ export class SecuritySystem extends System {
       if (activeThreats.includes(u)) {
         const secV = securityMap.get(v)
         const pV = powerMap.get(v)
-        if (secV && secV.infectionState === 'clean' && !secV.isIsolated && pV && pV.isPowered) {
+        if (secV && secV.infectionState === 'clean' && !secV.isIsolated && !secV.isImmutable && pV && pV.isPowered) {
           // Spread chance 15% per evaluation interval
           if (pseudoRandom(connId, time) < 0.15) {
             newlyExposed.push(v)
@@ -127,7 +132,7 @@ export class SecuritySystem extends System {
       if (activeThreats.includes(v)) {
         const secU = securityMap.get(u)
         const pU = powerMap.get(u)
-        if (secU && secU.infectionState === 'clean' && !secU.isIsolated && pU && pU.isPowered) {
+        if (secU && secU.infectionState === 'clean' && !secU.isIsolated && !secU.isImmutable && pU && pU.isPowered) {
           if (pseudoRandom(connId + "_rev", time) < 0.15) {
             newlyExposed.push(u)
           }
