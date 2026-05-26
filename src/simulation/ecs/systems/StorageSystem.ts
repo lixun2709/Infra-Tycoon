@@ -27,7 +27,7 @@ export class StorageSystem extends System {
     const entities = this.world.getEntitiesWith(['storage', 'transform'])
 
     // Build Adjacency Map in O(N) using zero-allocation arrays
-    this.adjMap.clear()
+    this.adjMap.forEach(arr => { arr.length = 0 })
     this.bwMap.clear()
 
     if (connectionMap) {

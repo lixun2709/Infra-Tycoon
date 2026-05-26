@@ -1,6 +1,9 @@
 import type { StorageComponent, ApplicationComponent, ThermalComponent, ComponentMap } from '../../types'
 
 export class IOPSCalculator {
+  // Object pool for host-to-apps mapping to prevent GC spikes
+  private static hostToApps = new Map<string, string[]>()
+
   /**
    * Assigns IOPS load from running apps to storage hosts, processes deduplication/compression overhead,
    * and handles cascading thermal thrashing.
@@ -13,6 +16,9 @@ export class IOPSCalculator {
     thermalMap: ComponentMap<ThermalComponent>,
     dt: number
   ) {
+    // 0. Reset static pools
+    this.hostToApps.forEach(arr => { arr.length = 0 })
+
     // Reset IOPS on all storage elements
     storageEntities.forEach(id => {
       const storage = storageMap.get(id)!
@@ -31,6 +37,13 @@ export class IOPSCalculator {
 
       const hostId = app.nodeId
       if (hostId) {
+        let hostApps = this.hostToApps.get(hostId)
+        if (!hostApps) {
+          hostApps = []
+          this.hostToApps.set(hostId, hostApps)
+        }
+        hostApps.push(appId)
+
         const storage = storageMap.get(hostId)
         if (storage) {
           storage.ioPSUsed += appIOPS
@@ -65,12 +78,14 @@ export class IOPSCalculator {
       }
 
       if (isFailed) {
-        appEntities.forEach(appId => {
-          const app = appMap.get(appId)!
-          if (app.nodeId === id) {
-            app.status = 'error'
+        const appsOnHost = this.hostToApps.get(id)
+        if (appsOnHost) {
+          for (let i = 0; i < appsOnHost.length; i++) {
+            const appId = appsOnHost[i]!
+            const app = appMap.get(appId)
+            if (app) app.status = 'error'
           }
-        })
+        }
       }
     })
   }

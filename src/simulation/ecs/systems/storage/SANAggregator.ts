@@ -3,7 +3,8 @@ import type { StorageComponent, TransformComponent, ComponentMap } from '../../t
 export class SANAggregator {
   // BFS pools
   private static pathVisited = new Set<string>()
-  private static pathQueue: { node: string; minBw: number }[] = []
+  private static pathQueueNodes: string[] = []
+  private static pathQueueBws: number[] = []
   private static lunVisited = new Set<string>()
   private static lunQueue: string[] = []
   private static connectedShelves: string[] = []
@@ -20,14 +21,18 @@ export class SANAggregator {
     if (start === end) return 100.0
     
     this.pathVisited.clear()
-    this.pathQueue.length = 0
+    this.pathQueueNodes.length = 0
+    this.pathQueueBws.length = 0
     
-    this.pathQueue.push({ node: start, minBw: Infinity })
+    this.pathQueueNodes.push(start)
+    this.pathQueueBws.push(Infinity)
     this.pathVisited.add(start)
 
     let queueIndex = 0
-    while (queueIndex < this.pathQueue.length) {
-      const { node, minBw } = this.pathQueue[queueIndex++]!
+    while (queueIndex < this.pathQueueNodes.length) {
+      const node = this.pathQueueNodes[queueIndex]!
+      const minBw = this.pathQueueBws[queueIndex]!
+      queueIndex++
       if (node === end) return minBw
 
       const neighbors = adjMap.get(node) || []
@@ -36,7 +41,8 @@ export class SANAggregator {
         if (!this.pathVisited.has(neighbor)) {
           this.pathVisited.add(neighbor)
           const edgeBw = bwMap.get(`${node}_${neighbor}`) ?? 10.0
-          this.pathQueue.push({ node: neighbor, minBw: Math.min(minBw, edgeBw) })
+          this.pathQueueNodes.push(neighbor)
+          this.pathQueueBws.push(Math.min(minBw, edgeBw))
         }
       }
     }

@@ -705,3 +705,11 @@ The Network Systems subsystem was aggressively refactored for enterprise-level s
 
 **Why it matters:**
 Previously, SSSP (Single-Source Shortest Path) dynamic routing filtered targets on the fly for every individual node. If a player deployed 10,000 servers, the engine secretly allocated 10,000 separate dynamic lists per frame (60 frames a second!), resulting in massive, stuttering Garbage Collection spikes. By pre-caching these destinations, the memory profile is flattened. Combined with the deterministic tick counter logic, the engine flawlessly supports immense player-created routing topologies without risking multiplayer network desynchronization.
+
+## Day 86: Core Datacenter Simulation - Storage Systems Performance
+
+**What Changed:**
+The Storage System was fundamentally rewritten under-the-hood to process massive SAN fabrics using "zero-allocation" memory pools. The calculation logic that connects virtual servers to backend disk shelves now mathematically routes traffic without generating disposable memory blocks. Additionally, application failure cascades (when a disk array goes offline) are now processed in linear time instead of exponential time.
+
+**Why it matters:**
+Prior to Day 86, simulating an immense enterprise storage network with thousands of interconnected disk shelves and virtual machines caused severe internal WebWorker memory leaks. The system would generate temporary path-finding objects and perform nested array lookups that choked the browser. By mathematically flattening these algorithms and reusing data arrays between frames, players can now construct the largest hyperscale datacenters possible, completely free of "lag spikes" or UI stuttering during heavy IOPS loads.
