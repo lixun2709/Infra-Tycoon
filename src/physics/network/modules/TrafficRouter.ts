@@ -52,7 +52,6 @@ export class TrafficRouter {
       if (demand <= 0) return
 
       let bestPathConnIds: string[] = []
-      let minCost = Infinity
 
       // Find possible targets
       let possibleTargets: InfraNode[] = []
@@ -71,13 +70,12 @@ export class TrafficRouter {
       // Obtain the globally cached Single-Source Shortest Path (SSSP) tree for this source node
       const tree = NetworkRouteCache.getShortestPathTree(sourceNode.id, nodes, connections, adjMap, topologyHash)
 
-      targetsToTry.forEach(target => {
-        const route = tree.getPathTo(target.id)
-        if (route.exists && route.totalLatencyMs < minCost) {
-          minCost = route.totalLatencyMs
-          bestPathConnIds = route.connectionIds
-        }
-      })
+      const targetIdsToTry = targetsToTry.map(n => n.id)
+      const route = tree.getClosestTarget(targetIdsToTry)
+      
+      if (route.exists) {
+        bestPathConnIds = route.connectionIds
+      }
 
       // Route the traffic load along the shortest path
       if (bestPathConnIds.length > 0) {

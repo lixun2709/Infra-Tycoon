@@ -52,18 +52,21 @@ export class QoSEngine {
       let bulkPacketLoss = 0.0
 
       if (ratio > 0.8) {
-        const overloadFactor = (ratio - 0.8) / 0.7
+        // Enforce strict bounding to prevent floating-point drift
+        const overloadFactor = Math.min(1.0, Math.max(0.0, (ratio - 0.8) / 0.7))
+        const overSq = overloadFactor * overloadFactor
+        const overCube = overSq * overloadFactor
         
         // Control Queue: prioritized, very low queue latency ceiling, 0% drop rate
-        controlQueueDelay = Math.pow(overloadFactor, 3) * 5.0 // Cap at +5ms
+        controlQueueDelay = Number((overCube * 5.0).toFixed(2))
         
         // Application Queue: moderate priority, caps at +20ms, up to 15% drops
-        appQueueDelay = Math.pow(overloadFactor, 3) * 20.0
-        appPacketLoss = Math.min(0.15, Math.pow(overloadFactor, 2) * 0.15)
+        appQueueDelay = Number((overCube * 20.0).toFixed(2))
+        appPacketLoss = Number(Math.min(0.15, overSq * 0.15).toFixed(4))
         
         // Bulk Data Queue: lowest priority, caps at +50ms, up to 80% drops
-        bulkQueueDelay = Math.pow(overloadFactor, 3) * 50.0
-        bulkPacketLoss = Math.min(0.80, Math.pow(overloadFactor, 2) * 0.80)
+        bulkQueueDelay = Number((overCube * 50.0).toFixed(2))
+        bulkPacketLoss = Number(Math.min(0.80, overSq * 0.80).toFixed(4))
       }
 
       // Weighted traffic aggregation (10% Control, 50% Application, 40% Bulk)
