@@ -1,7 +1,7 @@
 export interface TraceSpan {
-  traceId: string
-  spanId: string
-  parentSpanId?: string
+  traceId: number
+  spanId: number
+  parentSpanId?: number
   name: string
   timestamp: number
   durationMs?: number

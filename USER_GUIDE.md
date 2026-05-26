@@ -641,3 +641,14 @@ This architectural change strictly enforces zero-allocation physics processing a
 
 **Operational Impact:**
 The actual Datacenter thermodynamic calculations remain identical. Racks continue to build up localized heat due to recirculation, CRAC units still scale efficiently with redundancy (N+1), and servers naturally throttle based on localized heat indexes. The codebase is now strictly aligned with enterprise standard operational paradigms.
+
+## Day 79: Core Datacenter Simulation - Observability Subsystem Enterprise Redesign
+
+**What Changed:**
+The Observability subsystem was completely rebuilt. The ObservabilityTracer transitioned from dynamically allocating string UUIDs (Math.random()) and Array push() operations to a completely zero-allocation pre-allocated circular ring buffer utilizing deterministic integer sequences. The ObservabilitySystem was refactored, extracting rule evaluations into a stateless ObservabilityRulesEngine that uses nested string pointer maps (Map<string, Map<string, number>>) to track threshold violations, rather than dynamically generating thousands of string lookup keys every frame.
+
+**Why it matters:**
+Telemetry collection, alerting, and distributed tracing shouldn't consume more resources than the application itself. The legacy design generated thousands of garbage-collected strings per second for lookup keys and UUIDs, causing noticeable stuttering on massive datacenters. By optimizing keys to pointers and pre-allocating circular trace arrays, the telemetry and observability engine can run at scale without causing GC pauses, maintaining a deterministic ECS cadence suitable for multiplayer synchronization.
+
+**Operational Impact:**
+Alerting remains fully functional across Power, Thermal, Storage, and Networking incidents. Trace spans natively record events and display properly on the NOC Observability Dashboard without UI hiccups.

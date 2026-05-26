@@ -36,3 +36,10 @@ Architecturally, the Storage System is divided into purely functional modules:
 
 ## Telemetry System
 Aggregates performance counters across all active components. Exposes OpenMetrics-compliant endpoints for the NOC dashboard React components to visualize (e.g. Total Power kW, BTU Load).
+## Observability System
+Simulates distributed tracing and metric aggregation to fuel the NOC dashboard and alert triage rules. Tracks node-level CPU temperatures, global network congestion, facility power demands, and distributed backend telemetry spans.
+
+Architecturally, the Observability System is divided into purely functional modules:
+- **ObservabilityRulesEngine**: Stateless deterministic function evaluating threshold alarms. Uses nested pointer maps internally to avoid string key allocations (zero-allocation physics processing).
+- **ObservabilityTracer**: Zero-allocation circular ring buffer utilizing deterministic integer IDs and pre-allocated arrays to track microservice spanning without GC spikes.
+- **ObservabilityAlerting**: Independent rules configuration store, exposing static schemas without tightly coupling to the ECS environment for pure WebWorker compatibility.

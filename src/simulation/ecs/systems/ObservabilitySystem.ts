@@ -6,6 +6,8 @@ import type {
 } from '../types'
 import type { AlertRule, AlertSeverity } from '../../observability/types'
 import { TelemetrySystem } from './TelemetrySystem'
+import { ObservabilityAlerting } from '../../observability/ObservabilityAlerting'
+import { ObservabilityRulesEngine } from '../../observability/ObservabilityRulesEngine'
 
 export interface FiredAlert {
   severity: AlertSeverity
@@ -14,55 +16,6 @@ export interface FiredAlert {
 }
 
 export class ObservabilitySystem extends System {
-  private rules: AlertRule[] = [
-    {
-      id: 'rule-thermal',
-      name: 'Critical Node Overheat Warning',
-      metricType: 'temperature',
-      threshold: 70, // >= 70 degrees C
-      operator: 'gt',
-      ticksNeeded: 3,
-      severity: 'critical',
-      isActive: true
-    },
-    {
-      id: 'rule-power',
-      name: 'High Power Grid Demand',
-      metricType: 'power',
-      threshold: 80, // >= 80 kW load
-      operator: 'gt',
-      ticksNeeded: 2,
-      severity: 'warning',
-      isActive: true
-    },
-    {
-      id: 'rule-storage',
-      name: 'Storage Volume Exhaustion',
-      metricType: 'storage',
-      threshold: 0.90, // >= 90% full
-      operator: 'gt',
-      ticksNeeded: 4,
-      severity: 'warning',
-      isActive: true
-    },
-    {
-      id: 'rule-network',
-      name: 'Interface Link Congestion Warning',
-      metricType: 'network',
-      threshold: 0, // > 0 degraded connection
-      operator: 'gt',
-      ticksNeeded: 2,
-      severity: 'warning',
-      isActive: true
-    }
-  ]
-
-  // Track consecutive ticks triggered: key is "ruleId:entityId"
-  private ruleTriggerCounts = new Map<string, number>()
-
-  // Track active fired alerts to prevent spam: key is "ruleId:entityId"
-  private activeAlertsFired = new Set<string>()
-
   // Queue of alerts fired during this simulation tick
   private firedAlerts: FiredAlert[] = []
   private telemetrySys?: TelemetrySystem
@@ -98,34 +51,16 @@ export class ObservabilitySystem extends System {
    * Registers a new custom alert rule dynamically at runtime.
    */
   public registerRule(rule: AlertRule): void {
-    const existingIndex = this.rules.findIndex(r => r.id === rule.id)
-    if (existingIndex !== -1) {
-      this.rules[existingIndex] = rule
-    } else {
-      this.rules.push(rule)
-    }
+    ObservabilityAlerting.registerRule(rule)
   }
 
   /**
    * Dynamically enables or disables a registered rule at runtime.
    */
   public enableRule(ruleId: string, enabled: boolean): void {
-    const rule = this.rules.find(r => r.id === ruleId)
-    if (rule) {
-      rule.isActive = enabled
-      if (!enabled) {
-        // Clear counts and active alert tracking for this rule
-        const keysToClear: string[] = []
-        this.ruleTriggerCounts.forEach((_, key) => {
-          if (key.startsWith(`${ruleId}:`)) {
-            keysToClear.push(key)
-          }
-        })
-        keysToClear.forEach(key => {
-          this.ruleTriggerCounts.delete(key)
-          this.activeAlertsFired.delete(key)
-        })
-      }
+    ObservabilityAlerting.enableRule(ruleId, enabled)
+    if (!enabled) {
+      ObservabilityRulesEngine.clearRule(ruleId)
     }
   }
 
@@ -133,7 +68,7 @@ export class ObservabilitySystem extends System {
    * Retrieves all rules currently registered in the system.
    */
   public getRules(): AlertRule[] {
-    return [...this.rules]
+    return ObservabilityAlerting.getRules()
   }
 
   /**
@@ -147,23 +82,25 @@ export class ObservabilitySystem extends System {
 
     const simStats = this.telemetrySys?.simStats
 
-    for (const rule of this.rules) {
+    for (const rule of ObservabilityAlerting.getRules()) {
       if (!rule.isActive) continue
+      
+      ObservabilityRulesEngine.initializeRule(rule.id)
 
       if (rule.metricType === 'power') {
         // O(1) Fetch from TelemetrySystem
-        this.checkThreshold(rule, 'global', simStats?.totalPowerDrawKW ?? 0)
+        ObservabilityRulesEngine.checkThreshold(rule, 'global', simStats?.totalPowerDrawKW ?? 0, this.firedAlerts)
       } 
       else if (rule.metricType === 'network') {
         // O(1) Fetch from TelemetrySystem
-        this.checkThreshold(rule, 'global', simStats?.congestedLinkCount ?? 0)
+        ObservabilityRulesEngine.checkThreshold(rule, 'global', simStats?.congestedLinkCount ?? 0, this.firedAlerts)
       } 
       else if (rule.metricType === 'storage') {
         // O(1) Fetch from TelemetrySystem
         const totalStorageCapacity = simStats?.totalStorageCapacityTB ?? 0
         const totalStorageUsed = simStats?.totalStorageUsedTB ?? 0
         const ratio = totalStorageCapacity > 0 ? totalStorageUsed / totalStorageCapacity : 0
-        this.checkThreshold(rule, 'global', ratio)
+        ObservabilityRulesEngine.checkThreshold(rule, 'global', ratio, this.firedAlerts)
       } 
       else if (rule.metricType === 'temperature') {
         // Temperature check runs per individual chassis node
@@ -171,10 +108,11 @@ export class ObservabilitySystem extends System {
           const trans = transformMap.get(nodeId)
           if (trans && trans.type !== 'rack' && trans.type !== 'cooling') {
             const temp = thermal.temperature ?? 0
-            this.checkThreshold(
+            ObservabilityRulesEngine.checkThreshold(
               rule, 
               nodeId, 
               temp, 
+              this.firedAlerts,
               trans.name || nodeId.slice(0, 8)
             )
           }
@@ -188,47 +126,6 @@ export class ObservabilitySystem extends System {
         subsystem: 'observability',
         executionTimeMs: Number((tEnd - startTime).toFixed(2))
       })
-    }
-  }
-
-  /**
-   * Helper to perform rule threshold checks, count consecutive ticks, and fire alerts.
-   */
-  private checkThreshold(rule: AlertRule, entityId: string, value: number, entityLabel?: string): void {
-    const key = `${rule.id}:${entityId}`
-    let isTriggered = false
-
-    if (rule.operator === 'gt' && value > rule.threshold) {
-      isTriggered = true
-    } else if (rule.operator === 'lt' && value < rule.threshold) {
-      isTriggered = true
-    } else if (rule.operator === 'eq' && value === rule.threshold) {
-      isTriggered = true
-    }
-
-    if (isTriggered) {
-      const currentTicks = (this.ruleTriggerCounts.get(key) || 0) + 1
-      this.ruleTriggerCounts.set(key, currentTicks)
-
-      if (currentTicks >= rule.ticksNeeded && !this.activeAlertsFired.has(key)) {
-        // Threshold met! Fire alert to the worker tick's queue
-        const label = entityLabel ? ` [${entityLabel}]` : ''
-        let message = `[OBSERVABILITY] ${rule.name}${label}: threshold violated (${value.toFixed(1)} / ${rule.threshold.toFixed(1)})`
-        if (rule.metricType === 'storage') {
-          message = `[OBSERVABILITY] ${rule.name}${label}: volume is ${(value * 100).toFixed(1)}% full`
-        }
-
-        this.firedAlerts.push({
-          severity: rule.severity,
-          message,
-          nodeId: entityId === 'global' ? undefined : entityId
-        })
-        this.activeAlertsFired.add(key)
-      }
-    } else {
-      // Threshold is happy, clear states so rules can fire again
-      this.ruleTriggerCounts.set(key, 0)
-      this.activeAlertsFired.delete(key)
     }
   }
 
@@ -252,8 +149,7 @@ export class ObservabilitySystem extends System {
    * Clears the alerting engine states.
    */
   public clear(): void {
-    this.ruleTriggerCounts.clear()
-    this.activeAlertsFired.clear()
+    ObservabilityRulesEngine.clear()
     this.firedAlerts = []
   }
 }
