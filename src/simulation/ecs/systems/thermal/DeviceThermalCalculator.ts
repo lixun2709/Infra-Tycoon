@@ -5,6 +5,8 @@ import { HARDWARE_CATALOG, type HardwareCatalogSpec } from '../../../../physics/
 import { LoadStats, ThermalGlobals } from './ThermalGlobals'
 
 export class DeviceThermalCalculator {
+  private static slotsPool = new Array<string | null>(43).fill(null)
+
   /**
    * Calculates per-server heat generation, active server heat generation loads, 
    * dynamic fan speeds, thermal throttling, critical overheating failures, 
@@ -207,25 +209,28 @@ export class DeviceThermalCalculator {
       const rackNodes = rackChildrenMapPool.get(rackId)
       if (!rackNodes || rackNodes.length < 2) return
 
-      // Sort only local rack nodes by slotIndex
-      rackNodes.sort((a, b) => (transformMap.get(a)?.slotIndex ?? 0) - (transformMap.get(b)?.slotIndex ?? 0))
+      // Map servers into static slots pool (O(N) layout, avoids O(N log N) GC-heavy sorting)
+      this.slotsPool.fill(null)
+      for (let i = 0; i < rackNodes.length; i++) {
+        const id = rackNodes[i]!
+        const slot = transformMap.get(id)?.slotIndex
+        if (slot !== undefined && slot >= 1 && slot <= 42) {
+          this.slotsPool[slot] = id
+        }
+      }
 
-      for (let i = 0; i < rackNodes.length - 1; i++) {
-        const idA = rackNodes[i]
-        const idB = rackNodes[i+1]
-        if (!idA || !idB) continue
+      for (let slot = 1; slot <= 42; slot++) {
+        const idA = this.slotsPool[slot]
+        if (!idA) continue
 
         const transformA = transformMap.get(idA)
-        const transformB = transformMap.get(idB)
-        if (!transformA || !transformB) continue
+        const heightA = transformA?.uHeight ?? 1
+        
+        const targetSlot = slot + heightA
+        if (targetSlot > 42) continue
 
-        const slotA = transformA.slotIndex ?? 0
-        const heightA = transformA.uHeight ?? 1
-        const slotB = transformB.slotIndex ?? 0
-
-        // Solid-to-solid conduction occurs if and only if Node B is stacked directly on top of Node A
-        const isTouching = slotB === slotA + heightA
-        if (!isTouching) continue
+        const idB = this.slotsPool[targetSlot]
+        if (!idB) continue
         
         const thermalA = thermalMap.get(idA)
         const thermalB = thermalMap.get(idB)

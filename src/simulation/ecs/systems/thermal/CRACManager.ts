@@ -29,9 +29,11 @@ export class CRACManager {
       const roomAmbientTemp = ThermalGlobals.siteAmbientTemps.get(siteId) ?? ThermalGlobals.BASE_AMBIENT_TEMP
       const roomHeatLoad = activeHeatBySitePool.get(siteId) ?? 0
 
-      // Sort units deterministically by entityId for multiplayer stability
-      const sortedUnits = [...units].sort()
-      const totalCoolingCapacity = sortedUnits.reduce((sum, cracId) => {
+      // Filter out In-Row units which cool racks directly, and sort deterministically
+      const roomUnits = units.filter(cracId => !transformMap.get(cracId)?.parentRackId)
+      roomUnits.sort()
+      
+      const totalCoolingCapacity = roomUnits.reduce((sum, cracId) => {
         const thermal = thermalMap.get(cracId)
         return sum + (thermal ? Math.abs(thermal.btuOutput) : 0)
       }, 0)
@@ -43,15 +45,15 @@ export class CRACManager {
       }
 
       // Standby criteria: We have N+1 redundant capacity, room is not overheating (>26°C), and we have multiple CRACs
-      if (sortedUnits.length >= 2 && roomAmbientTemp < 26.0 && totalCoolingCapacity > roomHeatLoad * 1.5) {
+      if (roomUnits.length >= 2 && roomAmbientTemp < 26.0 && totalCoolingCapacity > roomHeatLoad * 1.5) {
         // Calculate how many units we can put in standby. 
         // We must keep enough active units to cover 1.2x room heat load.
         let activeCapacity = 0
         const requiredCapacity = roomHeatLoad * 1.2
 
-        for (let i = 0; i < sortedUnits.length; i++) {
-          const rotationIndex = (i + currentCycle) % sortedUnits.length
-          const cracId = sortedUnits[rotationIndex]!
+        for (let i = 0; i < roomUnits.length; i++) {
+          const rotationIndex = (i + currentCycle) % roomUnits.length
+          const cracId = roomUnits[rotationIndex]!
           const thermal = thermalMap.get(cracId)
           const capacity = thermal ? Math.abs(thermal.btuOutput) : 0
 

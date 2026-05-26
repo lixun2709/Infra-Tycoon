@@ -146,10 +146,10 @@ export class RackMicroclimate {
 
             const dx = posA.x - posB.x
             const dz = posA.z - posB.z
-            const dist = Math.sqrt(dx * dx + dz * dz)
+            const distSq = dx * dx + dz * dz
 
-            // Racks are adjacent if distance <= 1.8 units in the horizontal plane
-            if (dist > 0 && dist <= 1.8) {
+            // Racks are adjacent if distance <= 1.8 units in the horizontal plane (1.8^2 = 3.24)
+            if (distSq > 0 && distSq <= 3.24) {
               pairs.push([rA, rB])
             }
           }

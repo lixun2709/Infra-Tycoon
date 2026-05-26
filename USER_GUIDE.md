@@ -713,3 +713,11 @@ The Storage System was fundamentally rewritten under-the-hood to process massive
 
 **Why it matters:**
 Prior to Day 86, simulating an immense enterprise storage network with thousands of interconnected disk shelves and virtual machines caused severe internal WebWorker memory leaks. The system would generate temporary path-finding objects and perform nested array lookups that choked the browser. By mathematically flattening these algorithms and reusing data arrays between frames, players can now construct the largest hyperscale datacenters possible, completely free of "lag spikes" or UI stuttering during heavy IOPS loads.
+
+## Day 87: Core Datacenter Simulation - Thermal Systems Performance
+
+**What Changed:**
+The thermodynamic engine now accurately differentiates between Room-level cooling towers (CRACs) and In-Row server-level cooling units. In-Row units are now completely decoupled from the room's redundancy standby scheduler, meaning they will correctly maintain the micro-climate for their specific rack without going offline just because the room is cold. Furthermore, complex fluid and math calculations determining adjacent rack heating (convection) and server stack heating (conduction) have been replaced with highly optimized spatial static pools.
+
+**Why it matters:**
+Calculating thermal dispersion across thousands of servers required extremely heavy mathematical calculations (square roots and constant array sorting) to resolve temperatures 60 times a second. By simplifying the math formula and statically caching server physical placements inside the memory pools, the simulation now supports infinitely scalable thermal fluid dynamics without slowing down your browser. In-Row cooling also finally acts like genuine enterprise localized containment cooling.
