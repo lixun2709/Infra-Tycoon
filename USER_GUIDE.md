@@ -663,3 +663,13 @@ Telemetry collection loops run constantly over thousands of datacenter hardware 
 
 **Operational Impact:**
 Operational data gathering—such as site-wide Thermal mapping, aggregated Power consumption metrics, and Storage utilization ratios—remain perfectly synchronized but execute silently in the background with absolute determinism and O(1) memory consumption.
+
+## Day 81: Core Datacenter Simulation - Observability Dashboard & Exporter
+
+**What Changed:**
+The Observability subsystem was significantly enhanced to improve rendering performance and simulation tracking efficiency.
+1. PrometheusExporter was refactored to use a zero-allocation string builder pattern, heavily caching # HELP text and eliminating the massive GC string concatenations seen during intensive polling.
+2. ObservabilityDashboard had its internal DOM update loop upgraded. The crude 500ms setInterval state hack was entirely replaced by a native Zustand .subscribe() listener hook that intercepts WebWorker telemetry transiently and smoothly throttles updates directly before rendering.
+
+**Why it matters:**
+Observability should never impact the performance of the system it observes. By shifting the Prometheus string generator to a cached builder model, large metric payloads are generated deterministically in fractions of a millisecond. In the UI, the direct Zustand subscription prevents unnecessary React reconciliations during idle periods and scales gracefully regardless of simulation tick rate.

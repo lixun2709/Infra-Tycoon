@@ -47,3 +47,9 @@ Architecturally, the Observability System is divided into purely functional modu
 Responsible for gathering simulation performance and operational statistics. It calculates metrics such as average uptime, PUE, WUE, power constraints, and temperature aggregation.
 
 Architecturally, the Telemetry System follows a strictly zero-allocation pipeline during update ticks. It utilizes persistent Map properties and primitive counter accumulations to prevent Garbage Collector (GC) pressure when rendering thousands of entities at once. Aggregated telemetry metrics are natively injected into CircularBuffer instances, preventing internal Array expansions or object cloning throughout long-running server simulations.
+
+### Observability Dashboard Architecture
+The observability dashboard is built on a zero-polling transient subscription architecture. It avoids expensive setInterval calls by connecting directly to the Zustand store via useInfraStore.subscribe. To ensure the React frontend maintains 60 FPS, the subscription intelligently throttles incoming WebWorker telemetry updates, updating the DOM at a maximum rate of 2 Hz without global rerenders.
+
+### Prometheus Exporter
+The PrometheusExporter generates OpenMetrics standard exposition formats deterministically. It avoids per-frame string allocation overheads by internally utilizing a cached Map array for static # HELP metadata components, appending values sequentially into a fast string builder buffer before .join() formatting.

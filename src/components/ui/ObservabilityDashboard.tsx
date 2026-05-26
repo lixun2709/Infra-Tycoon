@@ -6,18 +6,24 @@ import { AlertCircle, Activity, Server, Clock, GitCommit, Database, Zap } from '
 export const ObservabilityDashboard: React.FC = () => {
   const [telemetry, setTelemetry] = useState<SimTelemetryPayload | null>(null)
   
-  // Use a throttled polling interval to avoid 60FPS re-renders
+  // Subscribe directly to the Zustand store using transient updates to prevent React from 
+  // triggering 60FPS top-level re-renders when other states change, but still get telemetry updates.
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Access the hidden property where telemetry is pushed
+    let lastUpdate = 0
+    const unsubscribe = useInfraStore.subscribe((state) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const state = useInfraStore.getState() as any
-      if (state._lastTelemetry) {
-        setTelemetry(state._lastTelemetry)
+      const anyState = state as any
+      if (anyState._lastTelemetry) {
+        const now = performance.now()
+        // Throttle React state updates to 500ms to preserve UI smoothness
+        if (now - lastUpdate > 500) {
+          setTelemetry(anyState._lastTelemetry)
+          lastUpdate = now
+        }
       }
-    }, 500)
+    })
     
-    return () => clearInterval(interval)
+    return unsubscribe
   }, [])
 
   const alerts = useInfraStore(state => state.alerts)
