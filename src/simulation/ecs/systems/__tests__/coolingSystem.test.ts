@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { World } from '../../World'
 import { ThermalSystem } from '../ThermalSystem'
-import { ObservabilitySystem } from '../ObservabilitySystem'
+
 import type { 
   ThermalComponent, 
   PowerComponent, 
@@ -16,7 +16,7 @@ describe('Cooling Systems & Thermodynamics ECS Tests', () => {
     world = new World()
     thermalSystem = new ThermalSystem(world)
     ThermalSystem.siteAmbientTemps.clear()
-    ObservabilitySystem.clear()
+    ThermalSystem.siteAmbientTemps.clear()
   })
 
   it('should dynamically update localized rack micro-climate based on server heat generation', () => {

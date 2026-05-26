@@ -88,12 +88,12 @@ export class StorageSystem extends System {
 
       let queueIndex = 0
       while (queueIndex < this.pathQueue.length) {
-        const { node, minBw } = this.pathQueue[queueIndex++]
+        const { node, minBw } = this.pathQueue[queueIndex++]!
         if (node === end) return minBw
 
         const neighbors = this.adjMap.get(node) || []
         for (let i = 0; i < neighbors.length; i++) {
-          const neighbor = neighbors[i]
+          const neighbor = neighbors[i]!
           if (!this.pathVisited.has(neighbor)) {
             this.pathVisited.add(neighbor)
             const edgeBw = this.bwMap.get(`${node}_${neighbor}`) ?? 10.0
@@ -122,11 +122,11 @@ export class StorageSystem extends System {
 
       let queueIndex = 0
       while (queueIndex < this.lunQueue.length) {
-        const u = this.lunQueue[queueIndex++]
+        const u = this.lunQueue[queueIndex++]!
         
         const neighbors = this.adjMap.get(u) || []
         for (let i = 0; i < neighbors.length; i++) {
-          const neighbor = neighbors[i]
+          const neighbor = neighbors[i]!
           if (!this.lunVisited.has(neighbor)) {
             this.lunVisited.add(neighbor)
             const neighborTransform = transformMap.get(neighbor)
@@ -148,7 +148,7 @@ export class StorageSystem extends System {
       let aggLimit = controllerStorage.baseIoPSLimit ?? controllerStorage.ioPSLimit
 
       for (let i = 0; i < this.connectedShelves.length; i++) {
-        const shelfId = this.connectedShelves[i]
+        const shelfId = this.connectedShelves[i]!
         const shelfStorage = storageMap.get(shelfId)
         if (shelfStorage) {
           aggTotal += shelfStorage.totalStorageTB

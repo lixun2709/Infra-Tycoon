@@ -79,17 +79,25 @@ Datacenter operators configure facilities by procuring standard 19-inch rackmoun
 ## 3. Core Simulation Subsystems
 
 ```
-    ┌────────────────────────────────────────────────────────┐
-    │                 ECS World Physics Loop                 │
-    └────────────────────────────────────────────────────────┘
-                                │
-        ┌───────────────────────┼───────────────────────┐
-        ▼                       ▼                       ▼
+    â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+    â”‚                 ECS World Physics Loop                 â”‚
+    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                                â”‚
+        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¼â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+        â–¼                       â–¼                       â–¼
   [Power System]        [Thermal System]        [Network System]
   - 3-Phase Balancing   - Micro-climates        - Dijkstra Routing
   - UPS Discharge/Charge - Aisle Containment     - QoS Queue Delays
   - Breaker Tripping     - Silicon Safeguards    - Link Saturation
 ```
+
+### 3.0 Physical Constraints & Rack Safety
+Enterprise facilities must adhere to strict physical weight distribution rules to prevent structural hazards and ensure seismic compliance.
+- **Rack Weight Capacity**: A standard 42U rack supports a maximum weight limit (e.g., 1000 kg). Exceeding this triggers a `structural_warning`.
+- **Center of Gravity (CoG)**: Mounting extremely heavy equipment (like a 120kg In-Row CRAC unit) near the top of the rack shifts the Center of Gravity upwards.
+  - If the CoG rises above **28U** (and the rack is significantly loaded with >150kg), the rack becomes top-heavy.
+  - A top-heavy rack triggers a `seismic_hazard` status and publishes a warning alert, indicating a severe tipping risk during seismic events.
+  - Operators must mount heavy equipment at the bottom of the rack to maintain a low, safe CoG.
 
 ### 3.1 Thermodynamic & Cooling Systems
 Datacenter cooling relies on managing local temperatures to prevent silicon failure. The simulator models fluid thermodynamics at three distinct granularities: server chassis, rack micro-climates, and site room ambient zones.
@@ -100,8 +108,10 @@ Each rack behaves as an isolated thermal zone. Heat rejected by cabled servers a
   - `none` (Open Air): 50% recirculation fraction (`RECIRCULATION_NONE`). Server exhaust air escapes back into the cold intake, increasing temperatures.
   - `cold_aisle`: 5% recirculation fraction (`RECIRCULATION_COLD_AISLE`). Restricts convective mixing, keeping rack intake temperatures very close to ambient.
   - `hot_aisle`: 15% recirculation fraction (`RECIRCULATION_HOT_AISLE`). Redirects hot exhaust back to CRAC return channels, providing highly efficient cooling.
-- **Bypass Airflow & Blanking Panels**: Unoccupied rack slots that do not have blanking panels installed cause airflow bypass leaks. Each empty open slot cuts cooling efficiency by 5%, modeled as:
-  $$\text{Bypass Airflow Factor} = \max(0.1, 1.0 - 0.05 \times \text{emptySlotsWithoutPanels})$$
+- **Bypass Airflow & Blanking Panels**: Unoccupied rack slots without blanking panels installed cause severe airflow bypass leaks, leading to hot exhaust air recirculating directly into the cold intake.
+  - **Recirculation Factor**: Calculated as the ratio of open slots to total rack capacity (e.g. 42U).
+  - **Thermal Penalty**: The effective PDU temperature is increased by $+10^\circ\text{C}$ multiplied by the Recirculation Factor.
+  - **PDU De-Rating**: If the effective rack temperature exceeds $35^\circ\text{C}$, the PDU's maximum power capacity is dynamically derated by 2% per degree above the threshold. This simulates thermal breaker degradation.
 
 #### Ambient Inertia & Convective Heat Exchange
 Site rooms model large thermal inertia (representing the physical volume of concrete and air). Thermal transitions are calculated as asymptotic relaxation curves:
@@ -262,15 +272,15 @@ Running applications (such as PostgreSQL or Redis) generate active IOPS workload
 The client interface is designed as an interactive 3D Network Operations Center (NOC).
 
 ```
-   ┌────────────────────────────────────────────────────────┐
-   │                       Game HUD                         │
-   ├──────────────────────────┬─────────────────────────────┤
-   │ [NOC Dashboard]          │ [Inspector Panel]           │
-   │ - Overview (SLA, Health) │ - Aisle Containment         │
-   │ - Events Incident logs   │ - 3D Fan animation          │
-   │ - Compliance Audit logs  │ - Remote IPMI & RMA Dispatc │
-   │ - Performance Profiling  │ - Services & App Deployment │
-   └──────────────────────────┴─────────────────────────────┘
+   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+   â”‚                       Game HUD                         â”‚
+   â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+   â”‚ [NOC Dashboard]          â”‚ [Inspector Panel]           â”‚
+   â”‚ - Overview (SLA, Health) â”‚ - Aisle Containment         â”‚
+   â”‚ - Events Incident logs   â”‚ - 3D Fan animation          â”‚
+   â”‚ - Compliance Audit logs  â”‚ - Remote IPMI & RMA Dispatc â”‚
+   â”‚ - Performance Profiling  â”‚ - Services & App Deployment â”‚
+   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”´â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### 4.1 3D Viewport Controls & Level of Detail (LOD)
@@ -319,7 +329,7 @@ Selecting a mounted server or rack opens the **Inspector Panel**, which contains
 Enterprise asset deployment follows a strict five-stage operational provisioning lifecycle.
 
 ```
-  [Unboxed] ──► [Racked] ──► [Patched] ──► [Bootstrapped] ──► [Provisioned]
+  [Unboxed] â”€â”€â–º [Racked] â”€â”€â–º [Patched] â”€â”€â–º [Bootstrapped] â”€â”€â–º [Provisioned]
 ```
 
 ### 5.1 Provisioning Lifecycle Stages
@@ -361,13 +371,13 @@ Before performing hardware maintenance or decommissioning an active server, oper
 The platform contains an integrated interactive terminal console.
 
 ```
-  ┌────────────────────────────────────────────────────────┐
-  │                   CLI Command Kernel                   │
-  ├────────────────────────────────────────────────────────┤
-  │ > hostname web-srv-01                                  │
-  │ > ip setup 10.0.0.10 10.0.0.1 10.0.0.1                 │
-  │ > show ip brief                                        │
-  └────────────────────────────────────────────────────────┘
+  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+  â”‚                   CLI Command Kernel                   â”‚
+  â”œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¤
+  â”‚ > hostname web-srv-01                                  â”‚
+  â”‚ > ip setup 10.0.0.10 10.0.0.1 10.0.0.1                 â”‚
+  â”‚ > show ip brief                                        â”‚
+  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
 ```
 
 ### 6.1 Core CLI Commands
@@ -413,14 +423,14 @@ Datacenter operators must identify, diagnose, and resolve facility issues using 
 
 ```
    [Breaker Tripped Alert]
-              │
-              ▼
-    [Check Phase Balance] ─── (Imbalanced?) ───► [Move Server Slot]
-              │
-              ▼ (Overloaded?)
+              â”‚
+              â–¼
+    [Check Phase Balance] â”€â”€â”€ (Imbalanced?) â”€â”€â”€â–º [Move Server Slot]
+              â”‚
+              â–¼ (Overloaded?)
     [Add HD PDU / Shed Load]
-              │
-              ▼
+              â”‚
+              â–¼
       [Reset Breaker]
 ```
 
@@ -592,7 +602,7 @@ The ECS Thermal Subsystem was heavily upgraded. Similar to the Rack optimization
 Datacenter thermal calculations are extremely complex, taking into account airflow bypass, N+1 redundancy lead-lag staging, throttling curves, and lateral rack convection. Doing this via throwing away 30,000 objects per frame in memory crippled the JavaScript Engine. With standard Zero-Allocation Data Structures in place, the engine scales natively to handle millions of physics properties simultaneously.
 
 **Operational Impact:**
-The physical equations have not changed�meaning CRAC units still accurately spin up their fans, hardware still dynamically throttles when overheating, and moisture still drops when things get dry. However, the simulation can now execute its logic perfectly predictably, allowing high server counts to sync online without hitching.
+The physical equations have not changed—meaning CRAC units still accurately spin up their fans, hardware still dynamically throttles when overheating, and moisture still drops when things get dry. However, the simulation can now execute its logic perfectly predictably, allowing high server counts to sync online without hitching.
 
 
 ## Day 66: Power Systems Subsystem Upgrade
@@ -602,3 +612,21 @@ The ECS Power Subsystem was completely overhauled. Previous architectures calcul
 
 **Operational Impact:**
 By eliminating Big-O scaling problems, the power simulation can track real-time changes instantly. Circuit breakers still trip after 10 seconds of >100% capacity utilization, Phase A/B/C still must be balanced to avoid neutral wire overload, and UPS backup batteries still perfectly decay during simulated grid outages. The simulation is now fully scalable to support 5,000+ networked rack nodes without degrading Main Thread performance.
+
+---
+
+## 9. Facility Orchestration & Room Expansion Mechanics
+
+The datacenter footprint is dynamic and fully configurable by the operator through the Facility Architecture Drawer.
+
+### 9.1 Scaling the Physical Footprint
+- **Commission Server Row**: Adds a physical row deployment lane with automatic overhead busways.
+- **Expand Rack Lanes**: Increases the structural slot columns along existing aisles.
+- **Expand Hall Footprint**: Increases the concrete boundary wall parameters and modular tile grid size.
+
+### 9.2 Scaling Support Infrastructure
+- **Add Cooling Zone Block**: Commissions secondary CRAC ventilation manifolds to increase maximum facility BTU dispersion targets.
+- **Add UPS Power Block**: Integrates secondary high-capacity battery bank racks and electrical transformer heads to increase max utility kW capacities.
+- **Construct Facility Wing**: Constructs a completely independent colocation hall adjacent to the main campus for massive capacity scaling.
+
+All expansions require significant capital expenditure, directly impacting the operator's economy.

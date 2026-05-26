@@ -312,6 +312,13 @@ export class ThermalSystem extends System {
         siteLoad.coolingBTU += effectiveCoolingBTU
       }
 
+      // Calculate chilled water flow required to neutralize this BTU (approx 0.005 LPM per BTU/hr)
+      if (effectiveCoolingBTU > 0) {
+        thermal.waterFlowLPM = effectiveCoolingBTU * 0.005
+      } else {
+        thermal.waterFlowLPM = 0
+      }
+
       // CRAC unit reported temperature relaxation convergence
       const currentCracTemp = thermal.temperature ?? roomAmbientTemp
       const cracTarget = roomAmbientTemp - (isRunning ? 10.0 * efficiency : 0.0)
@@ -335,11 +342,26 @@ export class ThermalSystem extends System {
         serverHeatBTU = Math.max(10.0, power.wattage * 3.412 * (1.1 - efficiency))
       }
 
+      const thermal = thermalMap.get(id)
+      let convectiveHeatBTU = serverHeatBTU
+
+      if (thermal && thermal.coolingMethod === 'liquid_dlc') {
+        const liquidAbsorbed = serverHeatBTU * 0.80
+        convectiveHeatBTU = serverHeatBTU - liquidAbsorbed
+        thermal.waterFlowLPM = liquidAbsorbed * 0.005
+      } else if (thermal && thermal.coolingMethod === 'immersion') {
+        const liquidAbsorbed = serverHeatBTU * 0.95
+        convectiveHeatBTU = serverHeatBTU - liquidAbsorbed
+        thermal.waterFlowLPM = liquidAbsorbed * 0.005
+      } else if (thermal) {
+        thermal.waterFlowLPM = 0
+      }
+
       // Add to specific rack load if mounted in a rack
       if (transform.parentRackId) {
         const rackLoad = this.rackLoadsPool.get(transform.parentRackId)
         if (rackLoad) {
-          rackLoad.serverHeatBTU += serverHeatBTU
+          rackLoad.serverHeatBTU += convectiveHeatBTU
         }
       }
 
@@ -349,7 +371,7 @@ export class ThermalSystem extends System {
         siteLoad = new LoadStats()
         this.siteLoadsPool.set(siteId, siteLoad)
       }
-      siteLoad.serverHeatBTU += serverHeatBTU
+      siteLoad.serverHeatBTU += convectiveHeatBTU
     })
 
     // 5. Calculate Rack Micro-climate Thermal Zone states

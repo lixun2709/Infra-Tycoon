@@ -73,9 +73,10 @@ export class RackSystem extends System {
       const rackThermal = thermalMap.get(rackId)
       const rackPower = powerMap.get(rackId)
 
-      // Initialize weight stats (Max 1000 kg capacity limit)
+      // Initialize weight and moment stats (Max 1000 kg capacity limit)
       rack.maxWeightKG = rack.maxWeightKG ?? 1000.0
       let totalWeight = 0.0
+      let totalMoment = 0.0
 
       // Automatically scale power limit if rack has high density PDU upgrade
       if (rack.hasHighDensityPDU) {
@@ -85,16 +86,8 @@ export class RackSystem extends System {
       }
 
       // Read ambient temperature & humidity from ThermalComponent
-      const temperature = rackThermal?.temperature ?? 25.0
-      rack.pduTemperature = temperature
+      const baseTemperature = rackThermal?.temperature ?? 25.0
       rack.humidity = rackThermal?.humidity ?? 45.0
-
-      // PDU Thermal De-rating Curve: Above 35°C, de-rate limit by 2% per °C (max de-rating of 50%)
-      let deRatingFactor = 1.0
-      if (temperature > 35.0) {
-        deRatingFactor = Math.max(0.5, 1.0 - (temperature - 35.0) * 0.02)
-      }
-      rack.deratedMaxPowerKW = rack.maxPowerKW * deRatingFactor
 
       // Persistent Array reuse: Prevent `new Array()` GC spikes
       if (!rack.slotOccupancy || rack.slotOccupancy.length !== 43) {
@@ -122,11 +115,14 @@ export class RackSystem extends System {
 
         const slot = childTransform.slotIndex
         const height = childTransform.uHeight || 1
+        const weight = getDeviceWeightKG(childTransform.catalogKey, height)
 
         // Sum equipment weight
-        totalWeight += getDeviceWeightKG(childTransform.catalogKey, height)
+        totalWeight += weight
 
         if (slot != null) {
+          totalMoment += weight * (slot + height / 2.0)
+
           // U-Height boundary validation (e.g. slots 1-42)
           if (slot < 1 || slot + height - 1 > 42) {
             this.world.eventBus.publish('system:alert', {
@@ -155,14 +151,44 @@ export class RackSystem extends System {
         }
       })
 
-      // Structural weight limit check
+      let openSlots = 0
+      for (let u = 1; u <= 42; u++) {
+        if (!occupancy[u] && (!rack.blankingPanels || !rack.blankingPanels[u])) {
+          openSlots++
+        }
+      }
+      rack.recirculationFactor = openSlots / 42.0
+
+      // Calculate effective temperature based on recirculation (max +10C penalty)
+      const effectiveTemp = baseTemperature + (rack.recirculationFactor * 10.0)
+      rack.pduTemperature = effectiveTemp
+
+      // PDU Thermal De-rating Curve: Above 35°C, de-rate limit by 2% per °C (max de-rating of 50%)
+      let deRatingFactor = 1.0
+      if (effectiveTemp > 35.0) {
+        deRatingFactor = Math.max(0.5, 1.0 - (effectiveTemp - 35.0) * 0.02)
+      }
+      rack.deratedMaxPowerKW = rack.maxPowerKW * deRatingFactor
+
+      // Structural weight and CoG limit check
       rack.totalWeightKG = parseFloat(totalWeight.toFixed(2))
+      rack.centerOfGravityU = totalWeight > 0 ? totalMoment / totalWeight : 21.0
+      
       if (totalWeight > rack.maxWeightKG) {
         if (rack.weightStatus !== 'structural_warning') {
           rack.weightStatus = 'structural_warning'
           this.world.eventBus.publish('system:alert', {
             severity: 'warning',
             message: `[RACK WEIGHT EXCEEDED] Server Rack [${rackTransform?.name || rackId}] has exceeded its structural weight limit! (Weight: ${totalWeight.toFixed(2)} kg / Max: ${rack.maxWeightKG.toFixed(2)} kg)`,
+            nodeId: rackId
+          })
+        }
+      } else if (rack.centerOfGravityU > 28.0 && totalWeight > 150) {
+        if (rack.weightStatus !== 'seismic_hazard') {
+          rack.weightStatus = 'seismic_hazard'
+          this.world.eventBus.publish('system:alert', {
+            severity: 'warning',
+            message: `[RACK SEISMIC HAZARD] Server Rack [${rackTransform?.name || rackId}] has a dangerously high Center of Gravity (U${rack.centerOfGravityU.toFixed(1)}). Move heavy equipment lower.`,
             nodeId: rackId
           })
         }

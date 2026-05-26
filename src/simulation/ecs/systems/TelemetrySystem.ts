@@ -18,6 +18,22 @@ export interface SimStats {
   totalPowerDrawKW: number
   totalStorageUsedTB: number
   totalStorageCapacityTB: number
+  pue: number
+  wue: number
+}
+
+export interface AnomalyThresholds {
+  tempSpikeDelta: number
+  powerSpikeMinLoad: number
+  powerSpikePercent: number
+  sitePowerSaturationPercent: number
+}
+
+export const DEFAULT_THRESHOLDS: AnomalyThresholds = {
+  tempSpikeDelta: 5.0,
+  powerSpikeMinLoad: 0.15,
+  powerSpikePercent: 50.0,
+  sitePowerSaturationPercent: 0.90
 }
 
 /**
@@ -33,13 +49,14 @@ export class TelemetryAnomalyDetector {
     nodeName: string,
     currentTemp: number,
     tempHistory: CircularBuffer,
+    thresholds: AnomalyThresholds,
     publishAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId: string) => void
   ): void {
     if (tempHistory.length > 0) {
       const lastTemp = tempHistory.last()
       if (lastTemp !== undefined) {
         const delta = currentTemp - lastTemp
-        if (delta > 5.0) {
+        if (delta > thresholds.tempSpikeDelta) {
           publishAlert(
             'warning',
             `Rapid silicon temperature spike on node ${nodeName || nodeId}: +${delta.toFixed(1)}°C`,
@@ -56,16 +73,16 @@ export class TelemetryAnomalyDetector {
   public static detectPowerSpike(
     currentLoad: number,
     powerHistory: CircularBuffer,
+    thresholds: AnomalyThresholds,
     onSpike: () => void
   ): void {
     if (powerHistory.length > 0) {
       const lastLoad = powerHistory.last()
       if (lastLoad !== undefined) {
         const delta = Math.abs(currentLoad - lastLoad)
-        // Significant spike defined as a load variation greater than 0.15 kW and over 50% variance
-        if (delta > 0.15 && lastLoad > 0) {
+        if (delta > thresholds.powerSpikeMinLoad && lastLoad > 0) {
           const percentChange = (delta / lastLoad) * 100
-          if (percentChange > 50.0) {
+          if (percentChange > thresholds.powerSpikePercent) {
             onSpike()
           }
         }
@@ -74,18 +91,19 @@ export class TelemetryAnomalyDetector {
   }
 
   /**
-   * Detects site-wide power saturation warnings (90% capacity threat).
+   * Detects site-wide power saturation warnings.
    */
   public static detectSitePowerSaturation(
     siteId: string,
     powerSum: number,
     maxKW: number,
+    thresholds: AnomalyThresholds,
     publishAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId: string) => void
   ): void {
-    if (maxKW > 0 && powerSum > maxKW * 0.90) {
+    if (maxKW > 0 && powerSum > maxKW * thresholds.sitePowerSaturationPercent) {
       publishAlert(
         'critical',
-        `Site ${siteId} power draw saturation threat: ${powerSum.toFixed(1)}kW / ${maxKW.toFixed(1)}kW (90% exceeded)`,
+        `Site ${siteId} power draw saturation threat: ${powerSum.toFixed(1)}kW / ${maxKW.toFixed(1)}kW (${(thresholds.sitePowerSaturationPercent * 100).toFixed(0)}% exceeded)`,
         siteId
       )
     }
@@ -98,22 +116,27 @@ export class TelemetryAnomalyDetector {
  * and high-performance aggregate datacenter simulation profiling using Zero-Allocation Circular Buffers.
  */
 export class TelemetrySystem extends System {
-  public static simStats: SimStats = {
+  public simStats: SimStats = {
     averageUptimeRatio: 1.0,
     overheatedNodeCount: 0,
     congestedLinkCount: 0,
     totalPowerDrawKW: 0.0,
     totalStorageUsedTB: 0.0,
-    totalStorageCapacityTB: 0.0
+    totalStorageCapacityTB: 0.0,
+    pue: 1.0,
+    wue: 0.0
   }
 
   // Site-wide rolling metrics history maps
-  public static sitePowerHistory = new Map<string, CircularBuffer>()
-  public static siteTempHistory = new Map<string, CircularBuffer>()
-  public static siteHumidityHistory = new Map<string, CircularBuffer>()
+  public sitePowerHistory = new Map<string, CircularBuffer>()
+  public siteTempHistory = new Map<string, CircularBuffer>()
+  public siteHumidityHistory = new Map<string, CircularBuffer>()
+
+  public thresholds: AnomalyThresholds = { ...DEFAULT_THRESHOLDS }
 
   // Subsystem Performance Profiling Instrumentation
-  public static lastExecutionTimeMs = 0.0
+  public lastExecutionTimeMs = 0.0
+  private executionTickCounter = 0
   
   public static readonly MAX_HISTORY_LENGTH = 30
 
@@ -134,6 +157,8 @@ export class TelemetrySystem extends System {
     let totalEntitiesCount = 0
     let overheatedCount = 0
     let totalPower = 0.0
+    let itPower = 0.0
+    let totalWaterLPM = 0.0
     let totalStorageUsed = 0.0
     let totalStorageCapacity = 0.0
 
@@ -177,6 +202,7 @@ export class TelemetrySystem extends System {
         transform.name || '',
         currentTemp,
         telemetry.tempHistory,
+        this.thresholds,
         publishAlert
       )
 
@@ -184,6 +210,7 @@ export class TelemetrySystem extends System {
       TelemetryAnomalyDetector.detectPowerSpike(
         currentLoad,
         telemetry.powerHistory,
+        this.thresholds,
         () => {
           telemetry.powerSpikesCount++
         }
@@ -234,6 +261,13 @@ export class TelemetrySystem extends System {
 
       if (power && isPowered) {
         totalPower += power.load || 0.0
+        if (transform.type !== 'cooling') {
+          itPower += power.load || 0.0
+        }
+      }
+      
+      if (thermal && thermal.waterFlowLPM) {
+        totalWaterLPM += thermal.waterFlowLPM
       }
 
       if (storage) {
@@ -261,13 +295,13 @@ export class TelemetrySystem extends System {
     // 3. Compile Site-Wide rolling historical aggregates
     sitePowerMap.forEach((powerSum, siteId) => {
       // Initialize rolling maps
-      if (!TelemetrySystem.sitePowerHistory.has(siteId)) TelemetrySystem.sitePowerHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
-      if (!TelemetrySystem.siteTempHistory.has(siteId)) TelemetrySystem.siteTempHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
-      if (!TelemetrySystem.siteHumidityHistory.has(siteId)) TelemetrySystem.siteHumidityHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
+      if (!this.sitePowerHistory.has(siteId)) this.sitePowerHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
+      if (!this.siteTempHistory.has(siteId)) this.siteTempHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
+      if (!this.siteHumidityHistory.has(siteId)) this.siteHumidityHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
 
-      const powerHistory = TelemetrySystem.sitePowerHistory.get(siteId)!
-      const tempHistory = TelemetrySystem.siteTempHistory.get(siteId)!
-      const humidityHistory = TelemetrySystem.siteHumidityHistory.get(siteId)!
+      const powerHistory = this.sitePowerHistory.get(siteId)!
+      const tempHistory = this.siteTempHistory.get(siteId)!
+      const humidityHistory = this.siteHumidityHistory.get(siteId)!
 
       // Average temperature computation
       const tempsList = siteTempsMap.get(siteId) ?? []
@@ -281,7 +315,7 @@ export class TelemetrySystem extends System {
       tempHistory.push(avgTemp)
       humidityHistory.push(currentHumidity)
 
-      // Anomaly trigger: Site breaker saturation (90% breaker limit warning)
+      // Anomaly trigger: Site breaker saturation
       let maxKW = 0.0
       rackMap.forEach(rack => {
         const transComp = transformMap.get(rack.entityId)
@@ -294,29 +328,33 @@ export class TelemetrySystem extends System {
         siteId,
         powerSum,
         maxKW,
+        this.thresholds,
         publishAlert
       )
     })
 
     // 4. Compile Aggregated Datacenter Simulation Statistics
-    TelemetrySystem.simStats = {
+    this.simStats = {
       averageUptimeRatio: totalEntitiesCount > 0 ? activeUptimesSum / totalEntitiesCount : 1.0,
       overheatedNodeCount: overheatedCount,
       congestedLinkCount: congestedLinks,
       totalPowerDrawKW: totalPower,
       totalStorageUsedTB: totalStorageUsed,
-      totalStorageCapacityTB: totalStorageCapacity
+      totalStorageCapacityTB: totalStorageCapacity,
+      pue: itPower > 0 ? (totalPower / itPower) : 1.0,
+      wue: itPower > 0 ? (totalWaterLPM / itPower) : 0.0
     }
 
     const tEnd = performance.now()
-    TelemetrySystem.lastExecutionTimeMs = tEnd - startTime
+    this.lastExecutionTimeMs = tEnd - startTime
     
-    // Performance Instrumentation hook
-    if (Math.random() < 0.1) {
+    // Performance Instrumentation hook using deterministic execution tick count rather than Math.random()
+    this.executionTickCounter++
+    if (this.executionTickCounter % 10 === 0) {
       this.world.eventBus.publish('telemetry:system', {
         subsystem: 'telemetry',
         nodesProcessed: totalEntitiesCount,
-        executionTimeMs: Number(TelemetrySystem.lastExecutionTimeMs.toFixed(2))
+        executionTimeMs: Number(this.lastExecutionTimeMs.toFixed(2))
       })
     }
   }

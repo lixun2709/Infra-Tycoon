@@ -118,6 +118,8 @@ export interface InfraNode {
   catalogKey?: HardwareCatalogKey
   maxPowerKW?: number
   currentPowerKW?: number
+  totalWeightKG?: number
+  maxWeightKG?: number
   status?: RackStatus
   healthStatus?: HealthStatus
   backupStatus?: BackupStatus
@@ -141,6 +143,8 @@ export interface InfraNode {
   writeAmplificationFactor?: number
   systemState: SystemState
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
+  coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
+  waterFlowLPM?: number
   bootProgress: number
   hostname?: string
   managementIP?: string

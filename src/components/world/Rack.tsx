@@ -16,6 +16,8 @@ interface RackProps {
   position: { x: number; y: number; z: number }
   isSelected: boolean
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
+  weightStatus?: 'nominal' | 'structural_warning' | 'seismic_hazard'
+  recirculationFactor?: number
   children?: ReactNode
 }
 
@@ -51,9 +53,10 @@ function USlotLines() {
 interface ContainmentFlowProps {
   containmentType: 'cold_aisle' | 'hot_aisle'
   ambientTemp: number
+  recirculationFactor?: number
 }
 
-function ContainmentFlowComponent({ containmentType, ambientTemp }: ContainmentFlowProps) {
+function ContainmentFlowComponent({ containmentType, ambientTemp, recirculationFactor = 0 }: ContainmentFlowProps) {
   const isHeatMapVisible = useInfraStore(s => s.isHeatMapVisible)
   const materialRef = useRef<THREE.ShaderMaterial>(null)
 
@@ -131,7 +134,8 @@ function ContainmentFlowComponent({ containmentType, ambientTemp }: ContainmentF
     
     const baseOpacity = containmentType === 'cold_aisle' ? 0.12 : 0.18
     const heatmapBoost = isHeatMapVisible ? 1.8 : 1.0
-    materialRef.current.uniforms.uOpacity!.value = baseOpacity * heatmapBoost
+    const recircBoost = 1.0 + (recirculationFactor * 1.5)
+    materialRef.current.uniforms.uOpacity!.value = baseOpacity * heatmapBoost * recircBoost
   })
 
   const zPos = containmentType === 'cold_aisle' ? 0.541 : -0.541
@@ -148,8 +152,9 @@ const ContainmentFlow = React.memo(ContainmentFlowComponent)
 
 
 
-function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', children }: RackProps) {
+function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', weightStatus = 'nominal', recirculationFactor = 0, children }: RackProps) {
   const isOverload = status === 'power_overload'
+  const isSeismicHazard = weightStatus === 'seismic_hazard'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
   
   const { isHovered, interactionProps } = useInteractable(id, 'RACK')
@@ -168,17 +173,17 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
       <mesh>
         <boxGeometry args={[1, RACK_HEIGHT, 1]} />
         <meshStandardMaterial
-          color={isOverload ? themeSpec.render.rackStatusOverload : '#2d3748'}
-          emissive={isOverload ? themeSpec.render.rackStatusOverload : '#000000'}
-          emissiveIntensity={isOverload ? 0.8 : 0}
+          color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#7c2d12' : '#2d3748')}
+          emissive={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#000000')}
+          emissiveIntensity={isOverload ? 0.8 : (isSeismicHazard ? 0.5 : 0)}
           metalness={0.8}
           roughness={0.2}
           transparent
-          opacity={isOverload ? 0.3 : 0.4}
+          opacity={isOverload || isSeismicHazard ? 0.3 : 0.4}
           depthWrite={false}
         />
         <Edges 
-          color={isSelected ? themeSpec.render.rackBoundSelected : (isHovered ? themeSpec.render.rackBoundHover : (isOverload ? themeSpec.render.rackStatusOverload : themeSpec.render.rackBound))} 
+          color={isSelected ? themeSpec.render.rackBoundSelected : (isHovered ? themeSpec.render.rackBoundHover : (isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#f97316' : themeSpec.render.rackBound)))} 
           threshold={14} 
           lineWidth={isSelected || isHovered ? 3 : 1.5} 
         />
@@ -223,7 +228,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
               lineWidth={2.0}
             />
           </mesh>
-          <ContainmentFlow containmentType={containmentType} ambientTemp={ambientTemp} />
+          <ContainmentFlow containmentType={containmentType} ambientTemp={ambientTemp} recirculationFactor={recirculationFactor} />
         </>
       )}
 
@@ -303,13 +308,13 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
         {...interactionProps}
         position={[0, RACK_HEIGHT / 2 + 0.15, 0]} 
         fontSize={0.1} 
-        color={isOverload ? themeSpec.render.rackStatusOverload : '#031225'} 
+        color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#031225')} 
         outlineColor="#ffffff" 
         outlineWidth={0.01}
       >
         {name}
       </Text>
-      <Text position={[0, RACK_HEIGHT / 2 + 0.02, 0]} fontSize={0.07} color={isOverload ? themeSpec.render.rackStatusOverload : '#031225'} outlineColor="#ffffff" outlineWidth={0.005}>
+      <Text position={[0, RACK_HEIGHT / 2 + 0.02, 0]} fontSize={0.07} color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#031225')} outlineColor="#ffffff" outlineWidth={0.005}>
         {powerText}
       </Text>
       {children}

@@ -110,7 +110,7 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])
 
-      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map)
+      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map, 1, 1.0)
       expect(updatedConnections[0]?.packetLoss).toBe(0.0)
     })
 
@@ -133,7 +133,7 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])
 
-      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map)
+      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map, 1, 1.0)
       const resolved = updatedConnections[0]!
       
       expect(resolved.packetLoss).toBeGreaterThan(0.0)
@@ -327,7 +327,7 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
         }
       ]
 
-      const tree = findShortestPathsFromSource('node-a', nodes, connections)
+      const tree = findShortestPathsFromSource('node-a', nodes, connections, buildAdjacencyMap(connections))
       
       // Test path to nodeC: should be A -> D -> C (latency 10ms, packetLoss 0.0) instead of A -> B -> C (latency 15ms)
       const routeToC = tree.getPathTo('node-c')
@@ -375,19 +375,19 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
       expect(NetworkRouteCache.getCacheSize()).toBe(0)
 
       // Request 1: should cause cache miss and compute tree
-      const route1 = findShortestPath('node-a', 'node-c', nodes, connections)
+      const route1 = findShortestPath('node-a', 'node-c', nodes, connections, buildAdjacencyMap(connections), 1)
       expect(route1.exists).toBe(true)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
       const fingerprintAfter1 = NetworkRouteCache.getFingerprint()
 
       // Request 2 (different destination from same source): should be cache HIT
-      const route2 = findShortestPath('node-a', 'node-b', nodes, connections)
+      const route2 = findShortestPath('node-a', 'node-b', nodes, connections, buildAdjacencyMap(connections), 1)
       expect(route2.exists).toBe(true)
       expect(NetworkRouteCache.getCacheSize()).toBe(1) // Cache size does not grow
       expect(NetworkRouteCache.getFingerprint()).toBe(fingerprintAfter1)
 
       // Request 3 (same request): should be cache HIT
-      const route3 = findShortestPath('node-a', 'node-c', nodes, connections)
+      const route3 = findShortestPath('node-a', 'node-c', nodes, connections, buildAdjacencyMap(connections), 1)
       expect(route3.exists).toBe(true)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
     })
@@ -420,20 +420,20 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
       ]
 
       // Initial routing (creates cache)
-      const routeInitial = findShortestPath('node-a', 'node-c', nodes, connections)
+      const routeInitial = findShortestPath('node-a', 'node-c', nodes, connections, buildAdjacencyMap(connections), 1)
       expect(routeInitial.exists).toBe(true)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
 
       // 1. Power off intermediate node-b
       const degradedNodes = nodes.map(n => n.id === 'node-b' ? { ...n, systemState: 'off' as const } : n)
-      const routeOff = findShortestPath('node-a', 'node-c', degradedNodes, connections)
+      const routeOff = findShortestPath('node-a', 'node-c', degradedNodes, connections, buildAdjacencyMap(connections), 2)
       expect(routeOff.exists).toBe(false) // intermediate node is off, routing should fail
       // Cache size should be reset and rebuilt for new topology
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
 
       // 2. Blackhole intermediate node-b
       const blackholedNodes = nodes.map(n => n.id === 'node-b' ? { ...n, isBlackholed: true } : n)
-      const routeBlackhole = findShortestPath('node-a', 'node-c', blackholedNodes, connections)
+      const routeBlackhole = findShortestPath('node-a', 'node-c', blackholedNodes, connections, buildAdjacencyMap(connections), 3)
       expect(routeBlackhole.exists).toBe(false)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
     })
@@ -465,19 +465,19 @@ describe('Day 40 Weighted Dijkstra Routing & Packet Loss Tests', () => {
         }
       ]
 
-      const route1 = findShortestPath('node-a', 'node-c', nodes, connections)
+      const route1 = findShortestPath('node-a', 'node-c', nodes, connections, buildAdjacencyMap(connections), 1)
       expect(route1.exists).toBe(true)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
 
       // 1. Block connection conn-ab
       const blockedConns = connections.map(c => c.id === 'conn-ab' ? { ...c, status: 'blocked' as const } : c)
-      const routeBlocked = findShortestPath('node-a', 'node-c', nodes, blockedConns)
+      const routeBlocked = findShortestPath('node-a', 'node-c', nodes, blockedConns, buildAdjacencyMap(blockedConns), 2)
       expect(routeBlocked.exists).toBe(false)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
 
       // 2. Blackhole connection conn-bc
       const blackholedConns = connections.map(c => c.id === 'conn-bc' ? { ...c, isBlackholed: true } : c)
-      const routeBlackholeConn = findShortestPath('node-a', 'node-c', nodes, blackholedConns)
+      const routeBlackholeConn = findShortestPath('node-a', 'node-c', nodes, blackholedConns, buildAdjacencyMap(blackholedConns), 3)
       expect(routeBlackholeConn.exists).toBe(false)
       expect(NetworkRouteCache.getCacheSize()).toBe(1)
     })

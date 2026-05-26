@@ -563,6 +563,8 @@ function sendSyncOutput() {
     status: 'online' | 'power_overload'
     maxPowerKW: number
     currentPowerKW: number
+    totalWeightKG?: number
+    maxWeightKG?: number
   }> = []
   let overloadedCount = 0
 
@@ -574,7 +576,9 @@ function sendSyncOutput() {
       id,
       status: rack.status,
       maxPowerKW: rack.maxPowerKW,
-      currentPowerKW: rack.currentPowerKW
+      currentPowerKW: rack.currentPowerKW,
+      totalWeightKG: rack.totalWeightKG,
+      maxWeightKG: rack.maxWeightKG
     })
   })
   output.racks = rackOutputs
@@ -582,13 +586,16 @@ function sendSyncOutput() {
 
   // Compile site-wide metrics history
   const history: Record<string, { power: number[]; temp: number[]; humidity: number[] }> = {}
-  TelemetrySystem.sitePowerHistory.forEach((_, siteId) => {
-    history[siteId] = {
-      power: TelemetrySystem.sitePowerHistory.get(siteId) ?? [],
-      temp: TelemetrySystem.siteTempHistory.get(siteId) ?? [],
-      humidity: TelemetrySystem.siteHumidityHistory.get(siteId) ?? []
-    }
-  })
+  const telemetrySys = engine.getSystemManager().getSystem(TelemetrySystem)
+  if (telemetrySys) {
+    telemetrySys.sitePowerHistory.forEach((_, siteId) => {
+      history[siteId] = {
+        power: telemetrySys.sitePowerHistory.get(siteId)?.toArray() ?? [],
+        temp: telemetrySys.siteTempHistory.get(siteId)?.toArray() ?? [],
+        humidity: telemetrySys.siteHumidityHistory.get(siteId)?.toArray() ?? []
+      }
+    })
+  }
   output.siteMetricsHistory = history
 
   postMessageTransferable({ type: 'SYNC_OUTPUT', payload: output })

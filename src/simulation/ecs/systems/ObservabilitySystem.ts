@@ -65,9 +65,14 @@ export class ObservabilitySystem extends System {
 
   // Queue of alerts fired during this simulation tick
   private firedAlerts: FiredAlert[] = []
+  private telemetrySys?: TelemetrySystem
 
-  constructor(world: World) {
+  constructor(
+    world: World,
+    telemetrySys?: TelemetrySystem
+  ) {
     super(world)
+    this.telemetrySys = telemetrySys
 
     // Listen to local system:alert broadcasts on the ECS Event Bus
     this.world.eventBus.subscribe('system:alert', (evt) => {
@@ -140,21 +145,23 @@ export class ObservabilitySystem extends System {
     const thermalMap = this.world.getComponentMap<ThermalComponent>('thermal')
     const transformMap = this.world.getComponentMap<TransformComponent>('transform')
 
+    const simStats = this.telemetrySys?.simStats
+
     for (const rule of this.rules) {
       if (!rule.isActive) continue
 
       if (rule.metricType === 'power') {
         // O(1) Fetch from TelemetrySystem
-        this.checkThreshold(rule, 'global', TelemetrySystem.simStats.totalPowerDrawKW)
+        this.checkThreshold(rule, 'global', simStats?.totalPowerDrawKW ?? 0)
       } 
       else if (rule.metricType === 'network') {
         // O(1) Fetch from TelemetrySystem
-        this.checkThreshold(rule, 'global', TelemetrySystem.simStats.congestedLinkCount)
+        this.checkThreshold(rule, 'global', simStats?.congestedLinkCount ?? 0)
       } 
       else if (rule.metricType === 'storage') {
         // O(1) Fetch from TelemetrySystem
-        const totalStorageCapacity = TelemetrySystem.simStats.totalStorageCapacityTB
-        const totalStorageUsed = TelemetrySystem.simStats.totalStorageUsedTB
+        const totalStorageCapacity = simStats?.totalStorageCapacityTB ?? 0
+        const totalStorageUsed = simStats?.totalStorageUsedTB ?? 0
         const ratio = totalStorageCapacity > 0 ? totalStorageUsed / totalStorageCapacity : 0
         this.checkThreshold(rule, 'global', ratio)
       } 

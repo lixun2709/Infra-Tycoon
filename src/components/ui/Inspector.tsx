@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Card, Button, Badge, Tabs } from './base'
+import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 
 export function Inspector() {
   const { 
@@ -52,6 +53,15 @@ export function Inspector() {
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
+  const [metrics, setMetrics] = React.useState(performanceMonitor.getMetrics())
+
+  React.useEffect(() => {
+    if (activeTab !== 'thermal') return
+    const interval = setInterval(() => {
+      setMetrics(performanceMonitor.getMetrics())
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [activeTab])
   if (!selectedNode) return null
 
   const nodeSite = sites.find(s => s.id === selectedNode.siteId)
@@ -80,7 +90,7 @@ export function Inspector() {
 
   return (
     <>
-      <div className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[320px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl transition-all duration-500">
+      <div className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[380px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl transition-all duration-500">
         {/* Header */}
         <div className="p-6 pb-4 border-b border-white/5 bg-white/5">
           <input
@@ -157,6 +167,14 @@ export function Inspector() {
                       }
                     </span>
                   </div>
+                  {selectedNode.type === 'rack' && selectedNode.totalWeightKG !== undefined && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Weight</span>
+                      <span className="text-[10px] font-mono text-slate-300">
+                        {`${selectedNode.totalWeightKG.toFixed(1)} / ${(selectedNode.maxWeightKG ?? 1200).toFixed(1)} KG`}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {selectedNode.type === 'rack' && (selectedNode.status === 'power_overload' || selectedNode.breakerTripped) && (
@@ -455,6 +473,32 @@ export function Inspector() {
                   </Card>
                 </>
               )}
+
+              {/* Coolant Flow (for DLC or Liquid cooling units) */}
+              {(selectedNode.coolingMethod === 'liquid_dlc' || selectedNode.coolingMethod === 'immersion' || selectedNode.type === 'cooling') && (
+                <Card title="Coolant Circulation" subtitle="Liquid Cooling Loop">
+                  <div className="flex justify-between items-center bg-slate-900/40 p-3 rounded-lg border border-sky-900/30">
+                    <span className="text-[10px] text-sky-400/80 font-bold uppercase tracking-wider">Water Flow</span>
+                    <span className="text-xl font-black text-sky-400">
+                      {selectedNode.waterFlowLPM?.toFixed(1) || '0.0'} <span className="text-xs text-sky-500/50">LPM</span>
+                    </span>
+                  </div>
+                </Card>
+              )}
+
+              {/* Datacenter Efficiency (Global) */}
+              <Card title="Datacenter Efficiency" subtitle="Global Sustainability Metrics">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-900/40 p-3 rounded-lg border border-teal-900/30 text-center">
+                    <div className="text-[9px] text-teal-500/80 font-bold uppercase tracking-wider mb-1">PUE</div>
+                    <div className="text-lg font-black text-teal-400">{metrics.simStats?.pue?.toFixed(2) || '1.00'}</div>
+                  </div>
+                  <div className="bg-slate-900/40 p-3 rounded-lg border border-sky-900/30 text-center">
+                    <div className="text-[9px] text-sky-500/80 font-bold uppercase tracking-wider mb-1">WUE</div>
+                    <div className="text-lg font-black text-sky-400">{metrics.simStats?.wue?.toFixed(2) || '0.00'}</div>
+                  </div>
+                </div>
+              </Card>
             </div>
           )}
 

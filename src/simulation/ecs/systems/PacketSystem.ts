@@ -43,7 +43,7 @@ export class PacketSystem extends System {
         this.nodePool.push({} as InfraNode)
       }
       
-      const n = this.nodePool[nodeIndex]
+      const n = this.nodePool[nodeIndex]!
       n.id = id
       n.type = transform.type as unknown as InfraNode['type']
       n.siteId = transform.siteId
@@ -75,7 +75,7 @@ export class PacketSystem extends System {
         this.connectionPool.push({} as Connection)
       }
 
-      const c = this.connectionPool[connIndex]
+      const c = this.connectionPool[connIndex]!
       c.id = id
       c.startNodeId = conn.startNodeId
       c.startPortId = conn.startPortId

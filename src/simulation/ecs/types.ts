@@ -61,6 +61,8 @@ export interface ThermalComponent extends Component {
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle' // Airflow containment configuration
   isStandby?: boolean         // Standby state for CRAC units under N+1 redundancy
   accumulatedSimTime?: number  // Deterministic time tracking counter (seconds)
+  coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
+  waterFlowLPM?: number // Liters per minute consumed/circulated by cooling unit
 }
 
 // Power Component: Electrical state
@@ -150,12 +152,14 @@ export interface RackComponent extends Component {
   // V2/Enterprise Additions
   totalWeightKG?: number
   maxWeightKG?: number
-  weightStatus?: 'nominal' | 'structural_warning'
+  weightStatus?: 'nominal' | 'structural_warning' | 'seismic_hazard'
   pduTemperature?: number
   humidity?: number
   deratedMaxPowerKW?: number
   hasPhaseImbalance?: boolean
   collisionOccupancy?: boolean[]
+  centerOfGravityU?: number
+  recirculationFactor?: number
 }
 
 export type ComponentMap<T extends Component> = Map<Entity, T>

@@ -294,6 +294,40 @@ export const HARDWARE_CATALOG = {
       { type: 'power', count: 2, labelPrefix: 'pwr' },
     ],
   },
+  IN_ROW_COOLER: {
+    name: 'In-Row Air Cooler (8U)',
+    uHeight: 8,
+    wattage: 8000,
+    btuOutput: -120000,
+    type: 'cooling',
+    color: '#34d399',
+    purchasePrice: 12000,
+    storageTB: 0,
+    useCase: 'High-density air cooling for contained aisles.',
+    maxOperatingTemp: 60,
+    throttleTemp: 50,
+    heatEfficiency: 0.1,
+    portLayout: [
+      { type: 'power', count: 2, labelPrefix: 'pwr' },
+    ],
+  },
+  LIQUID_CDU: {
+    name: 'DLC Coolant Distribution Unit (8U)',
+    uHeight: 8,
+    wattage: 3000,
+    btuOutput: -250000,
+    type: 'cooling',
+    color: '#0ea5e9',
+    purchasePrice: 25000,
+    storageTB: 0,
+    useCase: 'Direct Liquid Cooling (DLC) distribution unit. Supports high-density liquid-cooled racks.',
+    maxOperatingTemp: 70,
+    throttleTemp: 60,
+    heatEfficiency: 0.05,
+    portLayout: [
+      { type: 'power', count: 2, labelPrefix: 'pwr' },
+    ],
+  },
 
   // --- BASE ---
   RACK_42U: {

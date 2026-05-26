@@ -70,7 +70,9 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
             ...node,
             status: update.status,
             maxPowerKW: update.maxPowerKW,
-            currentPowerKW: update.currentPowerKW
+            currentPowerKW: update.currentPowerKW,
+            totalWeightKG: update.totalWeightKG,
+            maxWeightKG: update.maxWeightKG
           } as InfraNode
         }
         return node
@@ -133,13 +135,6 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
   },
 
   processTick: (dt = 1.0) => {
-    console.log('[MAIN THREAD NODES]', get().nodes.map(n => ({
-      id: n.id,
-      name: n.name,
-      type: n.type,
-      parentRackId: n.parentRackId,
-      slotIndex: n.slotIndex
-    })))
     // 0. Request Worker Tick (Asynchronous)
     simWorkerManager.syncInput(get().nodes, get().applications, get().connections, get().networkLoad)
     simWorkerManager.requestTick(dt)

@@ -5,7 +5,7 @@ import userGuideRaw from '../../../USER_GUIDE.md?raw'
 import { 
   X, Search, Book, Cpu, Network, Shield, Terminal as TerminalIcon, 
   Activity, Copy, Check, ChevronRight, AlertTriangle, Info, HardDrive, 
-  Thermometer, Zap, HelpCircle, ArrowUpRight, Maximize2 
+  Thermometer, Zap, HelpCircle, ArrowUpRight, Maximize2, LayoutGrid
 } from 'lucide-react'
 
 export interface DocCenterProps {
@@ -39,43 +39,43 @@ export function DocCenter({ onClose }: DocCenterProps) {
         id: 'architecture-overview',
         title: 'Architecture Overview',
         icon: Cpu,
-        sections: ['1-system-architecture--platform-overview', '11-architecture-design-decoupled-ecs--simulation-worker', '12-deterministic-execution--thread-synchronization']
+        sections: ['1-system-architecture-platform-overview', '11-architecture-design-decoupled-ecs-simulation-worker', '12-deterministic-execution-thread-synchronization']
       },
       {
         id: 'getting-started',
         title: 'Getting Started',
         icon: ArrowUpRight,
-        sections: ['5-asset-lifecycle--provisioning-workflows', '51-provisioning-lifecycle-stages']
+        sections: ['5-asset-lifecycle-provisioning-workflows', '51-provisioning-lifecycle-stages']
       },
       {
         id: 'rack-systems',
         title: 'Rack Systems',
         icon: Maximize2,
-        sections: ['2-asset--hardware-procurement-catalog']
+        sections: ['2-asset-hardware-procurement-catalog']
       },
       {
         id: 'thermal-systems',
         title: 'Thermal Systems',
         icon: Thermometer,
-        sections: ['31-thermodynamic--cooling-systems']
+        sections: ['31-thermodynamic-cooling-systems']
       },
       {
         id: 'electrical-systems',
         title: 'Electrical Systems',
         icon: Zap,
-        sections: ['32-electrical--power-systems']
+        sections: ['32-electrical-power-systems']
       },
       {
         id: 'networking-systems',
         title: 'Networking Systems',
         icon: Network,
-        sections: ['33-networking--fabric-systems']
+        sections: ['33-networking-fabric-systems']
       },
       {
         id: 'storage-systems',
         title: 'Storage Systems',
         icon: HardDrive,
-        sections: ['34-storage--raid-systems']
+        sections: ['34-storage-raid-systems']
       },
       {
         id: 'alerts-monitoring',
@@ -87,7 +87,7 @@ export function DocCenter({ onClose }: DocCenterProps) {
         id: 'controls-interaction',
         title: 'Controls & Interaction',
         icon: TerminalIcon,
-        sections: ['4-uiux-interface--interactive-noc-overlays', '6-interactive-cli-terminal-kernel']
+        sections: ['4-uiux-interface-interactive-noc-overlays', '6-interactive-cli-terminal-kernel']
       },
       {
         id: 'troubleshooting',
@@ -99,7 +99,13 @@ export function DocCenter({ onClose }: DocCenterProps) {
         id: 'operational-workflows',
         title: 'Operational Workflows',
         icon: Shield,
-        sections: ['52-technician-ticket-rma-queue', '53-maintenance-mode--traffic-drainage']
+        sections: ['52-technician-ticket-rma-queue', '53-maintenance-mode-traffic-drainage']
+      },
+      {
+        id: 'facility-orchestration',
+        title: 'Facility Expansion',
+        icon: LayoutGrid,
+        sections: ['9-facility-orchestration-room-expansion-mechanics', '91-scaling-the-physical-footprint', '92-scaling-support-infrastructure']
       },
       {
         id: 'datacenter-concepts',

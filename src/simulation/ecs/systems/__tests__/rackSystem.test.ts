@@ -395,7 +395,8 @@ describe('Rack Subsystem ECS Tests', () => {
       status: 'online' as const,
       hasHighDensityPDU: false,
       slotOccupancy: [],
-      collisionOccupancy: []
+      collisionOccupancy: [],
+      blankingPanels: new Array(43).fill(true) // Prevent recirculation penalty
     } as RackComponent
     world.addComponent('rack', rackComp)
 
@@ -455,5 +456,114 @@ describe('Rack Subsystem ECS Tests', () => {
     expect(alerts.length).toBe(1)
     expect(alerts[0]!.severity).toBe('warning')
     expect(alerts[0]!.message).toContain('[PHASE IMBALANCE ALERT]')
+  })
+
+  it('should trigger seismic_hazard when Center of Gravity is too high', () => {
+    const rackId = 'rack-seismic-test'
+    world.registerEntity(rackId)
+
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      name: 'Seismic Rack',
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 5.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: false,
+      slotOccupancy: [],
+      collisionOccupancy: [],
+      maxWeightKG: 1000.0
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    // Mount 2 heavy components at the very top (Slots 40 and 42)
+    world.registerEntity('heavy-1')
+    world.addComponent('transform', {
+      entityId: 'heavy-1',
+      type: 'compute',
+      catalogKey: 'IN_ROW_CRAC_4U', // Very heavy! 120kg
+      parentRackId: rackId,
+      slotIndex: 38,
+      uHeight: 4,
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    world.registerEntity('heavy-2')
+    world.addComponent('transform', {
+      entityId: 'heavy-2',
+      type: 'compute',
+      catalogKey: 'IN_ROW_CRAC_4U', // Very heavy! 120kg
+      parentRackId: rackId,
+      slotIndex: 34,
+      uHeight: 4,
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    rackSystem.update(1.0)
+
+    expect(rackComp.totalWeightKG).toBeGreaterThan(150)
+    expect(rackComp.centerOfGravityU).toBeGreaterThan(28.0)
+    expect(rackComp.weightStatus).toBe('seismic_hazard')
+
+    const alerts = obsSystem.flushAlerts()
+    expect(alerts.length).toBe(1)
+    expect(alerts[0]!.severity).toBe('warning')
+    expect(alerts[0]!.message).toContain('[RACK SEISMIC HAZARD]')
+  })
+
+  it('should increase recirculationFactor and effective temperature when blanking panels are missing', () => {
+    const rackId = 'rack-thermal-recirc'
+    world.registerEntity(rackId)
+
+    world.addComponent('transform', {
+      entityId: rackId,
+      type: 'rack',
+      name: 'Thermal Rack',
+      siteId: 'site-1'
+    } as TransformComponent)
+
+    const rackComp = {
+      entityId: rackId,
+      maxPowerKW: 10.0,
+      currentPowerKW: 0,
+      status: 'online' as const,
+      hasHighDensityPDU: false,
+      slotOccupancy: [],
+      collisionOccupancy: [],
+      blankingPanels: [] // No blanking panels!
+    } as RackComponent
+    world.addComponent('rack', rackComp)
+
+    world.addComponent('thermal', {
+      entityId: rackId,
+      temperature: 25.0, // Baseline temp
+      isThrottled: false,
+      fanSpeedPercent: 50.0,
+      btuOutput: 0.0,
+      lastUpdate: 0
+    } as ThermalComponent)
+
+    rackSystem.update(1.0)
+
+    // With 0 equipment, all 42 slots are open. Recirculation factor should be 1.0 (42/42)
+    expect(rackComp.recirculationFactor).toBe(1.0)
+    // 25.0 + (1.0 * 10.0) = 35.0
+    expect(rackComp.pduTemperature).toBe(35.0)
+
+    // Should NOT derate yet at 35.0
+    expect(rackComp.deratedMaxPowerKW).toBe(10.0)
+
+    // Now raise ambient to 30.0 -> effective temp will be 40.0 -> Derating kicks in!
+    world.getComponent<ThermalComponent>('thermal', rackId)!.temperature = 30.0
+    rackSystem.update(1.0)
+
+    expect(rackComp.pduTemperature).toBe(40.0)
+    // Derating: 1.0 - (40 - 35) * 0.02 = 1.0 - 0.10 = 0.9
+    expect(rackComp.deratedMaxPowerKW).toBe(9.0)
   })
 })

@@ -78,11 +78,11 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     expect(tc.networkCongestionTicks).toBe(1)
 
     // Check aggregated SimStats
-    expect(TelemetrySystem.simStats.averageUptimeRatio).toBe(1.0)
-    expect(TelemetrySystem.simStats.overheatedNodeCount).toBe(1)
-    expect(TelemetrySystem.simStats.totalPowerDrawKW).toBe(0.4)
-    expect(TelemetrySystem.simStats.totalStorageUsedTB).toBe(4)
-    expect(TelemetrySystem.simStats.totalStorageCapacityTB).toBe(10)
+    expect(system.simStats.averageUptimeRatio).toBe(1.0)
+    expect(system.simStats.overheatedNodeCount).toBe(1)
+    expect(system.simStats.totalPowerDrawKW).toBe(0.4)
+    expect(system.simStats.totalStorageUsedTB).toBe(4)
+    expect(system.simStats.totalStorageCapacityTB).toBe(10)
   })
 
   it('should compile active congested link count from connection components', () => {
@@ -107,7 +107,7 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
 
     system.update(1.0)
 
-    expect(TelemetrySystem.simStats.congestedLinkCount).toBe(1)
+    expect(system.simStats.congestedLinkCount).toBe(1)
   })
 
   it('should maintain node metric histories, aggregate site-wide trends, and trigger dynamic anomaly alarms', () => {
@@ -188,9 +188,9 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     expect(tc.powerHistory!.buffer[0]).toBeCloseTo(0.8, 5)
 
     // Verify site-wide aggregates
-    expect(TelemetrySystem.sitePowerHistory.has('site-beta')).toBe(true)
-    expect(TelemetrySystem.sitePowerHistory.get('site-beta')!.buffer[0]).toBeCloseTo(0.8, 5)
-    expect(TelemetrySystem.siteTempHistory.get('site-beta')!.buffer[0]).toBeCloseTo(25.0, 5)
+    expect(system.sitePowerHistory.has('site-beta')).toBe(true)
+    expect(system.sitePowerHistory.get('site-beta')!.buffer[0]).toBeCloseTo(0.8, 5)
+    expect(system.siteTempHistory.get('site-beta')!.buffer[0]).toBeCloseTo(25.0, 5)
 
     // Trigger Anomaly: Rapid heat spike (+6°C in a single tick)
     const thermalComp = world.getComponentMap<ThermalComponent>('thermal').get(nodeId)!

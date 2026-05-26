@@ -1,4 +1,5 @@
 import type { SystemState, Connection } from '../../store/infraTypes'
+import type { TraceSpan } from '../observability/types'
 
 export type SimMessageType = 
   | 'INIT' 
@@ -120,6 +121,8 @@ export interface SimSyncOutputPayload {
     accumulatedSimTime?: number
     isInfected?: boolean
     isBlackholed?: boolean
+    coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
+    waterFlowLPM?: number
   }>
   applications: Array<{
     id: string
@@ -139,6 +142,8 @@ export interface SimSyncOutputPayload {
     status: 'online' | 'power_overload'
     maxPowerKW: number
     currentPowerKW: number
+    totalWeightKG?: number
+    maxWeightKG?: number
   }>
   overloadedRackCount?: number
   siteMetricsHistory?: Record<string, {
@@ -166,7 +171,10 @@ export interface SimTelemetryPayload {
     totalPowerDrawKW: number
     totalStorageUsedTB: number
     totalStorageCapacityTB: number
+    pue: number
+    wue: number
   }
+  spans?: TraceSpan[]
 }
 
 export type SimMessage = 

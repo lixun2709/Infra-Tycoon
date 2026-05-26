@@ -8,6 +8,7 @@ import { StorageSystem } from './ecs/systems/StorageSystem'
 import { PacketSystem } from './ecs/systems/PacketSystem'
 import { TelemetrySystem } from './ecs/systems/TelemetrySystem'
 import { ObservabilitySystem } from './ecs/systems/ObservabilitySystem'
+import { ObservabilityTracer } from './observability/ObservabilityTracer'
 import { SystemManager } from './ecs/SystemManager'
 
 /**
@@ -32,9 +33,12 @@ export class SimulationEngine {
     this.systemManager.registerSystem(new StorageSystem(this.world), 25)
     this.systemManager.registerSystem(new PacketSystem(this.world), 28)
     this.systemManager.registerSystem(new ProvisioningSystem(this.world), 30)
-    this.systemManager.registerSystem(new ApplicationSystem(this.world), 40)
-    this.systemManager.registerSystem(new TelemetrySystem(this.world), 50)
-    this.systemManager.registerSystem(new ObservabilitySystem(this.world), 60)
+    this.systemManager.registerSystem(new ApplicationSystem(this.world), 15) // Apps
+    
+    const telemetrySys = new TelemetrySystem(this.world)
+    this.systemManager.registerSystem(telemetrySys, 20) // Telemetry stats
+
+    this.systemManager.registerSystem(new ObservabilitySystem(this.world, telemetrySys), 30) // Alerts based on Telemetry
   }
 
   public getWorld() {
@@ -63,7 +67,8 @@ export class SimulationEngine {
       systemTimings: this.systemTimings,
       systemProfiling: this.systemManager.getProfilingData(),
       queryTelemetry: this.world.getQueryTelemetry(),
-      simStats: TelemetrySystem.simStats
+      simStats: this.systemManager.getSystem(TelemetrySystem)?.simStats,
+      spans: ObservabilityTracer.getSpans()
     }
   }
 }

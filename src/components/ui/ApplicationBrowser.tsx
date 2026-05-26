@@ -10,7 +10,7 @@ interface ApplicationBrowserProps {
 }
 
 export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps) {
-  const { applications, deployApplication, removeApplication, selectedNodeId, nodes } = useInfraStore(useShallow(state => ({
+  const { applications, deployApplication, removeApplication, selectedNodeId } = useInfraStore(useShallow(state => ({
     applications: state.applications,
     deployApplication: state.deployApplication,
     removeApplication: state.removeApplication,
@@ -19,7 +19,7 @@ export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps)
   useInfraStore(s => s.nodes.length) // trigger render when nodes are added
   
   const nodes = useInfraStore.getState().nodes
-  const selectedNode = nodes.find(n => n.id === selectedNodeId)
+  const selectedNode = nodes.find((n: import('../../store/infraTypes').InfraNode) => n.id === selectedNodeId)
   const nodeApps = applications.filter(a => a.nodeId === selectedNodeId)
 
   const handleDeploy = (appId: string) => {

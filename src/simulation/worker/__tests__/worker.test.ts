@@ -1,4 +1,4 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest'
 import type { SimulationWorkerManager } from '../../SimulationWorkerManager'
 import type { SimulationEngine } from '../../SimulationEngine'
 import type { InfraNode, ApplicationDeployment } from '../../../store/infraTypes'
@@ -26,6 +26,11 @@ describe('Simulation Worker Synchronization Subsystem', () => {
 
     const engineModule = await import('../../SimulationEngine')
     SimulationEngineClass = engineModule.SimulationEngine as unknown as typeof SimulationEngine
+  }, 30000)
+
+  afterEach(() => {
+    if (manager) manager.terminate()
+    vi.unstubAllGlobals()
   })
 
   it('should successfully compact large store arrays into lightweight serialization objects', () => {

@@ -8,7 +8,6 @@ export function GlobalNetwork() {
   const { 
     isNetworkManagerOpen, 
     setNetworkManagerOpen, 
-    nodes, 
     connections, 
     sites,
     currentSiteId,

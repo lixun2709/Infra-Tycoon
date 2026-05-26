@@ -112,7 +112,7 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])
 
-      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map)
+      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map, 1, 1.0)
       expect(updatedConnections[0]?.throughputGbps).toBe(0.8) // matches compute server demand
     })
 
@@ -135,7 +135,7 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
       const demands = nodes.map(n => calculateNodeDemand(n, 0))
       const map = buildAdjacencyMap([conn])
 
-      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map)
+      const { updatedConnections } = resolveCongestion(nodes, [conn], demands, map, 1, 1.0)
       const resolved = updatedConnections[0]!
       
       expect(resolved.status).toBe('degraded')
@@ -158,7 +158,7 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
         latencyMs: 1
       }
 
-      const result = simulateNetwork([mockComputeNode, mockSwitchNode], [conn], 0)
+      const result = simulateNetwork([mockComputeNode, mockSwitchNode], [conn], 0, 1.0)
       expect(result.connections.length).toBe(1)
       expect(result.connections[0]?.throughputGbps).toBe(0.8)
     })
@@ -249,8 +249,8 @@ describe('Day 31 Deterministic Network Simulation Engine', () => {
       const map = buildAdjacencyMap([conn])
 
       // With dt = 2.0, build-out should progress faster than with dt = 0.5
-      const res1 = resolveCongestion(nodes, [conn], demands, map, 0.5).updatedConnections[0]!
-      const res2 = resolveCongestion(nodes, [conn], demands, map, 2.0).updatedConnections[0]!
+      const res1 = resolveCongestion(nodes, [conn], demands, map, 1, 0.5).updatedConnections[0]!
+      const res2 = resolveCongestion(nodes, [conn], demands, map, 2, 2.0).updatedConnections[0]!
 
       expect(res2.syncProgress).toBeGreaterThan(res1.syncProgress!)
     })

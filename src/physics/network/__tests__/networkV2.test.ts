@@ -109,7 +109,7 @@ describe('Enterprise Network V2 Systems Integration Tests', () => {
     const conns = [conn1, conn2, conn3]
 
     // Route from A to C
-    const result = findShortestPath('node-a', 'node-c', nodes, conns)
+    const result = findShortestPath('node-a', 'node-c', nodes, conns, buildAdjacencyMap(conns), 1)
     expect(result.exists).toBe(true)
     // Should choose path node-a -> node-b -> node-c since 2 + 2 = 4ms < 50ms
     expect(result.path).toEqual(['node-a', 'node-b', 'node-c'])
@@ -158,7 +158,7 @@ describe('Enterprise Network V2 Systems Integration Tests', () => {
 
     const conns = [conn1, conn2, conn3]
 
-    const result = findShortestPath('node-a', 'node-c', nodes, conns)
+    const result = findShortestPath('node-a', 'node-c', nodes, conns, buildAdjacencyMap(conns), 2)
     expect(result.exists).toBe(true)
     // Should steer path directly to node-c because conn-a-b is blackholed
     expect(result.path).toEqual(['node-a', 'node-c'])
@@ -194,7 +194,7 @@ describe('Enterprise Network V2 Systems Integration Tests', () => {
     const adjMap = buildAdjacencyMap(conns)
 
     // Run congestion with dt = 100 to ensure high propagation chance
-    const result = resolveCongestion(testNodes, conns, [], adjMap, 100.0)
+    const result = resolveCongestion(testNodes, conns, [], adjMap, 1, 100.0)
     
     // Node B should be infected laterally over the network connection
     expect(result.newlyInfectedNodeIds).toContain('node-b')
@@ -228,7 +228,7 @@ describe('Enterprise Network V2 Systems Integration Tests', () => {
     const conns = [conn]
     const adjMap = buildAdjacencyMap(conns)
 
-    const result = resolveCongestion(testNodes, conns, [], adjMap, 100.0)
+    const result = resolveCongestion(testNodes, conns, [], adjMap, 1, 100.0)
     
     // Node B should NOT be infected because the link is blackholed/offline
     expect(result.newlyInfectedNodeIds).not.toContain('node-b')

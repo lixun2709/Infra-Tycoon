@@ -23,7 +23,7 @@ import type { AdjacencyMap } from './types'
 export function findShortestPathsFromSource(
   startNodeId: string,
   nodes: InfraNode[],
-  connections: Connection[],
+  _connections: Connection[],
   adjMap: AdjacencyMap
 ): ShortestPathTree {
   const activeNodes = new Set<string>()

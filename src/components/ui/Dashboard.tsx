@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { 
-  AlertCircle, 
-  Scale, 
   LayoutDashboard,
   Zap,
   Activity,
@@ -17,6 +15,7 @@ import {
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
+import { ObservabilityDashboard } from './ObservabilityDashboard'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
   if (!data || data.length === 0) return null
@@ -70,10 +69,10 @@ export function Dashboard({
   initialTab = 'overview'
 }: { 
   onClose: () => void
-  initialTab?: 'overview' | 'events' | 'audit' | 'diagnostics'
+  initialTab?: 'overview' | 'events' | 'audit' | 'diagnostics' | 'observability'
 }) {
   const {
-    nodes, alerts, acknowledgeAlert, acknowledgeAllAlerts,
+    alerts, acknowledgeAlert, acknowledgeAllAlerts,
     totalPowerKW,
     networkLoad,
     realTimePlayedSeconds, auditLogs,
@@ -97,14 +96,14 @@ export function Dashboard({
     return `${pad(m)}:${pad(s)}`
   }
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics'>(initialTab)
+  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics' | 'observability'>(initialTab)
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
 
   const nodes = useInfraStore.getState().nodes
   useInfraStore(s => s.nodes.length)
-  const allHardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
-  const globalHealthyCount = allHardware.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
+  const allHardware = nodes.filter((n: import('../../store/infraTypes').InfraNode) => n.type !== 'rack' && n.type !== 'cooling')
+  const globalHealthyCount = allHardware.filter((n: import('../../store/infraTypes').InfraNode) => n.healthStatus === 'healthy' || !n.healthStatus).length
   const globalHealthIndex = allHardware.length > 0 ? Math.round((globalHealthyCount / allHardware.length) * 100) : 100
 
   const [powerHistory, setPowerHistory] = useState<number[]>([totalPowerKW, totalPowerKW, totalPowerKW, totalPowerKW, totalPowerKW])
@@ -144,12 +143,13 @@ export function Dashboard({
     }
   }
 
-
+  const activeAlerts = alerts.filter(a => !a.isAcknowledged).length
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'OVERVIEW', icon: <LayoutDashboard size={14} /> },
-    { id: 'events', label: 'EVENTS', icon: <AlertCircle size={14} /> },
-    { id: 'audit', label: 'AUDIT LOGS', icon: <Scale size={14} /> },
+    { id: 'events', label: activeAlerts > 0 ? `EVENTS (${activeAlerts})` : 'EVENTS', icon: <ShieldAlert size={14} /> },
+    { id: 'observability', label: 'OBSERVABILITY', icon: <Activity size={14} /> },
+    { id: 'audit', label: 'AUDIT LOGS', icon: <Layers size={14} /> },
     { id: 'diagnostics', label: 'DIAGNOSTICS', icon: <Activity size={14} /> },
   ]
 
@@ -572,6 +572,12 @@ export function Dashboard({
                   </Card>
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'observability' && (
+            <div className="h-full flex flex-col">
+              <ObservabilityDashboard />
             </div>
           )}
         </div>

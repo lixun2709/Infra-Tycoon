@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { World } from '../../World'
 import { ObservabilitySystem } from '../ObservabilitySystem'
 import { TelemetrySystem } from '../TelemetrySystem'
+
 import type { 
   ThermalComponent, 
   TransformComponent
@@ -10,13 +11,12 @@ import type {
 describe('Observability ECS System Core Tests', () => {
   let world: World
   let system: ObservabilitySystem
+  let mockTelemetrySystem: TelemetrySystem
 
   beforeEach(() => {
     world = new World()
-    system = new ObservabilitySystem(world)
-
-    // Reset global telemetry stats to defaults before each test
-    TelemetrySystem.simStats = {
+    mockTelemetrySystem = new TelemetrySystem(world)
+    mockTelemetrySystem.simStats = {
       averageUptimeRatio: 1.0,
       overheatedNodeCount: 0,
       congestedLinkCount: 0,
@@ -24,6 +24,8 @@ describe('Observability ECS System Core Tests', () => {
       totalStorageUsedTB: 0.0,
       totalStorageCapacityTB: 0.0
     }
+    
+    system = new ObservabilitySystem(world, mockTelemetrySystem)
   })
 
   afterEach(() => {
@@ -125,7 +127,7 @@ describe('Observability ECS System Core Tests', () => {
   describe('Power Demand Alerting', () => {
     it('should fire power grid demand warning after 2 ticks of high load (using decoupled simStats)', () => {
       // High load (85kW, which is > 80kW threshold)
-      TelemetrySystem.simStats.totalPowerDrawKW = 85.0
+      mockTelemetrySystem.simStats.totalPowerDrawKW = 85.0
 
       system.update(1.0)
       expect(system.flushAlerts().length).toBe(0) // Needs 2 ticks
@@ -142,8 +144,8 @@ describe('Observability ECS System Core Tests', () => {
   describe('Storage Volume Exhaustion Alerting', () => {
     it('should fire storage warning after 4 ticks above 90% capacity (using decoupled simStats)', () => {
       // 95% full (95TB used of 100TB capacity)
-      TelemetrySystem.simStats.totalStorageCapacityTB = 100.0
-      TelemetrySystem.simStats.totalStorageUsedTB = 95.0
+      mockTelemetrySystem.simStats.totalStorageCapacityTB = 100.0
+      mockTelemetrySystem.simStats.totalStorageUsedTB = 95.0
 
       for (let i = 0; i < 3; i++) {
         system.update(1.0)
@@ -162,7 +164,7 @@ describe('Observability ECS System Core Tests', () => {
   describe('Interface Link Congestion Alerting', () => {
     it('should fire link congestion alert after 2 ticks of degraded connections (using decoupled simStats)', () => {
       // Degraded connection count > 0
-      TelemetrySystem.simStats.congestedLinkCount = 1
+      mockTelemetrySystem.simStats.congestedLinkCount = 1
 
       system.update(1.0)
       expect(system.flushAlerts().length).toBe(0) // Needs 2 ticks
