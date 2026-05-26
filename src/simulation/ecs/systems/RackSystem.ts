@@ -41,6 +41,8 @@ export class RackSystem extends System {
   // O(1) persistent memory pool for mapping parent -> child transforms.
   // Avoids catastrophic garbage collection overhead from recreating Maps and Arrays every 16ms.
   private childrenByRackPool = new Map<string, string[]>()
+  
+  private executionTickCounter = 0
 
   public update(_dt: number): void {
     const startTime = performance.now()
@@ -106,6 +108,9 @@ export class RackSystem extends System {
       const collisions = rack.collisionOccupancy
       const childrenIds = this.childrenByRackPool.get(rackId) ?? []
 
+      let frameHasBoundaryViolation = false
+      let frameHasSlotCollision = false
+
       // Iterate only through this rack's specific children
       childrenIds.forEach((childId) => {
         const childTransform = transformMap.get(childId)
@@ -125,11 +130,7 @@ export class RackSystem extends System {
 
           // U-Height boundary validation (e.g. slots 1-42)
           if (slot < 1 || slot + height - 1 > 42) {
-            this.world.eventBus.publish('system:alert', {
-              severity: 'warning',
-              message: `[RACK BOUNDARY VIOLATION] Hardware Unit [${childTransform.name || childId}] exceeds physical 42U rack bounds on [${rackTransform?.name || rackId}] (Slot U${slot}, Height ${height}U)!`,
-              nodeId: rackId
-            })
+            frameHasBoundaryViolation = true
           }
 
           // Slot collision check
@@ -138,11 +139,7 @@ export class RackSystem extends System {
               if (occupancy[u]) {
                 if (!collisions[u]) {
                   collisions[u] = true
-                  this.world.eventBus.publish('system:alert', {
-                    severity: 'warning',
-                    message: `[RACK SLOT COLLISION] Server Rack [${rackTransform?.name || rackId}] has slot booking conflict at Slot U${u}!`,
-                    nodeId: rackId
-                  })
+                  frameHasSlotCollision = true
                 }
               }
               occupancy[u] = true
@@ -150,6 +147,34 @@ export class RackSystem extends System {
           }
         }
       })
+
+      // State transition checking for slot collisions to prevent log spam
+      if (frameHasSlotCollision) {
+        if (!rack.hasSlotCollision) {
+          rack.hasSlotCollision = true
+          this.world.eventBus.publish('system:alert', {
+            severity: 'warning',
+            message: `[RACK SLOT COLLISION] Server Rack [${rackTransform?.name || rackId}] has overlapping hardware in physical slots!`,
+            nodeId: rackId
+          })
+        }
+      } else {
+        rack.hasSlotCollision = false
+      }
+
+      // State transition checking for boundary violations to prevent log spam
+      if (frameHasBoundaryViolation) {
+        if (!rack.hasBoundaryViolation) {
+          rack.hasBoundaryViolation = true
+          this.world.eventBus.publish('system:alert', {
+            severity: 'warning',
+            message: `[RACK BOUNDARY VIOLATION] Server Rack [${rackTransform?.name || rackId}] has hardware extending beyond physical bounds!`,
+            nodeId: rackId
+          })
+        }
+      } else {
+        rack.hasBoundaryViolation = false
+      }
 
       let openSlots = 0
       for (let u = 1; u <= 42; u++) {
@@ -264,7 +289,9 @@ export class RackSystem extends System {
     })
 
     const tEnd = performance.now()
-    if (Math.random() < 0.1) {
+    this.executionTickCounter++
+    
+    if (this.executionTickCounter % 10 === 0) {
       this.world.eventBus.publish('telemetry:system', {
         subsystem: 'rack',
         executionTimeMs: Number((tEnd - startTime).toFixed(2))

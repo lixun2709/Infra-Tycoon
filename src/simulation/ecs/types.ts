@@ -158,6 +158,8 @@ export interface RackComponent extends Component {
   deratedMaxPowerKW?: number
   hasPhaseImbalance?: boolean
   collisionOccupancy?: boolean[]
+  hasSlotCollision?: boolean
+  hasBoundaryViolation?: boolean
   centerOfGravityU?: number
   recirculationFactor?: number
 }

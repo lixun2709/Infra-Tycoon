@@ -673,3 +673,11 @@ The Observability subsystem was significantly enhanced to improve rendering perf
 
 **Why it matters:**
 Observability should never impact the performance of the system it observes. By shifting the Prometheus string generator to a cached builder model, large metric payloads are generated deterministically in fractions of a millisecond. In the UI, the direct Zustand subscription prevents unnecessary React reconciliations during idle periods and scales gracefully regardless of simulation tick rate.
+
+## Day 82: Core Datacenter Simulation - Rack Systems Stabilization
+
+**What Changed:**
+The RackSystem was upgraded to implement robust state transition throttling. Prior versions emitted [RACK SLOT COLLISION] and [RACK BOUNDARY VIOLATION] telemetry alerts continuously for overlapping or badly placed hardware units. The engine now records hasSlotCollision and hasBoundaryViolation boolean flags internally within the RackComponent, firing alerts strictly when the physical state *enters* a violation. In addition, legacy non-deterministic operations (Math.random()) were fully expunged from the rack loop.
+
+**Why it matters:**
+In massive simulations with thousands of interacting components, a minor misconfiguration (such as overlapping server slots) would previously choke the distributed tracer and central event bus with thousands of duplicate alerts per second. By intelligently suppressing event duplication via ECS state trackers, simulation workers maintain absolute flatline performance even when datacenters suffer from chaotic layout configurations. The removal of Math.random() preserves WebWorker multiplayer determinism.
