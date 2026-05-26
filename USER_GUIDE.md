@@ -697,3 +697,11 @@ Power system event messaging logic (specifically UPS backup countdown alerts and
 
 **Why it matters:**
 Previously, UPS alerts fired multiple times per second because the simulation processes dozens of frames per second, spamming the user interface and saturating the Web Worker's synchronization bus with duplicate messaging. By restricting notification throughput and purging non-performant console.log statements from hot ECS loops, the Power Systems subsystem is now highly optimized and won't lock up memory when a datacenter's grid fully collapses.
+
+## Day 85: Core Datacenter Simulation - Network Systems Performance
+
+**What Changed:**
+The Network Systems subsystem was aggressively refactored for enterprise-level scalability. Inside the TrafficRouter physical simulation loop, routing destinations are now pre-calculated into discrete memory lists per simulation tick. Additionally, network telemetry logging was transitioned away from non-deterministic JavaScript timers and bound tightly to an exact ECS engine modulo tick counter.
+
+**Why it matters:**
+Previously, SSSP (Single-Source Shortest Path) dynamic routing filtered targets on the fly for every individual node. If a player deployed 10,000 servers, the engine secretly allocated 10,000 separate dynamic lists per frame (60 frames a second!), resulting in massive, stuttering Garbage Collection spikes. By pre-caching these destinations, the memory profile is flattened. Combined with the deterministic tick counter logic, the engine flawlessly supports immense player-created routing topologies without risking multiplayer network desynchronization.

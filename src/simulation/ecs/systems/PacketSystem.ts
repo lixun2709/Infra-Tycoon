@@ -23,6 +23,7 @@ export class PacketSystem extends System {
   public static networkLoad = 0.0 // internal dynamic networking rate metrics
 
   // Object Pools to prevent GC allocation spikes every simulation tick
+  private executionTickCounter = 0
   private nodePool: InfraNode[] = []
   private connectionPool: Connection[] = []
 
@@ -160,7 +161,8 @@ export class PacketSystem extends System {
     const tEnd = performance.now()
 
     // 6. Publish Performance & Telemetry Instrumentation Metrics
-    if (Math.random() < 0.1) { // Throttle telemetry to roughly 1Hz if running at 10 ticks/sec
+    this.executionTickCounter++
+    if (this.executionTickCounter % 10 === 0) { // Throttle telemetry to roughly 1Hz if running at 10 ticks/sec
       this.world.eventBus.publish('telemetry:network', {
         nodes: nodeIndex,
         connections: connIndex,

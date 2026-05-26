@@ -18,6 +18,30 @@ export class TrafficRouter {
     
     connections.forEach(c => accumulatedThroughput.set(c.id, 0.0))
 
+    // Precompute target sets to eliminate O(N^2) array allocations in the hot routing loop
+    const storageAndLoadBalancers: InfraNode[] = []
+    const backupAndNetwork: InfraNode[] = []
+    const networkAndCompute: InfraNode[] = []
+    const fallbackTargets: InfraNode[] = []
+
+    nodes.forEach(n => {
+      if (n.type === 'rack' || n.type === 'cooling') return
+      if (n.systemState === 'off') return
+      if (n.isBlackholed) return
+
+      fallbackTargets.push(n)
+
+      if (n.type === 'storage' || n.type === 'load_balancer') {
+        storageAndLoadBalancers.push(n)
+      }
+      if (n.type === 'backup' || n.type === 'network') {
+        backupAndNetwork.push(n)
+      }
+      if (n.type === 'network' || n.type === 'compute') {
+        networkAndCompute.push(n)
+      }
+    })
+
     nodes.forEach(sourceNode => {
       // Only route demands for running, active device nodes
       if (sourceNode.type === 'rack' || sourceNode.type === 'cooling' || sourceNode.type === 'network') return
@@ -31,25 +55,18 @@ export class TrafficRouter {
       let minCost = Infinity
 
       // Find possible targets
-      const possibleTargets = nodes.filter(n => {
-        if (n.id === sourceNode.id) return false
-        if (n.type === 'rack' || n.type === 'cooling') return false
-        if (n.systemState === 'off') return false
-        if (n.isBlackholed) return false
+      let possibleTargets: InfraNode[] = []
+      if (sourceNode.type === 'compute' || sourceNode.type === 'backup') {
+        possibleTargets = storageAndLoadBalancers
+      } else if (sourceNode.type === 'storage') {
+        possibleTargets = backupAndNetwork
+      } else {
+        possibleTargets = networkAndCompute
+      }
 
-        // Match preferred routing destinations
-        if (sourceNode.type === 'compute' || sourceNode.type === 'backup') {
-          return n.type === 'storage' || n.type === 'load_balancer'
-        } else if (sourceNode.type === 'storage') {
-          return n.type === 'backup' || n.type === 'network'
-        }
-        return n.type === 'network' || n.type === 'compute'
-      })
-
-      // If no preferred target, fallback to any other non-rack, non-cooling node
       const targetsToTry = possibleTargets.length > 0
-        ? possibleTargets
-        : nodes.filter(n => n.id !== sourceNode.id && n.type !== 'rack' && n.type !== 'cooling' && n.systemState !== 'off' && !n.isBlackholed)
+        ? possibleTargets.filter(n => n.id !== sourceNode.id)
+        : fallbackTargets.filter(n => n.id !== sourceNode.id)
 
       // Obtain the globally cached Single-Source Shortest Path (SSSP) tree for this source node
       const tree = NetworkRouteCache.getShortestPathTree(sourceNode.id, nodes, connections, adjMap, topologyHash)
