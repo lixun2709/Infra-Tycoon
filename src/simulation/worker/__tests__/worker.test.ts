@@ -23,6 +23,11 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     const workerMgrModule = await import('../../SimulationWorkerManager')
     manager = new workerMgrModule.SimulationWorkerManager() as unknown as SimulationWorkerManager
     manager.start() // Explicitly start the worker manager in the test environment!
+    
+    // Disable heartbeat during tests to avoid ReferenceError: Worker is not defined due to timeout
+    if ((manager as any).heartbeatInterval) {
+      clearInterval((manager as any).heartbeatInterval)
+    }
 
     const engineModule = await import('../../SimulationEngine')
     SimulationEngineClass = engineModule.SimulationEngine as unknown as typeof SimulationEngine

@@ -101,6 +101,29 @@ export class KubernetesSystem extends System {
                })
             }
 
+            // OOM Enforcement: Find workers with negative memory and OOMKill the newest/a running pod
+            workerResources.forEach((res, workerId) => {
+              if (res.memAvailable < 0) {
+                 // Find a pod on this node to kill
+                 for (const [podId, p] of pods.entries()) {
+                   if (p.nodeId === workerId && p.status === 'running') {
+                     p.status = 'crashloop'
+                     p.evictionTimer = 0
+                     p.restartCount = (p.restartCount || 0) + 1
+                     res.memAvailable += p.memoryReq
+                     res.cpuAvailable += p.cpuReq
+                     res.podCount--
+                     this.world.eventBus.publish('system:alert', {
+                        entityId: workerId,
+                        message: `OOMKilled: Pod ${podId.slice(0, 8)} terminated due to memory exhaustion.`,
+                        severity: 'warning'
+                     })
+                     if (res.memAvailable >= 0) break // Stop killing if we have freed enough
+                   }
+                 }
+              }
+            })
+
             let workerIdx = 0
             for (const podId of unscheduledPods) {
               const pod = pods.get(podId)!
@@ -115,6 +138,22 @@ export class KubernetesSystem extends System {
                  if (res.podCount < workerNode.maxPods && 
                      res.cpuAvailable >= pod.cpuReq && 
                      res.memAvailable >= pod.memoryReq) {
+                     
+                     // Anti-affinity check: Try to avoid nodes that already have this service
+                     let hasSameService = false
+                     for (const p of pods.values()) {
+                       if (p.nodeId === workerId && p.serviceName === pod.serviceName && p.status === 'running') {
+                         hasSameService = true
+                         break
+                       }
+                     }
+                     
+                     // If there's another worker available, we skip this one for anti-affinity
+                     // But if we've checked all workers and haven't placed it, we will relax anti-affinity.
+                     // For deterministic simplicity, we'll just score it and pick the best, or skip if i < sortedWorkers.length - 1
+                     if (hasSameService && i < sortedWorkers.length - 1) {
+                        continue // Skip this node to prefer spread
+                     }
                      
                      // Place pod
                      pod.nodeId = workerId

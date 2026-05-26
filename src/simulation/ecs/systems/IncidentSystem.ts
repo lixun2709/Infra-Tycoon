@@ -57,20 +57,40 @@ export class IncidentSystem implements System {
   }
 
   private executeDrill(world: World, incident: IncidentComponent, _dt: number) {
-    // In a DR Drill, we actively degrade the affected nodes to force the simulation into failover
-    // E.g. pulling power or severing connections.
-    incident.affectedNodes.forEach(nodeId => {
-      const power = world.getComponent<PowerComponent>(nodeId, 'PowerComponent')
-      if (power && power.isPowered && incident.elapsedSeconds < 10) {
-        // Initial phase of drill: cut power
-        power.isPowered = false
-      }
-
-      const connection = world.getComponent<ConnectionComponent>(nodeId, 'ConnectionComponent')
-      if (connection && connection.status === 'active' && incident.elapsedSeconds < 10) {
-        connection.status = 'blocked'
-      }
-    })
+    // In a DR Drill, we simulate a Site Isolation (Dark Site) scenario.
+    // Instead of randomly pulling power, we isolate all nodes matching the target siteId from the network.
+    
+    // Drill starts: isolate the site.
+    // Drill ends (resolved): reconnect the site.
+    
+    const transforms = world.getComponents<TransformComponent>('TransformComponent')
+    if (!transforms) return
+    
+    // We expect the incident to have an affected siteId. If not, fallback to isolating affectedNodes.
+    const targetSiteId = incident.siteId
+    
+    if (targetSiteId) {
+      transforms.forEach((transform, nodeId) => {
+        if (transform.siteId === targetSiteId) {
+          // Keep power on but blackhole network
+          if (incident.elapsedSeconds < 10) {
+            transform.isBlackholed = true
+          } else if (incident.isResolved) {
+            transform.isBlackholed = false
+          }
+        }
+      })
+    } else {
+      // Legacy node-based drill fallback
+      incident.affectedNodes.forEach(nodeId => {
+        const transform = world.getComponent<TransformComponent>(nodeId, 'TransformComponent')
+        if (transform && incident.elapsedSeconds < 10) {
+           transform.isBlackholed = true
+        } else if (transform && incident.isResolved) {
+           transform.isBlackholed = false
+        }
+      })
+    }
   }
 
   private isNodeHealthy(world: World, nodeId: string): boolean {

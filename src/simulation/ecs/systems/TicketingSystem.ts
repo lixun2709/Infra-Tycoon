@@ -10,13 +10,37 @@ import type {
 } from '../types'
 
 export class TicketingSystem implements System {
+  private maxTechnicians = 5
+
   public update(world: World, dt: number): void {
     const ticketComponents = world.getComponents<TicketComponent>('TicketComponent')
     if (!ticketComponents) return
 
+    let activeTickets = 0
+    // Count active tickets (not completed, not queued)
+    ticketComponents.forEach((ticket) => {
+      if (ticket.status !== 'completed' && ticket.status !== 'queued') {
+        activeTickets++
+      }
+    })
+
     ticketComponents.forEach((ticket, entityId) => {
       // Advance ticket progress deterministically based on dt
       if (ticket.status !== 'completed') {
+        // If it's queued or brand new, check if we have technician capacity
+        if (ticket.status === 'queued' || ticket.elapsedSeconds === 0) {
+          if (activeTickets >= this.maxTechnicians) {
+            ticket.status = 'queued'
+            return // Skip advancing dt, the ticket is waiting for a technician
+          } else {
+            // A technician picked it up!
+            activeTickets++
+            if (ticket.status === 'queued') {
+               ticket.status = 'dispatched'
+            }
+          }
+        }
+
         ticket.elapsedSeconds += dt
 
         if (ticket.elapsedSeconds >= ticket.totalSeconds) {

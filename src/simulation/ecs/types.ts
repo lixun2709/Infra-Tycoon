@@ -206,7 +206,7 @@ export interface TicketComponent extends Component {
   type: 'drive' | 'cpu' | 'motherboard' | 'psu' | 'network' | 'power'
   elapsedSeconds: number
   totalSeconds: number
-  status: 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
+  status: 'queued' | 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
 }
 
 // Incident Component: Tracks site-wide or major events (Real or Drills)
@@ -219,6 +219,7 @@ export interface IncidentComponent extends Component {
   rtoTargetSeconds?: number // Recovery Time Objective
   isResolved: boolean
   hasAlertedRto?: boolean
+  siteId?: string
 }
 
 // VM Component: Individual Virtual Machine state running inside the ECS
