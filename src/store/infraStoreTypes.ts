@@ -178,6 +178,7 @@ export type InfraState = {
   isolateNode: (id: string) => void
   formatNode: (id: string) => void
   triggerRansomwareSimulation: () => void
+  triggerDRDrill: (siteId?: string, severity?: 'low' | 'high') => void
   
   // Day 7: Logical Networking
   verifyService: (nodeId: string, type: ServiceType) => boolean

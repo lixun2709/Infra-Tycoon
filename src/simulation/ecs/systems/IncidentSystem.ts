@@ -29,11 +29,25 @@ export class IncidentSystem implements System {
         if (incident.rtoTargetSeconds && incident.elapsedSeconds > incident.rtoTargetSeconds && !allResolved) {
           // RTO violation
           world.publish('incident:rto_violation', { incidentId: incident.incidentId })
+          
+          if (!incident.hasAlertedRto) {
+            incident.hasAlertedRto = true
+            world.eventBus.publish('system:alert', {
+              entityId: incident.incidentId,
+              message: `DR Drill FAILED: Target RTO of ${incident.rtoTargetSeconds}s missed for incident ${incident.type}.`,
+              severity: 'error'
+            })
+          }
         }
 
         if (allResolved && incident.elapsedSeconds > 10) { // minimum 10s evaluation
           incident.isResolved = true
           world.publish('incident:resolved', { incidentId: incident.incidentId })
+          world.eventBus.publish('system:alert', {
+             entityId: incident.incidentId,
+             message: `DR Drill PASSED: Resolved in ${Math.round(incident.elapsedSeconds)}s.`,
+             severity: 'success'
+          })
         }
       })
     }

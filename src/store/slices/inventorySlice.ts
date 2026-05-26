@@ -22,6 +22,7 @@ export interface InventorySlice {
   isolateNode: (id: string) => void
   formatNode: (id: string) => void
   triggerRansomwareSimulation: () => void
+  triggerDRDrill: (siteId?: string, severity?: 'low' | 'high') => void
 }
 
 export const createInventorySlice: StateCreator<InfraState, [], [], InventorySlice> = (set, get) => ({
@@ -286,5 +287,40 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     
     pushAlert('critical', 'RANSOMWARE DRILL INITIATED: Malicious payload injected into network.')
     audioManager.playEffect('error')
+  },
+
+  triggerDRDrill: (siteId, severity = 'high') => {
+    const { nodes, pushAlert } = get()
+    
+    // Find compute nodes that are running
+    const validNodes = nodes.filter(n => n.type === 'compute' && n.systemState === 'running' && (!siteId || n.siteId === siteId))
+    
+    if (validNodes.length === 0) {
+      pushAlert('error', 'DR Drill aborted: No active compute nodes in target site.')
+      return
+    }
+
+    // Pick 2-5 nodes to pull power from for the drill
+    const numToFail = Math.max(2, Math.min(5, Math.floor(validNodes.length / 2)))
+    const shuffled = [...validNodes].sort(() => 0.5 - Math.random())
+    const affectedNodes = shuffled.slice(0, numToFail).map(n => n.id)
+
+    const drillIncident = {
+      id: `drill-${Date.now()}`,
+      type: 'drill' as const,
+      severity,
+      affectedNodes,
+      elapsedSeconds: 0,
+      rtoTargetSeconds: severity === 'high' ? 60 : 120, // Strict RTO constraints
+      isResolved: false,
+      startedAt: Date.now()
+    }
+
+    set(state => ({
+      incidents: [...(state.incidents || []), drillIncident]
+    }))
+
+    pushAlert('warning', `DR Drill Initiated: Power cut to ${numToFail} nodes. SLA RTO evaluation active.`)
+    audioManager.playEffect('warning')
   }
 })

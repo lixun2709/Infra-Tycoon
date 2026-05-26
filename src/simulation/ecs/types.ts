@@ -217,6 +217,7 @@ export interface IncidentComponent extends Component {
   elapsedSeconds: number
   rtoTargetSeconds?: number // Recovery Time Objective
   isResolved: boolean
+  hasAlertedRto?: boolean
 }
 
 // VM Component: Individual Virtual Machine state running inside the ECS

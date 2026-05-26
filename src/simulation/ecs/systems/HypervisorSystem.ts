@@ -1,5 +1,5 @@
 import { System } from '../System'
-import type { VmComponent, PowerComponent } from '../types'
+import type { VmComponent, PowerComponent, TransformComponent, SecurityComponent } from '../types'
 
 /**
  * HypervisorSystem
@@ -9,6 +9,8 @@ export class HypervisorSystem extends System {
   public update(dt: number) {
     const vmMap = this.world.getComponentMap<VmComponent>('vm')
     const powerMap = this.world.getComponentMap<PowerComponent>('power')
+    const transformMap = this.world.getComponentMap<TransformComponent>('transform')
+    const securityMap = this.world.getComponentMap<SecurityComponent>('security')
 
     // Optional: we can compute shortest paths for vMotion if we need exact bandwidth,
     // but a simplified approach for now is to find direct bandwidth or assume a standard 10Gbps backbone if in the same site.
@@ -20,10 +22,28 @@ export class HypervisorSystem extends System {
       const hostPower = powerMap.get(vm.nodeId)
 
       // High Availability (HA) / Power Loss detection
-      if (!hostPower || !hostPower.isPowered) {
+      if (!hostPower || !hostPower.isPowered || hostPower.systemState !== 'running') {
         if (vm.status === 'running' || vm.status === 'booting' || vm.status === 'migrating') {
-          // Host failed, VM crashes
-          vm.status = 'error'
+          // Host failed, trigger HA restart
+          const healthyHost = this.findHealthyHost(powerMap, vmMap, vm.nodeId)
+          if (healthyHost) {
+             vm.nodeId = healthyHost
+             vm.status = 'booting'
+             vm.migratingToNodeId = undefined
+             vm.migrationProgress = undefined
+             this.world.eventBus.publish('system:alert', {
+               entityId: id,
+               message: `HA Triggered: Restarting VM on healthy host ${healthyHost.slice(0, 8)}`,
+               severity: 'warning'
+             })
+          } else {
+             vm.status = 'error'
+             this.world.eventBus.publish('system:alert', {
+               entityId: id,
+               message: `HA Failed: No healthy hosts available for VM.`,
+               severity: 'critical'
+             })
+          }
         }
         return
       }
@@ -42,12 +62,22 @@ export class HypervisorSystem extends System {
       // vMotion (Live Migration)
       if (vm.status === 'migrating' && vm.migratingToNodeId) {
         const targetPower = powerMap.get(vm.migratingToNodeId)
+        const targetTransform = transformMap.get(vm.migratingToNodeId)
+        const targetSec = securityMap.get(vm.migratingToNodeId)
         
-        // If target loses power during migration, abort
-        if (!targetPower || !targetPower.isPowered) {
+        // If target loses power, is blackholed, or isolated during migration, abort
+        const isTargetHealthy = targetPower && targetPower.isPowered && targetPower.systemState === 'running'
+        const isNetworkBlocked = (targetTransform && targetTransform.isBlackholed) || (targetSec && targetSec.isIsolated)
+
+        if (!isTargetHealthy || isNetworkBlocked) {
           vm.status = 'running'
           vm.migratingToNodeId = undefined
           vm.migrationProgress = undefined
+          this.world.eventBus.publish('system:alert', {
+            entityId: id,
+            message: `vMotion Aborted: Target host ${isNetworkBlocked ? 'network isolated' : 'offline'}.`,
+            severity: 'error'
+          })
           return
         }
 
@@ -71,5 +101,29 @@ export class HypervisorSystem extends System {
         }
       }
     })
+  }
+
+  private findHealthyHost(powerMap: Map<string, PowerComponent>, vmMap: Map<string, VmComponent>, ignoreHostId: string): string | null {
+    // Basic HA host selection heuristic
+    let bestHostId: string | null = null
+    let minLoad = Infinity
+
+    powerMap.forEach((power, hostId) => {
+      if (hostId === ignoreHostId) return
+      if (power.isPowered && power.systemState === 'running') {
+         // Calculate load (number of VMs for now as placeholder for mem/cpu tracking)
+         let activeVMs = 0
+         vmMap.forEach(vm => {
+           if (vm.nodeId === hostId) activeVMs++
+         })
+         
+         if (activeVMs < minLoad && activeVMs < 10) { // Limit 10 VMs per host 
+           minLoad = activeVMs
+           bestHostId = hostId
+         }
+      }
+    })
+
+    return bestHostId
   }
 }
