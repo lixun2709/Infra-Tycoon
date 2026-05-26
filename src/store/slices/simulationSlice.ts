@@ -127,6 +127,29 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       })
     }
 
+    // Sync tickets and incidents from worker
+    let updatedTickets = get().technicianTickets
+    if (payload.tickets) {
+      updatedTickets = get().technicianTickets.map(ticket => {
+        const update = payload.tickets!.find(t => t.id === ticket.id)
+        if (update) {
+          return { ...ticket, ...update }
+        }
+        return ticket
+      })
+    }
+
+    let updatedIncidents = get().incidents
+    if (payload.incidents) {
+      updatedIncidents = get().incidents.map(incident => {
+        const update = payload.incidents!.find(i => i.id === incident.id)
+        if (update) {
+          return { ...incident, ...update }
+        }
+        return incident
+      })
+    }
+
     set({ 
       nodes: updatedNodes,
       applications: updatedApps,
@@ -134,6 +157,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       connections: updatedConnections,
       activeContracts: updatedContractsStore,
       sites: updatedSites,
+      technicianTickets: updatedTickets,
+      incidents: updatedIncidents,
       overloadedRackCount,
       siteMetricsHistory,
       totalPowerKW,
@@ -155,8 +180,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       set({ _lastTelemetry: telemetry } as Partial<InfraState>)
     })
     
-    const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad } = get()
-    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad)
+    const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad, technicianTickets, incidents } = get()
+    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad, technicianTickets, incidents)
 
     // Start centralized non-React Simulation Engine run loop (Day 28)
     simulationCoordinator.start(1000)
@@ -164,7 +189,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
   processTick: (dt = 1.0) => {
     // 0. Request Worker Tick (Asynchronous)
-    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad)
+    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents)
     simWorkerManager.requestTick(dt)
     
     const { nodes, activeContracts, realTimePlayedSeconds, balance, reputation } = get()

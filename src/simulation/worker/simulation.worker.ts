@@ -91,7 +91,7 @@ function processQueue() {
  */
 function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const world = engine.getWorld()
-  const { nodes, applications, virtualMachines, contracts, connections, networkLoad } = payload
+  const { nodes, applications, virtualMachines, contracts, connections, networkLoad, tickets, incidents } = payload
 
   // Track global network load deterministically inside the PacketSystem
   if (networkLoad !== undefined) {
@@ -110,6 +110,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   }
   if (connections) {
     connections.forEach(conn => incomingIds.add(conn.id))
+  }
+  if (tickets) {
+    tickets.forEach(ticket => incomingIds.add(ticket.id))
+  }
+  if (incidents) {
+    incidents.forEach(incident => incomingIds.add(incident.id))
   }
 
   // 2. Fetch all current entity IDs registered in the ECS World
@@ -538,6 +544,56 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       }
     })
   }
+
+  // 5.4 Update Tickets
+  if (tickets) {
+    tickets.forEach(ticket => {
+      if (!world.hasComponent('TicketComponent', ticket.id)) {
+        world.registerEntity(ticket.id)
+        world.addComponent('TicketComponent', {
+          entityId: ticket.id,
+          ticketId: ticket.id,
+          targetNodeId: ticket.targetNodeId,
+          type: ticket.type,
+          status: ticket.status,
+          totalSeconds: ticket.totalSeconds,
+          elapsedSeconds: ticket.elapsedSeconds
+        } as import('../ecs/types').TicketComponent)
+      } else {
+        const existing = world.getComponent<import('../ecs/types').TicketComponent>('TicketComponent', ticket.id)
+        if (existing) {
+          existing.status = ticket.status
+          // Do not overwrite elapsedSeconds as it is managed by the Simulation Engine deterministically
+        }
+      }
+    })
+  }
+
+  // 5.5 Update Incidents
+  if (incidents) {
+    incidents.forEach(incident => {
+      if (!world.hasComponent('IncidentComponent', incident.id)) {
+        world.registerEntity(incident.id)
+        world.addComponent('IncidentComponent', {
+          entityId: incident.id,
+          incidentId: incident.id,
+          type: incident.type,
+          severity: incident.severity,
+          affectedNodes: incident.affectedNodes,
+          elapsedSeconds: incident.elapsedSeconds,
+          isResolved: incident.isResolved,
+          rtoTargetSeconds: incident.rtoTargetSeconds,
+          startedAt: incident.startedAt,
+          resolvedAt: incident.resolvedAt
+        } as import('../ecs/types').IncidentComponent)
+      } else {
+        const existing = world.getComponent<import('../ecs/types').IncidentComponent>('IncidentComponent', incident.id)
+        if (existing) {
+          // Do not overwrite elapsedSeconds or isResolved since they are engine-driven
+        }
+      }
+    })
+  }
 }
 
 function sendSyncOutput() {
@@ -552,7 +608,9 @@ function sendSyncOutput() {
     contracts: [],
     virtualMachines: [],
     connections: [],
-    alerts
+    alerts,
+    tickets: [],
+    incidents: []
   }
 
   // Collect results from components
@@ -567,6 +625,8 @@ function sendSyncOutput() {
   const connectionMap = world.getComponentMap<ConnectionComponent>('connection')
   const backupMap = world.getComponentMap<import('../ecs/types').BackupComponent>('backup')
   const securityMap = world.getComponentMap<import('../ecs/types').SecurityComponent>('security')
+  const ticketMap = world.getComponentMap<import('../ecs/types').TicketComponent>('TicketComponent')
+  const incidentMap = world.getComponentMap<import('../ecs/types').IncidentComponent>('IncidentComponent')
 
   thermalMap.forEach((comp, id) => {
     const power = powerMap.get(id)
@@ -667,6 +727,31 @@ function sendSyncOutput() {
       packetsDropped: comp.packetsDropped,
       isBlackholed: comp.isBlackholed,
       rateLimitGbps: comp.rateLimitGbps
+    })
+  })
+
+  ticketMap.forEach((comp, id) => {
+    output.tickets!.push({
+      id,
+      targetNodeId: comp.targetNodeId,
+      type: comp.type,
+      status: comp.status,
+      totalSeconds: comp.totalSeconds,
+      elapsedSeconds: comp.elapsedSeconds
+    })
+  })
+
+  incidentMap.forEach((comp, id) => {
+    output.incidents!.push({
+      id,
+      type: comp.type,
+      severity: comp.severity,
+      affectedNodes: comp.affectedNodes,
+      elapsedSeconds: comp.elapsedSeconds,
+      isResolved: comp.isResolved,
+      rtoTargetSeconds: comp.rtoTargetSeconds,
+      startedAt: comp.startedAt,
+      resolvedAt: comp.resolvedAt
     })
   })
 

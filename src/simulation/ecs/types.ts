@@ -199,6 +199,26 @@ export interface HypervisorComponent extends Component {
   memoryOvercommitRatio: number
 }
 
+// Ticket Component: Tracks active repair workflows
+export interface TicketComponent extends Component {
+  ticketId: string
+  type: 'drive' | 'cpu' | 'motherboard' | 'psu' | 'network' | 'power'
+  elapsedSeconds: number
+  totalSeconds: number
+  status: 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
+}
+
+// Incident Component: Tracks site-wide or major events (Real or Drills)
+export interface IncidentComponent extends Component {
+  incidentId: string
+  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  affectedNodes: string[]
+  elapsedSeconds: number
+  rtoTargetSeconds?: number // Recovery Time Objective
+  isResolved: boolean
+}
+
 // VM Component: Individual Virtual Machine state running inside the ECS
 export interface KubernetesNodeComponent extends Component {
   role: 'master' | 'worker'

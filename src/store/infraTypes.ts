@@ -220,6 +220,18 @@ export interface PostMortem {
   impact: string
 }
 
+export interface Incident {
+  id: string
+  siteId: string
+  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway'
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  startTimestamp: number
+  resolvedTimestamp?: number
+  affectedNodes: string[]
+  isResolved: boolean
+  rtoTargetSeconds?: number
+}
+
 export interface Blueprint {
   id: string
   name: string
@@ -307,7 +319,7 @@ export interface TechnicianTicket {
   id: string
   nodeId: string
   nodeName: string
-  type: 'drive' | 'cpu' | 'motherboard' | 'psu'
+  type: 'drive' | 'cpu' | 'motherboard' | 'psu' | 'network' | 'power'
   status: 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
   elapsedSeconds: number
   totalSeconds: number

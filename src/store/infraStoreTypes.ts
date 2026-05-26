@@ -18,7 +18,8 @@ import type {
   SaveMetadata,
   ActiveContract,
   TechnicianTicket,
-  VirtualMachine
+  VirtualMachine,
+  Incident
 } from './infraTypes'
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
@@ -58,6 +59,7 @@ export type InfraState = {
   ntpSyncStatus: NtpSyncStatus[]
   networkUptime: number
   postMortems: PostMortem[]
+  incidents: Incident[]
   blueprints: Blueprint[]
   previewBlueprintId: string | null
   siteMetricsHistory?: Record<string, {

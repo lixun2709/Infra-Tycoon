@@ -14,6 +14,8 @@ import { ObservabilityTracer } from './observability/ObservabilityTracer'
 import { SlaSystem } from './ecs/systems/SlaSystem'
 import { HypervisorSystem } from './ecs/systems/HypervisorSystem'
 import { KubernetesSystem } from './ecs/systems/KubernetesSystem'
+import { TicketingSystem } from './ecs/systems/TicketingSystem'
+import { IncidentSystem } from './ecs/systems/IncidentSystem'
 import { SystemManager } from './ecs/SystemManager'
 
 /**
@@ -34,6 +36,9 @@ export class SimulationEngine {
     // Register active simulation systems with strict priority execution
     this.systemManager.registerSystem(new PowerSystem(this.world), 10)
     this.systemManager.registerSystem(new HypervisorSystem(this.world), 12)
+    this.systemManager.registerSystem(new SlaSystem(this.world), 13)
+    this.systemManager.registerSystem(new TicketingSystem(), 14)
+    this.systemManager.registerSystem(new IncidentSystem(), 15)
     this.systemManager.registerSystem(new RackSystem(this.world), 15)
     this.systemManager.registerSystem(new ThermalSystem(this.world), 20)
     this.systemManager.registerSystem(new StorageSystem(this.world), 25)

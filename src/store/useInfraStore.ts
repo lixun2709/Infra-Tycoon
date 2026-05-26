@@ -43,6 +43,7 @@ export const useInfraStore = create<InfraState>()(
       networkLoad: 0.1,
       resilienceIndex: 100,
       postMortems: [],
+      incidents: [],
       isAutoPilot: false,
       assistantTargetId: null,
       isSaveManagerOpen: false,
