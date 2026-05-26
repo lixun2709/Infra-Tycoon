@@ -19,5 +19,14 @@ Architecturally, network simulation routing and congestion are divided into pure
 - **MalwarePropagator**: Simulates probabilistic lateral spread of infectious agents across adjacent network hops.
 - **QoSEngine**: Translates saturated bandwidth utilization into distinct V2 QoS priorities (Control, Application, Bulk), applying scaled latency penalties and packet drops.
 
+## Storage System
+Simulates enterprise datacenter storage fabrics, including SAS/FC SAN aggregations, dual-parity RAID-6 failures, IOPS workload queuing, and active data replication.
+
+Architecturally, the Storage System is divided into purely functional modules:
+- **SANAggregator**: Discovers and aggregates capacity and IOPS from cabled disk shelves to their SAN controllers using Breadth-First Search.
+- **RAIDManager**: Processes drive wear degradation, computes Write Amplification Factor (WAF), manages RAID failure thresholds, and dynamic array rebuilding.
+- **ReplicationManager**: Calculates path bandwidth and syncs active data replication loops between primary and secondary sites.
+- **IOPSCalculator**: Resolves IOPS workloads from applications, calculates deduplication/compression overheads, and cascades thermal storage thrashing to the hardware stack.
+
 ## Telemetry System
 Aggregates performance counters across all active components. Exposes OpenMetrics-compliant endpoints for the NOC dashboard React components to visualize (e.g. Total Power kW, BTU Load).
