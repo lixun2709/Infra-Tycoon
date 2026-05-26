@@ -138,6 +138,11 @@ export class TelemetrySystem extends System {
   public lastExecutionTimeMs = 0.0
   private executionTickCounter = 0
   
+  // Zero-allocation persistent Maps for per-tick site aggregations
+  private siteTempsSum = new Map<string, number>()
+  private siteTempsCount = new Map<string, number>()
+  private sitePowerSum = new Map<string, number>()
+
   public static readonly MAX_HISTORY_LENGTH = 30
 
   public update(_dt: number) {
@@ -162,9 +167,10 @@ export class TelemetrySystem extends System {
     let totalStorageUsed = 0.0
     let totalStorageCapacity = 0.0
 
-    // Temporary groupings per site to compute site averages
-    const siteTempsMap = new Map<string, number[]>()
-    const sitePowerMap = new Map<string, number>()
+    // Clear persistent maps for the new tick without allocating new objects
+    this.siteTempsSum.clear()
+    this.siteTempsCount.clear()
+    this.sitePowerSum.clear()
 
     const publishAlert = (severity: 'info' | 'warning' | 'critical', message: string, nodeId: string) => {
       this.world.eventBus.publish('system:alert', { severity, message, nodeId })
@@ -224,10 +230,9 @@ export class TelemetrySystem extends System {
       // Gather temp statistics per site
       const siteId = transform.siteId
       if (siteId) {
-        if (!siteTempsMap.has(siteId)) siteTempsMap.set(siteId, [])
-        siteTempsMap.get(siteId)!.push(currentTemp)
-
-        sitePowerMap.set(siteId, (sitePowerMap.get(siteId) ?? 0.0) + currentLoad)
+        this.siteTempsSum.set(siteId, (this.siteTempsSum.get(siteId) ?? 0) + currentTemp)
+        this.siteTempsCount.set(siteId, (this.siteTempsCount.get(siteId) ?? 0) + 1)
+        this.sitePowerSum.set(siteId, (this.sitePowerSum.get(siteId) ?? 0) + currentLoad)
       }
 
       // Thermal safeguards
@@ -293,7 +298,7 @@ export class TelemetrySystem extends System {
     })
 
     // 3. Compile Site-Wide rolling historical aggregates
-    sitePowerMap.forEach((powerSum, siteId) => {
+    this.sitePowerSum.forEach((powerSum, siteId) => {
       // Initialize rolling maps
       if (!this.sitePowerHistory.has(siteId)) this.sitePowerHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
       if (!this.siteTempHistory.has(siteId)) this.siteTempHistory.set(siteId, new CircularBuffer(TelemetrySystem.MAX_HISTORY_LENGTH))
@@ -304,8 +309,9 @@ export class TelemetrySystem extends System {
       const humidityHistory = this.siteHumidityHistory.get(siteId)!
 
       // Average temperature computation
-      const tempsList = siteTempsMap.get(siteId) ?? []
-      const avgTemp = tempsList.length > 0 ? tempsList.reduce((a, b) => a + b, 0) / tempsList.length : 22.0
+      const sum = this.siteTempsSum.get(siteId) ?? 0
+      const count = this.siteTempsCount.get(siteId) ?? 0
+      const avgTemp = count > 0 ? sum / count : 22.0
 
       // Humidity from ThermalSystem
       const currentHumidity = ThermalSystem.siteAmbientHumidity.get(siteId) ?? 45.0

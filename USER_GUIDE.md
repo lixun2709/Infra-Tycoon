@@ -652,3 +652,14 @@ Telemetry collection, alerting, and distributed tracing shouldn't consume more r
 
 **Operational Impact:**
 Alerting remains fully functional across Power, Thermal, Storage, and Networking incidents. Trace spans natively record events and display properly on the NOC Observability Dashboard without UI hiccups.
+
+## Day 80: Core Datacenter Simulation - Telemetry Subsystem Redesign
+
+**What Changed:**
+The Telemetry subsystem (TelemetrySystem.ts) was refactored to eliminate major garbage collection (GC) allocations that occurred during the main simulation tick. Dynamic Array and Map initializations used for aggregating average site temperatures and power consumption were completely replaced by persistent Maps acting as zero-allocation counters.
+
+**Why it matters:**
+Telemetry collection loops run constantly over thousands of datacenter hardware components. By utilizing class-persistent Maps combined with primitive Map.clear() resets, the telemetry engine now aggregates millions of metrics without reallocating arrays or map instances on the heap. This prevents frame-stutter and preserves lockstep tick timing across the entire enterprise facility.
+
+**Operational Impact:**
+Operational data gathering—such as site-wide Thermal mapping, aggregated Power consumption metrics, and Storage utilization ratios—remain perfectly synchronized but execute silently in the background with absolute determinism and O(1) memory consumption.

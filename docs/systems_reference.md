@@ -43,3 +43,7 @@ Architecturally, the Observability System is divided into purely functional modu
 - **ObservabilityRulesEngine**: Stateless deterministic function evaluating threshold alarms. Uses nested pointer maps internally to avoid string key allocations (zero-allocation physics processing).
 - **ObservabilityTracer**: Zero-allocation circular ring buffer utilizing deterministic integer IDs and pre-allocated arrays to track microservice spanning without GC spikes.
 - **ObservabilityAlerting**: Independent rules configuration store, exposing static schemas without tightly coupling to the ECS environment for pure WebWorker compatibility.
+## Telemetry System
+Responsible for gathering simulation performance and operational statistics. It calculates metrics such as average uptime, PUE, WUE, power constraints, and temperature aggregation.
+
+Architecturally, the Telemetry System follows a strictly zero-allocation pipeline during update ticks. It utilizes persistent Map properties and primitive counter accumulations to prevent Garbage Collector (GC) pressure when rendering thousands of entities at once. Aggregated telemetry metrics are natively injected into CircularBuffer instances, preventing internal Array expansions or object cloning throughout long-running server simulations.
