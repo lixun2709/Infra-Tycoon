@@ -57,7 +57,16 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) =>
       }
     }
 
-    if (severity === 'critical') audioManager.playEffect('error')
+    if (severity === 'critical') {
+      audioManager.playEffect('error')
+      // Apply immediate reputation penalty for severe infrastructure incidents
+      if (message.includes('[THERMAL CRITICAL]') || message.includes('[RACK OVERLOAD]') || message.includes('Hardware failed')) {
+        const state = get()
+        if (state.adjustReputation) {
+          state.adjustReputation(-2, 'Critical Infrastructure Incident')
+        }
+      }
+    }
     else if (severity === 'warning') audioManager.playEffect('alert')
     
     set((state) => ({

@@ -32,7 +32,9 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
     setPlacementMode,
     sites,
     currentSiteId,
-    selectedNodeId
+    selectedNodeId,
+    isHardwareUnlocked,
+    balance
   } = useInfraStore(useShallow(state => ({
     deploymentQueue: state.deploymentQueue,
     setPlacementMode: state.setPlacementMode,

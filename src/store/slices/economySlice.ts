@@ -7,7 +7,40 @@ export interface EconomySlice {
   chargeMaintenanceCost: (amount: number, reason: string) => boolean
 }
 
+export function getReputationTier(rep: number): 'Blacklisted' | 'Unproven' | 'Reliable' | 'Enterprise Trusted' | 'Mission Critical' {
+  if (rep < 20) return 'Blacklisted'
+  if (rep < 40) return 'Unproven'
+  if (rep < 60) return 'Reliable'
+  if (rep < 80) return 'Enterprise Trusted'
+  return 'Mission Critical'
+}
+
 export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> = (set, get) => ({
+  adjustReputation: (amount: number, reason: string) => {
+    const { reputation, reputationHistory, pushAlert } = get()
+    if (amount === 0) return
+    
+    const newReputation = Math.max(0, Math.min(100, reputation + amount))
+    if (newReputation === reputation) return // No change
+    
+    const entry = {
+      id: crypto.randomUUID(),
+      timestamp: Date.now(),
+      amount,
+      reason
+    }
+    
+    const newHistory = [entry, ...reputationHistory].slice(0, 50) // Keep last 50 entries
+    
+    set({ reputation: newReputation, reputationHistory: newHistory })
+    
+    if (amount < 0) {
+      pushAlert(amount <= -5 ? 'critical' : 'warning', `REPUTATION LOST: ${amount} (${reason})`)
+    } else if (amount >= 5) {
+      pushAlert('info', `REPUTATION GAINED: +${amount} (${reason})`)
+    }
+  },
+
   chargeMaintenanceCost: (amount: number, reason: string) => {
     const { balance, pushAlert } = get()
     if (balance < amount) {
@@ -23,7 +56,6 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       activeContracts, 
       realTimePlayedSeconds, 
       balance, 
-      reputation,
       loans,
       consecutiveNegativeMonths,
       isBankrupt,
@@ -124,9 +156,9 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         : 1.0
       
       const repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
-      const newReputation = Math.max(0, Math.min(100, reputation + repChange))
-      
-      set({ reputation: newReputation })
+      if (repChange !== 0 && updatedContracts.length > 0) {
+        get().adjustReputation(repChange, 'Monthly SLA Performance')
+      }
       pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, OPEX: -$${totalExpensesPerMonth}, Loans: -$${totalLoanPayment}, Penalties: -$${monthlyPenalty})`)
 
       if (updatedContracts.length > 0) {
@@ -154,9 +186,10 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       }
 
       // Contract cancellation due to reputation
-      if (newReputation < 20 && updatedContracts.length > 0) {
-        pushAlert('critical', 'REPUTATION CRITICAL: Clients are terminating contracts due to poor reliability.')
-        // In a real loop, we might remove contracts here. Handled later.
+      const latestRep = get().reputation
+      if (latestRep < 20 && updatedContracts.length > 0) {
+        pushAlert('critical', 'REPUTATION CRITICAL: Clients have terminated all contracts due to Blacklisted status.')
+        updatedContracts.length = 0 // Clear all active contracts
       }
       
       set({ loans: updatedLoans, consecutiveNegativeMonths: newConsecutiveNegativeMonths, isBankrupt: newIsBankrupt })

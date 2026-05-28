@@ -55,6 +55,7 @@ export const useInfraStore = create<InfraState>()(
       realTimePlayedSeconds: 0,
       balance: 100000,
       reputation: 50,
+      reputationHistory: [],
       activeContracts: [],
       marketContracts: [],
       loans: [],

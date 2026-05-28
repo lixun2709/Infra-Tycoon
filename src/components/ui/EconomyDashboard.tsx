@@ -15,6 +15,7 @@ import {
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
+import { getReputationTier } from '../../store/slices/economySlice'
 
 interface EconomyDashboardProps {
   isOpen: boolean
@@ -32,10 +33,11 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
     cancelContract: state.cancelContract,
     takeLoan: state.takeLoan,
     repayLoan: state.repayLoan,
-    companyLevel: state.companyLevel
+    companyLevel: state.companyLevel,
+    reputationHistory: state.reputationHistory || []
   })))
   useInfraStore(s => s.nodes.length)
-  const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active' | 'banking'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active' | 'banking' | 'reputation'>('overview')
 
   // Calculate MRR and MRE
   const totalMRR = activeContracts.reduce((sum, c) => {
@@ -66,6 +68,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
   const tabs: TabItem[] = [
     { id: 'overview', label: 'Financial Overview', icon: <DollarSign size={20} /> },
     { id: 'banking', label: 'Corporate Banking', icon: <Globe size={20} /> },
+    { id: 'reputation', label: 'Enterprise Trust', icon: <Award size={20} /> },
     { id: 'marketplace', label: 'Contract Market', icon: <Briefcase size={20} /> },
     { id: 'active', label: 'Active Contracts', icon: <CheckCircle2 size={20} /> },
   ]
@@ -152,6 +155,45 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                   </div>
                 )}
 
+                {activeTab === 'reputation' && (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-8 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">{getReputationTier(reputation)}</h3>
+                        <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Enterprise Trust Tier</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-4xl font-black text-teal-400">{reputation}<span className="text-sm text-slate-500">/100</span></div>
+                        <p className="text-[10px] text-slate-500 font-black uppercase mt-2">Reputation Score</p>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-8">
+                      <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest mb-6">Reputation History Log</h4>
+                      {reputationHistory.length === 0 ? (
+                        <p className="text-slate-600 text-sm italic">No recent events logged.</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {reputationHistory.map(entry => (
+                            <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800/50">
+                              <div className="flex items-center gap-4">
+                                <div className={`w-2 h-2 rounded-full ${entry.amount > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                <span className="text-xs font-bold text-slate-300 uppercase">{entry.reason}</span>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                <span className="text-[10px] text-slate-600 font-bold">{new Date(entry.timestamp).toLocaleTimeString()}</span>
+                                <span className={`text-sm font-black ${entry.amount > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {entry.amount > 0 ? '+' : ''}{entry.amount}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {activeTab === 'marketplace' && (
                   <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
                     {marketContracts.map(bp => (
@@ -220,32 +262,35 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="grid grid-cols-2 gap-6">
                       <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6">
-                        <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest mb-4">Available Loans</h4>
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest">Available Loans</h4>
+                          <span className="text-[10px] font-bold text-teal-400 bg-teal-400/10 px-2 py-1 rounded">Interest Modifier: {(reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5)}x</span>
+                        </div>
                         <div className="space-y-4">
                           <LoanOfferCard 
                             name="Startup Seed Capital" 
                             principal={50000} 
-                            interestRate={0.03} 
+                            interestRate={0.03 * (reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5)} 
                             minimumMonthlyPayment={2000} 
-                            onTake={() => takeLoan("Startup Seed Capital", 50000, 0.03, 2000)}
-                            isLocked={companyLevel > 3 || balance > 100000}
-                            lockReason="Only available for early-stage startups."
+                            onTake={() => takeLoan("Startup Seed Capital", 50000, 0.03 * (reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5), 2000)}
+                            isLocked={companyLevel > 3}
+                            lockReason="Only available for early-stage startups (Level 1-3)."
                           />
                           <LoanOfferCard 
                             name="Facility Expansion Loan" 
                             principal={250000} 
-                            interestRate={0.05} 
+                            interestRate={0.05 * (reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5)} 
                             minimumMonthlyPayment={15000} 
-                            onTake={() => takeLoan("Facility Expansion Loan", 250000, 0.05, 15000)}
+                            onTake={() => takeLoan("Facility Expansion Loan", 250000, 0.05 * (reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5), 15000)}
                             isLocked={companyLevel < 2}
                             lockReason="Requires Enterprise Level 2."
                           />
                           <LoanOfferCard 
                             name="Hyperscaler Mega-Debt" 
                             principal={1000000} 
-                            interestRate={0.08} 
+                            interestRate={0.08 * (reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5)} 
                             minimumMonthlyPayment={85000} 
-                            onTake={() => takeLoan("Hyperscaler Mega-Debt", 1000000, 0.08, 85000)}
+                            onTake={() => takeLoan("Hyperscaler Mega-Debt", 1000000, 0.08 * (reputation > 80 ? 0.5 : reputation > 60 ? 0.75 : reputation > 40 ? 1.0 : 1.5), 85000)}
                             isLocked={companyLevel < 4}
                             lockReason="Requires Enterprise Level 4."
                           />
@@ -369,7 +414,7 @@ function ContractCard({ bp, isLocked, isOwned, onAccept }: { bp: ContractBluepri
         <div className="flex items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-2xl gap-3">
           <AlertCircle className="w-4 h-4 text-rose-500" />
           <span className="text-[10px] font-black text-rose-400 uppercase">
-            Requires {bp.minLevel ? `Level ${bp.minLevel}` : `Rep ${bp.minReputation}`}
+            Requires {bp.minLevel && `Level ${bp.minLevel}`} {bp.minLevel && bp.minReputation ? '& ' : ''} {bp.minReputation ? `Rep ${bp.minReputation}` : ''}
           </span>
         </div>
       ) : isOwned ? (

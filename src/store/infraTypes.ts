@@ -23,6 +23,15 @@ export interface ContractBlueprint {
   minLevel?: number
 }
 
+export type ReputationTier = 'Blacklisted' | 'Unproven' | 'Reliable' | 'Enterprise Trusted' | 'Mission Critical'
+
+export interface ReputationHistoryEntry {
+  id: string
+  timestamp: number
+  amount: number
+  reason: string
+}
+
 export interface ActiveContract {
   id: string
   blueprintId: string

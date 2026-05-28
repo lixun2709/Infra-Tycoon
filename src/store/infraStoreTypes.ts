@@ -16,11 +16,11 @@ import type {
   ServiceType,
   ServiceStatus,
   SaveMetadata,
-  ActiveContract,
   TechnicianTicket,
   VirtualMachine,
   Incident,
-  BankLoan
+  BankLoan,
+  ReputationHistoryEntry
 } from './infraTypes'
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
@@ -83,6 +83,7 @@ export type InfraState = {
   // v6.0 Economy & Progression
   balance: number
   reputation: number
+  reputationHistory: ReputationHistoryEntry[]
   activeContracts: ActiveContract[]
   marketContracts: ContractBlueprint[]
   loans: BankLoan[]
@@ -94,6 +95,7 @@ export type InfraState = {
   refreshMarketContracts: () => void
   takeLoan: (name: string, principal: number, interestRate: number, minimumMonthlyPayment: number) => void
   repayLoan: (id: string, amount: number) => void
+  adjustReputation: (amount: number, reason: string) => void
   
   // v7.0 Global & Hybrid
   cloudBurstingActive: boolean
