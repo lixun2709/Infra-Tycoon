@@ -327,4 +327,15 @@ export interface TechnicianTicket {
   elapsedSeconds: number
   totalSeconds: number
   cost: number
+  progress: number
+}
+
+// v6.0 Banking & Debt
+export interface BankLoan {
+  id: string
+  name: string
+  principal: number
+  remainingAmount: number
+  interestRate: number // monthly interest rate (e.g. 0.05 for 5%)
+  minimumMonthlyPayment: number
 }

@@ -39,7 +39,8 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
     sites: state.sites,
     currentSiteId: state.currentSiteId,
     selectedNodeId: state.selectedNodeId,
-    isHardwareUnlocked: state.isHardwareUnlocked
+    isHardwareUnlocked: state.isHardwareUnlocked,
+    balance: state.balance
   })))
 
   const [activeCategory, setActiveCategory] = useState<Category>('compute')
@@ -156,7 +157,8 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                 </div>
                 <button 
                   onClick={onAddRack}
-                  className="px-8 py-4 bg-teal-500 text-[#020617] rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_10px_30px_rgba(20,184,166,0.3)] flex items-center gap-3"
+                  disabled={balance < 0}
+                  className="px-8 py-4 bg-teal-500 text-[#020617] rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_10px_30px_rgba(20,184,166,0.3)] flex items-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                 >
                   <Layout size={16} />
                   Deploy 42U Rack
@@ -165,7 +167,8 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
 
               <div className="flex-1 overflow-y-auto p-10 grid grid-cols-2 gap-8 bg-slate-900/5 custom-scrollbar">
                 {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => {
-                  const unlocked = isHardwareUnlocked(item.key)
+                  const unlocked = isHardwareUnlocked(item.key) && balance >= 0
+                  const lockMessage = balance < 0 ? "Bankrupt: Balance < 0" : `Unlocks at Level ${item.minLevel}`
                   return (
                   <button
                     key={item.key}
@@ -178,7 +181,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
                         <Lock size={32} className="text-red-500/50 mb-3" />
                         <span className="text-[10px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
-                          Unlocks at Level {item.minLevel}
+                          {lockMessage}
                         </span>
                       </div>
                     )}

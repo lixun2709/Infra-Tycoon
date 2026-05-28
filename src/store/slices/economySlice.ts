@@ -24,8 +24,16 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       realTimePlayedSeconds, 
       balance, 
       reputation,
+      loans,
+      consecutiveNegativeMonths,
+      isBankrupt,
       pushAlert
     } = get()
+
+    if (isBankrupt) {
+      // Pause economy if bankrupt.
+      return
+    }
 
     const SECONDS_PER_MONTH = 3600
     const nextRealTimePlayedSeconds = realTimePlayedSeconds + dt
@@ -83,8 +91,33 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     let newBalance = balance
 
     if (isMonthEnd) {
-      const netPayout = monthlyRevenue - monthlyPenalty - totalExpensesPerMonth
+      // Process loans (OpEx)
+      let totalLoanPayment = 0
+      const updatedLoans = loans.map(loan => {
+        // Interest is calculated on remaining principal
+        const interestAmount = loan.remainingAmount * loan.interestRate
+        // The minimum payment pays the interest plus a bit of principal (or whatever the min payment is)
+        let payment = Math.max(interestAmount, loan.minimumMonthlyPayment)
+        
+        // If remaining is less than the payment, just pay the remainder
+        if (loan.remainingAmount + interestAmount < payment) {
+          payment = loan.remainingAmount + interestAmount
+        }
+
+        totalLoanPayment += payment
+
+        return {
+          ...loan,
+          remainingAmount: loan.remainingAmount + interestAmount - payment
+        }
+      }).filter(loan => loan.remainingAmount > 0)
+
+      const netPayout = monthlyRevenue - monthlyPenalty - totalExpensesPerMonth - totalLoanPayment
       newBalance += netPayout
+      
+      if (totalLoanPayment > 0) {
+        pushAlert('warning', `DEBT SERVICING: $${totalLoanPayment.toLocaleString()} automatically deducted for corporate loans.`)
+      }
       
       const avgUptime = updatedContracts.length > 0 
         ? updatedContracts.reduce((sum, c) => sum + (c.totalTicks > 0 ? c.uptimeTicks / c.totalTicks : 1), 0) / updatedContracts.length 
@@ -94,7 +127,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       const newReputation = Math.max(0, Math.min(100, reputation + repChange))
       
       set({ reputation: newReputation })
-      pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, OPEX: -$${totalExpensesPerMonth}, Penalties: -$${monthlyPenalty})`)
+      pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, OPEX: -$${totalExpensesPerMonth}, Loans: -$${totalLoanPayment}, Penalties: -$${monthlyPenalty})`)
 
       if (updatedContracts.length > 0) {
         if (avgUptime >= 0.99) {
@@ -105,8 +138,19 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       }
 
       // Bankruptcy mechanics
+      let newConsecutiveNegativeMonths = consecutiveNegativeMonths
+      let newIsBankrupt = isBankrupt
+
       if (newBalance < 0) {
-        pushAlert('critical', `BANKRUPTCY WARNING: Enterprise balance is negative! Operational shutdown imminent if insolvency continues.`)
+        newConsecutiveNegativeMonths++
+        if (newConsecutiveNegativeMonths >= 3) {
+          newIsBankrupt = true
+          pushAlert('critical', `BANKRUPTCY DECLARED: Account negative for 3 consecutive months. Operations halted!`)
+        } else {
+          pushAlert('critical', `BANKRUPTCY WARNING: Enterprise balance is negative! (Month ${newConsecutiveNegativeMonths}/3). Cancel contracts or secure a loan!`)
+        }
+      } else {
+        newConsecutiveNegativeMonths = 0
       }
 
       // Contract cancellation due to reputation
@@ -114,6 +158,8 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         pushAlert('critical', 'REPUTATION CRITICAL: Clients are terminating contracts due to poor reliability.')
         // In a real loop, we might remove contracts here. Handled later.
       }
+      
+      set({ loans: updatedLoans, consecutiveNegativeMonths: newConsecutiveNegativeMonths, isBankrupt: newIsBankrupt })
     }
 
     set({ 
@@ -121,5 +167,50 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       balance: newBalance,
       realTimePlayedSeconds: nextRealTimePlayedSeconds
     })
+  },
+  
+  takeLoan: (name: string, principal: number, interestRate: number, minimumMonthlyPayment: number) => {
+    const { loans, balance, pushAlert } = get()
+    const newLoan = {
+      id: crypto.randomUUID(),
+      name,
+      principal,
+      remainingAmount: principal,
+      interestRate,
+      minimumMonthlyPayment
+    }
+    
+    set({
+      loans: [...loans, newLoan],
+      balance: balance + principal
+    })
+    
+    pushAlert('info', `LOAN SECURED: $${principal.toLocaleString()} capital injected into enterprise balance.`)
+  },
+  
+  repayLoan: (id: string, amount: number) => {
+    const { loans, balance, pushAlert } = get()
+    
+    if (balance < amount) {
+      pushAlert('warning', 'Insufficient funds to repay loan principal.')
+      return
+    }
+    
+    const updatedLoans = loans.map(loan => {
+      if (loan.id === id) {
+        return {
+          ...loan,
+          remainingAmount: Math.max(0, loan.remainingAmount - amount)
+        }
+      }
+      return loan
+    }).filter(loan => loan.remainingAmount > 0)
+    
+    set({
+      loans: updatedLoans,
+      balance: balance - amount
+    })
+    
+    pushAlert('info', `LOAN REPAYMENT: $${amount.toLocaleString()} paid towards corporate debt.`)
   }
 })

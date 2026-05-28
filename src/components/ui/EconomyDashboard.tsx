@@ -22,17 +22,20 @@ interface EconomyDashboardProps {
 }
 
 export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
-  const { balance, reputation, activeContracts, marketContracts, acceptContract, cancelContract } = useInfraStore(useShallow(state => ({
+  const { balance, reputation, activeContracts, marketContracts, acceptContract, cancelContract, loans, takeLoan, repayLoan, companyLevel } = useInfraStore(useShallow(state => ({
     balance: state.balance,
     reputation: state.reputation,
     activeContracts: state.activeContracts,
     marketContracts: state.marketContracts || [],
+    loans: state.loans || [],
     acceptContract: state.acceptContract,
     cancelContract: state.cancelContract,
+    takeLoan: state.takeLoan,
+    repayLoan: state.repayLoan,
     companyLevel: state.companyLevel
   })))
   useInfraStore(s => s.nodes.length)
-  const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active' | 'banking'>('overview')
 
   // Calculate MRR and MRE
   const totalMRR = activeContracts.reduce((sum, c) => {
@@ -51,12 +54,18 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
   const cloudCostPerMonth = useInfraStore.getState().cloudBurstingActive ? (useInfraStore.getState().activeCloudInstances * 300) : 0
   const egressCostPerMonth = useInfraStore.getState().cloudEgressGB * 0.1 * 3600 // Roughly assuming GB per second over a month (3600s)
 
-  const estimatedMRE = powerCostPerMonth + rackRentPerMonth + maintenanceCostPerMonth + cloudCostPerMonth + egressCostPerMonth
+  const totalLoanPayment = loans.reduce((sum, loan) => {
+    const interest = loan.remainingAmount * loan.interestRate
+    return sum + Math.max(interest, loan.minimumMonthlyPayment)
+  }, 0)
+
+  const estimatedMRE = powerCostPerMonth + rackRentPerMonth + maintenanceCostPerMonth + cloudCostPerMonth + egressCostPerMonth + totalLoanPayment
 
   const monthlyProfit = totalMRR - estimatedMRE
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'Financial Overview', icon: <DollarSign size={20} /> },
+    { id: 'banking', label: 'Corporate Banking', icon: <Globe size={20} /> },
     { id: 'marketplace', label: 'Contract Market', icon: <Briefcase size={20} /> },
     { id: 'active', label: 'Active Contracts', icon: <CheckCircle2 size={20} /> },
   ]
@@ -136,6 +145,8 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                         <ExpenseItem label="Network Egress Fees" amount={-egressCostPerMonth} sub={`${useInfraStore.getState().cloudEgressGB.toFixed(1)} GB Transferred/s`} />
                         <div className="h-px bg-slate-800 my-4" />
                         <ExpenseItem label="Contract Revenue" amount={totalMRR} sub={`${activeContracts.length} Service Level Agreements`} />
+                        <div className="h-px bg-slate-800 my-4" />
+                        <ExpenseItem label="Debt Servicing" amount={-totalLoanPayment} sub={`${loans.length} Active Loans`} />
                       </div>
                     </div>
                   </div>
@@ -203,6 +214,74 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                         )
                       })
                     )}
+                  </div>
+                )}
+                {activeTab === 'banking' && (
+                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6">
+                        <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest mb-4">Available Loans</h4>
+                        <div className="space-y-4">
+                          <LoanOfferCard 
+                            name="Startup Seed Capital" 
+                            principal={50000} 
+                            interestRate={0.03} 
+                            minimumMonthlyPayment={2000} 
+                            onTake={() => takeLoan("Startup Seed Capital", 50000, 0.03, 2000)}
+                            isLocked={companyLevel > 3 || balance > 100000}
+                            lockReason="Only available for early-stage startups."
+                          />
+                          <LoanOfferCard 
+                            name="Facility Expansion Loan" 
+                            principal={250000} 
+                            interestRate={0.05} 
+                            minimumMonthlyPayment={15000} 
+                            onTake={() => takeLoan("Facility Expansion Loan", 250000, 0.05, 15000)}
+                            isLocked={companyLevel < 2}
+                            lockReason="Requires Enterprise Level 2."
+                          />
+                          <LoanOfferCard 
+                            name="Hyperscaler Mega-Debt" 
+                            principal={1000000} 
+                            interestRate={0.08} 
+                            minimumMonthlyPayment={85000} 
+                            onTake={() => takeLoan("Hyperscaler Mega-Debt", 1000000, 0.08, 85000)}
+                            isLocked={companyLevel < 4}
+                            lockReason="Requires Enterprise Level 4."
+                          />
+                        </div>
+                      </div>
+                      <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6">
+                        <h4 className="text-sm font-black uppercase text-slate-500 tracking-widest mb-4">Active Debt</h4>
+                        {loans.length === 0 ? (
+                          <div className="h-32 flex items-center justify-center text-slate-600 border border-dashed border-slate-800 rounded-2xl">
+                            <p className="font-black uppercase tracking-widest text-xs">No active corporate debt</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {loans.map(loan => (
+                              <div key={loan.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-5">
+                                <div className="flex justify-between items-center mb-2">
+                                  <span className="text-white font-bold tracking-tight">{loan.name}</span>
+                                  <span className="text-rose-400 font-black">${loan.remainingAmount.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px] text-slate-500 font-black uppercase mb-4">
+                                  <span>Int: {(loan.interestRate * 100).toFixed(1)}%/mo</span>
+                                  <span>Min: ${loan.minimumMonthlyPayment.toLocaleString()}/mo</span>
+                                </div>
+                                <button 
+                                  onClick={() => repayLoan(loan.id, Math.min(balance, loan.remainingAmount, 10000))}
+                                  disabled={balance <= 0}
+                                  className="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-black uppercase tracking-widest transition-colors"
+                                >
+                                  Pay Down $10k
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -304,6 +383,31 @@ function ContractCard({ bp, isLocked, isOwned, onAccept }: { bp: ContractBluepri
           className="w-full py-4 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-2xl font-black uppercase text-[10px] tracking-widest transition-all shadow-xl"
         >
           Accept Agreement
+        </button>
+      )}
+    </div>
+  )
+}
+
+function LoanOfferCard({ name, principal, interestRate, onTake, isLocked, lockReason }: { name: string, principal: number, interestRate: number, minimumMonthlyPayment: number, onTake: () => void, isLocked: boolean, lockReason: string }) {
+  return (
+    <div className={`bg-slate-950 border border-slate-800 rounded-2xl p-5 ${isLocked ? 'opacity-50 grayscale' : ''}`}>
+      <h5 className="font-black text-white uppercase tracking-tight mb-2">{name}</h5>
+      <div className="flex justify-between items-center text-[10px] text-slate-500 font-bold uppercase mb-4">
+        <span>Principal: <span className="text-emerald-400 font-black">${principal.toLocaleString()}</span></span>
+        <span>Int: {(interestRate * 100).toFixed(1)}%/mo</span>
+      </div>
+      {isLocked ? (
+        <div className="w-full py-2 bg-slate-900 border border-slate-800 text-slate-500 rounded-lg text-xs font-black uppercase text-center flex items-center justify-center gap-2">
+          <AlertCircle className="w-3 h-3" />
+          {lockReason}
+        </div>
+      ) : (
+        <button 
+          onClick={onTake}
+          className="w-full py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 rounded-lg text-xs font-black uppercase tracking-widest transition-colors"
+        >
+          Secure Capital
         </button>
       )}
     </div>

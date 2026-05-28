@@ -19,7 +19,8 @@ import type {
   ActiveContract,
   TechnicianTicket,
   VirtualMachine,
-  Incident
+  Incident,
+  BankLoan
 } from './infraTypes'
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
@@ -84,9 +85,15 @@ export type InfraState = {
   reputation: number
   activeContracts: ActiveContract[]
   marketContracts: ContractBlueprint[]
+  loans: BankLoan[]
+  consecutiveNegativeMonths: number
+  isBankrupt: boolean
+  
   acceptContract: (blueprintId: string) => void
   cancelContract: (id: string) => void
   refreshMarketContracts: () => void
+  takeLoan: (name: string, principal: number, interestRate: number, minimumMonthlyPayment: number) => void
+  repayLoan: (id: string, amount: number) => void
   
   // v7.0 Global & Hybrid
   cloudBurstingActive: boolean
