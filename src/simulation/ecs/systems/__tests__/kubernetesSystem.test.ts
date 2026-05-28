@@ -4,8 +4,7 @@ import { KubernetesSystem } from '../KubernetesSystem'
 import type { 
   KubernetesNodeComponent, 
   PodComponent, 
-  PowerComponent, 
-  TransformComponent 
+  PowerComponent 
 } from '../../types'
 
 describe('KubernetesSystem', () => {

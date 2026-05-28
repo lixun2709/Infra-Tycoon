@@ -5,7 +5,6 @@ import type {
   VmComponent, 
   PowerComponent, 
   TransformComponent,
-  SecurityComponent,
   ThermalComponent
 } from '../../types'
 

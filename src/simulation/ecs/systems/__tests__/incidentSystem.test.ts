@@ -45,7 +45,8 @@ describe('IncidentSystem', () => {
       elapsedSeconds: 0,
       rtoTargetSeconds: 300,
       rpoTargetSeconds: 10,
-      isResolved: false
+      isResolved: false,
+      severity: 'critical'
     } as IncidentComponent)
 
     // Execute drill - elapsedSeconds becomes 1.0 (dt)
@@ -81,12 +82,13 @@ describe('IncidentSystem', () => {
     world.addComponent('incident', {
       entityId: incidentId,
       incidentId: incidentId,
-      type: 'outage',
+      type: 'power_outage',
       affectedNodes: [offlineNode],
       elapsedSeconds: 0,
       rtoTargetSeconds: 100, // Short RTO
       isResolved: false,
-      hasAlertedRto: false
+      hasAlertedRto: false,
+      severity: 'critical'
     } as IncidentComponent)
 
     // A node that will never be healthy because it doesn't exist
@@ -136,7 +138,8 @@ describe('IncidentSystem', () => {
       elapsedSeconds: 0,
       rtoTargetSeconds: 300,
       rpoTargetSeconds: 10,
-      isResolved: false
+      isResolved: false,
+      severity: 'critical'
     } as IncidentComponent)
 
     // Execute drill

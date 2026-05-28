@@ -6,6 +6,9 @@ export class SlaSystem extends System {
   // We only want SLA accounting to run every 60 ticks (1 simulation second) 
   // to perfectly match the billing and logging clock, and to minimize overhead.
   private executionTickCounter = 0
+  private healthyAppCounts = new Map<string, number>()
+  private healthyAppFaultDomains = new Map<string, Set<string>>()
+  private failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, other: number }>()
 
   public update(_dt: number): void {
     this.executionTickCounter++
@@ -20,14 +23,23 @@ export class SlaSystem extends System {
 
     if (contracts.size === 0) return
 
-    // Precompute healthy running applications (O(N) operation instead of O(N^4))
-    const healthyAppCounts = new Map<string, number>()
-    const healthyAppFaultDomains = new Map<string, Set<string>>()
-    const failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, other: number }>()
+    // Zero-allocation Map reset
+    this.healthyAppCounts.clear()
+    
+    this.healthyAppFaultDomains.forEach((set) => set.clear()) // Reset sets instead of discarding
+    // Do not clear the map itself for fault domains, just the sets within
+
+    this.failedAppReasons.forEach((reasons) => {
+      reasons.isolated = 0
+      reasons.blackholed = 0
+      reasons.power = 0
+      reasons.ransomware = 0
+      reasons.other = 0
+    })
 
     apps.forEach((app) => {
-      if (!failedAppReasons.has(app.appId)) {
-        failedAppReasons.set(app.appId, { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: 0 })
+      if (!this.failedAppReasons.has(app.appId)) {
+        this.failedAppReasons.set(app.appId, { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: 0 })
       }
 
       if (app.status === 'running') {
@@ -44,17 +56,17 @@ export class SlaSystem extends System {
         const isRansomwareLocked = security ? security.infectionState === 'locked' : false
 
         if (isPowered && !isMaintenance && !isBlackholed && !isIsolated && !isRansomwareLocked) {
-          healthyAppCounts.set(app.appId, (healthyAppCounts.get(app.appId) || 0) + 1)
+          this.healthyAppCounts.set(app.appId, (this.healthyAppCounts.get(app.appId) || 0) + 1)
           
-          let domainSet = healthyAppFaultDomains.get(app.appId)
+          let domainSet = this.healthyAppFaultDomains.get(app.appId)
           if (!domainSet) {
              domainSet = new Set<string>()
-             healthyAppFaultDomains.set(app.appId, domainSet)
+             this.healthyAppFaultDomains.set(app.appId, domainSet)
           }
           // Fault domain is rack if known, otherwise the node itself
           domainSet.add(transform?.parentRackId || app.nodeId)
         } else {
-          const reasons = failedAppReasons.get(app.appId)!
+          const reasons = this.failedAppReasons.get(app.appId)!
           if (isRansomwareLocked) reasons.ransomware++
           else if (isIsolated) reasons.isolated++
           else if (isBlackholed) reasons.blackholed++
@@ -62,7 +74,7 @@ export class SlaSystem extends System {
           else reasons.other++
         }
       } else {
-        const reasons = failedAppReasons.get(app.appId)!
+        const reasons = this.failedAppReasons.get(app.appId)!
         reasons.other++
       }
     })
@@ -75,12 +87,13 @@ export class SlaSystem extends System {
       let isHealthy = true
 
       for (const req of blueprint.requirements) {
-        let activeCount = healthyAppCounts.get(req.appId) || 0
+        let activeCount = this.healthyAppCounts.get(req.appId) || 0
         
         // SLA Redundancy Enforcement:
         // True High-Availability requires fault-domain diversity.
+        let domains = 0
         if (req.redundant) {
-           const domains = healthyAppFaultDomains.get(req.appId)?.size || 0
+           domains = this.healthyAppFaultDomains.get(req.appId)?.size || 0
            activeCount = Math.min(activeCount, domains)
         }
         
@@ -88,7 +101,7 @@ export class SlaSystem extends System {
           isHealthy = false
           
           const deficit = req.count - activeCount
-          const reasons = failedAppReasons.get(req.appId) || { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: deficit }
+          const reasons = this.failedAppReasons.get(req.appId) || { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: deficit }
           
           let penaltyForThisTick = 0
           const totalFailing = reasons.ransomware + reasons.isolated + reasons.blackholed + reasons.power + reasons.other

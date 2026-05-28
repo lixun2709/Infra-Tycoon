@@ -758,3 +758,8 @@ Kubernetes simulation enforces strict etcd quorum limits. If a cluster loses a m
 ### Day 128: Disaster Recovery Drills (RPO/RTO)
 Executing a DR Drill isolates a specific target site dynamically at the networking layer, dropping traffic. The system strictly monitors Recovery Time Objective (RTO) breached and evaluates missing storage replication, triggering immediate Recovery Point Objective (RPO) SLA violations.
 
+
+## Operations Realism II
+- **Ticketing Systems (Priority P1-P4)**: Technicians automatically abandon low-priority (P4) queues when a P1 emergency is detected.
+- **SLA Contracts & High-Availability**: Application fault-domains are rigorously analyzed. A system must deploy redundancies across distinct fault-domains to meet High-Availability (HA) SLA definitions.
+- **SLA Bankruptcy**: If SLA penalties exceed ,000,000, a critical systemic alert is issued, warning of potential contract termination.
