@@ -18,7 +18,7 @@
 - Dynamic rendering LOD based on camera zoom and active node count.
 - **Operations Realism II**: Hardened `BackupSystem` against capacity/blackhole failures. Verified `SecuritySystem` lateral propagation scaling. Implemented space-aware bounds checking for DRS `svMotion` to prevent out-of-storage cascades.
 - **Operations Realism IV**: Added MTTR-based incident escalation (L1 -> L2 -> L3). Upgraded SLA logic to bypass penalties during Planned Maintenance (`maintenanceMode`). Added strict Backup Window Timeouts (60s) to `BackupSystem`.
-
+- **Operations Realism (Day 150)**: Hardened VMware Simulation physics. Validated strict 4:1 CPU Ready Time threshold for `HypervisorSystem`. Verified DRS `svMotion` prevents Datastore capacity overflows. HA failover gracefully re-queues orphaned VMs upon abrupt host power loss.
 ### Changed
 - ECS Simulation moved to independent Web Worker for strictly deterministic lock-steps.
 - React components refactored to consume Zustand store updates driven by Worker IPC.
