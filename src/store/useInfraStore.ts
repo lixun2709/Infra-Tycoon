@@ -13,6 +13,8 @@ import { createNetworkingSlice } from './slices/networkingSlice'
 import { createAppSlice } from './slices/appSlice'
 import { createCameraSlice } from './slices/cameraSlice'
 import { createInteractionSlice } from './slices/interactionSlice'
+import { createEconomySlice } from './slices/economySlice'
+import { createProgressionSlice } from './slices/progressionSlice'
 import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
@@ -95,6 +97,8 @@ export const useInfraStore = create<InfraState>()(
       ...createAppSlice(set, get, api),
       ...createCameraSlice(set, get, api),
       ...createInteractionSlice(set, get, api),
+      ...createEconomySlice(set, get, api),
+      ...createProgressionSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
       processCommand: (text) => handleCommand(get, set, text),
@@ -155,6 +159,7 @@ export const useInfraStore = create<InfraState>()(
             ]
           }
         })
+        get().gainXp(500, 'Facility Row Expansion')
         pushAlert('info', `Row expansion purchased! Facility capacity expanded to ${get().facilityRowsCount} rows. -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       },
@@ -187,6 +192,7 @@ export const useInfraStore = create<InfraState>()(
             ]
           }
         })
+        get().gainXp(400, 'Facility Lane Expansion')
         pushAlert('info', `Additional rack lanes added! Maximum lane capacity is now ${get().facilityColumnsCount}. -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       },
@@ -215,6 +221,7 @@ export const useInfraStore = create<InfraState>()(
             ...state.auditLogs
           ]
         }))
+        get().gainXp(300, 'Cooling Capacity Expansion')
         pushAlert('info', `Cooling capacity expanded! Heavy CRAC/CRAH zones added. -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       },
@@ -243,6 +250,7 @@ export const useInfraStore = create<InfraState>()(
             ...state.auditLogs
           ]
         }))
+        get().gainXp(400, 'Power Block Expansion')
         pushAlert('info', `UPS/Transformer block integrated! Primary electrical capacity increased. -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       },
@@ -271,6 +279,7 @@ export const useInfraStore = create<InfraState>()(
             ...state.auditLogs
           ]
         }))
+        get().gainXp(1000, 'Facility Wing Constructed')
         pushAlert('info', `Secondary facility wing constructed! Enterprise footprint significantly increased. -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       },
@@ -300,6 +309,7 @@ export const useInfraStore = create<InfraState>()(
             ...state.auditLogs
           ]
         }))
+        get().gainXp(800, 'Hall Perimeter Expanded')
         pushAlert('info', `Datacenter hall perimeter expanded! Space for deployment increased. -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       },
@@ -359,7 +369,8 @@ export const useInfraStore = create<InfraState>()(
             ...state.auditLogs
           ]
         }))
-
+        
+        get().gainXp(1500, 'New Datacenter Hall Commissioned')
         pushAlert('info', `Datacenter Hall Wing integrated at grid (${tx}, ${tz})! -$${cost.toLocaleString()}`)
         audioManager.playEffect('success')
       }
@@ -374,6 +385,9 @@ export const useInfraStore = create<InfraState>()(
         sites: state.sites,
         balance: state.balance,
         reputation: state.reputation,
+        companyLevel: state.companyLevel,
+        experience: state.experience,
+        xpToNextLevel: state.xpToNextLevel,
         realTimePlayedSeconds: state.realTimePlayedSeconds,
         activeContracts: state.activeContracts,
         blueprints: state.blueprints,

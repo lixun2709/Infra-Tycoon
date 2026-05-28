@@ -1,7 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { simWorkerManager } from '../../simulation/SimulationWorkerManager'
-import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
 import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEngine'
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
@@ -182,6 +181,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad, technicianTickets, incidents } = get()
     simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad, technicianTickets, incidents)
 
+    get().refreshMarketContracts()
+
     // Start centralized non-React Simulation Engine run loop (Day 28)
     simulationCoordinator.start(1000)
   },
@@ -191,84 +192,15 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents)
     simWorkerManager.requestTick(dt)
     
-    const { nodes, activeContracts, realTimePlayedSeconds, balance, reputation } = get()
+    const { nodes } = get()
 
     // 1. Core Simulation Updates (Decoupled from UI)
-    get().processAging()
+    get().processAging(dt)
 
-    // 2. SLA & Contract Management (Run billing accounting every 60 seconds of play time)
-    const nextRealTimePlayedSeconds = realTimePlayedSeconds + dt
-    const oldFloor = Math.floor(realTimePlayedSeconds / 60)
-    const newFloor = Math.floor(nextRealTimePlayedSeconds / 60)
-    const isMonthEnd = newFloor > oldFloor
-    let monthlyRevenue = 0
-    let monthlyPenalty = 0
+    // 2. SLA, Contract Management, & Operational Expenses
+    get().processEconomyTick(dt)
 
-    const updatedContracts = activeContracts.map(contract => {
-      const blueprint = CONTRACT_CATALOG[contract.blueprintId]
-      if (!blueprint) return contract
-
-      // The ECS worker evaluates requirements exactly once per second,
-      // tracking totalTicks, uptimeTicks, currentStatus, and accumulatedPenalty.
-      // We only read these deterministically computed values here.
-
-      if (isMonthEnd) {
-        monthlyRevenue += blueprint.monthlyMRR
-        monthlyPenalty += contract.accumulatedPenalty
-        
-        // Reset penalty upon monthly billing cycle
-        return {
-          ...contract,
-          accumulatedPenalty: 0
-        }
-      }
-
-      return contract
-    })
-
-    // 3. Operational Expenses
-    const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
-    const powerCost = totalPowerKW * 0.12 * dt // $0.12 per kWh equivalent per second
-    const rackRent = nodes.filter(n => n.type === 'rack').length * 50 * dt // $50 per rack per second
-
-    const maintenanceCost = nodes.reduce((sum, n) => {
-      if (n.type === 'rack') return sum
-      const base = 10 // $10 base maintenance per node
-      const stressMultiplier = n.isThrottled ? 2.5 : 1.0
-      const ageMultiplier = 1 + (n.degradation / 100)
-      return sum + (base * stressMultiplier * ageMultiplier * dt)
-    }, 0)
-
-    // Hybrid Cloud Expenses
-    const cloudCost = get().cloudBurstingActive ? (get().activeCloudInstances * 5 * dt) : 0
-    const egressCost = get().cloudEgressGB * 0.1 * dt // $0.10 per GB
-
-    const totalExpenses = powerCost + rackRent + cloudCost + egressCost + maintenanceCost
-    let newBalance = balance - totalExpenses
-
-    if (isMonthEnd) {
-      const netPayout = monthlyRevenue - monthlyPenalty
-      newBalance += netPayout
-      
-      // Reputation adjustment
-      const avgUptime = updatedContracts.length > 0 
-        ? updatedContracts.reduce((sum, c) => sum + (c.uptimeTicks / c.totalTicks), 0) / updatedContracts.length 
-        : 1.0
-      
-      const repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
-      set({ reputation: Math.max(0, Math.min(100, reputation + repChange)) })
-
-      get().pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, Penalties: -$${monthlyPenalty})`)
-    }
-
-    // 4. State Update
-    set({ 
-      activeContracts: updatedContracts,
-      balance: newBalance,
-      realTimePlayedSeconds: nextRealTimePlayedSeconds
-    })
-
-    // Recalculate Facilities
+    // 3. Recalculate Facilities
     recalculateRoomStats()
     nodes.filter(n => n.type === 'rack').forEach(r => calculateRackPower(nodes, r.id))
   }

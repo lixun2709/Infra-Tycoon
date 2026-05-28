@@ -14,6 +14,7 @@ export type HardwareCatalogSpec = {
   maxOperatingTemp?: number
   throttleTemp?: number
   heatEfficiency?: number // 0-1, how much power becomes heat.
+  minLevel?: number
 }
 
 export type PortType = 'power' | 'network' | 'fc' | 'sas'
@@ -36,6 +37,7 @@ export const HARDWARE_CATALOG = {
     storageTB: 0,
     isBladeChassis: true,
     useCase: 'High-density hosting environment for blade servers. Consolidates power and networking.',
+    minLevel: 3,
     portLayout: [
       { type: 'power', count: 4, labelPrefix: 'pwr' },
       { type: 'network', count: 8, labelPrefix: 'fabric' },
@@ -51,6 +53,7 @@ export const HARDWARE_CATALOG = {
     storageTB: 1,
     isBlade: true,
     useCase: 'Modular compute node. Requires a Blade Chassis for power and connectivity.',
+    minLevel: 3,
     portLayout: [
       { type: 'network', count: 2, labelPrefix: 'vnic' },
     ],
@@ -67,6 +70,7 @@ export const HARDWARE_CATALOG = {
     maxOperatingTemp: 95,
     throttleTemp: 85,
     heatEfficiency: 0.95,
+    minLevel: 4,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 4, labelPrefix: 'eth' },
@@ -100,6 +104,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 2500,
     storageTB: 50,
     useCase: 'The intelligence layer for SAN storage. Manages LUNs, snapshots, and replication.',
+    minLevel: 2,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 4, labelPrefix: 'fc' },
@@ -114,6 +119,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 800,
     storageTB: 200,
     useCase: 'Capacity expansion for SAN. Provides bulk storage for data-heavy applications.',
+    minLevel: 2,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'fc', count: 2, labelPrefix: 'sas' },
@@ -128,6 +134,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 4000,
     storageTB: 100,
     useCase: 'Ultra-low latency storage for high-performance databases and real-time analytics.',
+    minLevel: 4,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 2, labelPrefix: 'eth' },
@@ -158,6 +165,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 2500,
     storageTB: 0,
     useCase: 'Core network backplane. Interconnects leaf switches for high-speed site fabric.',
+    minLevel: 2,
     portLayout: [
       { type: 'power', count: 4, labelPrefix: 'pwr' },
       { type: 'network', count: 32, labelPrefix: 'Hu1/0/' },
@@ -172,6 +180,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 1200,
     storageTB: 0,
     useCase: 'Enables secure remote access and encrypted site-to-site connectivity.',
+    minLevel: 2,
     portLayout: [
       { type: 'power', count: 1, labelPrefix: 'pwr' },
       { type: 'network', count: 4, labelPrefix: 'eth' },
@@ -246,6 +255,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 5000,
     storageTB: 0,
     useCase: 'Dedicated hardware for cryptographic key management and digital signatures.',
+    minLevel: 5,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 2, labelPrefix: 'eth' },
@@ -262,6 +272,7 @@ export const HARDWARE_CATALOG = {
     purchasePrice: 300,
     storageTB: 0,
     useCase: 'Upgrades rack power capacity to 15kW. Essential for high-density deployments.',
+    minLevel: 2,
     portLayout: [
       { type: 'power', count: 24, labelPrefix: 'out' },
     ],
@@ -290,6 +301,7 @@ export const HARDWARE_CATALOG = {
     maxOperatingTemp: 60,
     throttleTemp: 50,
     heatEfficiency: 0.2, // Low heat generation itself
+    minLevel: 3,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
     ],
@@ -307,6 +319,7 @@ export const HARDWARE_CATALOG = {
     maxOperatingTemp: 60,
     throttleTemp: 50,
     heatEfficiency: 0.1,
+    minLevel: 4,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
     ],
@@ -324,6 +337,7 @@ export const HARDWARE_CATALOG = {
     maxOperatingTemp: 70,
     throttleTemp: 60,
     heatEfficiency: 0.05,
+    minLevel: 5,
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
     ],

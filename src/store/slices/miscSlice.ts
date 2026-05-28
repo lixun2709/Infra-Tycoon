@@ -4,7 +4,7 @@ import { audioManager } from '../../utils/AudioManager'
 import type { DnsRecord, Site, Blueprint } from '../infraTypes'
 
 export interface MiscSlice {
-  processAging: () => void
+  processAging: (dt: number) => void
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
   toggleMaintenanceMode: (nodeId: string) => void
@@ -35,13 +35,15 @@ export interface MiscSlice {
 }
 
 export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set, get) => ({
-  processAging: () => {
+  processAging: (dt: number) => {
     const { nodes } = get()
     const updatedNodes = nodes.map(node => {
-      if (node.type === 'rack') return node
-      const lastMaint = node.lastMaintenance || Date.now()
-      const age = (Date.now() - lastMaint) / (1000 * 60 * 60) // hours
-      const newDegradation = Math.min(100, (node.degradation || 0) + (age * 0.1))
+      if (node.type === 'rack' || node.type === 'cooling') return node
+      // dt is in real-world seconds. Let's say 1 hour of gameplay (3600s) = 1 in-game month.
+      // We want hardware to degrade 10% per month, so 10% per 3600 seconds.
+      // 10 / 3600 = 0.0027% per second.
+      const degradationRatePerSecond = 10 / 3600 
+      const newDegradation = Math.min(100, (node.degradation || 0) + (degradationRatePerSecond * dt))
       return { ...node, degradation: newDegradation }
     })
     set({ nodes: updatedNodes })

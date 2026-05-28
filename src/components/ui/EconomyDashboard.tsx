@@ -22,12 +22,14 @@ interface EconomyDashboardProps {
 }
 
 export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
-  const { balance, reputation, activeContracts, acceptContract, cancelContract } = useInfraStore(useShallow(state => ({
+  const { balance, reputation, activeContracts, marketContracts, acceptContract, cancelContract } = useInfraStore(useShallow(state => ({
     balance: state.balance,
     reputation: state.reputation,
     activeContracts: state.activeContracts,
+    marketContracts: state.marketContracts || [],
     acceptContract: state.acceptContract,
-    cancelContract: state.cancelContract
+    cancelContract: state.cancelContract,
+    companyLevel: state.companyLevel
   })))
   useInfraStore(s => s.nodes.length)
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active'>('overview')
@@ -40,7 +42,16 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
 
   const nodes = useInfraStore.getState().nodes
   const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
-  const estimatedMRE = (totalPowerKW * 0.12 * 30) + (nodes.filter(n => n.type === 'rack').length * 50 * 30)
+  const powerCostPerMonth = totalPowerKW * 90
+  const rackRentPerMonth = nodes.filter(n => n.type === 'rack').length * 500
+  const maintenanceCostPerMonth = nodes.reduce((sum, n) => {
+    if (n.type === 'rack' || n.type === 'cooling') return sum
+    return sum + (100 * (n.isThrottled ? 2.5 : 1.0) * (1 + ((n.degradation || 0) / 100)))
+  }, 0)
+  const cloudCostPerMonth = useInfraStore.getState().cloudBurstingActive ? (useInfraStore.getState().activeCloudInstances * 300) : 0
+  const egressCostPerMonth = useInfraStore.getState().cloudEgressGB * 0.1 * 3600 // Roughly assuming GB per second over a month (3600s)
+
+  const estimatedMRE = powerCostPerMonth + rackRentPerMonth + maintenanceCostPerMonth + cloudCostPerMonth + egressCostPerMonth
 
   const monthlyProfit = totalMRR - estimatedMRE
 
@@ -100,11 +111,11 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                     <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-8">
                       <h3 className="text-lg font-black text-white uppercase tracking-tight mb-6">Financial Statement</h3>
                       <div className="space-y-4">
-                        <ExpenseItem label="Energy & Power Usage" amount={-(totalPowerKW * 0.12 * 30)} sub={`${totalPowerKW.toFixed(2)} KW Average Load`} />
-                        <ExpenseItem label="Colocation Rack Rental" amount={-(nodes.filter(n => n.type === 'rack').length * 50 * 30)} sub={`${nodes.filter(n => n.type === 'rack').length} Active Racks`} />
+                        <ExpenseItem label="Energy & Power Usage" amount={-powerCostPerMonth} sub={`${totalPowerKW.toFixed(2)} KW Average Load`} />
+                        <ExpenseItem label="Colocation Rack Rental" amount={-rackRentPerMonth} sub={`${nodes.filter(n => n.type === 'rack').length} Active Racks`} />
                         <ExpenseItem 
                           label="Hardware Maintenance & Stress" 
-                          amount={-nodes.filter(n => n.type !== 'rack').reduce((sum, n) => sum + (10 * (n.isThrottled ? 2.5 : 1.0) * (1 + (n.degradation / 100))), 0) * 30} 
+                          amount={-maintenanceCostPerMonth} 
                           sub={`${nodes.filter(n => n.isThrottled).length} Nodes Throttled`} 
                         />
                         <div className="h-px bg-slate-800 my-4" />
@@ -121,8 +132,8 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                             {useInfraStore.getState().cloudBurstingActive ? 'ACTIVE' : 'ACTIVATE'}
                           </button>
                         </div>
-                        <ExpenseItem label="Cloud Instance Payout" amount={-(useInfraStore.getState().activeCloudInstances * 5 * 30)} sub={`${useInfraStore.getState().activeCloudInstances} Virtual Instances`} />
-                        <ExpenseItem label="Network Egress Fees" amount={-(useInfraStore.getState().cloudEgressGB * 0.1 * 30)} sub={`${useInfraStore.getState().cloudEgressGB.toFixed(1)} GB Transferred`} />
+                        <ExpenseItem label="Cloud Instance Payout" amount={-cloudCostPerMonth} sub={`${useInfraStore.getState().activeCloudInstances} Virtual Instances`} />
+                        <ExpenseItem label="Network Egress Fees" amount={-egressCostPerMonth} sub={`${useInfraStore.getState().cloudEgressGB.toFixed(1)} GB Transferred/s`} />
                         <div className="h-px bg-slate-800 my-4" />
                         <ExpenseItem label="Contract Revenue" amount={totalMRR} sub={`${activeContracts.length} Service Level Agreements`} />
                       </div>
@@ -132,11 +143,11 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
 
                 {activeTab === 'marketplace' && (
                   <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                    {Object.values(CONTRACT_CATALOG).map(bp => (
+                    {marketContracts.map(bp => (
                       <ContractCard 
                         key={bp.id} 
                         bp={bp} 
-                        isLocked={reputation < bp.minReputation}
+                        isLocked={reputation < bp.minReputation || (bp.minLevel ? companyLevel < bp.minLevel : false)}
                         isOwned={activeContracts.some(c => c.blueprintId === bp.id)}
                         onAccept={() => acceptContract(bp.id)}
                       />
@@ -278,7 +289,9 @@ function ContractCard({ bp, isLocked, isOwned, onAccept }: { bp: ContractBluepri
       {isLocked ? (
         <div className="flex items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-2xl gap-3">
           <AlertCircle className="w-4 h-4 text-rose-500" />
-          <span className="text-[10px] font-black text-rose-400 uppercase">Requires Rep: {bp.minReputation}</span>
+          <span className="text-[10px] font-black text-rose-400 uppercase">
+            Requires {bp.minLevel ? `Level ${bp.minLevel}` : `Rep ${bp.minReputation}`}
+          </span>
         </div>
       ) : isOwned ? (
         <div className="flex items-center justify-center p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl gap-3">

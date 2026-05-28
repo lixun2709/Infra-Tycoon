@@ -20,6 +20,7 @@ export interface ContractBlueprint {
   requirements: ContractRequirement[]
   minReputation: number
   color: string
+  minLevel?: number
 }
 
 export interface ActiveContract {

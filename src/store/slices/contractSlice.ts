@@ -6,6 +6,8 @@ import { audioManager } from '../../utils/AudioManager'
 export interface ContractSlice {
   acceptContract: (blueprintId: string) => void
   cancelContract: (id: string) => void
+  marketContracts: ContractBlueprint[]
+  refreshMarketContracts: () => void
 }
 
 export const createContractSlice: StateCreator<InfraState, [], [], ContractSlice> = (set, get) => ({
@@ -36,5 +38,26 @@ export const createContractSlice: StateCreator<InfraState, [], [], ContractSlice
       activeContracts: state.activeContracts.filter(c => c.id !== id)
     }))
     get().pushAlert('info', 'Contract cancelled by operator.')
+  },
+
+  marketContracts: [],
+
+  refreshMarketContracts: () => {
+    const rep = get().reputation
+    const scale = get().nodes.length
+    
+    // Generate 3 random contracts
+    const newMarket = [
+      import('../../physics/contractLibrary').then(m => m.generateDynamicContract(rep, scale)),
+      import('../../physics/contractLibrary').then(m => m.generateDynamicContract(rep, scale)),
+      import('../../physics/contractLibrary').then(m => m.generateDynamicContract(rep, scale))
+    ]
+
+    Promise.all(newMarket).then(contracts => {
+      // Add them to the static catalog so lookups still work
+      contracts.forEach(c => { CONTRACT_CATALOG[c.id] = c })
+      
+      set({ marketContracts: contracts })
+    })
   }
 })

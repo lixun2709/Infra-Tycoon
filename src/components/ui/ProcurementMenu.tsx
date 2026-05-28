@@ -13,7 +13,8 @@ import {
   Box, 
   Plus, 
   X,
-  Layout
+  Layout,
+  Lock
 } from 'lucide-react'
 
 type Category = 'compute' | 'storage' | 'network' | 'security' | 'identity' | 'facility'
@@ -37,7 +38,8 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
     setPlacementMode: state.setPlacementMode,
     sites: state.sites,
     currentSiteId: state.currentSiteId,
-    selectedNodeId: state.selectedNodeId
+    selectedNodeId: state.selectedNodeId,
+    isHardwareUnlocked: state.isHardwareUnlocked
   })))
 
   const [activeCategory, setActiveCategory] = useState<Category>('compute')
@@ -162,12 +164,24 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
               </div>
 
               <div className="flex-1 overflow-y-auto p-10 grid grid-cols-2 gap-8 bg-slate-900/5 custom-scrollbar">
-                {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => (
+                {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => {
+                  const unlocked = isHardwareUnlocked(item.key)
+                  return (
                   <button
                     key={item.key}
-                    onClick={() => stageAsset(item.key)}
-                    className="relative bg-slate-900/40 border border-slate-800/50 rounded-[2.5rem] p-8 flex flex-col justify-between group hover:border-teal-500/30 transition-all text-left overflow-hidden h-56"
+                    onClick={() => unlocked && stageAsset(item.key)}
+                    className={`relative border rounded-[2.5rem] p-8 flex flex-col justify-between group transition-all text-left overflow-hidden h-56 ${
+                      unlocked ? 'bg-slate-900/40 border-slate-800/50 hover:border-teal-500/30' : 'bg-slate-900/20 border-red-900/20 cursor-not-allowed opacity-60'
+                    }`}
                   >
+                    {!unlocked && (
+                      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center">
+                        <Lock size={32} className="text-red-500/50 mb-3" />
+                        <span className="text-[10px] font-black text-red-400 uppercase tracking-widest bg-red-500/10 px-4 py-2 rounded-full border border-red-500/20">
+                          Unlocks at Level {item.minLevel}
+                        </span>
+                      </div>
+                    )}
                     <div className="absolute top-0 right-0 p-8 opacity-5 text-teal-500 group-hover:scale-110 transition-transform">
                       <Box size={80} />
                     </div>
@@ -178,7 +192,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                         <h4 className="text-xl font-black tracking-tight uppercase text-white leading-none">{item.name || item.key}</h4>
                       </div>
                       <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest leading-relaxed max-w-[80%]">
-                        {item.uHeight}U Standard Chassis • {item.wattage}W Power Load • Redundant Power Supplies
+                        {item.uHeight}U Standard Chassis • {item.wattage}W Power Load
                       </p>
                     </div>
 
@@ -193,12 +207,15 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                           <span className="text-[10px] font-black text-slate-400 uppercase">{item.uHeight * 12}kg</span>
                         </div>
                       </div>
-                      <div className="px-6 py-2.5 bg-teal-500/5 group-hover:bg-teal-500 group-hover:text-[#020617] rounded-xl transition-all border border-teal-500/20">
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">Stage Asset</span>
+                      <div className={`px-6 py-2.5 rounded-xl transition-all border ${
+                        unlocked ? 'bg-teal-500/5 group-hover:bg-teal-500 group-hover:text-[#020617] border-teal-500/20' : 'bg-slate-800/50 border-slate-700'
+                      }`}>
+                        <span className="text-[9px] font-black uppercase tracking-[0.2em]">{unlocked ? 'Stage Asset' : 'Locked'}</span>
                       </div>
                     </div>
                   </button>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </div>

@@ -29,20 +29,26 @@ export function TopNav({
     currentSiteId, 
     sites, 
     setCurrentSiteId, 
-    realTimePlayedSeconds, 
     isNetworkManagerOpen,
     timeFormat,
-    setTimeFormat
+    setTimeFormat,
+    companyLevel,
+    experience,
+    xpToNextLevel,
+    realTimePlayedSeconds
   } = useInfraStore(useShallow(state => ({
     currentSiteId: state.currentSiteId, 
     sites: state.sites, 
     setCurrentSiteId: state.setCurrentSiteId, 
     realTimePlayedSeconds: state.realTimePlayedSeconds, 
-    isNetworkManagerOpen: state.isNetworkManagerOpen,
     timeFormat: state.timeFormat,
-    setTimeFormat: state.setTimeFormat
+    setTimeFormat: state.setTimeFormat,
+    companyLevel: state.companyLevel,
+    experience: state.experience,
+    xpToNextLevel: state.xpToNextLevel
   })))
   const activeSite = sites.find(s => s.id === currentSiteId)
+  const xpPercentage = Math.min(100, (experience / xpToNextLevel) * 100)
 
   const [localTime, setLocalTime] = useState(new Date())
 
@@ -84,6 +90,20 @@ export function TopNav({
           <div className="hidden lg:block">
             <h1 className="text-sm font-black text-white tracking-tighter uppercase leading-none">SDDC <span className="text-teal-400">Orchestrator</span></h1>
             <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1">Enterprise Ops v2.0</p>
+          </div>
+        </div>
+
+        {/* Level & XP Bar */}
+        <div className="hidden xl:flex flex-col gap-1.5 w-32 ml-4">
+          <div className="flex justify-between items-end">
+            <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Tier {companyLevel}</span>
+            <span className="text-[8px] font-black text-teal-400 tracking-wider uppercase">{Math.floor(xpPercentage)}%</span>
+          </div>
+          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(45,212,191,0.5)] transition-all duration-1000"
+              style={{ width: `${xpPercentage}%` }}
+            />
           </div>
         </div>
 

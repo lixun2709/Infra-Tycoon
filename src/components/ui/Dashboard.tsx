@@ -16,6 +16,7 @@ import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
+import { LevelUpOverlay } from './LevelUpOverlay'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
   if (!data || data.length === 0) return null
@@ -163,6 +164,7 @@ export function Dashboard({
       zIndex="z-[150]"
       headerExtra={
         <>
+          <LevelUpOverlay />
           <Badge variant="ghost" className="bg-white/5 border border-white/10 font-mono text-[10px] py-1 text-slate-400">
             UPTIME: {formatUptime(realTimePlayedSeconds)}
           </Badge>
