@@ -4,7 +4,7 @@ import type { InfraState } from '../infraStoreTypes'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 import type { HardwareCatalogKey, HardwareCatalogSpec } from '../../physics/hardwareLibrary'
 import { createPortsForCatalog } from '../infraInitialState'
-import type { InfraNode, ServiceType, ServiceStatus } from '../infraTypes'
+import type { InfraNode, ServiceType, ServiceStatus, Incident } from '../infraTypes'
 import { findFirstEmptySlot } from '../../physics/snapping'
 import { ObservabilityTracer } from '../../simulation/observability/ObservabilityTracer'
 import { audioManager } from '../../utils/AudioManager'
@@ -269,7 +269,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       bootProgress: 0,
       provisioningState: 'patched' // Require bootstrap again
     })
-    pushAlert('success', 'Node drives formatted. Ransomware removed. System requires reprovisioning.')
+    pushAlert('info', 'Node drives formatted. Ransomware removed. System requires reprovisioning.')
     audioManager.playEffect('success')
   },
 
@@ -277,12 +277,13 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const { nodes, pushAlert } = get()
     const targetNodes = nodes.filter(n => n.type === 'compute' && n.systemState === 'running')
     if (targetNodes.length === 0) {
-      pushAlert('error', 'Ransomware drill failed: No active compute nodes available to infect.')
+      pushAlert('critical', 'Ransomware drill failed: No active compute nodes available to infect.')
       return
     }
     
     // Pick a random target
     const target = targetNodes[Math.floor(Math.random() * targetNodes.length)]
+    if (!target) return
     get().updateNode(target.id, { infectionState: 'exposed' })
     
     pushAlert('critical', 'RANSOMWARE DRILL INITIATED: Malicious payload injected into network.')
@@ -296,7 +297,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const validNodes = nodes.filter(n => n.type === 'compute' && n.systemState === 'running' && (!siteId || n.siteId === siteId))
     
     if (validNodes.length === 0) {
-      pushAlert('error', 'DR Drill aborted: No active compute nodes in target site.')
+      pushAlert('critical', 'DR Drill aborted: No active compute nodes in target site.')
       return
     }
 
@@ -305,15 +306,16 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const shuffled = [...validNodes].sort(() => 0.5 - Math.random())
     const affectedNodes = shuffled.slice(0, numToFail).map(n => n.id)
 
-    const drillIncident = {
+    const drillIncident: Incident = {
       id: `drill-${Date.now()}`,
-      type: 'drill' as const,
+      siteId: siteId || 'global',
+      type: 'drill',
       severity,
       affectedNodes,
       elapsedSeconds: 0,
       rtoTargetSeconds: severity === 'high' ? 60 : 120, // Strict RTO constraints
       isResolved: false,
-      startedAt: Date.now()
+      startTimestamp: Date.now()
     }
 
     set(state => ({
@@ -321,6 +323,6 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     }))
 
     pushAlert('warning', `DR Drill Initiated: Power cut to ${numToFail} nodes. SLA RTO evaluation active.`)
-    audioManager.playEffect('warning')
+    audioManager.playEffect('alert')
   }
 })

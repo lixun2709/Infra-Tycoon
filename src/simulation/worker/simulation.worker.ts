@@ -554,7 +554,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         world.addComponent('TicketComponent', {
           entityId: ticket.id,
           ticketId: ticket.id,
-          targetNodeId: ticket.targetNodeId,
+          targetNodeId: ticket.nodeId,
           type: ticket.type,
           status: ticket.status,
           totalSeconds: ticket.totalSeconds,
@@ -584,8 +584,8 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           elapsedSeconds: incident.elapsedSeconds,
           isResolved: incident.isResolved,
           rtoTargetSeconds: incident.rtoTargetSeconds,
-          startedAt: incident.startedAt,
-          resolvedAt: incident.resolvedAt
+          siteId: incident.siteId,
+          startTimestamp: incident.startTimestamp
         } as import('../ecs/types').IncidentComponent)
       } else {
         const existing = world.getComponent<import('../ecs/types').IncidentComponent>('IncidentComponent', incident.id)
@@ -736,7 +736,9 @@ function sendSyncOutput() {
   ticketMap.forEach((comp, id) => {
     output.tickets!.push({
       id,
-      targetNodeId: comp.targetNodeId,
+      nodeId: comp.targetNodeId,
+      nodeName: '',
+      cost: 0,
       type: comp.type,
       status: comp.status,
       totalSeconds: comp.totalSeconds,
@@ -747,14 +749,14 @@ function sendSyncOutput() {
   incidentMap.forEach((comp, id) => {
     output.incidents!.push({
       id,
+      siteId: comp.siteId || 'global',
+      startTimestamp: comp.startTimestamp || 0,
       type: comp.type,
       severity: comp.severity,
       affectedNodes: comp.affectedNodes,
       elapsedSeconds: comp.elapsedSeconds,
       isResolved: comp.isResolved,
-      rtoTargetSeconds: comp.rtoTargetSeconds,
-      startedAt: comp.startedAt,
-      resolvedAt: comp.resolvedAt
+      rtoTargetSeconds: comp.rtoTargetSeconds
     })
   })
 

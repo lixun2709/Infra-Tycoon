@@ -28,8 +28,12 @@ export class HypervisorSystem extends System {
     const hostCpuAllocation = new Map<string, number>()
     vmEntities.forEach(id => {
        const vm = vmMap.get(id)!
-       if (vm.status === 'running' || vm.status === 'booting') {
+       if (vm.status === 'running' || vm.status === 'booting' || vm.status === 'migrating') {
          hostCpuAllocation.set(vm.nodeId, (hostCpuAllocation.get(vm.nodeId) || 0) + (vm.cpuCores || 4))
+       }
+       if (vm.status === 'migrating' && vm.migratingToNodeId) {
+         // Reserve capacity on the target node during vMotion
+         hostCpuAllocation.set(vm.migratingToNodeId, (hostCpuAllocation.get(vm.migratingToNodeId) || 0) + (vm.cpuCores || 4))
        }
     })
 
@@ -153,7 +157,7 @@ export class HypervisorSystem extends System {
   }
 
   private processDRS(
-    vmEntities: string[],
+    vmEntities: readonly string[],
     vmMap: Map<string, VmComponent>,
     powerMap: Map<string, PowerComponent>,
     thermalMap: Map<string, import('../types').ThermalComponent>,

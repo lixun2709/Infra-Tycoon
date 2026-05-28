@@ -1,5 +1,5 @@
-import type { System } from '../SystemManager'
-import type { World } from '../World'
+import { System } from '../System'
+
 import type { 
   TicketComponent,
   TransformComponent,
@@ -9,23 +9,23 @@ import type {
   ConnectionComponent
 } from '../types'
 
-export class TicketingSystem implements System {
+export class TicketingSystem extends System {
   private maxTechnicians = 5
 
-  public update(world: World, dt: number): void {
-    const ticketComponents = world.getComponents<TicketComponent>('TicketComponent')
+  public update(dt: number): void {
+    const ticketComponents = this.world.getComponentMap<TicketComponent>('TicketComponent')
     if (!ticketComponents) return
 
     let activeTickets = 0
     // Count active tickets (not completed, not queued)
-    ticketComponents.forEach((ticket) => {
+    ticketComponents.forEach((ticket: TicketComponent) => {
       if (ticket.status !== 'completed' && ticket.status !== 'queued') {
         activeTickets++
       }
     })
 
     // Pre-sort tickets by priority (P1 > P2 > P3 > P4 > undefined) and deterministically by ID
-    const sortedTickets = Array.from(ticketComponents.entries()).sort((a, b) => {
+    const sortedTickets = Array.from(ticketComponents.entries()).sort((a: [string, TicketComponent], b: [string, TicketComponent]) => {
       const pA = a[1].priority || 'P4'
       const pB = b[1].priority || 'P4'
       if (pA < pB) return -1
@@ -33,7 +33,7 @@ export class TicketingSystem implements System {
       return a[0].localeCompare(b[0])
     })
 
-    sortedTickets.forEach(([entityId, ticket]) => {
+    sortedTickets.forEach(([entityId, ticket]: [string, TicketComponent]) => {
       // Advance ticket progress deterministically based on dt
       if (ticket.status !== 'completed') {
         // If it's queued or brand new, check if we have technician capacity
@@ -57,13 +57,13 @@ export class TicketingSystem implements System {
 
         if (ticket.elapsedSeconds >= ticket.totalSeconds) {
           ticket.status = 'completed'
-          this.repairEntity(world, entityId, ticket.type)
+          this.repairEntity(ticket.targetNodeId, ticket.type)
           
           // Emit completion event for the main thread to pick up
-          world.publish('ticket:completed', { entityId, ticketId: ticket.ticketId })
+          this.world.eventBus.publish('ticket:completed', { entityId, ticketId: ticket.ticketId })
           
           // Clean up the ticket component so we don't process it anymore
-          world.removeComponent(entityId, 'TicketComponent')
+          this.world.removeComponent('TicketComponent', entityId)
         } else if (ticket.elapsedSeconds > ticket.totalSeconds * 0.8) {
           ticket.status = 'repairing'
         } else if (ticket.elapsedSeconds > ticket.totalSeconds * 0.2) {
@@ -75,8 +75,8 @@ export class TicketingSystem implements System {
     })
   }
 
-  private repairEntity(world: World, entityId: string, type: string) {
-    const transform = world.getComponent<TransformComponent>(entityId, 'TransformComponent')
+  private repairEntity(entityId: string, type: string) {
+    const transform = this.world.getComponent<TransformComponent>('TransformComponent', entityId)
     
     if (transform) {
       transform.degradation = 0
@@ -85,26 +85,26 @@ export class TicketingSystem implements System {
     }
 
     if (type === 'drive') {
-      const storage = world.getComponent<StorageComponent>(entityId, 'StorageComponent')
+      const storage = this.world.getComponent<StorageComponent>('StorageComponent', entityId)
       if (storage) {
         storage.driveDegradation = 0
         storage.storageStatus = 'healthy'
         storage.failedDrives = 0
       }
     } else if (type === 'cpu' || type === 'motherboard') {
-      const thermal = world.getComponent<ThermalComponent>(entityId, 'ThermalComponent')
+      const thermal = this.world.getComponent<ThermalComponent>('ThermalComponent', entityId)
       if (thermal) {
         thermal.isThrottled = false
         thermal.temperature = 45 // baseline
       }
     } else if (type === 'psu' || type === 'power') {
-      const power = world.getComponent<PowerComponent>(entityId, 'PowerComponent')
+      const power = this.world.getComponent<PowerComponent>('PowerComponent', entityId)
       if (power) {
         power.breakerTripped = false
         power.overloadSeconds = 0
       }
     } else if (type === 'network') {
-      const connection = world.getComponent<ConnectionComponent>(entityId, 'ConnectionComponent')
+      const connection = this.world.getComponent<ConnectionComponent>('ConnectionComponent', entityId)
       if (connection) {
         connection.status = 'active'
         connection.packetLoss = 0

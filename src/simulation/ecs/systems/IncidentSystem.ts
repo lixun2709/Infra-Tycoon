@@ -1,16 +1,15 @@
-import type { System } from '../SystemManager'
+import { System } from '../System'
 import type { World } from '../World'
 import type { 
   IncidentComponent,
   TransformComponent,
-  PowerComponent,
-  ConnectionComponent
+  PowerComponent
 } from '../types'
 
-export class IncidentSystem implements System {
-  public update(world: World, dt: number): void {
+export class IncidentSystem extends System {
+  public update(dt: number): void {
     // 1. Process Active Incidents
-    const incidentComponents = world.getComponents<IncidentComponent>('IncidentComponent')
+    const incidentComponents = this.world.getComponentMap<IncidentComponent>('incident')
     if (incidentComponents) {
       incidentComponents.forEach((incident, _entityId) => {
         if (incident.isResolved) return
@@ -19,34 +18,34 @@ export class IncidentSystem implements System {
 
         // Drill specific execution
         if (incident.type === 'drill') {
-          this.executeDrill(world, incident, dt)
+          this.executeDrill(this.world, incident, dt)
         }
 
         // Check resolution conditions implicitly based on node states
-        const allResolved = incident.affectedNodes.length > 0 ? incident.affectedNodes.every(nodeId => this.isNodeHealthy(world, nodeId)) : false
+        const allResolved = incident.affectedNodes.length > 0 ? incident.affectedNodes.every(nodeId => this.isNodeHealthy(this.world, nodeId)) : false
         
         const rtoTarget = incident.rtoTargetSeconds || 300 // Fallback 5-minute RTO
 
         if (incident.elapsedSeconds > rtoTarget && !allResolved) {
           // RTO violation
-          world.publish('incident:rto_violation', { incidentId: incident.incidentId })
+          this.world.eventBus.publish('incident:rto_violation', { incidentId: incident.incidentId })
           
           if (!incident.hasAlertedRto) {
             incident.hasAlertedRto = true
-            world.eventBus.publish('system:alert', {
+            this.world.eventBus.publish('system:alert', {
               entityId: incident.incidentId,
               message: `CRITICAL SLA VIOLATION: Target RTO of ${rtoTarget}s missed for incident ${incident.type}. CASCADE FAILURE TRIGGERED.`,
               severity: 'error'
             })
             
-            this.triggerCascadeFailure(world, incident)
+            this.triggerCascadeFailure(this.world, incident)
           }
         }
 
         if (allResolved && incident.elapsedSeconds > 10) { // minimum 10s evaluation
           incident.isResolved = true
-          world.publish('incident:resolved', { incidentId: incident.incidentId })
-          world.eventBus.publish('system:alert', {
+          this.world.eventBus.publish('incident:resolved', { incidentId: incident.incidentId })
+          this.world.eventBus.publish('system:alert', {
              entityId: incident.incidentId,
              message: `DR Drill PASSED: Resolved in ${Math.round(incident.elapsedSeconds)}s.`,
              severity: 'success'
@@ -56,7 +55,7 @@ export class IncidentSystem implements System {
     }
 
     // 2. Anomaly Detection (Create Incidents)
-    this.detectAnomalies(world)
+    this.detectAnomalies(this.world)
   }
 
   private executeDrill(world: World, incident: IncidentComponent, _dt: number) {
@@ -66,16 +65,16 @@ export class IncidentSystem implements System {
     // Drill starts: isolate the site.
     // Drill ends (resolved): reconnect the site.
     
-    const transforms = world.getComponents<TransformComponent>('TransformComponent')
+    const transforms = world.getComponentMap<TransformComponent>('transform')
     if (!transforms) return
     
     // We expect the incident to have an affected siteId. If not, fallback to isolating affectedNodes.
     const targetSiteId = incident.siteId
     
     if (targetSiteId) {
-      const storageMap = world.getComponents<import('../types').StorageComponent>('StorageComponent')
+      const storageMap = world.getComponentMap<import('../types').StorageComponent>('storage')
 
-      transforms.forEach((transform, nodeId) => {
+      transforms.forEach((transform: TransformComponent, nodeId: string) => {
         if (transform.siteId === targetSiteId) {
           // Check storage replication for RPO
           if (storageMap && incident.elapsedSeconds < 10) {
@@ -83,7 +82,7 @@ export class IncidentSystem implements System {
             if (storage && !storage.replicationSourceId) {
               // No replication configured, RPO violated instantly
               if (incident.rpoTargetSeconds !== undefined) {
-                 world.publish('incident:rpo_violation', { incidentId: incident.incidentId })
+                 world.eventBus.publish('incident:rpo_violation', { incidentId: incident.incidentId })
               }
             }
           }
@@ -109,7 +108,7 @@ export class IncidentSystem implements System {
     } else {
       // Legacy node-based drill fallback
       incident.affectedNodes.forEach(nodeId => {
-        const transform = world.getComponent<TransformComponent>(nodeId, 'TransformComponent')
+        const transform = world.getComponent<TransformComponent>('transform', nodeId)
         if (transform && incident.elapsedSeconds < 10) {
            transform.isBlackholed = true
         } else if (transform && incident.isResolved) {
@@ -120,8 +119,8 @@ export class IncidentSystem implements System {
   }
 
   private isNodeHealthy(world: World, nodeId: string): boolean {
-    const transform = world.getComponent<TransformComponent>(nodeId, 'TransformComponent')
-    const power = world.getComponent<PowerComponent>(nodeId, 'PowerComponent')
+    const transform = world.getComponent<TransformComponent>('transform', nodeId)
+    const power = world.getComponent<PowerComponent>('power', nodeId)
     
     if (transform && transform.healthStatus !== 'nominal') return false
     if (power && !power.isPowered) return false
@@ -131,20 +130,20 @@ export class IncidentSystem implements System {
 
   private detectAnomalies(world: World) {
     // Basic detection algorithm for massive failures across the facility
-    const transforms = world.getComponents<TransformComponent>('TransformComponent')
+    const transforms = world.getComponentMap<TransformComponent>('transform')
     if (!transforms) return
 
     let failedNodesCount = 0
     let lastSiteId = ''
     let detectedRootCause = 'Unknown'
     
-    transforms.forEach((t, entityId) => {
+    transforms.forEach((t: TransformComponent, entityId: string) => {
       if (t.healthStatus === 'critical' || t.degradation && t.degradation > 0.8) {
         failedNodesCount++
         lastSiteId = t.siteId
 
-        const power = world.getComponent<PowerComponent>(entityId, 'PowerComponent')
-        const thermal = world.getComponent<import('../types').ThermalComponent>(entityId, 'ThermalComponent')
+        const power = world.getComponent<PowerComponent>('power', entityId)
+        const thermal = world.getComponent<import('../types').ThermalComponent>('thermal', entityId)
         
         if (power && power.breakerTripped) detectedRootCause = 'Rack Power Overload'
         else if (thermal && thermal.temperature > 85) detectedRootCause = 'Thermal Runaway'
@@ -157,7 +156,7 @@ export class IncidentSystem implements System {
       }
     })
 
-    const securityComponents = world.getComponents<import('../types').SecurityComponent>('SecurityComponent')
+    const securityComponents = world.getComponentMap<import('../types').SecurityComponent>('SecurityComponent')
     let lockedNodesCount = 0
     let lastLockedSiteId = ''
     if (securityComponents) {
@@ -173,39 +172,40 @@ export class IncidentSystem implements System {
     // If more than 5 nodes are heavily degraded or failed, trigger a power/thermal outage incident
     // We would need to deduplicate so we don't spawn thousands of incidents.
     if (failedNodesCount > 5) {
-      const activeIncidents = world.getComponents<IncidentComponent>('IncidentComponent')
-      let alreadyTracked = false
-      if (activeIncidents) {
-        activeIncidents.forEach(inc => {
-          if (!inc.isResolved && (inc.type === 'power_outage' || inc.type === 'thermal_runaway')) {
-            alreadyTracked = true
-          }
-        })
-      }
-
-      if (!alreadyTracked) {
-        const incidentId = `inc-${Date.now()}`
-        const newIncident: IncidentComponent = {
-          incidentId,
-          type: detectedRootCause === 'Thermal Runaway' ? 'thermal_runaway' : 'power_outage',
-          severity: 'high',
-          rootCause: detectedRootCause,
-          affectedNodes: [],
-          elapsedSeconds: 0,
-          isResolved: false,
-          siteId: lastSiteId
+        const activeIncidents = world.getComponentMap<IncidentComponent>('IncidentComponent')
+        let alreadyTracked = false
+        if (activeIncidents) {
+          activeIncidents.forEach((inc: IncidentComponent) => {
+            if (!inc.isResolved && (inc.type === 'power_outage' || inc.type === 'thermal_runaway')) {
+              alreadyTracked = true
+            }
+          })
         }
-        world.registerEntity(incidentId)
-        world.addComponent(incidentId, 'IncidentComponent', newIncident)
-        world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastSiteId })
-      }
+
+        if (!alreadyTracked) {
+          const incidentId = `inc-${Date.now()}`
+          const newIncident: IncidentComponent = {
+            entityId: incidentId,
+            incidentId,
+            type: detectedRootCause === 'Thermal Runaway' ? 'thermal_runaway' : 'power_outage',
+            severity: 'high',
+            rootCause: detectedRootCause,
+            affectedNodes: [],
+            elapsedSeconds: 0,
+            isResolved: false,
+            siteId: lastSiteId
+          }
+          world.registerEntity(incidentId)
+          world.addComponent('IncidentComponent', newIncident)
+          world.eventBus.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastSiteId })
+        }
     }
 
     if (lockedNodesCount >= 2) {
-      const activeIncidents = world.getComponents<IncidentComponent>('IncidentComponent')
+      const activeIncidents = world.getComponentMap<IncidentComponent>('IncidentComponent')
       let alreadyTracked = false
       if (activeIncidents) {
-        activeIncidents.forEach(inc => {
+        activeIncidents.forEach((inc: IncidentComponent) => {
           if (!inc.isResolved && inc.type === 'ransomware') {
             alreadyTracked = true
           }
@@ -215,6 +215,7 @@ export class IncidentSystem implements System {
       if (!alreadyTracked) {
         const incidentId = `inc-rw-${Date.now()}`
         const newIncident: IncidentComponent = {
+          entityId: incidentId,
           incidentId,
           type: 'ransomware',
           severity: 'critical',
@@ -225,17 +226,17 @@ export class IncidentSystem implements System {
           siteId: lastLockedSiteId
         }
         world.registerEntity(incidentId)
-        world.addComponent(incidentId, 'IncidentComponent', newIncident)
-        world.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastLockedSiteId })
+        world.addComponent('IncidentComponent', newIncident)
+        world.eventBus.publish('incident:created', { incidentId, type: newIncident.type, siteId: lastLockedSiteId })
       }
     }
   }
 
   private spawnChaosIncident(world: World, targetNodeId: string) {
-    const activeIncidents = world.getComponents<IncidentComponent>('IncidentComponent')
+    const activeIncidents = world.getComponentMap<IncidentComponent>('IncidentComponent')
     let activeCount = 0
     if (activeIncidents) {
-      activeIncidents.forEach(inc => { if (!inc.isResolved) activeCount++ })
+      activeIncidents.forEach((inc: IncidentComponent) => { if (!inc.isResolved) activeCount++ })
     }
     
     // Don't overwhelm the player with too many simultaneous chaos events
@@ -275,14 +276,15 @@ export class IncidentSystem implements System {
   }
 
   private triggerCascadeFailure(world: World, sourceIncident: IncidentComponent) {
-    const transforms = world.getComponents<TransformComponent>('TransformComponent')
+    const transforms = world.getComponentMap<TransformComponent>('TransformComponent')
     if (!transforms) return
 
     // Find a healthy node in the same site, or any healthy node to break
     let cascadeTarget: string | null = null
-    const sourceSiteId = sourceIncident.siteId || (sourceIncident.affectedNodes.length > 0 ? transforms.get(sourceIncident.affectedNodes[0])?.siteId : null)
+    const firstAffectedNode = sourceIncident.affectedNodes[0]
+    const sourceSiteId = sourceIncident.siteId || (firstAffectedNode ? transforms.get(firstAffectedNode)?.siteId : null)
 
-    transforms.forEach((t, entityId) => {
+    transforms.forEach((t: TransformComponent, entityId: string) => {
       if (t.healthStatus === 'nominal' && !sourceIncident.affectedNodes.includes(entityId)) {
         if (!cascadeTarget || (sourceSiteId && t.siteId === sourceSiteId && Math.random() > 0.5)) {
           cascadeTarget = entityId

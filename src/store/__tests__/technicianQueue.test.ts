@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useInfraStore } from '../useInfraStore'
-import type { SimSyncOutputPayload } from '../../simulation/worker/SimulationWorkerManager'
+import type { SimSyncOutputPayload } from '../../simulation/worker/workerTypes'
 import { Vector3 } from 'three'
 
 // Mock three

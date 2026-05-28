@@ -25,6 +25,7 @@ export interface TransformComponent extends Component {
   isBlackholed?: boolean
   rateLimitGbps?: number
   maintenanceMode?: boolean
+  isThrottled?: boolean
 }
 
 // Connection Component: Network link state
@@ -57,6 +58,7 @@ export interface ThermalComponent extends Component {
   btuOutput: number
   lastUpdate: number
   // V2/Enterprise Additions
+  startTimestamp?: number
   humidity?: number            // Relative Humidity % (0 - 100)
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle' // Airflow containment configuration
   isStandby?: boolean         // Standby state for CRAC units under N+1 redundancy
@@ -206,6 +208,7 @@ export interface HypervisorComponent extends Component {
 // Ticket Component: Tracks active repair workflows
 export interface TicketComponent extends Component {
   ticketId: string
+  targetNodeId: string
   type: 'drive' | 'cpu' | 'motherboard' | 'psu' | 'network' | 'power'
   priority?: 'P1' | 'P2' | 'P3' | 'P4'
   elapsedSeconds: number
@@ -226,6 +229,7 @@ export interface IncidentComponent extends Component {
   isResolved: boolean
   hasAlertedRto?: boolean
   siteId?: string
+  startTimestamp?: number
 }
 
 // VM Component: Individual Virtual Machine state running inside the ECS

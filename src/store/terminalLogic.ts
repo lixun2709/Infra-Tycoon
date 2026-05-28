@@ -92,6 +92,7 @@ export function handleCommand(
     output.push("ORCH: [[BLUE]]apt install[[RESET]], [[BLUE]]systemctl start[[RESET]], [[BLUE]]sync-ntp[[RESET]]")
     output.push("NAV: [[YELLOW]]scan console[[RESET]], [[YELLOW]]connect console [id][[RESET]], [[YELLOW]]exit[[RESET]]")
     output.push("SIM: [[BLUE]]ecs-stats[[RESET]], [[BLUE]]sim-diagnostics[[RESET]], [[BLUE]]prom[[RESET]], [[BLUE]]traces[[RESET]], [[BLUE]]alerts[[RESET]]")
+    output.push("SECURITY: [[RED]]dr-drill [site_id][[RESET]], [[RED]]ransomware-drill[[RESET]], [[RED]]isolate [node_id][[RESET]], [[RED]]format [node_id][[RESET]]")
   } else if (targetNode && targetNode.systemState === 'off' && !['poweron', 'exit', 'help'].includes(cmdLower)) {
     output.push("[[RED]]SYSTEM ERROR: Node is logically powered down.[[RESET]]")
     output.push("Required: '[[YELLOW]]poweron[[RESET]]' to initialize CPU/RAM.")
@@ -272,6 +273,34 @@ export function handleCommand(
       }
     } else {
       output.push("usage: [[YELLOW]]pdu status[[RESET]] or [[YELLOW]]pdu reset [rack_id][[RESET]]")
+    }
+  } else if (cmdLower === 'dr-drill') {
+    const targetSite = args[1]
+    if (!targetSite) {
+      output.push("usage: dr-drill [site_id]")
+    } else {
+      get().triggerDRDrill(targetSite, 'high')
+      output.push(`[[RED]]INITIATING DR DRILL FOR SITE: ${targetSite}[[RESET]]`)
+      output.push("Power loss simulated. RTO timers started.")
+    }
+  } else if (cmdLower === 'ransomware-drill') {
+    get().triggerRansomwareSimulation()
+    output.push("[[RED]]WARNING: Ransomware payload injected into network.[[RESET]]")
+  } else if (cmdLower === 'isolate') {
+    const targetNodeId = args[1]
+    if (!targetNodeId) {
+      output.push("usage: isolate [node_id]")
+    } else {
+      get().isolateNode(targetNodeId)
+      output.push(`[[YELLOW]]Node ${targetNodeId} has been isolated from the network.[[RESET]]`)
+    }
+  } else if (cmdLower === 'format') {
+    const targetNodeId = args[1]
+    if (!targetNodeId) {
+      output.push("usage: format [node_id]")
+    } else {
+      get().formatNode(targetNodeId)
+      output.push(`[[GREEN]]Node ${targetNodeId} has been formatted and returned to a clean state.[[RESET]]`)
     }
   } else {
     output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)

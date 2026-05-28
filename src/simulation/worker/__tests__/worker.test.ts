@@ -25,8 +25,9 @@ describe('Simulation Worker Synchronization Subsystem', () => {
     manager.start() // Explicitly start the worker manager in the test environment!
     
     // Disable heartbeat during tests to avoid ReferenceError: Worker is not defined due to timeout
-    if ((manager as any).heartbeatInterval) {
-      clearInterval((manager as any).heartbeatInterval)
+    const mgr = manager as unknown as { heartbeatInterval?: ReturnType<typeof setInterval> }
+    if (mgr.heartbeatInterval) {
+      clearInterval(mgr.heartbeatInterval)
     }
 
     const engineModule = await import('../../SimulationEngine')

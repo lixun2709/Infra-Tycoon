@@ -105,7 +105,7 @@ export class KubernetesSystem extends System {
            } else {
              pod.evictionTimer = 0
            }
-        } else if ((pod.status === 'crashloop' || pod.status === 'oomkilled') && pod.nodeId !== '' && hasQuorum) {
+        } else if (pod.status === 'pending' && pod.nodeId !== '' && hasQuorum) {
            pod.status = 'running'
            pod.evictionTimer = 0
         }
@@ -155,7 +155,7 @@ export class KubernetesSystem extends System {
                  // Find a pod on this node to kill
                  for (const [podId, p] of pods.entries()) {
                    if (p.nodeId === workerId && p.status === 'running') {
-                     p.status = 'crashloop'
+                     p.status = 'oomkilled'
                      p.evictionTimer = 0
                      p.restartCount = (p.restartCount || 0) + 1
                      res.memAvailable += p.memoryReq

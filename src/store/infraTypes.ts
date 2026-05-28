@@ -231,6 +231,7 @@ export interface Incident {
   affectedNodes: string[]
   isResolved: boolean
   rtoTargetSeconds?: number
+  elapsedSeconds: number
 }
 
 export interface Blueprint {
@@ -321,7 +322,7 @@ export interface TechnicianTicket {
   nodeId: string
   nodeName: string
   type: 'drive' | 'cpu' | 'motherboard' | 'psu' | 'network' | 'power'
-  status: 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
+  status: 'queued' | 'dispatched' | 'arrived' | 'diagnosing' | 'repairing' | 'completed'
   elapsedSeconds: number
   totalSeconds: number
   cost: number

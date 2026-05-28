@@ -36,9 +36,8 @@ export class SimulationEngine {
     // Register active simulation systems with strict priority execution
     this.systemManager.registerSystem(new PowerSystem(this.world), 10)
     this.systemManager.registerSystem(new HypervisorSystem(this.world), 12)
-    this.systemManager.registerSystem(new SlaSystem(this.world), 13)
-    this.systemManager.registerSystem(new TicketingSystem(), 14)
-    this.systemManager.registerSystem(new IncidentSystem(), 15)
+    this.systemManager.registerSystem(new TicketingSystem(this.world), 14)
+    this.systemManager.registerSystem(new IncidentSystem(this.world), 15)
     this.systemManager.registerSystem(new RackSystem(this.world), 15)
     this.systemManager.registerSystem(new ThermalSystem(this.world), 20)
     this.systemManager.registerSystem(new StorageSystem(this.world), 25)
