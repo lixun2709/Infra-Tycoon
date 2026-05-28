@@ -40,11 +40,11 @@ export function computeSlotInspectionTarget(
     // Math logic matching U-space dimensional bounds
     const yOffset = -RACK_HEIGHT / 2 + U_WORLD * ((selectedNode.slotIndex ?? 1) - 1 + (selectedNode.uHeight ?? 1) / 2)
     outTarget.x = parentRack.position.x
-    outTarget.y = parentRack.position.y + RACK_HEIGHT / 2 + yOffset
+    outTarget.y = parentRack.position.y + RACK_HEIGHT / 2 + yOffset + 1.6 // Account for platform height
     outTarget.z = parentRack.position.z
   } else {
     outTarget.x = selectedNode.position.x
-    outTarget.y = selectedNode.position.y + RACK_HEIGHT / 2
+    outTarget.y = selectedNode.position.y + RACK_HEIGHT / 2 + 1.6 // Account for platform height
     outTarget.z = selectedNode.position.z
   }
 }

@@ -11,12 +11,13 @@ import {
   computeSlotInspectionTarget, 
   lerpCameraVec3 
 } from '../../../systems/camera/cameraModes'
+import { clampCameraPosition } from '../../../systems/camera/cameraCollider'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 
 // Pre-allocate vectors to eliminate per-frame Garbage Collection spikes
 const V_TARGET_POS = new THREE.Vector3()
 const V_CAMERA_TARGET = new THREE.Vector3()
-const V_CAMERA_OFFSET = new THREE.Vector3(3, 2, 3)
+const V_CAMERA_OFFSET = new THREE.Vector3(3, 2, -3) // Inverted Z offset for cold aisle placement
 const V_MAP_POS = new THREE.Vector3(15, 12, 15)
 const V_SITE_POS = new THREE.Vector3(0, 6, 20)
 const V_ZERO = new THREE.Vector3(0, 0, 0)
@@ -163,6 +164,9 @@ export function CameraController() {
         break
       }
     }
+
+    // Apply bounds enforcement to limit all panning (both keyboard and mouse-drag)
+    clampCameraPosition(orbitControls.target, camera.position)
 
     orbitControls.update()
   })
