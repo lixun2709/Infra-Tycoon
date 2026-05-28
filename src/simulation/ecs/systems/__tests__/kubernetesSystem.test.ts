@@ -111,6 +111,26 @@ describe('KubernetesSystem', () => {
       entityId: pod1,
       nodeId: worker1,
       clusterId: 'cluster-1',
+      serviceName: 'backend',
+      status: 'running'
+    } as PodComponent)
+
+    // Add a second replica so PDB allows eviction of pod1
+    world.registerEntity('pod-2')
+    world.addComponent('pod', {
+      entityId: 'pod-2',
+      nodeId: master1, 
+      clusterId: 'cluster-1',
+      serviceName: 'backend',
+      status: 'running'
+    } as PodComponent)
+
+    world.registerEntity('pod-3')
+    world.addComponent('pod', {
+      entityId: 'pod-3',
+      nodeId: master1, 
+      clusterId: 'cluster-1',
+      serviceName: 'backend',
       status: 'running'
     } as PodComponent)
 
@@ -123,6 +143,73 @@ describe('KubernetesSystem', () => {
     pod = world.getComponent<PodComponent>('pod', pod1)!
     expect(pod.nodeId).toBe('')
     expect(pod.status).toBe('pending')
+  })
+
+  it('should block pod eviction if PDB minimum replicas constraint is violated', () => {
+    const world = new World()
+    const system = new KubernetesSystem(world)
+    
+    const master1 = 'master-1'
+    const worker1 = 'worker-1'
+    const worker2 = 'worker-2'
+    const pod1 = 'pod-1' // failing pod
+    const pod2 = 'pod-2' // running pod
+
+    world.registerEntity(master1)
+    world.registerEntity(worker1)
+    world.registerEntity(worker2)
+    world.registerEntity(pod1)
+    world.registerEntity(pod2)
+
+    world.addComponent('kubernetes', {
+      entityId: master1,
+      role: 'master',
+      clusterId: 'cluster-1',
+      totalMasters: 1,
+      kubeletStatus: 'running'
+    } as KubernetesNodeComponent)
+    world.addComponent('power', { entityId: master1, isPowered: true, systemState: 'running' } as PowerComponent)
+
+    world.addComponent('kubernetes', {
+      entityId: worker1,
+      role: 'worker',
+      clusterId: 'cluster-1',
+      kubeletStatus: 'offline'
+    } as KubernetesNodeComponent)
+    world.addComponent('power', { entityId: worker1, isPowered: false, systemState: 'off' } as PowerComponent)
+
+    world.addComponent('kubernetes', {
+      entityId: worker2,
+      role: 'worker',
+      clusterId: 'cluster-1',
+      kubeletStatus: 'running'
+    } as KubernetesNodeComponent)
+    world.addComponent('power', { entityId: worker2, isPowered: true, systemState: 'running' } as PowerComponent)
+
+    world.addComponent('pod', {
+      entityId: pod1,
+      nodeId: worker1,
+      clusterId: 'cluster-1',
+      serviceName: 'ha-app',
+      status: 'running'
+    } as PodComponent)
+
+    world.addComponent('pod', {
+      entityId: pod2,
+      nodeId: worker2,
+      clusterId: 'cluster-1',
+      serviceName: 'ha-app',
+      status: 'running' // Only 1 other running replica
+    } as PodComponent)
+
+    system.update(10.0) // Crashloop state for pod1
+    system.update(300.0) // Eviction timeout for pod1
+
+    // Because only 1 running replica exists (pod2), eviction of pod1 should be blocked by PDB!
+    const pod = world.getComponent<PodComponent>('pod', pod1)!
+    expect(pod.nodeId).toBe(worker1)
+    expect(pod.status).toBe('crashloop') // NOT pending
+    expect(pod.evictionTimer).toBe(300) // timer held
   })
 
   it('should ignore pod evictions when etcd quorum is lost', () => {

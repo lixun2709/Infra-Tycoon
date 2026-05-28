@@ -215,9 +215,12 @@ export class HypervisorSystem extends System {
       })
 
       if (candidateVmId) {
-        const healthyHost = this.findHealthyHost(powerMap, vmMap, storageOverloadedHostId, thermalMap, storageMap)
+        // For svMotion, explicitly require that the healthy host can accommodate the VM's storage size!
+        // We pass the VM's size to the findHealthyHost function.
+        const vm = vmMap.get(candidateVmId)!
+        const healthyHost = this.findHealthyHost(powerMap, vmMap, storageOverloadedHostId, thermalMap, storageMap, vm.storageGB)
+        
         if (healthyHost) {
-          const vm = vmMap.get(candidateVmId)!
           vm.status = 'migrating'
           vm.migratingToNodeId = healthyHost
           vm.migrationProgress = 0
@@ -236,7 +239,8 @@ export class HypervisorSystem extends System {
     vmMap: Map<string, VmComponent>, 
     ignoreHostId: string,
     thermalMap?: Map<string, import('../types').ThermalComponent>,
-    storageMap?: Map<string, import('../types').StorageComponent>
+    storageMap?: Map<string, import('../types').StorageComponent>,
+    requiredStorageGB?: number
   ): string | null {
     // Basic HA host selection heuristic
     let bestHostId: string | null = null
@@ -253,7 +257,16 @@ export class HypervisorSystem extends System {
          // If we are evaluating for svMotion, ensure the target has enough storage
          if (storageMap) {
             const storage = storageMap.get(hostId)
-            if (!storage || (storage.usedStorageTB / storage.totalStorageTB > 0.8)) return
+            if (!storage) return
+            
+            // Check overall capacity ratio
+            if (storage.usedStorageTB / storage.totalStorageTB > 0.8) return
+            
+            // Explicitly check if the requested VM fits (convert storageGB to TB)
+            if (requiredStorageGB) {
+               const requiredTB = requiredStorageGB / 1024
+               if (storage.usedStorageTB + requiredTB > storage.totalStorageTB * 0.9) return // Reject if it pushes target over 90%
+            }
          }
 
          // Calculate load (number of VMs for now as placeholder for mem/cpu tracking)

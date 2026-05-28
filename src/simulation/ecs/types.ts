@@ -230,6 +230,7 @@ export interface IncidentComponent extends Component {
   hasAlertedRto?: boolean
   siteId?: string
   startTimestamp?: number
+  escalationLevel?: number
 }
 
 // VM Component: Individual Virtual Machine state running inside the ECS

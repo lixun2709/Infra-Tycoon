@@ -157,4 +157,81 @@ describe('IncidentSystem', () => {
     const inc = world.getComponent<IncidentComponent>('incident', incidentId)!
     expect(inc.isResolved).toBe(true) // Drill forcibly fails and ends
   })
+
+  it('should promote secondary storage to primary during drill and failback when resolved', () => {
+    const world = new World()
+    const system = new IncidentSystem(world)
+    const alertSpy = vi.fn()
+    world.eventBus.publish = alertSpy
+
+    const siteId = 'site-primary'
+    const nodeIdPrimary = 'storage-primary'
+    const nodeIdSecondary = 'storage-secondary'
+    const incidentId = 'drill-failover'
+
+    world.registerEntity(nodeIdPrimary)
+    world.registerEntity(nodeIdSecondary)
+    world.registerEntity(incidentId)
+
+    world.addComponent('transform', {
+      entityId: nodeIdPrimary,
+      siteId: siteId, // Will be isolated
+      isBlackholed: false
+    } as TransformComponent)
+
+    world.addComponent('storage', {
+      entityId: nodeIdPrimary,
+      totalStorageTB: 10,
+      usedStorageTB: 5,
+    } as StorageComponent)
+
+    world.addComponent('transform', {
+      entityId: nodeIdSecondary,
+      siteId: 'site-secondary',
+      isBlackholed: false
+    } as TransformComponent)
+
+    world.addComponent('storage', {
+      entityId: nodeIdSecondary,
+      totalStorageTB: 10,
+      usedStorageTB: 5,
+      replicationSourceId: nodeIdPrimary // Replicating from primary
+    } as StorageComponent)
+
+    world.addComponent('incident', {
+      entityId: incidentId,
+      incidentId: incidentId,
+      type: 'drill',
+      siteId: siteId,
+      affectedNodes: [],
+      elapsedSeconds: 0,
+      isResolved: false,
+      severity: 'critical'
+    } as IncidentComponent)
+
+    // Wait until failover kicks in (elapsed >= 10s)
+    system.update(12.0)
+    
+    // The secondary array should be promoted!
+    let secondaryStorage = world.getComponent<StorageComponent>('storage', nodeIdSecondary)!
+    expect(secondaryStorage.replicationSourceId).toBeUndefined()
+    expect(alertSpy).toHaveBeenCalledWith('system:alert', expect.objectContaining({
+      message: expect.stringContaining('DR Failover: Storage array promoted to Primary'),
+      severity: 'warning'
+    }))
+
+    // Resolve drill
+    const inc = world.getComponent<IncidentComponent>('incident', incidentId)!
+    inc.isResolved = true
+    system.update(1.0)
+
+    // Secondary array should be demoted back to Secondary!
+    secondaryStorage = world.getComponent<StorageComponent>('storage', nodeIdSecondary)!
+    expect(secondaryStorage.replicationSourceId).toBe(nodeIdPrimary)
+    expect(secondaryStorage.replicationProgress).toBe(0)
+    expect(alertSpy).toHaveBeenCalledWith('system:alert', expect.objectContaining({
+      message: expect.stringContaining('DR Failback: Storage array demoted to Secondary'),
+      severity: 'info'
+    }))
+  })
 })

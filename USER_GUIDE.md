@@ -763,3 +763,12 @@ Executing a DR Drill isolates a specific target site dynamically at the networki
 - **Ticketing Systems (Priority P1-P4)**: Technicians automatically abandon low-priority (P4) queues when a P1 emergency is detected.
 - **SLA Contracts & High-Availability**: Application fault-domains are rigorously analyzed. A system must deploy redundancies across distinct fault-domains to meet High-Availability (HA) SLA definitions.
 - **SLA Bankruptcy**: If SLA penalties exceed ,000,000, a critical systemic alert is issued, warning of potential contract termination.
+- **Backup Data Protection**: Backups will now autonomously fail if target storage arrays are 100% utilized or if network pathways are blackholed. Ransomware will actively corrupt standard backups; enabling \isImmutable\ is required to guarantee recovery points during a cyber-attack.
+- **Enterprise Ransomware Simulation**: Ransomware laterally propagates deterministically. Spreading speed is contingent on \ConnectionComponent\ throughput. Zero-day variants spread aggressively, but deploying \microsegmentationEnabled\ architecture chokes the lateral infection probability down to 1%.
+- **Storage vMotion (svMotion) Safety Bounds**: The Distributed Resource Scheduler (DRS) now validates Datastore capacity before initiating svMotion. VMs will not evacuate to Datastores that would exceed 90% utilization post-migration, preventing cascading storage saturation.
+
+## Operations Realism IV
+- **Incident Escalation & MTTR**: Incidents that take too long to resolve automatically escalate through an MTTR severity matrix (L1 -> L2 -> L3). High-level escalations warn of impending service interruptions and potentially trigger cascading physical failures.
+- **SLA Planned Maintenance**: The SLA System distinguishes between unplanned structural outages and Planned Maintenance (`maintenanceMode = true`). Server nodes correctly placed in maintenance mode do not incur financial penalties during their downtime window.
+- **Strict Backup Window Timeouts**: The Backup System enforces a strict 60s simulated execution window for backup data transfers. If a backup stream is aggressively throttled or bogged down by network congestion and fails to complete before the window expires, it reverts to an unprotected state.
+

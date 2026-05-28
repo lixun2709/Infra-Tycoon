@@ -7,12 +7,19 @@ import type {
 } from '../types'
 
 export class IncidentSystem extends System {
+  private originalReplicationSources = new Map<string, string>()
+
   public update(dt: number): void {
     // 1. Process Active Incidents
     const incidentComponents = this.world.getComponentMap<IncidentComponent>('incident')
     if (incidentComponents) {
       incidentComponents.forEach((incident, _entityId) => {
-        if (incident.isResolved) return
+        if (incident.isResolved) {
+          if (incident.type === 'drill') {
+            this.executeDrill(this.world, incident, dt) // Call once to trigger cleanup
+          }
+          return
+        }
 
         incident.elapsedSeconds += dt
 
@@ -25,6 +32,29 @@ export class IncidentSystem extends System {
         const allResolved = incident.affectedNodes.length > 0 ? incident.affectedNodes.every(nodeId => this.isNodeHealthy(this.world, nodeId)) : false
         
         const rtoTarget = incident.rtoTargetSeconds || 300 // Fallback 5-minute RTO
+
+        // MTTR Escalation logic
+        if (incident.type !== 'drill') {
+          if (!incident.escalationLevel) incident.escalationLevel = 1
+
+          if (incident.elapsedSeconds > rtoTarget * 0.5 && incident.escalationLevel === 1) {
+            incident.escalationLevel = 2
+            this.world.eventBus.publish('system:alert', {
+              entityId: incident.incidentId,
+              message: `Incident Escalation L2: ${incident.type} is taking longer than expected. More technicians required.`,
+              severity: 'warning'
+            })
+          }
+
+          if (incident.elapsedSeconds > rtoTarget * 0.8 && incident.escalationLevel === 2) {
+            incident.escalationLevel = 3
+            this.world.eventBus.publish('system:alert', {
+              entityId: incident.incidentId,
+              message: `Incident Escalation L3: ${incident.type} nearing RTO limit! Potential cascade failures imminent.`,
+              severity: 'error'
+            })
+          }
+        }
 
         if (incident.elapsedSeconds > rtoTarget && !allResolved) {
           // RTO violation
@@ -47,9 +77,13 @@ export class IncidentSystem extends System {
           this.world.eventBus.publish('incident:resolved', { incidentId: incident.incidentId })
           this.world.eventBus.publish('system:alert', {
              entityId: incident.incidentId,
-             message: `DR Drill PASSED: Resolved in ${Math.round(incident.elapsedSeconds)}s.`,
+             message: `${incident.type === 'drill' ? 'DR Drill PASSED' : 'Incident Resolved'}: Took ${Math.round(incident.elapsedSeconds)}s.`,
              severity: 'success'
           })
+          
+          if (incident.type === 'drill') {
+            this.executeDrill(this.world, incident, dt) // Call again to immediately cleanup
+          }
         }
       })
     }
@@ -95,6 +129,43 @@ export class IncidentSystem extends System {
           }
         }
       })
+
+      // Failover and Failback logic for Split-Brain Storage
+      if (storageMap) {
+         if (!incident.isResolved && incident.elapsedSeconds >= 10) {
+            // Drill is active. Promote secondary arrays (Failover)
+            storageMap.forEach((storage, nodeId) => {
+               if (storage.replicationSourceId) {
+                  const sourceTransform = transforms.get(storage.replicationSourceId)
+                  if (sourceTransform && sourceTransform.siteId === targetSiteId) {
+                     // The source is blackholed. Promote this node!
+                     this.originalReplicationSources.set(nodeId, storage.replicationSourceId)
+                     storage.replicationSourceId = undefined // Promoted to Primary
+                     world.eventBus.publish('system:alert', {
+                        entityId: nodeId,
+                        message: `DR Failover: Storage array promoted to Primary due to source isolation.`,
+                        severity: 'warning'
+                     })
+                  }
+               }
+            })
+         } else if (incident.isResolved) {
+            // Drill finished. Failback / Re-establish replication
+            for (const [nodeId, oldSourceId] of this.originalReplicationSources.entries()) {
+               const storage = storageMap.get(nodeId)
+               if (storage && !storage.replicationSourceId) {
+                  storage.replicationSourceId = oldSourceId
+                  storage.replicationProgress = 0 // Needs resync
+                  world.eventBus.publish('system:alert', {
+                     entityId: nodeId,
+                     message: `DR Failback: Storage array demoted to Secondary. Resyncing...`,
+                     severity: 'info'
+                  })
+               }
+            }
+            this.originalReplicationSources.clear()
+         }
+      }
 
       // Enforce RPO failure
       if (incident.rpoTargetSeconds !== undefined && incident.elapsedSeconds > incident.rpoTargetSeconds && !incident.isResolved) {

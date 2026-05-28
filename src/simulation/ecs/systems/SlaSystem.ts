@@ -8,7 +8,7 @@ export class SlaSystem extends System {
   private executionTickCounter = 0
   private healthyAppCounts = new Map<string, number>()
   private healthyAppFaultDomains = new Map<string, Set<string>>()
-  private failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, other: number }>()
+  private failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, plannedMaintenance: number, other: number }>()
 
   public update(_dt: number): void {
     this.executionTickCounter++
@@ -39,7 +39,7 @@ export class SlaSystem extends System {
 
     apps.forEach((app) => {
       if (!this.failedAppReasons.has(app.appId)) {
-        this.failedAppReasons.set(app.appId, { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: 0 })
+        this.failedAppReasons.set(app.appId, { isolated: 0, blackholed: 0, power: 0, ransomware: 0, plannedMaintenance: 0, other: 0 })
       }
 
       if (app.status === 'running') {
@@ -67,7 +67,8 @@ export class SlaSystem extends System {
           domainSet.add(transform?.parentRackId || app.nodeId)
         } else {
           const reasons = this.failedAppReasons.get(app.appId)!
-          if (isRansomwareLocked) reasons.ransomware++
+          if (isMaintenance) reasons.plannedMaintenance++
+          else if (isRansomwareLocked) reasons.ransomware++
           else if (isIsolated) reasons.isolated++
           else if (isBlackholed) reasons.blackholed++
           else if (!isPowered) reasons.power++
@@ -101,22 +102,39 @@ export class SlaSystem extends System {
           isHealthy = false
           
           const deficit = req.count - activeCount
-          const reasons = this.failedAppReasons.get(req.appId) || { isolated: 0, blackholed: 0, power: 0, ransomware: 0, other: deficit }
+          const reasons = this.failedAppReasons.get(req.appId) || { isolated: 0, blackholed: 0, power: 0, ransomware: 0, plannedMaintenance: 0, other: 0 }
           
           let penaltyForThisTick = 0
-          const totalFailing = reasons.ransomware + reasons.isolated + reasons.blackholed + reasons.power + reasons.other
-          const ratio = totalFailing > 0 ? (deficit / totalFailing) : 1
           
-          penaltyForThisTick += (reasons.ransomware * ratio) * 500
-          penaltyForThisTick += ((reasons.isolated + reasons.blackholed) * ratio) * 300
-          penaltyForThisTick += (reasons.power * ratio) * 150
-          penaltyForThisTick += (reasons.other * ratio) * 50
+          // Total failing EXCLUDING planned maintenance
+          let totalFailingUnplanned = reasons.ransomware + reasons.isolated + reasons.blackholed + reasons.power + reasons.other
           
-          // Use maximum of blueprint base penalty or the dynamic penalty
-          contract.accumulatedPenalty += Math.max(blueprint.penaltyPerTick, penaltyForThisTick)
-          contract.currentStatus = 'violating'
+          // If the deficit is larger than tracked failing reasons, it's a structural/redundancy violation.
+          // Add the missing deficit to 'other'.
+          if (totalFailingUnplanned + reasons.plannedMaintenance < deficit) {
+            const structuralDeficit = deficit - (totalFailingUnplanned + reasons.plannedMaintenance)
+            reasons.other += structuralDeficit
+            totalFailingUnplanned += structuralDeficit
+          }
           
-          break // Found first failing requirement, we only apply one penalty per contract per tick
+          if (totalFailingUnplanned > 0) {
+            // Deficit caused by unplanned outages
+            const ratio = (deficit / totalFailingUnplanned)
+            
+            penaltyForThisTick += (reasons.ransomware * ratio) * 500
+            penaltyForThisTick += ((reasons.isolated + reasons.blackholed) * ratio) * 300
+            penaltyForThisTick += (reasons.power * ratio) * 150
+            penaltyForThisTick += (reasons.other * ratio) * 50
+            
+            // Use maximum of blueprint base penalty or the dynamic penalty
+            contract.accumulatedPenalty += Math.max(blueprint.penaltyPerTick, penaltyForThisTick)
+            contract.currentStatus = 'violating'
+            
+            break // Found first failing requirement, we only apply one penalty per contract per tick
+          } else {
+             // If the only reason it's offline is planned maintenance, we do not penalize.
+             contract.currentStatus = 'healthy' // Override to healthy during maintenance windows
+          }
         }
       }
 

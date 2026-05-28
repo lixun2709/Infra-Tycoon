@@ -98,9 +98,23 @@ export class KubernetesSystem extends System {
              pod.evictionTimer += _deltaTime
              // Evict after pod-eviction-timeout (e.g. 300 seconds)
              if (pod.evictionTimer >= 300) {
+             // Pod Disruption Budget (PDB) / Minimum Replicas constraint
+             // Prevent eviction if doing so would drop the running count below 2 for a highly available service
+             let activeReplicas = 0
+             for (const p of pods.values()) {
+               if (p.serviceName === pod.serviceName && p.status === 'running') {
+                 activeReplicas++
+               }
+             }
+
+             if (activeReplicas > 1) {
                pod.nodeId = ''
                pod.status = 'pending'
                pod.evictionTimer = 0
+             } else {
+               // Eviction blocked by PDB, keep the timer maxed so it evicts as soon as another replica is ready
+               pod.evictionTimer = 300 
+             }
              }
            } else {
              pod.evictionTimer = 0
@@ -188,18 +202,29 @@ export class KubernetesSystem extends System {
                      res.memAvailable >= pod.memoryReq) {
                      
                      // Anti-affinity check: Try to avoid nodes that already have this service
-                     let hasSameService = false
+                     // Zone-Awareness: Check if another replica is already running in the same physical siteId!
+                     let hasSameServiceInSite = false
+                     const targetSiteId = transformComponents?.get(workerId)?.siteId || ''
+
                      for (const p of pods.values()) {
-                       if (p.nodeId === workerId && p.serviceName === pod.serviceName && p.status === 'running') {
-                         hasSameService = true
-                         break
+                       if (p.serviceName === pod.serviceName && p.status === 'running') {
+                         if (p.nodeId === workerId) {
+                           hasSameServiceInSite = true
+                           break
+                         } else if (targetSiteId) {
+                           const otherSiteId = transformComponents?.get(p.nodeId)?.siteId
+                           if (otherSiteId === targetSiteId) {
+                             hasSameServiceInSite = true
+                             break
+                           }
+                         }
                        }
                      }
                      
                      // If there's another worker available, we skip this one for anti-affinity
                      // But if we've checked all workers and haven't placed it, we will relax anti-affinity.
                      // For deterministic simplicity, we'll just score it and pick the best, or skip if i < sortedWorkers.length - 1
-                     if (hasSameService && i < sortedWorkers.length - 1) {
+                     if (hasSameServiceInSite && i < sortedWorkers.length - 1) {
                         continue // Skip this node to prefer spread
                      }
                      

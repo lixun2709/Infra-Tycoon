@@ -59,8 +59,25 @@ export class BackupSystem extends System {
           if (transform) transform.isThrottled = false
         } else {
           const timeSince = Date.now() - backup.lastBackupTime
+          
+          // Strict Backup Window limit: 60 simulated seconds.
+          // If a backup takes longer than 60s (e.g. due to bandwidth throttling), it times out and fails.
+          if (timeSince > 60.0 && backup.backupStatus === 'backing_up') {
+             backup.backupStatus = 'unprotected'
+             const transform = this.world.getComponentMap<TransformComponent>('transform').get(id)
+             if (transform) transform.isThrottled = false
+             
+             this.world.eventBus.publish('system:alert', {
+                entityId: id,
+                message: `Backup Failed: Backup Window (60s) exceeded due to network congestion/throttling.`,
+                severity: 'error'
+             })
+             
+             return // exit loop for this node
+          }
+
           // Assume backups take 30 simulation seconds to complete
-          if (timeSince > 30.0) {
+          if (timeSince > 30.0 && timeSince <= 60.0) {
             // Success! Deduct capacity from target
             if (backup.backupTargetId) {
               const targetStorage = storageMap.get(backup.backupTargetId)
