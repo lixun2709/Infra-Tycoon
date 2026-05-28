@@ -5,6 +5,7 @@ import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEng
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
 import { simulationCoordinator } from '../../simulation/SimulationCoordinator'
+import { useMissionStore } from '../useMissionStore'
 
 export interface SimulationSlice {
   processTick: (dt?: number) => void
@@ -203,5 +204,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // 3. Recalculate Facilities
     recalculateRoomStats()
     nodes.filter(n => n.type === 'rack').forEach(r => calculateRackPower(nodes, r.id))
+
+    // 4. Evaluate Missions (outside UI render cycle)
+    useMissionStore.getState().evaluateActiveMission(get())
   }
 })

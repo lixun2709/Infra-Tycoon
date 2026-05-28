@@ -1,25 +1,27 @@
 import { useState } from 'react'
 import { useMissionStore } from '../../store/useMissionStore'
 import { useInfraStore } from '../../store/useInfraStore'
+import { MISSION_CATALOG, MISSION_ORDER } from '../../physics/missionLibrary'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CheckCircle2, Target, Trophy, ChevronRight, Activity, Zap, Move } from 'lucide-react'
 import { Badge } from './base/Badge'
 import { Button } from './base/Button'
 
 export const MissionHUD = () => {
-  const { missions, activeMissionId, startMission } = useMissionStore()
+  const { activeMissionId, completedObjectiveIds, startMission } = useMissionStore()
   const selectedNodeId = useInfraStore(state => state.selectedNodeId)
   const hasThermalWarning = useInfraStore(state => state.totalRoomBTU > 50000)
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [positionMode, setPositionMode] = useState<'bottom-left' | 'top-left' | 'bottom-right' | 'top-right'>('bottom-left')
   
-  const activeMission = missions.find(m => m.id === activeMissionId)
+  const activeMission = activeMissionId ? MISSION_CATALOG[activeMissionId] : null
 
   if (!activeMission) return null
 
-  const completedCount = activeMission.objectives.filter(o => o.isComplete).length
+  const completedCount = activeMission.objectives.filter(o => completedObjectiveIds.includes(o.id)).length
   const totalCount = activeMission.objectives.length
   const progressPercent = (completedCount / totalCount) * 100
+  const isMissionComplete = completedCount === totalCount
 
   const cyclePosition = (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -135,58 +137,77 @@ export const MissionHUD = () => {
                   />
                 </div>
               </div>
-              <div className="flex justify-between items-center mt-2">
+              <div className="flex justify-between items-center mt-2 mb-4">
                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Progress Fleet Deployment</span>
                  <span className="text-[10px] font-black text-[#ff5a36] font-mono tracking-tighter">{Math.round(progressPercent)}%</span>
               </div>
+
+              {(activeMission.rewardCash || activeMission.rewardXp) && (
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/5">
+                  <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest mr-2">Rewards:</span>
+                  {activeMission.rewardCash && (
+                    <Badge variant="ghost" className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[9px] py-0">
+                      ${activeMission.rewardCash.toLocaleString()}
+                    </Badge>
+                  )}
+                  {activeMission.rewardXp && (
+                    <Badge variant="ghost" className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[9px] py-0">
+                      +{activeMission.rewardXp} XP
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="p-6 space-y-5 bg-black/40">
-              {activeMission.objectives.map((obj, idx) => (
-                <motion.div 
-                  key={obj.id}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: idx * 0.1 }}
-                  className={`relative flex gap-4 transition-all duration-500 ${obj.isComplete ? 'opacity-30' : 'opacity-100'}`}
-                >
-                  <div className="mt-0.5 z-10">
-                    {obj.isComplete ? (
-                      <div className="w-[18px] h-[18px] rounded-full bg-[#ff5a36] flex items-center justify-center shadow-[0_0_10px_rgba(255,90,54,0.4)]">
-                        <CheckCircle2 size={12} className="text-slate-950 stroke-[4px]" />
-                      </div>
-                    ) : (
-                      <div className="w-[18px] h-[18px] rounded-full border border-[#ff5a36]/30 flex items-center justify-center">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#ff5a36]" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 min-w-0">
-                    <h4 className={`text-[12px] font-black tracking-wide ${obj.isComplete ? 'text-[#ff5a36] line-through font-bold' : 'text-slate-100'}`}>
-                      {obj.label}
-                    </h4>
-                    {!obj.isComplete && (
-                      <p className="text-[9px] text-slate-500 mt-1 font-bold leading-tight uppercase tracking-widest">
-                        {obj.description}
-                      </p>
-                    )}
-                  </div>
-                </motion.div>
-              ))}
+              {activeMission.objectives.map((obj, idx) => {
+                const isComplete = completedObjectiveIds.includes(obj.id)
+                return (
+                  <motion.div 
+                    key={obj.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    className={`relative flex gap-4 transition-all duration-500 ${isComplete ? 'opacity-30' : 'opacity-100'}`}
+                  >
+                    <div className="mt-0.5 z-10">
+                      {isComplete ? (
+                        <div className="w-[18px] h-[18px] rounded-full bg-[#ff5a36] flex items-center justify-center shadow-[0_0_10px_rgba(255,90,54,0.4)]">
+                          <CheckCircle2 size={12} className="text-slate-950 stroke-[4px]" />
+                        </div>
+                      ) : (
+                        <div className="w-[18px] h-[18px] rounded-full border border-[#ff5a36]/30 flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#ff5a36]" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`text-[12px] font-black tracking-wide ${isComplete ? 'text-[#ff5a36] line-through font-bold' : 'text-slate-100'}`}>
+                        {obj.label}
+                      </h4>
+                      {!isComplete && (
+                        <p className="text-[9px] text-slate-500 mt-1 font-bold leading-tight uppercase tracking-widest">
+                          {obj.description}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                )
+              })}
             </div>
 
             <div className="px-6 py-4 border-t border-white/5 bg-black/60">
-              {activeMission.status === 'completed' ? (
+              {isMissionComplete ? (
                 <Button 
                   variant="primary" 
                   className="w-full justify-center text-[10px] font-black tracking-widest bg-[#ff5a36] hover:bg-[#ff7b5c] text-white border-none shadow-[0_4px_20px_rgba(255,90,54,0.3)]"
                   onClick={() => {
-                    const currentIndex = missions.findIndex(m => m.id === activeMissionId)
-                    if (currentIndex < missions.length - 1) {
-                      const nextMission = missions[currentIndex + 1]
+                    const currentIndex = MISSION_ORDER.indexOf(activeMissionId)
+                    if (currentIndex !== -1 && currentIndex < MISSION_ORDER.length - 1) {
+                      const nextMission = MISSION_ORDER[currentIndex + 1]
                       if (nextMission) {
-                        startMission(nextMission.id)
+                        startMission(nextMission)
                       }
                     }
                   }}

@@ -10,7 +10,6 @@ import { OperatorHandbook } from './components/ui/OperatorHandbook'
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
-import { MissionLogic } from './components/world/MissionLogic'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
@@ -503,7 +502,6 @@ function App() {
       )}
       <GlobalNetwork />
       <MissionHUD />
-      <MissionLogic />
 
       <Inspector />
       <ApplicationBrowser 
