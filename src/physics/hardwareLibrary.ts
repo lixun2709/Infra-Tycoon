@@ -15,6 +15,8 @@ export type HardwareCatalogSpec = {
   throttleTemp?: number
   heatEfficiency?: number // 0-1, how much power becomes heat.
   minLevel?: number
+  maxPowerKW?: number
+  maxWeightKG?: number
 }
 
 export type PortType = 'power' | 'network' | 'fc' | 'sas'
@@ -354,6 +356,37 @@ export const HARDWARE_CATALOG = {
     storageTB: 0,
     useCase: 'Standard enterprise rack. Provides 42U of mounting space for hardware.',
     portLayout: [],
+    maxPowerKW: 5.0,
+    maxWeightKG: 1000,
+  },
+  RACK_48U_HIGH_DENSITY: {
+    name: 'High-Density Rack (48U)',
+    uHeight: 48,
+    wattage: 0,
+    type: 'rack',
+    color: '#1a202c',
+    purchasePrice: 800,
+    storageTB: 0,
+    useCase: 'Taller rack designed for high-density setups. Supports 48U and heavier loads.',
+    portLayout: [],
+    minLevel: 3,
+    maxPowerKW: 15.0,
+    maxWeightKG: 2000,
+  },
+  RACK_LIQUID_COOLED: {
+    name: 'DLC Rack (42U)',
+    uHeight: 42,
+    wattage: 0,
+    type: 'rack',
+    color: '#0369a1',
+    purchasePrice: 4500,
+    storageTB: 0,
+    useCase: 'Specialized Direct Liquid Cooling rack. Massively increases power density limits.',
+    portLayout: [],
+    minLevel: 5,
+    maxPowerKW: 30.0,
+    maxWeightKG: 1500,
+    heatEfficiency: 0.1, // dissipates 90% of heat directly
   }
 } as const satisfies Record<string, HardwareCatalogSpec>
 

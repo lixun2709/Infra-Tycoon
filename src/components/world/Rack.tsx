@@ -2,7 +2,7 @@ import React, { type ReactNode, useMemo, useRef, useEffect } from 'react'
 import { Text, Edges, Line } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { RACK_HEIGHT, U_WORLD, RACK_U } from '../../physics/dimensions'
+import { U_WORLD } from '../../physics/dimensions'
 import { useInteractable } from '../../hooks/useInteraction'
 import { useInfraStore } from '../../store/useInfraStore'
 import { THEMES } from '../../store/themeTypes'
@@ -19,20 +19,23 @@ interface RackProps {
   weightStatus?: 'nominal' | 'structural_warning' | 'seismic_hazard'
   recirculationFactor?: number
   children?: ReactNode
+  uHeight?: number
 }
 
-function USlotLines() {
+function USlotLines({ uHeight = 42 }: { uHeight?: number }) {
   const activeTheme = useInfraStore(s => s.activeTheme)
   const themeSpec = THEMES[activeTheme]
 
+  const actualHeight = uHeight * U_WORLD
+
   const segments = React.useMemo(() => {
     const out: { key: number; y: number }[] = []
-    for (let j = 1; j <= RACK_U; j++) {
-      const y = -RACK_HEIGHT / 2 + j * U_WORLD
+    for (let j = 1; j <= uHeight; j++) {
+      const y = -actualHeight / 2 + j * U_WORLD
       out.push({ key: j, y })
     }
     return out
-  }, [])
+  }, [uHeight, actualHeight])
 
   return (
     <>
@@ -54,9 +57,10 @@ interface ContainmentFlowProps {
   containmentType: 'cold_aisle' | 'hot_aisle'
   ambientTemp: number
   recirculationFactor?: number
+  actualHeight: number
 }
 
-function ContainmentFlowComponent({ containmentType, ambientTemp, recirculationFactor = 0 }: ContainmentFlowProps) {
+function ContainmentFlowComponent({ containmentType, ambientTemp, recirculationFactor = 0, actualHeight }: ContainmentFlowProps) {
   const isHeatMapVisible = useInfraStore(s => s.isHeatMapVisible)
   const materialRef = useRef<THREE.ShaderMaterial>(null)
 
@@ -142,7 +146,7 @@ function ContainmentFlowComponent({ containmentType, ambientTemp, recirculationF
 
   return (
     <mesh position={[0, 0, zPos]}>
-      <planeGeometry args={[1.08, RACK_HEIGHT]} />
+      <planeGeometry args={[1.08, actualHeight]} />
       <primitive object={material} ref={materialRef} attach="material" />
     </mesh>
   )
@@ -152,10 +156,12 @@ const ContainmentFlow = React.memo(ContainmentFlowComponent)
 
 
 
-function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', weightStatus = 'nominal', recirculationFactor = 0, children }: RackProps) {
+function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position, isSelected, containmentType = 'none', weightStatus = 'nominal', recirculationFactor = 0, uHeight = 42, children }: RackProps) {
   const isOverload = status === 'power_overload'
   const isSeismicHazard = weightStatus === 'seismic_hazard'
   const powerText = `${currentPowerKW.toFixed(1)} / ${maxPowerKW.toFixed(1)} kW`
+  
+  const actualHeight = uHeight * U_WORLD
   
   const { isHovered, interactionProps } = useInteractable(id, 'RACK')
   const activeTheme = useInfraStore(s => s.activeTheme)
@@ -169,9 +175,9 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
   const ambientTemp = currentSite?.ambientTemp ?? 22.0
 
   return (
-    <group position={[position.x, position.y + RACK_HEIGHT / 2, position.z]}>
+    <group position={[position.x, position.y + actualHeight / 2, position.z]}>
       <mesh>
-        <boxGeometry args={[1, RACK_HEIGHT, 1]} />
+        <boxGeometry args={[1, actualHeight, 1]} />
         <meshStandardMaterial
           color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#7c2d12' : '#2d3748')}
           emissive={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#000000')}
@@ -194,12 +200,12 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
       <group position={[0, 0, -0.501]} rotation={[0, Math.PI, 0]}>
         <lineSegments>
           <edgesGeometry>
-            <planeGeometry args={[1, RACK_HEIGHT]} />
+            <planeGeometry args={[1, actualHeight]} />
           </edgesGeometry>
           <lineBasicMaterial color="#334155" linewidth={1.5} />
         </lineSegments>
         <mesh>
-          <planeGeometry args={[0.96, RACK_HEIGHT * 0.98]} />
+          <planeGeometry args={[0.96, actualHeight * 0.98]} />
           <meshStandardMaterial
             color="#020617"
             transparent
@@ -213,7 +219,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
       {containmentType && containmentType !== 'none' && (
         <>
           <mesh position={[0, 0, 0]}>
-            <boxGeometry args={[1.08, RACK_HEIGHT * 1.002, 1.08]} />
+            <boxGeometry args={[1.08, actualHeight * 1.002, 1.08]} />
             <meshStandardMaterial
               color={containmentType === 'cold_aisle' ? '#00f2ff' : '#ff5a36'}
               transparent
@@ -228,25 +234,25 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
               lineWidth={2.0}
             />
           </mesh>
-          <ContainmentFlow containmentType={containmentType} ambientTemp={ambientTemp} recirculationFactor={recirculationFactor} />
+          <ContainmentFlow containmentType={containmentType} ambientTemp={ambientTemp} recirculationFactor={recirculationFactor} actualHeight={actualHeight} />
         </>
       )}
 
 
 
-      <USlotLines />
+      <USlotLines uHeight={uHeight} />
 
       {/* 3-Phase PDU Strip on the Rear Side */}
       <group position={[0.465, 0, -0.502]} rotation={[0, Math.PI, 0]}>
         {/* Background track for the PDU strip */}
         <mesh position={[0, 0, -0.001]}>
-          <planeGeometry args={[0.07, RACK_HEIGHT]} />
+          <planeGeometry args={[0.07, actualHeight]} />
           <meshStandardMaterial color="#111827" metalness={0.9} roughness={0.1} />
         </mesh>
         {/* Border edges around the PDU strip */}
         <lineSegments>
           <edgesGeometry>
-            <planeGeometry args={[0.07, RACK_HEIGHT]} />
+            <planeGeometry args={[0.07, actualHeight]} />
           </edgesGeometry>
           <lineBasicMaterial color="#475569" linewidth={1.5} />
         </lineSegments>
@@ -254,8 +260,8 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
         {/* Outlets & Phase Partitions */}
         {React.useMemo(() => {
           const outlets: React.ReactNode[] = []
-          for (let j = 1; j <= RACK_U; j++) {
-            const slotY = -RACK_HEIGHT / 2 + (j - 0.5) * U_WORLD
+          for (let j = 1; j <= uHeight; j++) {
+            const slotY = -actualHeight / 2 + (j - 0.5) * U_WORLD
             const phase = ['A', 'B', 'C'][(j - 1) % 3] as 'A' | 'B' | 'C'
             const phaseColor = phase === 'A' ? '#f43f5e' : phase === 'B' ? '#06b6d4' : '#eab308'
             outlets.push(
@@ -302,11 +308,11 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
             )
           }
           return outlets
-        }, [])}
+        }, [uHeight, actualHeight])}
       </group>
       <Text 
         {...interactionProps}
-        position={[0, RACK_HEIGHT / 2 + 0.15, 0]} 
+        position={[0, actualHeight / 2 + 0.15, 0]} 
         fontSize={0.1} 
         color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#031225')} 
         outlineColor="#ffffff" 
@@ -314,7 +320,7 @@ function RackComponent({ id, name, currentPowerKW, maxPowerKW, status, position,
       >
         {name}
       </Text>
-      <Text position={[0, RACK_HEIGHT / 2 + 0.02, 0]} fontSize={0.07} color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#031225')} outlineColor="#ffffff" outlineWidth={0.005}>
+      <Text position={[0, actualHeight / 2 + 0.02, 0]} fontSize={0.07} color={isOverload ? themeSpec.render.rackStatusOverload : (isSeismicHazard ? '#ea580c' : '#031225')} outlineColor="#ffffff" outlineWidth={0.005}>
         {powerText}
       </Text>
       {children}

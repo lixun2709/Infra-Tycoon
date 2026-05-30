@@ -17,6 +17,7 @@ import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { Rocket, X, TrendingUp, Sliders, LayoutGrid, Wind, Scaling, Box, Zap } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
+import { HARDWARE_CATALOG } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
 import { THEMES } from './store/themeTypes'
 import type { ThemeKey } from './store/themeTypes'
@@ -109,7 +110,7 @@ function App() {
     root.style.setProperty('--border', themeSpec.border)
     root.style.setProperty('--border-active', themeSpec.borderActive)
   }, [activeTheme])
-  const setPlacementMode = useInfraStore((s) => s.setPlacementMode)
+
   const placementMode = useInfraStore((s) => s.placementMode)
 
   const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
@@ -152,19 +153,18 @@ function App() {
 
 
   useEffect(() => {
-    if (placementMode && pendingType && pendingType !== 'RACK_42U') {
-      const timer = setTimeout(() => setHardwareToAdd(pendingType as HardwareCatalogKey), 0)
-      return () => clearTimeout(timer)
+    if (placementMode && pendingType) {
+      const isRack = HARDWARE_CATALOG[pendingType as HardwareCatalogKey]?.type === 'rack'
+      if (!isRack) {
+        const timer = setTimeout(() => setHardwareToAdd(pendingType as HardwareCatalogKey), 0)
+        return () => clearTimeout(timer)
+      }
     } else if (!placementMode) {
       const timer = setTimeout(() => setHardwareToAdd(null), 0)
       return () => clearTimeout(timer)
     }
     return undefined
   }, [placementMode, pendingType])
-
-  const handleAddRack = () => {
-    setPlacementMode(true, 'RACK_42U')
-  }
 
   const handleConfirmPlacement = (rackId: string) => {
     if (!hardwareToAdd) return
@@ -354,7 +354,6 @@ function App() {
       </div>
 
       <ProcurementMenu 
-        onAddRack={handleAddRack}
         isOpen={isProcurementOpen}
         onToggle={setIsProcurementOpen}
       />

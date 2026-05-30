@@ -149,6 +149,7 @@ export interface InfraNode {
   compressionEnabled?: boolean
   deduplicationRatio?: number
   compressionRatio?: number
+  heatEfficiency?: number
   physicalUsedStorageTB?: number
   writeAmplificationFactor?: number
   systemState: SystemState

@@ -5,8 +5,9 @@ import { Edges, Text } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { useInput } from '../../../contexts/InputContext'
-import { RACK_HEIGHT } from '../../../physics/dimensions'
+import { U_WORLD } from '../../../physics/dimensions'
 import { PREDEFINED_SLOTS, findNearestSlot } from '../../../physics/zoning'
+import { HARDWARE_CATALOG, type HardwareCatalogKey } from '../../../physics/hardwareLibrary'
 
 interface HoloIndicatorProps {
   x: number
@@ -98,17 +99,23 @@ export function FloorRenderer() {
     currentSiteId,
     facilityColumnsCount,
     halls,
-    expandHallDirection
+    expandHallDirection,
+    pendingRackType
   } = useInfraStore(useShallow(state => ({
     placementMode: state.placementMode, 
     nodes: state.nodes, 
     currentSiteId: state.currentSiteId,
     facilityColumnsCount: state.facilityColumnsCount,
     halls: state.halls,
-    expandHallDirection: state.expandHallDirection
+    expandHallDirection: state.expandHallDirection,
+    pendingRackType: state.pendingRackType
   })))
   const { dispatchIntent } = useInput()
   const [ghostPos, setGhostPos] = useState<THREE.Vector3 | null>(null)
+
+  const pendingRackSpec = pendingRackType ? HARDWARE_CATALOG[pendingRackType as HardwareCatalogKey] : null
+  const ghostUHeight = pendingRackSpec && pendingRackSpec.type === 'rack' ? (pendingRackSpec.uHeight || 42) : 42
+  const ghostHeight = ghostUHeight * U_WORLD
 
   const ghostOccupied = ghostPos
     ? nodes.some(
@@ -396,9 +403,9 @@ export function FloorRenderer() {
 
       {/* 4. Placement Snap Ghost Preview */}
       {placementMode && ghostPos && (
-        <group position={[ghostPos.x, ghostPos.y + RACK_HEIGHT / 2, ghostPos.z]}>
+        <group position={[ghostPos.x, ghostPos.y + ghostHeight / 2, ghostPos.z]}>
           <mesh>
-            <boxGeometry args={[0.98, RACK_HEIGHT, 0.98]} />
+            <boxGeometry args={[0.98, ghostHeight, 0.98]} />
             <meshStandardMaterial
               color={ghostOccupied ? '#ef4444' : '#10b981'}
               transparent

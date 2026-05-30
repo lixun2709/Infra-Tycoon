@@ -17,15 +17,14 @@ import {
   Lock
 } from 'lucide-react'
 
-type Category = 'compute' | 'storage' | 'network' | 'security' | 'identity' | 'facility'
+type Category = 'compute' | 'storage' | 'network' | 'security' | 'identity' | 'facility' | 'rack'
 
 interface ProcurementMenuProps {
-  onAddRack: () => void
   isOpen: boolean
   onToggle: (open: boolean) => void
 }
 
-export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenuProps) {
+export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
   const [showQueueList, setShowQueueList] = useState(false)
   const { 
     deploymentQueue,
@@ -54,6 +53,7 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'identity', label: 'Identity', icon: Fingerprint },
     { id: 'facility', label: 'Facility', icon: Zap },
+    { id: 'rack', label: 'Racks', icon: Layout },
   ]
 
   const items = Object.entries(HARDWARE_CATALOG)
@@ -157,14 +157,6 @@ export function ProcurementMenu({ onAddRack, isOpen, onToggle }: ProcurementMenu
                     Current Site: {currentSiteName}
                   </p>
                 </div>
-                <button 
-                  onClick={onAddRack}
-                  disabled={balance < 0}
-                  className="px-8 py-4 bg-teal-500 text-[#020617] rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shadow-[0_10px_30px_rgba(20,184,166,0.3)] flex items-center gap-3 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
-                >
-                  <Layout size={16} />
-                  Deploy 42U Rack
-                </button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-10 grid grid-cols-2 gap-8 bg-slate-900/5 custom-scrollbar">

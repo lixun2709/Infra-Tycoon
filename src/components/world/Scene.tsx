@@ -59,6 +59,7 @@ export function Scene() {
             position={rack.position}
             isSelected={selectedNodeId === rack.id}
             containmentType={rack.containmentType}
+            uHeight={rack.uHeight || 42}
           >
             {nodes.filter(n => n.parentRackId === rack.id).map(hw => (
               <MountedUnit
