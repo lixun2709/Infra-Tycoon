@@ -128,6 +128,28 @@ export class IncidentSystem extends System {
       return
     }
 
+    // Power Failure Drill: Simulate grid loss for the entire site
+    if (incident.type === 'power_drill') {
+      const targetSiteId = incident.siteId
+      const powers = world.getComponentMap<PowerComponent>('power')
+      if (!targetSiteId || !powers) return
+
+      transforms.forEach((transform: TransformComponent, nodeId: string) => {
+        if (transform.siteId === targetSiteId) {
+          const power = powers.get(nodeId)
+          if (power) {
+            // Apply gridLossDrill state
+            if (incident.elapsedSeconds < incident.rtoTargetSeconds! && !incident.isResolved) {
+              power.gridLossDrill = true
+            } else if (incident.isResolved || incident.elapsedSeconds >= incident.rtoTargetSeconds!) {
+              power.gridLossDrill = false
+            }
+          }
+        }
+      })
+      return
+    }
+
     // In a DR Drill, we simulate a Site Isolation (Dark Site) scenario.
     // Instead of randomly pulling power, we isolate all nodes matching the target siteId from the network.
     

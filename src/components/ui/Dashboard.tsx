@@ -288,6 +288,9 @@ export function Dashboard({
                     <Button variant="ghost" className="text-[9px] border border-rose-500/30 text-rose-500 hover:bg-rose-500/10" onClick={() => useInfraStore.getState().triggerHVACFailureDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
                       TRIGGER HVAC FAILURE
                     </Button>
+                    <Button variant="ghost" className="text-[9px] border border-violet-500/30 text-violet-500 hover:bg-violet-500/10" onClick={() => useInfraStore.getState().triggerPowerFailureDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
+                      SIMULATE POWER FAILURE
+                    </Button>
                     <Button variant="ghost" className="text-[9px]" onClick={acknowledgeAllAlerts}>PURGE ALL</Button>
                   </div>
                 </div>

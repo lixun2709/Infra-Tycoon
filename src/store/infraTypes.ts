@@ -234,7 +234,7 @@ export interface PostMortem {
 export interface Incident {
   id: string
   siteId: string
-  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway' | 'hvac_drill'
+  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway' | 'hvac_drill' | 'power_drill'
   severity: 'low' | 'medium' | 'high' | 'critical'
   startTimestamp: number
   resolvedTimestamp?: number

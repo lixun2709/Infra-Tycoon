@@ -32,6 +32,8 @@ export class UPSManager {
     else if (rackFeed === 'B' && !facilityFeeds.B) hasGridPower = false
     else if (rackFeed === 'both' && !facilityFeeds.A && !facilityFeeds.B) hasGridPower = false
 
+    if (power.gridLossDrill) hasGridPower = false
+
     if (hasGridPower) {
       power.isPowered = true
       power.upsBatterySeconds = Math.min(power.upsMaxBatterySeconds, power.upsBatterySeconds + dt * 2.0)
@@ -77,6 +79,8 @@ export class UPSManager {
     if (feed === 'A' && !facilityFeeds.A) hasGridPower = false
     else if (feed === 'B' && !facilityFeeds.B) hasGridPower = false
     else if (feed === 'both' && !facilityFeeds.A && !facilityFeeds.B) hasGridPower = false
+
+    if (power.gridLossDrill) hasGridPower = false
 
     if (hasGridPower) {
       power.isPowered = true

@@ -87,6 +87,7 @@ export interface PowerComponent extends Component {
   phaseLoadsWatts?: [number, number, number] // [A, B, C] Real Power
   phaseLoadsVA?: [number, number, number]    // [A, B, C] Apparent Power
   systemState?: 'off' | 'booting' | 'running'
+  gridLossDrill?: boolean
 }
 
 // Provisioning Component: OS/App lifecycle state
@@ -219,7 +220,7 @@ export interface TicketComponent extends Component {
 // Incident Component: Tracks site-wide or major events (Real or Drills)
 export interface IncidentComponent extends Component {
   incidentId: string
-  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway' | 'hvac_drill'
+  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway' | 'hvac_drill' | 'power_drill'
   severity: 'low' | 'medium' | 'high' | 'critical'
   rootCause?: string // Root cause tracker
   affectedNodes: string[]

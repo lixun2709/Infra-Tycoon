@@ -34,6 +34,7 @@ export interface MiscSlice {
   setPreviewBlueprint: (id: string | null) => void
   triggerDisasterRecoveryDrill: (siteId: string) => void
   triggerHVACFailureDrill: (siteId: string) => void
+  triggerPowerFailureDrill: (siteId: string) => void
 }
 
 export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set, get) => ({
@@ -469,6 +470,34 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     set({ incidents: [...incidents, newIncident] })
     pushAlert('critical', `HVAC FAILURE DRILL INITIATED: CRAC units at ${site.name} have been taken offline. Monitor thermal levels!`)
     audioManager.playEffect('alert')
+  },
+
+  triggerPowerFailureDrill: (siteId) => {
+    const { sites, incidents, pushAlert, set } = get()
+    const site = sites.find(s => s.id === siteId)
+    if (!site) return
+
+    const activeDrill = incidents.find(i => i.siteId === siteId && i.type === 'power_drill' && !i.isResolved)
+    if (activeDrill) {
+      pushAlert('warning', `A Power Failure Drill is already active for ${site.name}.`)
+      return
+    }
+
+    const newIncident: import('../infraTypes').Incident = {
+      id: `power-drill-${Date.now()}`,
+      siteId,
+      type: 'power_drill',
+      severity: 'critical',
+      startTimestamp: Date.now(),
+      affectedNodes: [],
+      isResolved: false,
+      elapsedSeconds: 0,
+      rtoTargetSeconds: 60 // 1 minute to survive/recover or until UPS depletes
+    }
+
+    set({ incidents: [...incidents, newIncident] })
+    pushAlert('critical', `POWER FAILURE DRILL INITIATED: Utility grid severed at ${site.name}. Racks are now on UPS battery!`)
+    audioManager.playEffect('error')
   },
 
   resetState: () => {
