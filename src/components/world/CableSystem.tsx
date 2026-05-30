@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { InfraNode, Connection } from '../../store/infraTypes'
-import { RACK_HEIGHT, U_WORLD } from '../../physics/dimensions'
+import { U_WORLD } from '../../physics/dimensions'
 
 // Custom high-fidelity cable shader with type-specific physical wave and pulse behaviors.
 const CableShader = {
@@ -114,8 +114,9 @@ function getPortWorldPosition(node: InfraNode, portId: string, allNodes: InfraNo
   const rack = allNodes.find(n => n.id === node.parentRackId)
   if (!rack) return new THREE.Vector3(node.position.x, node.position.y, node.position.z)
 
-  const yOffset = -RACK_HEIGHT / 2 + U_WORLD * (node.slotIndex - 1 + node.uHeight / 2)
-  const worldY = rack.position.y + RACK_HEIGHT / 2 + yOffset
+  const rackHeight = (rack.uHeight || 42) * U_WORLD
+  const yOffset = -rackHeight / 2 + U_WORLD * (node.slotIndex - 1 + node.uHeight / 2)
+  const worldY = rack.position.y + rackHeight / 2 + yOffset
 
   // Group and sort ports exactly like PortVisuals
   const sortedPorts = [...node.ports].sort((a, b) => {
@@ -312,7 +313,6 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
     const start = getPortWorldPosition(startNode, connection.startPortId, allNodes)
     const end = getPortWorldPosition(endNode, connection.endPortId, allNodes)
 
-    const dist = start.distanceTo(end)
     const isSameRack = startNode.parentRackId === endNode.parentRackId
 
     let points: THREE.Vector3[] = []
@@ -329,11 +329,42 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
       
       points = [start, p1, p2, p3, p4, end]
     } else {
-      // Cross-rack routing: Loop through the top/bottom or just a deep loop
-      const mid = new THREE.Vector3().lerpVectors(start, end, 0.5)
-      mid.z -= Math.max(0.5, dist * 0.5) // Deep loop for cross-rack
-      mid.y -= 0.2
-      points = [start, mid, end]
+      // Cross-rack structured routing via overhead trays
+      const sRack = allNodes.find(n => n.id === startNode.parentRackId) || startNode
+      const tRack = allNodes.find(n => n.id === endNode.parentRackId) || endNode
+      
+      const sRackHeight = (sRack.uHeight || 42) * U_WORLD
+      const tRackHeight = (tRack.uHeight || 42) * U_WORLD
+      
+      // Overhead tray height
+      const trayY = Math.max(sRack.position.y + sRackHeight / 2, tRack.position.y + tRackHeight / 2) + 0.5 
+      
+      // Source Side Channel
+      const sSideX = start.x > sRack.position.x ? sRack.position.x + 0.46 : sRack.position.x - 0.46
+      const sOut = new THREE.Vector3(start.x, start.y, start.z - 0.05)
+      const sSide = new THREE.Vector3(sSideX, sOut.y, sOut.z)
+      const sTop = new THREE.Vector3(sSideX, trayY, sRack.position.z - 0.05)
+      
+      // Target Side Channel
+      const tSideX = end.x > tRack.position.x ? tRack.position.x + 0.46 : tRack.position.x - 0.46
+      const tTop = new THREE.Vector3(tSideX, trayY, tRack.position.z - 0.05)
+      const tSide = new THREE.Vector3(tSideX, end.y, end.z - 0.05)
+      const tIn = new THREE.Vector3(end.x, end.y, end.z - 0.05)
+      
+      // Add a tray routing point (Manhattan-style L-bend in the ceiling tray)
+      const trayMid = new THREE.Vector3(sSideX, trayY, tRack.position.z - 0.05)
+
+      points = [
+        start, 
+        sOut, 
+        sSide, 
+        sTop, 
+        trayMid, 
+        tTop, 
+        tSide, 
+        tIn, 
+        end
+      ]
     }
 
     return { 

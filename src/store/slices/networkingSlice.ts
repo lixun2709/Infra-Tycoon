@@ -66,19 +66,77 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       return
     }
 
-    // Set high-fidelity realistic capacity, latency, and characteristics based on connection type
-    let bandwidthGbps = 10
-    let latencyMs = 1
-    if (sPort.type === 'fc') {
-      bandwidthGbps = 16 // 16GFC Fiber Channel
-      latencyMs = 0.2    // Ultra low latency optical transit
-    } else if (sPort.type === 'sas') {
-      bandwidthGbps = 12 // SAS-3 12Gb/s storage fabric
-      latencyMs = 0.4    // Low-latency local storage bus
-    } else if (sPort.type === 'power') {
-      bandwidthGbps = 0  // Power delivery has no network transit bandwidth
-      latencyMs = 0
+    // 1. Calculate realistic physical distance
+    const sRack = nodes.find(n => n.id === sNode?.parentRackId) || sNode
+    const tRack = nodes.find(n => n.id === tNode?.parentRackId) || tNode
+    
+    let lengthMeters = 5.0
+    if (sRack && tRack) {
+      if (sRack.id === tRack.id) {
+        // Intra-rack: vertical U distance + 1m slack
+        const uDiff = Math.abs((sNode?.slotIndex || 0) - (tNode?.slotIndex || 0))
+        lengthMeters = (uDiff * 0.05) + 1.0 
+      } else {
+        // Inter-rack: Manhattan distance across floor + up/down rack channels
+        const manhattan = Math.abs(sRack.position.x - tRack.position.x) + Math.abs(sRack.position.z - tRack.position.z)
+        lengthMeters = manhattan + 5.0 // 5m added for drop/climb from overhead tray
+      }
     }
+
+    // 2. Resolve media type, constraints and cost
+    let mediaType: 'copper_cat6' | 'dac_twinax' | 'mmf_om4' | 'smf_os2' | 'power_c13' = 'copper_cat6'
+    let costPerMeter = 2
+    let maxLen = 100
+
+    if (sPort.type === 'fc') {
+      mediaType = 'mmf_om4'
+      costPerMeter = 10
+      maxLen = 300
+    } else if (sPort.type === 'sas') {
+      mediaType = 'dac_twinax'
+      costPerMeter = 25
+      maxLen = 5
+    } else if (sPort.type === 'power') {
+      mediaType = 'power_c13'
+      costPerMeter = 5
+      maxLen = 10
+    } else if (sPort.type === 'network') {
+       if (lengthMeters > 100) {
+         mediaType = 'smf_os2'
+         costPerMeter = 15
+         maxLen = 10000
+       }
+    }
+
+    // 3. Physics Check
+    if (lengthMeters > maxLen) {
+      pushAlert('critical', `PHYSICS LIMIT EXCEEDED: Cannot run ${mediaType} over ${Math.ceil(lengthMeters)}m! Max limit is ${maxLen}m.`)
+      return
+    }
+
+    // 4. Financial Check
+    const totalCost = lengthMeters * costPerMeter
+    if (get().balance < totalCost) {
+      pushAlert('warning', `Insufficient CapEx. Structured cabling run of ${Math.ceil(lengthMeters)}m costs $${Math.ceil(totalCost)}.`)
+      return
+    }
+
+    // 5. Bandwidth and Latency simulation
+    let bandwidthGbps = 10
+    let baseLatency = 1
+    if (sPort.type === 'fc') {
+      bandwidthGbps = 16 
+      baseLatency = 0.2    
+    } else if (sPort.type === 'sas') {
+      bandwidthGbps = 12 
+      baseLatency = 0.4    
+    } else if (sPort.type === 'power') {
+      bandwidthGbps = 0  
+      baseLatency = 0
+    }
+
+    const speedOfLightDelay = (lengthMeters / 200000) * 1000 // roughly 5us per km in fiber/copper
+    const latencyMs = baseLatency + speedOfLightDelay
 
     const newConnection: Connection = {
       id: crypto.randomUUID(),
@@ -90,7 +148,10 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       bandwidthGbps,
       throughputGbps: 0,
       latencyMs,
-      type: sPort.type
+      type: sPort.type,
+      lengthMeters,
+      mediaType,
+      cost: totalCost
     }
 
     const updatedNodes = nodes.map(n => {
@@ -108,17 +169,22 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       return n
     })
 
-    set({ connections: [...connections, newConnection], nodes: updatedNodes })
+    set({ 
+      connections: [...connections, newConnection], 
+      nodes: updatedNodes,
+      balance: get().balance - totalCost 
+    })
+    
     audioManager.playEffect('success')
     
     const typeLabels: Record<string, string> = {
       power: 'C13 Power Feed',
-      network: 'Ethernet Cat6 Copper',
+      network: mediaType === 'smf_os2' ? 'OS2 Single-Mode Fiber' : 'Cat6 Copper',
       fc: 'OM4 Duplex LC Optical Fiber',
-      sas: 'Mini-SAS HD Metallic Shielded'
+      sas: 'Mini-SAS HD DAC'
     }
     const label = typeLabels[sPort.type] || 'Standard Interface'
-    pushAlert('info', `Physical ${label} established between ${sNode?.hostname || sNodeId.slice(0,4)} and ${tNode?.hostname || tNodeId.slice(0,4)}`)
+    pushAlert('info', `Physical run: ${label} (${Math.ceil(lengthMeters)}m) patched. CapEx: -$${Math.ceil(totalCost)}.`)
   },
 
   removeConnection: (id) => {

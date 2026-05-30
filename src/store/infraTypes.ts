@@ -318,6 +318,9 @@ export interface Connection {
   status?: 'active' | 'blocked' | 'degraded'
   syncProgress?: number
   type?: PortType
+  lengthMeters?: number
+  mediaType?: 'copper_cat6' | 'dac_twinax' | 'mmf_om4' | 'smf_os2' | 'power_c13'
+  cost?: number
   highlightTime?: number
   packetLoss?: number
   // V2/Enterprise Additions
