@@ -52,6 +52,7 @@ export type InfraState = {
   alerts: InfraAlert[]
   auditLogs: AuditLog[]
   isNetworkManagerOpen: boolean
+  isEocOpen: boolean
   networkLoad: number
   resilienceIndex: number
   // v2.0 SDDC Metrics
@@ -142,6 +143,7 @@ export type InfraState = {
   setNetworkManagerOpen: (open: boolean) => void
   setCurrentSiteId: (siteId: string) => void
   setMousePosition: (pos: Vector3 | null) => void
+  toggleEoc: () => void
   acknowledgeAllAlerts: () => void
   pushAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId?: string) => void
   acknowledgeAlert: (id: string) => void

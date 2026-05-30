@@ -10,6 +10,7 @@ import { OperatorHandbook } from './components/ui/OperatorHandbook'
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
+import { EmergencyOperationsCenter } from './components/ui/EmergencyOperationsCenter'
 import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
@@ -198,10 +199,13 @@ function App() {
         }}
         onToggleEconomy={() => setIsEconomyOpen(!isEconomyOpen)}
         onToggleGlobalMap={toggleGlobalMap}
+        onToggleEOC={() => useInfraStore.getState().toggleEoc()}
         onOpenHandbook={() => setIsHandbookOpen(!isHandbookOpen)}
         onToggleSaveManager={() => setIsSaveManagerOpen(!isSaveManagerOpen)}
         isTerminalOpen={isTerminalOpen}
       />
+
+      <EmergencyOperationsCenter />
 
       {isSaveManagerOpen && (
         <SaveManager onClose={() => setIsSaveManagerOpen(false)} />

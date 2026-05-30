@@ -17,6 +17,7 @@ import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { LevelUpOverlay } from './LevelUpOverlay'
+import { EmergencyOperationsCenter } from './EmergencyOperationsCenter'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
   if (!data || data.length === 0) return null
@@ -178,6 +179,7 @@ export function Dashboard({
       }
     >
       <div className="flex flex-col h-[75vh]">
+        <EmergencyOperationsCenter />
         <Tabs 
           tabs={tabs}
           activeTab={activeTab}

@@ -139,14 +139,30 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     }
 
     let updatedIncidents = get().incidents
+    const newPostMortems: import('../infraTypes').PostMortem[] = []
     if (payload.incidents) {
       updatedIncidents = get().incidents.map(incident => {
         const update = payload.incidents!.find(i => i.id === incident.id)
         if (update) {
+          if (!incident.isResolved && update.isResolved) {
+             newPostMortems.push({
+               id: crypto.randomUUID(),
+               incidentNumber: get().postMortems.length + newPostMortems.length + 1,
+               timestamp: update.resolvedTimestamp || Date.now(),
+               nodeName: 'Affected Nodes: ' + update.affectedNodes.length,
+               nodeId: update.siteId,
+               rca: `Root cause analysis for ${update.type.toUpperCase()}`,
+               mitigation: `Drill concluded or incident recovered.`,
+               impact: `Severity: ${update.severity.toUpperCase()}. Elapsed: ${update.elapsedSeconds}s (Target RTO: ${update.rtoTargetSeconds}s).`
+             })
+          }
           return { ...incident, ...update }
         }
         return incident
       })
+      
+      const newFromWorker = payload.incidents.filter(pi => !get().incidents.find(i => i.id === pi.id))
+      updatedIncidents = [...updatedIncidents, ...newFromWorker]
     }
 
     set({ 
@@ -158,6 +174,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       sites: updatedSites,
       technicianTickets: updatedTickets,
       incidents: updatedIncidents,
+      postMortems: [...get().postMortems, ...newPostMortems],
       overloadedRackCount,
       siteMetricsHistory,
       totalPowerKW,

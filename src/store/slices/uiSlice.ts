@@ -22,6 +22,7 @@ export interface UISlice {
   setMousePosition: (pos: Vector3 | null) => void
   toggleHeatMap: () => void
   toggleGlobalMap: () => void
+  toggleEoc: () => void
   pushAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId?: string) => void
   acknowledgeAlert: (id: string) => void
   acknowledgeAllAlerts: () => void
@@ -39,6 +40,7 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
   setMousePosition: (pos) => set({ mousePosition: pos }),
   toggleHeatMap: () => set(state => ({ isHeatMapVisible: !state.isHeatMapVisible })),
   toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
+  toggleEoc: () => set(state => ({ isEocOpen: !state.isEocOpen })),
   setIsTerminalOpen: (val: boolean) => set({ isTerminalOpen: val }),
   setRenderQuality: (quality) => set({ renderQuality: quality }),
   setTheme: (theme) => set({ activeTheme: theme }),

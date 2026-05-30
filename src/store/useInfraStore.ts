@@ -41,6 +41,7 @@ export const useInfraStore = create<InfraState>()(
       alerts: [],
       auditLogs: [],
       isNetworkManagerOpen: false,
+      isEocOpen: false,
       isTerminalOpen: false,
       networkLoad: 0.1,
       resilienceIndex: 100,

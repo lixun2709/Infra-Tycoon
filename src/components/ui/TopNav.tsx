@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { ShieldAlert } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
@@ -10,6 +11,7 @@ interface TopNavProps {
   onToggleTerminal: () => void
   onToggleEconomy: () => void
   onToggleGlobalMap: () => void
+  onToggleEOC: () => void
   onOpenHandbook: () => void
   onToggleSaveManager: () => void
   isTerminalOpen: boolean
@@ -21,6 +23,7 @@ export function TopNav({
   onToggleTerminal,
   onToggleEconomy,
   onToggleGlobalMap,
+  onToggleEOC,
   onOpenHandbook,
   onToggleSaveManager,
   isTerminalOpen,
@@ -107,6 +110,15 @@ export function TopNav({
             />
           </div>
         </div>
+
+        <Button 
+          variant="ghost" 
+          className="flex items-center gap-2 px-3 py-1.5 h-8 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl"
+          onClick={onToggleEOC}
+        >
+          <ShieldAlert size={14} className="animate-pulse" />
+          <span className="font-bold text-[10px] tracking-widest">EOC</span>
+        </Button>
 
         <div className="h-8 w-px bg-white/10 mx-2" />
 
