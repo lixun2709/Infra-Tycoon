@@ -32,6 +32,8 @@ export interface MiscSlice {
   exportToTerraform: () => string
   runComplianceCheck: () => { type: 'error' | 'warning'; message: string }[]
   setPreviewBlueprint: (id: string | null) => void
+  triggerDisasterRecoveryDrill: (siteId: string) => void
+  triggerHVACFailureDrill: (siteId: string) => void
 }
 
 export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set, get) => ({
@@ -104,7 +106,8 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       status: 'dispatched' as const,
       elapsedSeconds: 0,
       totalSeconds: 20,
-      cost
+      cost,
+      progress: 0
     }
 
     set(state => ({
@@ -411,6 +414,62 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   runComplianceCheck: () => [],
 
   setPreviewBlueprint: (id) => set({ previewBlueprintId: id }),
+
+  triggerDisasterRecoveryDrill: (siteId: string) => {
+    const { incidents, pushAlert, sites } = get()
+    const site = sites.find(s => s.id === siteId)
+    if (!site) return
+
+    const activeDrill = incidents.find(i => i.siteId === siteId && i.type === 'drill' && !i.isResolved)
+    if (activeDrill) {
+      pushAlert('warning', `A Disaster Recovery Drill is already active for ${site.name}.`)
+      return
+    }
+
+    const newIncident: import('../infraTypes').Incident = {
+      id: `drill-${Date.now()}`,
+      siteId,
+      type: 'drill',
+      severity: 'high',
+      startTimestamp: Date.now(),
+      affectedNodes: [],
+      isResolved: false,
+      elapsedSeconds: 0,
+      rtoTargetSeconds: 120 // 2 minutes to recover
+    }
+
+    set({ incidents: [...incidents, newIncident] })
+    pushAlert('critical', `DISASTER RECOVERY DRILL INITIATED: ${site.name} has been isolated from the network. RTO countdown started.`)
+    audioManager.playEffect('alert')
+  },
+
+  triggerHVACFailureDrill: (siteId: string) => {
+    const { incidents, pushAlert, sites } = get()
+    const site = sites.find(s => s.id === siteId)
+    if (!site) return
+
+    const activeDrill = incidents.find(i => i.siteId === siteId && i.type === 'hvac_drill' && !i.isResolved)
+    if (activeDrill) {
+      pushAlert('warning', `An HVAC Failure Drill is already active for ${site.name}.`)
+      return
+    }
+
+    const newIncident: import('../infraTypes').Incident = {
+      id: `hvac-drill-${Date.now()}`,
+      siteId,
+      type: 'hvac_drill',
+      severity: 'high',
+      startTimestamp: Date.now(),
+      affectedNodes: [],
+      isResolved: false,
+      elapsedSeconds: 0,
+      rtoTargetSeconds: 180 // 3 minutes to survive/recover
+    }
+
+    set({ incidents: [...incidents, newIncident] })
+    pushAlert('critical', `HVAC FAILURE DRILL INITIATED: CRAC units at ${site.name} have been taken offline. Monitor thermal levels!`)
+    audioManager.playEffect('alert')
+  },
 
   resetState: () => {
     if (confirm('Reset all infrastructure?')) {

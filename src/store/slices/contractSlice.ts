@@ -1,6 +1,6 @@
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
-import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
+import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
 import { audioManager } from '../../utils/AudioManager'
 
 export interface ContractSlice {

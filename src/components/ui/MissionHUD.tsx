@@ -203,7 +203,7 @@ export const MissionHUD = () => {
                   variant="primary" 
                   className="w-full justify-center text-[10px] font-black tracking-widest bg-[#ff5a36] hover:bg-[#ff7b5c] text-white border-none shadow-[0_4px_20px_rgba(255,90,54,0.3)]"
                   onClick={() => {
-                    const currentIndex = MISSION_ORDER.indexOf(activeMissionId)
+                    const currentIndex = activeMissionId ? MISSION_ORDER.indexOf(activeMissionId) : -1
                     if (currentIndex !== -1 && currentIndex < MISSION_ORDER.length - 1) {
                       const nextMission = MISSION_ORDER[currentIndex + 1]
                       if (nextMission) {

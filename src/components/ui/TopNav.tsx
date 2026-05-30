@@ -45,7 +45,8 @@ export function TopNav({
     setTimeFormat: state.setTimeFormat,
     companyLevel: state.companyLevel,
     experience: state.experience,
-    xpToNextLevel: state.xpToNextLevel
+    xpToNextLevel: state.xpToNextLevel,
+    isNetworkManagerOpen: state.isNetworkManagerOpen
   })))
   const activeSite = sites.find(s => s.id === currentSiteId)
   const xpPercentage = Math.min(100, (experience / xpToNextLevel) * 100)

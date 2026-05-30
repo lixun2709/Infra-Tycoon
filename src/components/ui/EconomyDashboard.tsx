@@ -23,7 +23,7 @@ interface EconomyDashboardProps {
 }
 
 export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
-  const { balance, reputation, activeContracts, marketContracts, acceptContract, cancelContract, loans, takeLoan, repayLoan, companyLevel } = useInfraStore(useShallow(state => ({
+  const { balance, reputation, reputationHistory, activeContracts, marketContracts, acceptContract, cancelContract, loans, takeLoan, repayLoan, companyLevel } = useInfraStore(useShallow(state => ({
     balance: state.balance,
     reputation: state.reputation,
     activeContracts: state.activeContracts,

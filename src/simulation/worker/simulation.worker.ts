@@ -742,7 +742,8 @@ function sendSyncOutput() {
       type: comp.type,
       status: comp.status,
       totalSeconds: comp.totalSeconds,
-      elapsedSeconds: comp.elapsedSeconds
+      elapsedSeconds: comp.elapsedSeconds,
+      progress: Math.min(100, Math.round((comp.elapsedSeconds / comp.totalSeconds) * 100))
     })
   })
 

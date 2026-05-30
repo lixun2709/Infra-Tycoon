@@ -124,7 +124,7 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm4_obj1',
         label: 'HVAC Deployment',
         description: 'Install an In-Row CRAC unit in your server hall.',
-        evaluate: (state) => state.nodes.some(n => n.catalogKey === 'IN_ROW_CRAC')
+        evaluate: (state) => state.nodes.some(n => n.catalogKey === 'IN_ROW_CRAC_4U')
       },
       {
         id: 'm4_obj2',

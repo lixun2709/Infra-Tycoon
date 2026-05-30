@@ -66,13 +66,13 @@ export const createProgressionSlice: StateCreator<InfraState, [], [], Progressio
   
   isHardwareUnlocked: (key: HardwareCatalogKey) => {
     const { companyLevel } = get()
-    const item = HARDWARE_CATALOG[key]
-    return !item.minLevel || companyLevel >= item.minLevel
+    const item = HARDWARE_CATALOG[key] as import('../../physics/hardwareLibrary').HardwareCatalogSpec | undefined
+    return !item?.minLevel || companyLevel >= item.minLevel
   },
   
   isContractUnlocked: (blueprintId: string) => {
     const { companyLevel } = get()
-    const item = CONTRACT_CATALOG[blueprintId]
-    return !item.minLevel || companyLevel >= item.minLevel
+    const item = CONTRACT_CATALOG[blueprintId] as import('../../physics/contractLibrary').ContractBlueprint | undefined
+    return !item?.minLevel || companyLevel >= item.minLevel
   }
 })

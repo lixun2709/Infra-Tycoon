@@ -5,6 +5,9 @@ import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
 export interface EconomySlice {
   processEconomyTick: (dt: number) => void
   chargeMaintenanceCost: (amount: number, reason: string) => boolean
+  adjustReputation: (amount: number, reason: string) => void
+  takeLoan: (name: string, principal: number, interestRate: number, minimumMonthlyPayment: number) => void
+  repayLoan: (id: string, amount: number) => void
 }
 
 export function getReputationTier(rep: number): 'Blacklisted' | 'Unproven' | 'Reliable' | 'Enterprise Trusted' | 'Mission Critical' {
@@ -77,10 +80,10 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     let monthlyPenalty = 0
 
     const updatedContracts = activeContracts.map(contract => {
-      const blueprint = CONTRACT_CATALOG[contract.blueprintId] || contract.blueprintId // support dynamic contracts later
+      const blueprint = CONTRACT_CATALOG[contract.blueprintId]
       
       // We will handle dynamic contracts in the activeContracts themselves if not in catalog
-      const mrr = blueprint?.monthlyMRR || (contract as Record<string, unknown>).monthlyMRR || 0 as number
+      const mrr = blueprint?.monthlyMRR || (contract as unknown as Record<string, unknown>).monthlyMRR as number || 0
 
       if (isMonthEnd) {
         monthlyRevenue += mrr
@@ -171,7 +174,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
 
       // Bankruptcy mechanics
       let newConsecutiveNegativeMonths = consecutiveNegativeMonths
-      let newIsBankrupt = isBankrupt
+      let newIsBankrupt: boolean = isBankrupt
 
       if (newBalance < 0) {
         newConsecutiveNegativeMonths++

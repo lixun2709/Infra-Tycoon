@@ -32,7 +32,7 @@ export interface UISlice {
   setTimeFormat: (format: '24h' | '12h') => void
 }
 
-export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set) => ({
+export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, get) => ({
   setNetworkLoad: (load) => set({ networkLoad: load }),
   setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
   setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),

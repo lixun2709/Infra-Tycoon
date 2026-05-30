@@ -71,7 +71,7 @@ export function generateDynamicContract(reputation: number, _currentScale: numbe
   const numReqs = isGov ? 3 : isEnterprise ? 2 : 1
   
   for (let i = 0; i < numReqs; i++) {
-    const appId = DOMAINS[Math.floor(Math.random() * DOMAINS.length)]
+    const appId = DOMAINS[Math.floor(Math.random() * DOMAINS.length)]!
     if (!requirements.find(r => r.appId === appId)) {
       requirements.push({
         appId,

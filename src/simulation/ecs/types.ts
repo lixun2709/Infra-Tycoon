@@ -219,7 +219,7 @@ export interface TicketComponent extends Component {
 // Incident Component: Tracks site-wide or major events (Real or Drills)
 export interface IncidentComponent extends Component {
   incidentId: string
-  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway'
+  type: 'drill' | 'ransomware' | 'power_outage' | 'network_outage' | 'thermal_runaway' | 'hvac_drill'
   severity: 'low' | 'medium' | 'high' | 'critical'
   rootCause?: string // Root cause tracker
   affectedNodes: string[]

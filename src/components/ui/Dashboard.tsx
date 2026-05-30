@@ -281,7 +281,15 @@ export function Dashboard({
               <div className="space-y-4 flex flex-col">
                 <div className="flex justify-between items-center px-2">
                   <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Active Incidents</h3>
-                  <Button variant="ghost" className="text-[9px]" onClick={acknowledgeAllAlerts}>PURGE ALL</Button>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" className="text-[9px] border border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => useInfraStore.getState().triggerDisasterRecoveryDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
+                      TRIGGER DR DRILL
+                    </Button>
+                    <Button variant="ghost" className="text-[9px] border border-rose-500/30 text-rose-500 hover:bg-rose-500/10" onClick={() => useInfraStore.getState().triggerHVACFailureDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
+                      TRIGGER HVAC FAILURE
+                    </Button>
+                    <Button variant="ghost" className="text-[9px]" onClick={acknowledgeAllAlerts}>PURGE ALL</Button>
+                  </div>
                 </div>
                 <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
                   {alerts.filter(a => !a.isAcknowledged).map(alert => (

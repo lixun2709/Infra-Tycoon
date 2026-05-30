@@ -11,11 +11,11 @@ export class IncidentSystem extends System {
 
   public update(dt: number): void {
     // 1. Process Active Incidents
-    const incidentComponents = this.world.getComponentMap<IncidentComponent>('incident')
+    const incidentComponents = this.world.getComponentMap<IncidentComponent>('IncidentComponent')
     if (incidentComponents) {
       incidentComponents.forEach((incident, _entityId) => {
         if (incident.isResolved) {
-          if (incident.type === 'drill') {
+          if (incident.type === 'drill' || incident.type === 'hvac_drill') {
             this.executeDrill(this.world, incident, dt) // Call once to trigger cleanup
           }
           return
@@ -24,7 +24,7 @@ export class IncidentSystem extends System {
         incident.elapsedSeconds += dt
 
         // Drill specific execution
-        if (incident.type === 'drill') {
+        if (incident.type === 'drill' || incident.type === 'hvac_drill') {
           this.executeDrill(this.world, incident, dt)
         }
 
@@ -56,33 +56,44 @@ export class IncidentSystem extends System {
           }
         }
 
-        if (incident.elapsedSeconds > rtoTarget && !allResolved) {
-          // RTO violation
-          this.world.eventBus.publish('incident:rto_violation', { incidentId: incident.incidentId })
-          
-          if (!incident.hasAlertedRto) {
-            incident.hasAlertedRto = true
+        if (incident.type === 'drill' || incident.type === 'hvac_drill') {
+          // Drills auto-resolve (pass) if they survive until the RTO target without causing catastrophic cascade failures
+          if (incident.elapsedSeconds >= rtoTarget && !incident.isResolved) {
+            incident.isResolved = true
+            this.world.eventBus.publish('incident:resolved', { incidentId: incident.incidentId })
             this.world.eventBus.publish('system:alert', {
               entityId: incident.incidentId,
-              message: `CRITICAL SLA VIOLATION: Target RTO of ${rtoTarget}s missed for incident ${incident.type}. CASCADE FAILURE TRIGGERED.`,
-              severity: 'error'
+              message: `${incident.type === 'drill' ? 'DR Drill' : 'HVAC Failure Drill'} PASSED: You survived the scenario!`,
+              severity: 'success'
             })
-            
-            this.triggerCascadeFailure(this.world, incident)
+            this.executeDrill(this.world, incident, dt)
           }
-        }
+        } else {
+          // Regular Incident resolution logic
+          if (incident.elapsedSeconds > rtoTarget && !allResolved) {
+            // RTO violation
+            this.world.eventBus.publish('incident:rto_violation', { incidentId: incident.incidentId })
+            
+            if (!incident.hasAlertedRto) {
+              incident.hasAlertedRto = true
+              this.world.eventBus.publish('system:alert', {
+                entityId: incident.incidentId,
+                message: `CRITICAL SLA VIOLATION: Target RTO of ${rtoTarget}s missed for incident ${incident.type}. CASCADE FAILURE TRIGGERED.`,
+                severity: 'error'
+              })
+              
+              this.triggerCascadeFailure(this.world, incident)
+            }
+          }
 
-        if (allResolved && incident.elapsedSeconds > 10) { // minimum 10s evaluation
-          incident.isResolved = true
-          this.world.eventBus.publish('incident:resolved', { incidentId: incident.incidentId })
-          this.world.eventBus.publish('system:alert', {
-             entityId: incident.incidentId,
-             message: `${incident.type === 'drill' ? 'DR Drill PASSED' : 'Incident Resolved'}: Took ${Math.round(incident.elapsedSeconds)}s.`,
-             severity: 'success'
-          })
-          
-          if (incident.type === 'drill') {
-            this.executeDrill(this.world, incident, dt) // Call again to immediately cleanup
+          if (allResolved && incident.elapsedSeconds > 10) { // minimum 10s evaluation
+            incident.isResolved = true
+            this.world.eventBus.publish('incident:resolved', { incidentId: incident.incidentId })
+            this.world.eventBus.publish('system:alert', {
+               entityId: incident.incidentId,
+               message: `Incident Resolved: Took ${Math.round(incident.elapsedSeconds)}s.`,
+               severity: 'success'
+            })
           }
         }
       })
@@ -93,14 +104,35 @@ export class IncidentSystem extends System {
   }
 
   private executeDrill(world: World, incident: IncidentComponent, _dt: number) {
+    const transforms = world.getComponentMap<TransformComponent>('transform')
+    if (!transforms) return
+
+    // HVAC Failure Drill: Turn off all CRAC units at the site
+    if (incident.type === 'hvac_drill') {
+      const targetSiteId = incident.siteId
+      const powers = world.getComponentMap<PowerComponent>('power')
+      if (!targetSiteId || !powers) return
+
+      transforms.forEach((transform: TransformComponent, nodeId: string) => {
+        if (transform.siteId === targetSiteId && transform.type === 'cooling') {
+          const power = powers.get(nodeId)
+          if (power) {
+            if (incident.elapsedSeconds < 10) {
+              power.isPowered = false
+            } else if (incident.isResolved) {
+              power.isPowered = true
+            }
+          }
+        }
+      })
+      return
+    }
+
     // In a DR Drill, we simulate a Site Isolation (Dark Site) scenario.
     // Instead of randomly pulling power, we isolate all nodes matching the target siteId from the network.
     
     // Drill starts: isolate the site.
     // Drill ends (resolved): reconnect the site.
-    
-    const transforms = world.getComponentMap<TransformComponent>('transform')
-    if (!transforms) return
     
     // We expect the incident to have an affected siteId. If not, fallback to isolating affectedNodes.
     const targetSiteId = incident.siteId

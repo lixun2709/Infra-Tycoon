@@ -30,7 +30,8 @@ import type { CameraSlice } from './slices/cameraSlice'
 import type { InteractionSlice } from './slices/interactionSlice'
 import type { EconomySlice } from './slices/economySlice'
 import type { ProgressionSlice } from './slices/progressionSlice'
-import type { ContractBlueprint } from '../physics/contractLibrary'
+import type { ContractBlueprint, ActiveContract } from '../physics/contractLibrary'
+import type { MiscSlice } from './slices/miscSlice'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -147,7 +148,7 @@ export type InfraState = {
   simulateRandomFailure: () => void
   simulateDataCorruption: () => void
   // Day 29 Actions
-  processAging: () => void
+  processAging: (dt: number) => void
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
   toggleMaintenanceMode: (nodeId: string) => void
@@ -239,4 +240,4 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice
+} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice

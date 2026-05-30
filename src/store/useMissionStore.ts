@@ -55,7 +55,7 @@ export const useMissionStore = create<MissionState>()(
           if (allComplete) {
             // Reward the player using useInfraStore
             if (mission.rewardCash) {
-              useInfraStore.getState().addBalance(mission.rewardCash, `Mission Complete: ${mission.title}`)
+              useInfraStore.setState(s => ({ balance: s.balance + (mission.rewardCash as number) }))
             }
             if (mission.rewardXp && useInfraStore.getState().gainXp) {
               useInfraStore.getState().gainXp(mission.rewardXp, `Mission Complete: ${mission.title}`)
@@ -63,7 +63,7 @@ export const useMissionStore = create<MissionState>()(
             
             // Audio feedback
             audioManager.playEffect('success')
-            useInfraStore.getState().pushAlert('success', `MISSION ACCOMPLISHED: ${mission.title}`)
+            useInfraStore.getState().pushAlert('info', `MISSION ACCOMPLISHED: ${mission.title}`)
 
             const newCompletedMissions = [...completedMissionIds, activeMissionId]
             
