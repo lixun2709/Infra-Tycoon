@@ -35,6 +35,7 @@ export interface MiscSlice {
   triggerDisasterRecoveryDrill: (siteId: string) => void
   triggerHVACFailureDrill: (siteId: string) => void
   triggerPowerFailureDrill: (siteId: string) => void
+  triggerSiteFailover: (sourceSiteId: string, targetSiteId: string) => void
 }
 
 export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set, get) => ({
@@ -473,7 +474,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   },
 
   triggerPowerFailureDrill: (siteId) => {
-    const { sites, incidents, pushAlert, set } = get()
+    const { sites, incidents, pushAlert } = get()
     const site = sites.find(s => s.id === siteId)
     if (!site) return
 
@@ -498,6 +499,51 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     set({ incidents: [...incidents, newIncident] })
     pushAlert('critical', `POWER FAILURE DRILL INITIATED: Utility grid severed at ${site.name}. Racks are now on UPS battery!`)
     audioManager.playEffect('error')
+  },
+
+  triggerSiteFailover: (sourceSiteId, targetSiteId) => {
+    const { virtualMachines, nodes, sites, incidents, pushAlert } = get()
+    const sourceSite = sites.find(s => s.id === sourceSiteId)
+    const targetSite = sites.find(s => s.id === targetSiteId)
+    
+    if (!sourceSite || !targetSite) return
+
+    // Find a healthy node in target site to place VMs
+    const targetNodes = nodes.filter(n => n.siteId === targetSiteId && n.type === 'compute' && n.status !== 'power_overload')
+    if (targetNodes.length === 0) {
+      pushAlert('critical', `Site Failover failed: No running compute nodes in ${targetSite.name}`)
+      return
+    }
+
+    let failoverCount = 0
+    const updatedVms = virtualMachines.map(vm => {
+      // Find if VM is on the source site
+      const hostNode = nodes.find(n => n.id === vm.nodeId)
+      if (hostNode && hostNode.siteId === sourceSiteId) {
+         // Failover!
+         const newHost = targetNodes[Math.floor(Math.random() * targetNodes.length)]!
+         failoverCount++
+         return {
+            ...vm,
+            nodeId: newHost.id,
+            status: 'booting' as const,
+            migratingToNodeId: undefined,
+            migrationProgress: undefined
+         }
+      }
+      return vm
+    })
+
+    const updatedIncidents = incidents.map(i => {
+       if (i.siteId === sourceSiteId && !i.isResolved && i.type === 'drill') {
+          return { ...i, isResolved: true, resolvedTimestamp: Date.now() }
+       }
+       return i
+    })
+
+    set({ virtualMachines: updatedVms, incidents: updatedIncidents })
+    pushAlert('info', `SITE FAILOVER EXECUTED: ${failoverCount} VMs migrated to ${targetSite.name}. RTO constraints met.`)
+    audioManager.playEffect('success') // Make sure there's a success effect or use info if it doesn't exist, wait, 'success' works
   },
 
   resetState: () => {
