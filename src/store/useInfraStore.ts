@@ -228,7 +228,46 @@ export const useInfraStore = create<InfraState>()(
         }))
         get().gainXp(300, 'Cooling Capacity Expansion')
         pushAlert('info', `Cooling capacity expanded! Heavy CRAC/CRAH zones added. -$${cost.toLocaleString()}`)
-        audioManager.playEffect('success')
+      },
+
+      upgradeRackContainment: (rackId: string, type: 'none' | 'cold_aisle' | 'hot_aisle') => {
+        const rack = get().nodes.find(n => n.id === rackId)
+        if (!rack || rack.type !== 'rack') return
+        if (rack.containmentType === type) return
+        
+        // Changing to a containment type costs $1,500. Changing to 'none' is free.
+        if (type !== 'none') {
+          const cost = 1500
+          if (get().balance < cost) {
+            get().pushAlert('warning', `Insufficient funds for Containment Upgrade. Requires $${cost.toLocaleString()}.`)
+            return
+          }
+          set((state) => ({ balance: state.balance - cost }))
+          get().gainXp(50, 'Containment Optimization')
+          get().pushAlert('info', `Purchased ${type.replace('_', ' ').toUpperCase()} containment for ${rack.name || rack.id.slice(0, 6)}! -$${cost.toLocaleString()}`)
+        }
+
+        set((state) => ({
+          nodes: state.nodes.map(n => n.id === rackId ? { ...n, containmentType: type } : n)
+        }))
+      },
+
+      installBlankingPanels: (rackId: string) => {
+        const rack = get().nodes.find(n => n.id === rackId)
+        if (!rack || rack.type !== 'rack') return
+        
+        const cost = 200
+        if (get().balance < cost) {
+          get().pushAlert('warning', `Insufficient funds for Blanking Panels. Requires $${cost.toLocaleString()}.`)
+          return
+        }
+        
+        set((state) => ({
+          balance: state.balance - cost,
+          nodes: state.nodes.map(n => n.id === rackId ? { ...n, blankingPanels: new Array(n.uHeight || 42).fill(true) } : n)
+        }))
+        get().gainXp(20, 'Airflow Optimization')
+        get().pushAlert('info', `Installed Blanking Panels on ${rack.name || rack.id.slice(0, 6)}! Airflow bypass stopped. -$${cost.toLocaleString()}`)
       },
 
       expandPowerBlock: () => {

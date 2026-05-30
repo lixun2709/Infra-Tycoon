@@ -62,7 +62,7 @@ export class RackMicroclimate {
       const rackComp = world.getComponent<RackComponent>('rack', rackId)
       if (rackComp) {
         if (!rackComp.blankingPanels) {
-          rackComp.blankingPanels = new Array(43).fill(true)
+          rackComp.blankingPanels = []
         }
         for (let u = 1; u <= 42; u++) {
           const isOccupied = rackComp.slotOccupancy[u] ?? false

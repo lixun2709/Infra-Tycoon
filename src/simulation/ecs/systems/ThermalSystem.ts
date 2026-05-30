@@ -164,6 +164,7 @@ export class ThermalSystem extends System {
       this.rackChildrenMapPool,
       this.siteLoadsPool,
       this.rackLoadsPool,
+      this.cracUnitsBySitePool,
       thermalMap,
       powerMap,
       transformMap,

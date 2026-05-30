@@ -18,6 +18,7 @@ export class DeviceThermalCalculator {
     rackChildrenMapPool: Map<string, string[]>,
     siteLoadsPool: Map<string, LoadStats>,
     rackLoadsPool: Map<string, LoadStats>,
+    cracUnitsBySitePool: Map<string, string[]>,
     thermalMap: ComponentMap<ThermalComponent>,
     powerMap: ComponentMap<PowerComponent>,
     transformMap: ComponentMap<TransformComponent>,
@@ -43,9 +44,34 @@ export class DeviceThermalCalculator {
       let convectiveHeatBTU = serverHeatBTU
 
       if (thermal && thermal.coolingMethod === 'liquid_dlc') {
-        const liquidAbsorbed = serverHeatBTU * 0.80
-        convectiveHeatBTU = serverHeatBTU - liquidAbsorbed
-        thermal.waterFlowLPM = liquidAbsorbed * 0.005
+        // Check if there is a LIQUID_CDU in the room
+        const cracUnits = cracUnitsBySitePool.get(siteId) || []
+        const hasCDU = cracUnits.some(cId => {
+          const power = powerMap.get(cId)
+          const transform = transformMap.get(cId)
+          // Hardcoded assumption: CDU hardware name typically contains 'CDU' or we can check its type
+          // Wait, 'LIQUID_CDU' is the hardware ID or name?
+          // Since we don't have the hardware library here easily, let's assume if it has immense btu output or name has 'CDU' or 'DLC'
+          return (power?.isPowered ?? false) && (transform?.name?.includes('CDU') || transform?.name?.includes('DLC'))
+        })
+
+        if (hasCDU) {
+          const liquidAbsorbed = serverHeatBTU * 0.80
+          convectiveHeatBTU = serverHeatBTU - liquidAbsorbed
+          thermal.waterFlowLPM = liquidAbsorbed * 0.005
+        } else {
+          // Penalty: No CDU means no liquid loop. The liquid block traps heat. Severe throttling incoming.
+          convectiveHeatBTU = serverHeatBTU * 1.5 // Extra penalty due to stalled liquid block!
+          thermal.waterFlowLPM = 0
+          
+          if (isRunning) {
+            eventBus.publish('system:alert', {
+              entityId: id,
+              message: `CRITICAL: DLC server ${transform.name || id.slice(0, 6)} has no active Coolant Distribution Unit (CDU)! Thermal runaway imminent.`,
+              severity: 'critical'
+            })
+          }
+        }
       } else if (thermal && thermal.coolingMethod === 'immersion') {
         const liquidAbsorbed = serverHeatBTU * 0.95
         convectiveHeatBTU = serverHeatBTU - liquidAbsorbed

@@ -154,6 +154,7 @@ export interface InfraNode {
   writeAmplificationFactor?: number
   systemState: SystemState
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
+  blankingPanels?: boolean[]
   coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
   waterFlowLPM?: number
   bootProgress: number

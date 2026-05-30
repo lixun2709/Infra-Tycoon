@@ -28,7 +28,9 @@ export function Inspector() {
     technicianTickets,
     timeFormat,
     resetRackBreaker,
-    virtualMachines
+    virtualMachines,
+    upgradeRackContainment,
+    installBlankingPanels
   } = useInfraStore(useShallow(state => ({
     nodes: state.nodes, 
     connections: state.connections, 
@@ -50,7 +52,9 @@ export function Inspector() {
     technicianTickets: state.technicianTickets,
     timeFormat: state.timeFormat,
     resetRackBreaker: state.resetRackBreaker,
-    virtualMachines: state.virtualMachines
+    virtualMachines: state.virtualMachines,
+    upgradeRackContainment: state.upgradeRackContainment,
+    installBlankingPanels: state.installBlankingPanels
   })))
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle' | 'virtualization'>('details')
@@ -143,14 +147,31 @@ export function Inspector() {
                       <label className="text-[9px] text-slate-500 block mb-1.5 uppercase font-black tracking-widest">Configuration</label>
                       <select
                         value={selectedNode.containmentType || 'none'}
-                        onChange={(e) => updateNode(selectedNode.id, { containmentType: e.target.value as 'none' | 'cold_aisle' | 'hot_aisle' })}
+                        onChange={(e) => upgradeRackContainment(selectedNode.id, e.target.value as 'none' | 'cold_aisle' | 'hot_aisle')}
                         className="w-full bg-slate-900 border border-white/10 rounded-lg px-3 py-1.5 text-[10px] text-slate-200 focus:outline-none focus:border-teal-500/50 uppercase font-black"
                       >
                         <option value="none">No Containment (Open Air)</option>
-                        <option value="cold_aisle">Cold Aisle Containment (20% Convection)</option>
-                        <option value="hot_aisle">Hot Aisle Containment (1.5x Cooling Return)</option>
+                        <option value="cold_aisle">Cold Aisle Containment ($1,500)</option>
+                        <option value="hot_aisle">Hot Aisle Containment ($1,500)</option>
                       </select>
                     </div>
+
+                    {/* Blanking Panels Purchase */}
+                    {!(selectedNode.blankingPanels as boolean[] | undefined)?.every((p: boolean) => p) && (
+                      <div className="pt-2 border-t border-white/5">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest">Airflow Bypass Leaks</label>
+                          <Badge variant="warning" className="animate-pulse">DETECTED</Badge>
+                        </div>
+                        <Button
+                          variant="primary"
+                          className="w-full py-1.5 text-[9px] justify-center tracking-widest"
+                          onClick={() => installBlankingPanels(selectedNode.id)}
+                        >
+                          INSTALL BLANKING PANELS ($200)
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </Card>
               )}
@@ -413,6 +434,14 @@ export function Inspector() {
                       {selectedNode.isThrottled ? 'THROTTLED' : 'NOMINAL'}
                     </Badge>
                   </div>
+
+                  {/* Bypass Airflow Leak Warning */}
+                  {selectedNode.type === 'rack' && !(selectedNode.blankingPanels as boolean[] | undefined)?.every((p: boolean) => p) && (
+                    <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                      <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Bypass Airflow</span>
+                      <Badge variant="error" className="animate-pulse">LEAKING</Badge>
+                    </div>
+                  )}
                 </div>
               </Card>
 

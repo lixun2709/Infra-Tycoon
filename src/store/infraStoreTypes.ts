@@ -132,6 +132,10 @@ export type InfraState = {
   expandHall: () => void
   expandHallDirection: (hx: number, hz: number, direction: 'N' | 'S' | 'E' | 'W') => void
   
+  // Day 13: Cooling Optimization Gameplay
+  upgradeRackContainment: (rackId: string, type: 'none' | 'cold_aisle' | 'hot_aisle') => void
+  installBlankingPanels: (rackId: string) => void
+
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
   isHeatMapVisible: boolean
