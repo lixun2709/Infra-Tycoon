@@ -1,5 +1,13 @@
 # Changelog
 
+### [Unreleased]
+- Day 14: **Power Distribution Architecture**
+  - Added Electrical telemetry tab to Inspector (Rack PDU feeds, device phases, PSU redundancy).
+  - Configurable server phases (L1, L2, L3) with strict Phase Balancer inside ECS.
+  - Procurement options: Dual Power Supplies for Servers ($400) and Redundant A+B PDUs for Racks ($2500).
+  - Facility Grid Toggles (A/B) in the top nav to trigger simulated utility outages.
+- Day 13: **Cooling Optimization Gameplay**
+
 ### Added
 - **SLA Violation Penalties**: Automatic penalty calculation and payout deductions when uptime drops below contract target SLA.
 - **Ransomware Drills & Formatting**: Node infection propagation mechanics with `ransomware-drill` simulation command, paired with `format [node_id]` functionality.

@@ -76,6 +76,16 @@ function processQueue() {
           sendSyncOutput()
           break
         }
+
+        case 'FACILITY_FEED': {
+          const { feed, status } = data.payload
+          import('../ecs/systems/PowerSystem').then(({ PowerSystem }) => {
+            if (feed === 'A') PowerSystem.facilityFeeds.A = status
+            if (feed === 'B') PowerSystem.facilityFeeds.B = status
+            console.log(`[[Worker Thread]] Utility Feed ${feed} is now ${status ? 'ONLINE' : 'OFFLINE'}`)
+          })
+          break
+        }
       }
     } catch (err) {
       console.error('[[Worker Thread]] Error processing message in FIFO queue:', err)
@@ -204,11 +214,16 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       
       world.addComponent('power', {
         entityId: node.id,
-        wattage: baseWattage,
-        load: node.currentPowerKW || (baseWattage / 1000.0),
+        wattage: 0,
+        load: 0,
+        apparentPowerVA: 0,
+        phaseLoadsWatts: [0, 0, 0],
+        phaseLoadsVA: [0, 0, 0],
         isPowered: node.systemState !== 'off' && !node.breakerTripped,
-        efficiency: 0.9,
+        efficiency: 0.85,
         breakerTripped: node.breakerTripped ?? false,
+        phase: node.phase,
+        dualPSU: node.dualPSU,
         overloadSeconds: node.overloadSeconds ?? 0,
         feedSource: node.feedSource ?? 'both',
         baseWattage: baseWattage,
@@ -235,6 +250,12 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         }
         if (node.feedSource !== undefined && power.feedSource !== node.feedSource) {
           power.feedSource = node.feedSource
+        }
+        if (node.phase !== undefined && power.phase !== node.phase) {
+          power.phase = node.phase
+        }
+        if (node.dualPSU !== undefined && power.dualPSU !== node.dualPSU) {
+          power.dualPSU = node.dualPSU
         }
         // Do NOT overwrite worker-simulated fields (baseWattage, wattage, load, overloadSeconds, upsBatterySeconds, apparentPowerVA)
       }
@@ -378,7 +399,10 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           currentPowerKW: node.currentPowerKW ?? 0,
           status: (node.status as 'online' | 'power_overload') ?? 'online',
           hasHighDensityPDU: hasPDU,
-          slotOccupancy: occupancy
+          slotOccupancy: occupancy,
+          containmentType: node.containmentType,
+          blankingPanels: node.blankingPanels,
+          pduFeeds: node.pduFeeds
         } as RackComponent)
       } else {
         const rack = world.getComponent<RackComponent>('rack', node.id)
@@ -386,6 +410,9 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           rack.maxPowerKW = hasPDU ? 15.0 : (node.maxPowerKW ?? 5.0)
           rack.hasHighDensityPDU = hasPDU
           rack.slotOccupancy = occupancy
+          rack.containmentType = node.containmentType
+          if (node.blankingPanels) rack.blankingPanels = node.blankingPanels
+          if (node.pduFeeds) rack.pduFeeds = node.pduFeeds
           if (node.status !== undefined && node.status !== rack.status) {
             rack.status = node.status as 'online' | 'power_overload'
           }

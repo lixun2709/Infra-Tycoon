@@ -270,6 +270,65 @@ export const useInfraStore = create<InfraState>()(
         get().pushAlert('info', `Installed Blanking Panels on ${rack.name || rack.id.slice(0, 6)}! Airflow bypass stopped. -$${cost.toLocaleString()}`)
       },
 
+      setServerPhase: (nodeId: string, phase: 'A' | 'B' | 'C') => {
+        set((state) => ({
+          nodes: state.nodes.map(n => n.id === nodeId ? { ...n, phase } : n)
+        }))
+      },
+
+      upgradeServerPSU: (nodeId: string) => {
+        const node = get().nodes.find(n => n.id === nodeId)
+        if (!node) return
+        
+        const cost = 400
+        if (get().balance < cost) {
+          get().pushAlert('warning', `Insufficient funds for Dual PSU upgrade. Requires $${cost.toLocaleString()}.`)
+          return
+        }
+        
+        set((state) => ({
+          balance: state.balance - cost,
+          nodes: state.nodes.map(n => n.id === nodeId ? { ...n, dualPSU: true } : n)
+        }))
+        get().gainXp(10, 'Hardware Redundancy')
+        get().pushAlert('info', `Upgraded to Dual PSU on ${node.name || node.id.slice(0, 6)}! -$${cost.toLocaleString()}`)
+      },
+
+      upgradeRackPDU: (rackId: string) => {
+        const rack = get().nodes.find(n => n.id === rackId)
+        if (!rack || rack.type !== 'rack') return
+        
+        const cost = 2500
+        if (get().balance < cost) {
+          get().pushAlert('warning', `Insufficient funds for Redundant PDU. Requires $${cost.toLocaleString()}.`)
+          return
+        }
+        
+        set((state) => ({
+          balance: state.balance - cost,
+          nodes: state.nodes.map(n => n.id === rackId ? { ...n, pduFeeds: 'A+B' } : n)
+        }))
+        get().gainXp(50, 'Power Redundancy')
+        get().pushAlert('info', `Installed Redundant Feed B PDU on ${rack.name || rack.id.slice(0, 6)}! -$${cost.toLocaleString()}`)
+      },
+
+      toggleFacilityFeed: (feed: 'A' | 'B', status: boolean) => {
+        // We will dispatch this to the Simulation Engine as well, 
+        // but for now we set a global flag or update nodes. 
+        // We'll manage facilityFeeds state on the `PowerSystem.facilityFeeds` via an event in the ECS synchronizer, 
+        // but let's fire an alert here.
+        if (!status) {
+          get().pushAlert('critical', `UTILITY OUTAGE: Facility Feed ${feed} has lost power!`)
+        } else {
+          get().pushAlert('info', `UTILITY RESTORED: Facility Feed ${feed} is back online.`)
+        }
+        // In this implementation, the `PowerSystem.facilityFeeds` is globally accessible.
+        // We can't import it directly here due to circular deps maybe, so we dispatch an event.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('infra:facilityFeedToggle', { detail: { feed, status } }))
+        }
+      },
+
       expandPowerBlock: () => {
         const { balance, pushAlert } = get()
         const cost = 40000

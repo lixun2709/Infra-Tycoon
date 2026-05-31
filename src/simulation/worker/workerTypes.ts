@@ -34,6 +34,10 @@ export interface CompactNode {
   btuOutput: number
   humidity?: number
   containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
+  blankingPanels?: boolean[]
+  phase?: 'A' | 'B' | 'C'
+  dualPSU?: boolean
+  pduFeeds?: 'A' | 'A+B'
   isStandby?: boolean
   accumulatedSimTime?: number
   totalStorageTB?: number
@@ -247,6 +251,7 @@ export type SimMessage =
   | { type: 'INIT'; payload: SimInitPayload }
   | { type: 'SYNC_INPUT'; payload: SimSyncInputPayload }
   | { type: 'TICK'; payload?: { dt: number } }
+  | { type: 'FACILITY_FEED'; payload: { feed: 'A' | 'B'; status: boolean } }
   | { type: 'SYNC_OUTPUT'; payload: SimSyncOutputPayload }
   | { type: 'TELEMETRY'; payload: SimTelemetryPayload }
   | { type: 'PING'; payload?: undefined }

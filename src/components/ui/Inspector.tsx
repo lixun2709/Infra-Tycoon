@@ -30,7 +30,10 @@ export function Inspector() {
     resetRackBreaker,
     virtualMachines,
     upgradeRackContainment,
-    installBlankingPanels
+    installBlankingPanels,
+    setServerPhase,
+    upgradeServerPSU,
+    upgradeRackPDU
   } = useInfraStore(useShallow(state => ({
     nodes: state.nodes, 
     connections: state.connections, 
@@ -54,10 +57,13 @@ export function Inspector() {
     resetRackBreaker: state.resetRackBreaker,
     virtualMachines: state.virtualMachines,
     upgradeRackContainment: state.upgradeRackContainment,
-    installBlankingPanels: state.installBlankingPanels
+    installBlankingPanels: state.installBlankingPanels,
+    setServerPhase: state.setServerPhase,
+    upgradeServerPSU: state.upgradeServerPSU,
+    upgradeRackPDU: state.upgradeRackPDU
   })))
   const selectedNode = nodes.find((n) => n.id === selectedNodeId)
-  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'services' | 'lifecycle' | 'virtualization'>('details')
+  const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'electrical' | 'services' | 'lifecycle' | 'virtualization'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
   const [metrics, setMetrics] = React.useState(performanceMonitor.getMetrics())
 
@@ -125,11 +131,14 @@ export function Inspector() {
           tabs={[
             { id: 'details', label: 'details' },
             { id: 'thermal', label: 'thermal' },
+            { id: 'electrical', label: 'electrical' },
             { id: 'services', label: 'services' },
-            { id: 'virtualization', label: 'virtualization' },
             { id: 'lifecycle', label: 'lifecycle' },
             { id: 'alerts', label: 'alerts' }
-          ]}
+          ].filter(tab => {
+            if (tab.id === 'services') return ['server', 'workstation'].includes(selectedNode.type)
+            return true
+          })}
           activeTab={activeTab}
           onChange={(id) => setActiveTab(id as typeof activeTab)}
           variant="underline"
@@ -684,6 +693,88 @@ export function Inspector() {
                   </div>
                 </Card>
               )}
+            </div>
+          )}
+
+          {activeTab === 'electrical' && (
+            <div className="space-y-4 animate-fade-in pb-20">
+              <Card title="Power Distribution" className="bg-transparent" glass={false}>
+                <div className="space-y-4">
+                  {selectedNode.type === 'rack' ? (
+                    <>
+                      <div className="pt-2 border-t border-white/5">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-2 block">Rack PDU Feeds</label>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-slate-300 font-bold uppercase">{selectedNode.pduFeeds === 'A+B' ? 'Dual Redundant (A+B)' : 'Single Feed (A)'}</span>
+                          <Badge variant={selectedNode.pduFeeds === 'A+B' ? 'success' : 'warning'}>
+                            {selectedNode.pduFeeds === 'A+B' ? 'REDUNDANT' : 'SINGLE POINT OF FAILURE'}
+                          </Badge>
+                        </div>
+                        {selectedNode.pduFeeds !== 'A+B' && (
+                          <Button
+                            variant="primary"
+                            className="w-full py-1.5 text-[9px] justify-center tracking-widest mt-3"
+                            onClick={() => upgradeRackPDU(selectedNode.id)}
+                          >
+                            INSTALL REDUNDANT PDU B ($2,500)
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="pt-3 border-t border-white/5">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-2 block">Phase Balancing (L1 / L2 / L3)</label>
+                        <div className="flex gap-1 h-2 w-full bg-slate-900 rounded overflow-hidden">
+                          <div className="bg-blue-500/50 flex-1"></div>
+                          <div className="bg-amber-500/50 flex-1"></div>
+                          <div className="bg-rose-500/50 flex-1"></div>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-2">Manage child server phases to prevent breaker trips.</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="pt-2 border-t border-white/5">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-2 block">Device Phase Assignment</label>
+                        <div className="flex gap-2">
+                          {['A', 'B', 'C'].map((phase) => (
+                            <button
+                              key={phase}
+                              onClick={() => setServerPhase(selectedNode.id, phase as 'A' | 'B' | 'C')}
+                              className={`flex-1 py-1.5 rounded text-[10px] font-bold transition-all border ${
+                                (selectedNode.phase ?? 'A') === phase
+                                  ? 'bg-teal-500/20 text-teal-400 border-teal-500/50'
+                                  : 'bg-slate-900 text-slate-500 border-white/5 hover:bg-slate-800'
+                              }`}
+                            >
+                              Phase {phase}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-[9px] text-slate-500 mt-2">Server must reboot briefly when changing power phases.</p>
+                      </div>
+
+                      <div className="pt-3 border-t border-white/5">
+                        <label className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-2 block">Power Supply Redundancy</label>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] text-slate-300 font-bold uppercase">{selectedNode.dualPSU ? 'Dual Power Supply' : 'Single Power Supply'}</span>
+                          <Badge variant={selectedNode.dualPSU ? 'success' : 'ghost'}>
+                            {selectedNode.dualPSU ? 'A/B REDUNDANT' : 'SINGLE (A)'}
+                          </Badge>
+                        </div>
+                        {!selectedNode.dualPSU && (
+                          <Button
+                            variant="primary"
+                            className="w-full py-1.5 text-[9px] justify-center tracking-widest mt-3"
+                            onClick={() => upgradeServerPSU(selectedNode.id)}
+                          >
+                            UPGRADE TO DUAL PSU ($400)
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </Card>
             </div>
           )}
 

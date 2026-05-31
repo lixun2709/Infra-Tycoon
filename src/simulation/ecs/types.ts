@@ -73,8 +73,10 @@ export interface PowerComponent extends Component {
   load: number
   isPowered: boolean
   efficiency: number
-  breakerTripped?: boolean
-  overloadSeconds?: number
+  breakerTripped: boolean
+  phase?: 'A' | 'B' | 'C'
+  dualPSU?: boolean
+  overloadSeconds: number
   feedSource?: 'A' | 'B' | 'both'
   baseWattage?: number
   // V2/Enterprise Additions
@@ -83,7 +85,6 @@ export interface PowerComponent extends Component {
   upsBatterySeconds?: number     // Current battery backup charge (seconds)
   upsMaxBatterySeconds?: number  // Maximum battery capacity (default: 30s)
   lastUpsAlertSecond?: number    // Tracks last fired UPS alert to prevent event flooding
-  phase?: 'A' | 'B' | 'C'        // Phase connection for server nodes
   phaseLoadsWatts?: [number, number, number] // [A, B, C] Real Power
   phaseLoadsVA?: [number, number, number]    // [A, B, C] Apparent Power
   systemState?: 'off' | 'booting' | 'running'
@@ -152,7 +153,9 @@ export interface RackComponent extends Component {
   status: 'online' | 'power_overload'
   hasHighDensityPDU: boolean
   slotOccupancy: boolean[]
+  containmentType?: 'none' | 'cold_aisle' | 'hot_aisle'
   blankingPanels?: boolean[]
+  pduFeeds?: 'A' | 'A+B'
   // V2/Enterprise Additions
   totalWeightKG?: number
   maxWeightKG?: number

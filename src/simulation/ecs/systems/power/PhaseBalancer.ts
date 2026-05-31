@@ -34,12 +34,27 @@ export class PhaseBalancer {
           const cWattage = Number.isFinite(childPower.wattage) && !Number.isNaN(childPower.wattage) ? childPower.wattage : 0
           const cVA = (childPower.apparentPowerVA !== undefined && Number.isFinite(childPower.apparentPowerVA) && !Number.isNaN(childPower.apparentPowerVA)) ? childPower.apparentPowerVA : cWattage
           
-          if (serverPhase === 'A') {
-            pWatts0 += cWattage; pVA0 += cVA
-          } else if (serverPhase === 'B') {
-            pWatts1 += cWattage; pVA1 += cVA
+          if (childPower.dualPSU) {
+             // A dual PSU splits load perfectly across two phases (A and B, or B and C) to minimize imbalance.
+             // But wait, the standard usually says split 50/50.
+             // If phase is 'A', split A and B. If 'B', split B and C. If 'C', split C and A.
+             const halfWatts = cWattage / 2
+             const halfVA = cVA / 2
+             if (serverPhase === 'A') {
+               pWatts0 += halfWatts; pVA0 += halfVA; pWatts1 += halfWatts; pVA1 += halfVA
+             } else if (serverPhase === 'B') {
+               pWatts1 += halfWatts; pVA1 += halfVA; pWatts2 += halfWatts; pVA2 += halfVA
+             } else {
+               pWatts2 += halfWatts; pVA2 += halfVA; pWatts0 += halfWatts; pVA0 += halfVA
+             }
           } else {
-            pWatts2 += cWattage; pVA2 += cVA
+             if (serverPhase === 'A') {
+               pWatts0 += cWattage; pVA0 += cVA
+             } else if (serverPhase === 'B') {
+               pWatts1 += cWattage; pVA1 += cVA
+             } else {
+               pWatts2 += cWattage; pVA2 += cVA
+             }
           }
         }
       }

@@ -136,6 +136,12 @@ export type InfraState = {
   upgradeRackContainment: (rackId: string, type: 'none' | 'cold_aisle' | 'hot_aisle') => void
   installBlankingPanels: (rackId: string) => void
 
+  // Day 14: Power Distribution Architecture
+  setServerPhase: (nodeId: string, phase: 'A' | 'B' | 'C') => void
+  upgradeServerPSU: (nodeId: string) => void
+  upgradeRackPDU: (rackId: string) => void
+  toggleFacilityFeed: (feed: 'A' | 'B', status: boolean) => void
+
   // Day 5: Procurement & Thermal
   deploymentQueue: HardwareCatalogKey[]
   isHeatMapVisible: boolean

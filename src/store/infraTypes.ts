@@ -157,6 +157,9 @@ export interface InfraNode {
   blankingPanels?: boolean[]
   coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
   waterFlowLPM?: number
+  phase?: 'A' | 'B' | 'C'
+  dualPSU?: boolean
+  pduFeeds?: 'A' | 'A+B'
   bootProgress: number
   hostname?: string
   managementIP?: string

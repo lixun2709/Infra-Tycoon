@@ -38,7 +38,8 @@ export function TopNav({
     companyLevel,
     experience,
     xpToNextLevel,
-    realTimePlayedSeconds
+    realTimePlayedSeconds,
+    toggleFacilityFeed
   } = useInfraStore(useShallow(state => ({
     currentSiteId: state.currentSiteId, 
     sites: state.sites, 
@@ -49,10 +50,21 @@ export function TopNav({
     companyLevel: state.companyLevel,
     experience: state.experience,
     xpToNextLevel: state.xpToNextLevel,
-    isNetworkManagerOpen: state.isNetworkManagerOpen
+    isNetworkManagerOpen: state.isNetworkManagerOpen,
+    toggleFacilityFeed: state.toggleFacilityFeed
   })))
   const activeSite = sites.find(s => s.id === currentSiteId)
   const xpPercentage = Math.min(100, (experience / xpToNextLevel) * 100)
+  
+  const [utilityA, setUtilityA] = useState(true)
+  const [utilityB, setUtilityB] = useState(true)
+
+  const handleToggleFeed = (feed: 'A' | 'B', current: boolean) => {
+    const next = !current
+    if (feed === 'A') setUtilityA(next)
+    if (feed === 'B') setUtilityB(next)
+    toggleFacilityFeed(feed, next)
+  }
 
   const [localTime, setLocalTime] = useState(new Date())
 
@@ -165,6 +177,25 @@ export function TopNav({
 
       {/* System Status & Operations Clock */}
       <div className="flex items-center gap-6">
+        
+        {/* UTILITY POWER OUTAGE SIMULATION */}
+        <div className="flex gap-2 p-1.5 bg-slate-900/50 rounded-xl border border-slate-800">
+          <Button 
+            variant={utilityA ? 'primary' : 'danger'} 
+            onClick={() => handleToggleFeed('A', utilityA)}
+            className="py-1 px-3 text-[9px]"
+          >
+            GRID A {utilityA ? 'ON' : 'OFF'}
+          </Button>
+          <Button 
+            variant={utilityB ? 'primary' : 'danger'} 
+            onClick={() => handleToggleFeed('B', utilityB)}
+            className="py-1 px-3 text-[9px]"
+          >
+            GRID B {utilityB ? 'ON' : 'OFF'}
+          </Button>
+        </div>
+
         {/* Local Clock */}
         <div 
           onClick={() => setTimeFormat(timeFormat === '24h' ? '12h' : '24h')}

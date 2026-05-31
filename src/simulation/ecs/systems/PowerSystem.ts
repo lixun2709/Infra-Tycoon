@@ -127,7 +127,35 @@ export class PowerSystem extends System {
       }
 
       if (transform.parentRackId) {
-        power.isPowered = parentPowered && power.systemState !== 'off'
+        const rackPower = powerMap.get(transform.parentRackId)
+        const rackComp = this.world.getComponent<RackComponent>('rack', transform.parentRackId)
+
+        // Determine if utility power drops the rack entirely
+        let rackUtilityPowered = true
+        if (rackComp) {
+          const feeds = rackComp.pduFeeds ?? 'A'
+          const hasA = PowerSystem.facilityFeeds.A
+          const hasB = PowerSystem.facilityFeeds.B
+
+          if (feeds === 'A') {
+            rackUtilityPowered = hasA
+          } else if (feeds === 'A+B') {
+            rackUtilityPowered = hasA || hasB
+          }
+        }
+
+        // Parent is powered only if it's logically "on" AND utility power isn't dropped (unless UPS catches it).
+        // Wait, UPSManager handles UPS for the Rack!
+        // If UPS catches it, rackPower.isPowered remains true.
+        // But what about individual servers? If Rack PDU has A+B feed, it stays up if either is up.
+        // If Rack only has A feed, and A goes down, rack goes to UPS.
+        // So `rackPower.isPowered` already reflects UPS status!
+        
+        // Let's refine server dualPSU logic.
+        // A server with dualPSU survives if *either* rack PDU A or B is powered.
+        // In our simple model, the rack's total `isPowered` handles UPS.
+        const serverUtilityPowered = power.dualPSU ? (PowerSystem.facilityFeeds.A || PowerSystem.facilityFeeds.B) : rackUtilityPowered
+        power.isPowered = parentPowered && (serverUtilityPowered || !!rackPower?.upsBatterySeconds) && power.systemState !== 'off'
       } else {
         UPSManager.processStandaloneUPS(dt, power, PowerSystem.facilityFeeds)
       }

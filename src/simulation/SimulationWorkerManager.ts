@@ -42,6 +42,16 @@ export class SimulationWorkerManager {
     const isVitest = typeof globalThis !== 'undefined' && (globalThis as unknown as GlobalWithProcess).process?.env?.VITEST
     if (typeof window !== 'undefined' && typeof Worker !== 'undefined' && !isVitest) {
       this.start()
+
+      // Listen for global facility feed toggles from UI
+      window.addEventListener('infra:facilityFeedToggle', ((e: CustomEvent) => {
+        if (this.worker) {
+          this.worker.postMessage({
+            type: 'FACILITY_FEED',
+            payload: e.detail
+          })
+        }
+      }) as EventListener)
     }
   }
 
@@ -174,7 +184,13 @@ export class SimulationWorkerManager {
       currentPowerKW: n.maintenanceMode ? 0 : n.currentPowerKW,
       status: n.status,
       systemState: n.maintenanceMode ? 'off' : n.systemState,
+      blankingPanels: n.blankingPanels,
+      coolingMethod: n.coolingMethod,
+      waterFlowLPM: n.waterFlowLPM,
       breakerTripped: n.breakerTripped,
+      phase: n.phase,
+      dualPSU: n.dualPSU,
+      pduFeeds: n.pduFeeds,
       overloadSeconds: n.overloadSeconds,
       provisioningState: n.provisioningState,
       bootProgress: n.bootProgress ?? 0,
