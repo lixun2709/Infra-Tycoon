@@ -101,8 +101,10 @@ export function findShortestPathsFromSource(
   adjMap: AdjacencyMap
 ): ShortestPathTree {
   const activeNodes = new Set<string>()
+  const nodeMap = new Map<string, InfraNode>()
 
   nodes.forEach(n => {
+    nodeMap.set(n.id, n)
     if (n.systemState === 'off' || n.isBlackholed) return
     activeNodes.add(n.id)
   })
@@ -135,7 +137,20 @@ export function findShortestPathsFromSource(
       const utilization = Math.min(1.0, throughput / capacity)
 
       // Traffic-engineered weight formula
-      const weight = latency * (1.0 + loss * 5.0) + (utilization * 2.0)
+      const routingWeight = conn.routingWeight ?? 100 // 100 is default base weight
+      const weightMultiplier = routingWeight / 100.0
+      
+      let weight = (latency * (1.0 + loss * 5.0) + (utilization * 2.0)) * weightMultiplier
+
+      // Top-of-Rack Switch Enforcement Rule
+      const nodeU = nodeMap.get(u)
+      const nodeV = nodeMap.get(v)
+      if (nodeU && nodeV && nodeU.parentRackId !== nodeV.parentRackId && nodeU.parentRackId && nodeV.parentRackId) {
+        if (nodeU.type !== 'network' && nodeV.type !== 'network') {
+          weight += 50.0 // Massive penalty for cross-rack spaghetti cabling bypassing switches
+        }
+      }
+
       const alt = min.dist + weight
 
       if (alt < (dist.get(v) ?? Infinity)) {

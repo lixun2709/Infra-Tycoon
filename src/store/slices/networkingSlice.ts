@@ -7,6 +7,7 @@ export interface NetworkingSlice {
   handlePortClick: (nodeId: string, portId: string) => void
   removeConnection: (id: string) => void
   patchConnection: (sNodeId: string, sPortId: string, tNodeId: string, tPortId: string) => void
+  updateConnectionConfig: (id: string, config: Partial<Connection>) => void
   verifyService: (nodeId: string, type: ServiceType) => boolean
   getServiceStatus: (type: ServiceType) => 'green' | 'red'
   ping: (sourceId: string, targetIp: string) => { success: boolean; message: string }
@@ -211,6 +212,12 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       connections: connections.filter(c => c.id !== id),
       nodes: updatedNodes
     })
+  },
+
+  updateConnectionConfig: (id, config) => {
+    const { connections } = get()
+    const updated = connections.map(c => c.id === id ? { ...c, ...config } : c)
+    set({ connections: updated })
   },
 
   verifyService: (nodeId, type) => {

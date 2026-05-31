@@ -333,6 +333,7 @@ export interface Connection {
   packetsDropped?: number
   isBlackholed?: boolean
   rateLimitGbps?: number
+  routingWeight?: number
 }
 
 export interface TechnicianTicket {

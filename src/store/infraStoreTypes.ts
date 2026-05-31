@@ -210,6 +210,7 @@ export type InfraState = {
   // Day 7: Logical Networking
   verifyService: (nodeId: string, type: ServiceType) => boolean
   patchConnection: (sNodeId: string, sPortId: string, tNodeId: string, tPortId: string) => void
+  updateConnectionConfig: (id: string, config: Partial<Connection>) => void
   getServiceStatus: (type: ServiceType) => 'green' | 'red'
   setPreviewBlueprint: (id: string | null) => void
   exportToTerraform: () => string

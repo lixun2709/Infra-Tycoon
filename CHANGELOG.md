@@ -1,6 +1,10 @@
 # Changelog
 
 ### [Unreleased]
+- Day 15: **Network Routing Gameplay**
+  - Added BGP-style Traffic Engineering (`routingWeight`) allowing manual steering of network flows.
+  - Implemented Top-of-Rack Switch Enforcement rules: Cross-rack traffic that bypasses network switches now incurs massive latency penalties (+50ms).
+  - Added "SDN Traffic Engineering" tab to `GlobalNetwork.tsx` for real-time link QoS configuration.
 - Day 14: **Power Distribution Architecture**
   - Added Electrical telemetry tab to Inspector (Rack PDU feeds, device phases, PSU redundancy).
   - Configurable server phases (L1, L2, L3) with strict Phase Balancer inside ECS.

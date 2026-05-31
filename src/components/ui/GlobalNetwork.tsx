@@ -13,7 +13,8 @@ export function GlobalNetwork() {
     currentSiteId,
     patchConnection,
     removeConnection,
-    getServiceStatus
+    getServiceStatus,
+    updateConnectionConfig
   } = useInfraStore(useShallow(state => ({
     isNetworkManagerOpen: state.isNetworkManagerOpen, 
     setNetworkManagerOpen: state.setNetworkManagerOpen, 
@@ -22,12 +23,13 @@ export function GlobalNetwork() {
     currentSiteId: state.currentSiteId,
     patchConnection: state.patchConnection,
     removeConnection: state.removeConnection,
-    getServiceStatus: state.getServiceStatus
+    getServiceStatus: state.getServiceStatus,
+    updateConnectionConfig: state.updateConnectionConfig
   })))
 
   const nodes = useInfraStore.getState().nodes
   
-  const [activeTab, setActiveTab] = useState<'topology' | 'patching' | 'services'>('topology')
+  const [activeTab, setActiveTab] = useState<'topology' | 'patching' | 'services' | 'sdn'>('topology')
   const [serviceSubTab, setServiceSubTab] = useState<'overview' | 'DHCP' | 'DNS' | 'NTP'>('overview')
   const [selectedRackIds, setSelectedRackIds] = useState<Set<string>>(new Set())
   const [flippedServices, setFlippedServices] = useState<Set<ServiceType>>(new Set())
@@ -687,6 +689,66 @@ export function GlobalNetwork() {
     )
   }
 
+  const renderSdn = () => {
+    return (
+      <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar scrollbar-hide max-w-5xl mx-auto w-full">
+        <div className="flex justify-between items-center mb-6">
+           <div>
+             <h3 className="text-xl font-black text-white uppercase tracking-tight">SDN Traffic Engineering</h3>
+             <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mt-1">BGP Routing & QoS Policies</p>
+           </div>
+        </div>
+        
+        {connections.length === 0 ? (
+           <div className="h-full flex flex-col items-center justify-center text-center p-12 opacity-30">
+             <div className="text-4xl mb-4">🌐</div>
+             <h4 className="text-sm font-black text-white uppercase tracking-widest mb-2">No Active Links</h4>
+           </div>
+        ) : (
+          connections.map(conn => {
+            const sNode = nodes.find(n => n.id === conn.startNodeId)
+            const eNode = nodes.find(n => n.id === conn.endNodeId)
+            const sPort = sNode?.ports.find(p => p.id === conn.startPortId)
+            const ePort = eNode?.ports.find(p => p.id === conn.endPortId)
+
+            return (
+              <div key={conn.id} className="bg-slate-900/50 p-6 rounded-[2rem] border border-white/5 shadow-xl flex items-center gap-8 group hover:border-teal-500/20 transition-all">
+                 <div className="flex-1">
+                    <div className="text-[10px] font-black text-slate-200 uppercase">{sNode?.hostname || sNode?.name}</div>
+                    <div className="text-teal-400 font-mono text-[9px]">{sPort?.label || conn.startPortId}</div>
+                 </div>
+                 
+                 <div className="flex-[2] flex flex-col gap-3 px-8 border-x border-white/5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Routing Cost (Weight)</label>
+                      <span className={`text-[10px] font-bold ${conn.routingWeight && conn.routingWeight > 100 ? 'text-amber-500' : 'text-teal-400'}`}>{conn.routingWeight ?? 100}</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="1" 
+                      max="200" 
+                      value={conn.routingWeight ?? 100}
+                      onChange={(e) => updateConnectionConfig(conn.id, { routingWeight: parseInt(e.target.value) })}
+                      className="w-full accent-teal-500"
+                    />
+                    <div className="flex justify-between text-[7px] font-black text-slate-600 uppercase tracking-widest">
+                       <span>Priority Route (1)</span>
+                       <span>Avoid Route (200)</span>
+                    </div>
+                 </div>
+                 
+                 <div className="flex-1 text-right">
+                    <div className="text-[10px] font-black text-slate-200 uppercase">{eNode?.hostname || eNode?.name}</div>
+                    <div className="text-teal-400 font-mono text-[9px]">{ePort?.label || conn.endPortId}</div>
+                 </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#020617]/95 backdrop-blur-3xl p-6" onClick={() => setNetworkManagerOpen(false)}>
       <div className="bg-[#0f172a] border border-teal-500/30 p-6 rounded-[3rem] shadow-[0_0_200px_rgba(0,0,0,0.9)] max-w-[1500px] w-full flex flex-col gap-4 h-[94vh] animate-in zoom-in-95 duration-500 relative overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -723,10 +785,11 @@ export function GlobalNetwork() {
             { id: 'topology', label: 'Topology', icon: '📐' },
             { id: 'patching', label: 'Patch Panel', icon: '🔌' },
             { id: 'services', label: 'Orchestration', icon: '⚡' },
+            { id: 'sdn', label: 'SDN Engineering', icon: '🌐' },
           ].map(tab => (
             <button 
               key={tab.id}
-              onClick={() => { setActiveTab(tab.id as 'topology' | 'patching' | 'services'); setConfiguringService(null); }}
+              onClick={() => { setActiveTab(tab.id as 'topology' | 'patching' | 'services' | 'sdn'); setConfiguringService(null); }}
               className={`px-6 py-2.5 rounded-xl text-[9px] font-black transition-all flex items-center gap-2 uppercase tracking-[0.1em] ${activeTab === tab.id ? 'bg-teal-500 text-slate-950 shadow-[0_10px_30px_rgba(45,212,191,0.2)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
             >
               <span className="text-base">{tab.icon}</span>
@@ -740,6 +803,7 @@ export function GlobalNetwork() {
            {activeTab === 'topology' && renderTopology()}
            {activeTab === 'patching' && renderPatching()}
            {activeTab === 'services' && renderServices()}
+           {activeTab === 'sdn' && renderSdn()}
         </div>
       </div>
     </div>
