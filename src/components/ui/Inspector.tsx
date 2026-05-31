@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'
@@ -103,7 +104,12 @@ export function Inspector() {
 
   return (
     <>
-      <div className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[520px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl transition-all duration-500">
+      <motion.div 
+        initial={{ x: 50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+        className="fixed right-6 top-24 h-[calc(100vh-120px)] w-[520px] glass-panel rounded-[1.5rem] overflow-hidden flex flex-col z-40 shadow-2xl"
+      >
         {/* Header */}
         <div className="p-6 pb-4 border-b border-white/5 bg-white/5">
           <input
@@ -151,7 +157,8 @@ export function Inspector() {
           {activeTab === 'details' && (
             <>
               {selectedNode.type === 'rack' && (
-                <Card title="Aisle Containment Strategy" className="bg-transparent" glass={false}>
+                <>
+                  <Card title="Aisle Containment Strategy" className="bg-transparent" glass={false}>
                   <div className="space-y-4">
                     <div>
                       <label className="text-[9px] text-slate-500 block mb-1.5 uppercase font-black tracking-widest">Configuration</label>
@@ -188,8 +195,8 @@ export function Inspector() {
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Hardware Layout</h3>
                   <VisualRack rack={selectedNode} hardware={nodes.filter(n => n.parentRackId === selectedNode.id)} />
                 </div>
-              </div>
-            )}
+                </>
+              )}
 
             <Card title="Specifications" className="bg-transparent" glass={false}>
                 <div className="space-y-2">
@@ -936,6 +943,7 @@ export function Inspector() {
         onConfirm={confirmDecommission}
         onCancel={() => setShowDecommissionConfirm(false)}
       />
+      </motion.div>
     </>
   )
 }

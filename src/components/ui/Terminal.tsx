@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { TerminalPane } from '../../store/terminalTypes'
@@ -243,12 +244,8 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setActivePane: state.setActivePane
   })))
 
-  const [localLayout, setLocalLayout] = useState({ 
-    width: siteState?.layout.width || 850, 
-    height: siteState?.layout.height || 550, 
-    x: siteState?.layout.x || 100, 
-    y: siteState?.layout.y || 120 
-  })
+    setActivePane: state.setActivePane
+  })))
   
   const [input, setInput] = useState('')
   const [historyIndex, setHistoryIndex] = useState(-1)
@@ -272,23 +269,6 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     }, 3000)
     return () => clearInterval(interval)
   }, [])
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
-    if (siteState?.layout) {
-      timer = setTimeout(() => {
-        setLocalLayout({
-          width: siteState.layout.width,
-          height: siteState.layout.height,
-          x: siteState.layout.x,
-          y: siteState.layout.y
-        })
-      }, 0)
-    }
-    return () => {
-      if (timer) clearTimeout(timer)
-    }
-  }, [currentSiteId, siteState?.layout])
 
   // Auto-attach to selected node
   useEffect(() => {
@@ -325,51 +305,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   // Actually, it's better to just use a ref and scroll it in useLayoutEffect if possible, 
   // but useEffect is fine.
 
-  const handleResize = (e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    const startX = e.clientX
-    const startY = e.clientY
-    const startWidth = localLayout.width
-    const startHeight = localLayout.height
-
-    const doDrag = (dragEvent: MouseEvent) => {
-      const newWidth = Math.max(600, startWidth + (dragEvent.clientX - startX))
-      const newHeight = Math.max(450, startHeight + (dragEvent.clientY - startY))
-      setLocalLayout(prev => ({ ...prev, width: newWidth, height: newHeight }))
-    }
-
-    const stopDrag = () => {
-      document.removeEventListener('mousemove', doDrag)
-      document.removeEventListener('mouseup', stopDrag)
-      updateTerminalLayout({ width: localLayout.width, height: localLayout.height })
-    }
-
-    document.addEventListener('mousemove', doDrag)
-    document.addEventListener('mouseup', stopDrag)
-  }
-
-  const handleMove = (e: React.MouseEvent) => {
-    if (layout.isMaximized) return
-    if ((e.target as HTMLElement).closest('button') || (e.target as HTMLElement).closest('.terminal-tab')) return
-
-    e.preventDefault()
-    const startX = e.clientX - localLayout.x
-    const startY = e.clientY - localLayout.y
-
-    const doDrag = (dragEvent: MouseEvent) => {
-      setLocalLayout(prev => ({ ...prev, x: dragEvent.clientX - startX, y: dragEvent.clientY - startY }))
-    }
-
-    const stopDrag = () => {
-      document.removeEventListener('mousemove', doDrag)
-      document.removeEventListener('mouseup', stopDrag)
-      updateTerminalLayout({ x: localLayout.x, y: localLayout.y })
-    }
-
-    document.addEventListener('mousemove', doDrag)
-    document.addEventListener('mouseup', stopDrag)
-  }
+  // Removed manual dragging and resizing to match a centered Spotlight-style Command Palette
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.ctrlKey && e.shiftKey && e.key === 'V') {
@@ -468,20 +404,31 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }
 
   return (
-    <div 
-      ref={containerRef}
-      style={{ 
-        width: layout.isMaximized ? '100vw' : `${localLayout.width}px`, 
-        height: layout.isMaximized ? '100vh' : `${localLayout.height}px`,
-        left: layout.isMaximized ? '0' : `${localLayout.x}px`,
-        top: layout.isMaximized ? '0' : `${localLayout.y}px`,
-      }}
-      className={`fixed z-[100] bg-[#020617]/90 backdrop-blur-[15px] text-slate-200 shadow-[0_50px_150px_rgba(0,0,0,0.9)] border border-white/10 flex flex-col font-sans overflow-hidden ${layout.isMaximized ? 'rounded-none' : 'rounded-3xl'}`}
-    >
-      <div 
-        onMouseDown={handleMove}
-        className={`bg-white/[0.02] flex items-center px-6 h-14 border-b border-white/5 relative z-10 ${layout.isMaximized ? 'cursor-default' : 'cursor-grab active:cursor-grabbing'}`}
+    <AnimatePresence>
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm"
+        onClick={onClose}
       >
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: -20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -20 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          ref={containerRef}
+          onClick={(e) => e.stopPropagation()}
+          style={{ 
+            width: layout.isMaximized ? '100vw' : '850px', 
+            height: layout.isMaximized ? '100vh' : '550px',
+          }}
+          className={`relative bg-[#020617]/80 backdrop-blur-2xl text-slate-200 shadow-2xl border border-white/10 flex flex-col font-sans overflow-hidden ${layout.isMaximized ? 'rounded-none w-full h-full' : 'rounded-2xl max-w-full max-h-full'}`}
+        >
+          <div 
+            className="bg-white/[0.02] flex items-center px-6 h-14 border-b border-white/5 relative z-10"
+          >
         <div className="flex items-center gap-3 mr-6 shrink-0">
            <GripHorizontal size={18} className="text-slate-600 hover:text-teal-400 transition-colors cursor-move" />
            <div className="w-8 h-8 bg-teal-500/20 rounded-lg flex items-center justify-center text-teal-400 shadow-[0_0_15px_rgba(20,184,166,0.2)]">
@@ -568,14 +515,10 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </div>
       <div className="absolute inset-0 pointer-events-none z-[110] bg-white/5 opacity-[0.01] animate-pulse" />
 
-      {!layout.isMaximized && (
-        <div 
-          onMouseDown={handleResize}
-          className="absolute bottom-0 right-0 w-10 h-10 cursor-nwse-resize flex items-end justify-end p-2 group z-[120]"
-        >
-          <GripHorizontal size={16} className="text-white/10 group-hover:text-teal-400 transition-colors rotate-45" />
-        </div>
-      )}
-    </div>
+      </div>
+      <div className="absolute inset-0 pointer-events-none z-[110] bg-white/5 opacity-[0.01] animate-pulse" />
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   )
 }
