@@ -8,6 +8,7 @@ interface CardProps {
   footer?: React.ReactNode
   className?: string
   glass?: boolean
+  onClick?: () => void
 }
 
 export const Card: React.FC<CardProps> = ({ 
@@ -17,10 +18,14 @@ export const Card: React.FC<CardProps> = ({
   extra, 
   footer, 
   className = '', 
-  glass = true 
+  glass = true,
+  onClick
 }) => {
   return (
-    <div className={`${glass ? 'glass-dark' : 'bg-slate-900'} rounded-xl overflow-hidden flex flex-col ${className}`}>
+    <div 
+      className={`${glass ? 'glass-dark' : 'bg-slate-900'} rounded-xl overflow-hidden flex flex-col ${className}`}
+      onClick={onClick}
+    >
       {(title || extra) && (
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/5">
           <div>

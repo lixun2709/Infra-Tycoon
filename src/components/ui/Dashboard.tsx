@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
+import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { LevelUpOverlay } from './LevelUpOverlay'
 
@@ -296,7 +297,7 @@ export function Dashboard({
                 </button>
                 <button onClick={() => setEventSubTab('incidents')} className={`px-4 py-2 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all flex items-center gap-2 ${eventSubTab === 'incidents' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'bg-slate-800/50 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}`}>
                   <Activity size={14} /> Major Incidents
-                  {incidents.filter(i => i.status === 'active').length > 0 && (
+                  {incidents.filter(i => !i.isResolved).length > 0 && (
                     <span className="ml-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                   )}
                 </button>
@@ -353,14 +354,14 @@ export function Dashboard({
 
               {eventSubTab === 'incidents' && (
                 <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                  {incidents.filter(i => i.status === 'active').length === 0 ? (
+                  {incidents.filter(i => !i.isResolved).length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-48 border border-white/5 rounded-2xl bg-white/5">
                       <ShieldAlert className="w-8 h-8 text-emerald-500 mb-3 opacity-50" />
                       <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">No Active Incidents</p>
                       <p className="text-[10px] text-slate-500 mt-2">All systems operating within normal parameters.</p>
                     </div>
                   ) : (
-                    incidents.filter(i => i.status === 'active').map(incident => (
+                    incidents.filter(i => !i.isResolved).map(incident => (
                       <Card key={incident.id} className="border-rose-500/30 bg-rose-950/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
                         <div className="flex gap-6">
                           <div className="flex flex-col items-center justify-center shrink-0 w-24 border-r border-rose-500/20 pr-6">
@@ -370,18 +371,19 @@ export function Dashboard({
                           <div className="flex-1">
                             <div className="flex justify-between items-start mb-2">
                               <div>
-                                <h3 className="text-lg font-black text-rose-400 uppercase tracking-tight">{incident.title}</h3>
-                                <p className="text-sm font-medium text-rose-200/80 mt-1">{incident.description}</p>
+                                <h3 className="text-lg font-black text-rose-400 uppercase tracking-tight">{incident.type.replace(/_/g, ' ')}</h3>
+                                <p className="text-sm font-medium text-rose-200/80 mt-1">Critical failure impacting {incident.affectedNodes.length} nodes</p>
                               </div>
                               <div className="text-right">
                                 <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">RTO Timer</p>
                                 <p className="text-xl font-mono font-black text-white">
-                                  {Math.floor(incident.rtoTargetSeconds / 60)}:{(incident.rtoTargetSeconds % 60).toString().padStart(2, '0')}
+                                  {Math.floor((incident.rtoTargetSeconds || 0) / 60)}:{((incident.rtoTargetSeconds || 0) % 60).toString().padStart(2, '0')}
                                 </p>
                               </div>
                             </div>
-                            {incident.affectedSites.map(siteId => {
+                            {[incident.siteId].map(siteId => {
                               const site = sites.find(s => s.id === siteId)
+                              const targetSite = sites.find(s => s.id !== siteId)?.id || 'site-1'
                               return (
                                 <div key={siteId} className="mt-4 p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
                                   <div>
@@ -394,7 +396,7 @@ export function Dashboard({
                                   <Button 
                                     variant="ghost" 
                                     className="bg-rose-500/20 text-rose-400 border border-rose-500/50 hover:bg-rose-500 hover:text-white"
-                                    onClick={() => triggerSiteFailover(siteId)}
+                                    onClick={() => triggerSiteFailover(siteId, targetSite)}
                                   >
                                     EXECUTE FAILOVER
                                   </Button>
@@ -422,14 +424,14 @@ export function Dashboard({
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Incident Report</p>
-                            <h3 className="text-sm font-bold text-white">{pm.title}</h3>
+                            <h3 className="text-sm font-bold text-white">Incident #{pm.incidentNumber}</h3>
                           </div>
                           <Badge variant="ghost" className="bg-white/5">
                             {new Date(pm.timestamp).toLocaleDateString()}
                           </Badge>
                         </div>
                         <div className="p-3 rounded-lg bg-black/40 border border-white/5 font-mono text-[10px] text-slate-300 leading-relaxed whitespace-pre-wrap">
-                          {pm.rcaText}
+                          {pm.rca}
                         </div>
                         <div className="mt-4 flex gap-4 text-[10px] font-bold uppercase tracking-widest">
                           <span className="text-emerald-400 flex items-center gap-1">
@@ -711,9 +713,9 @@ export function Dashboard({
                           <div className="flex justify-between font-mono">
                             <span className="truncate max-w-[150px] text-slate-400 font-semibold">{name}</span>
                             <span className="text-slate-300">
-                              {time === 0 || time < 0.0001 
+                              {(time as number) === 0 || (time as number) < 0.0001 
                                 ? '< 0.0001ms' 
-                                : `${time.toFixed(4)}ms`}
+                                : `${(time as number).toFixed(4)}ms`}
                             </span>
                           </div>
                           <div className="w-full bg-slate-950 h-1 rounded overflow-hidden">
@@ -721,7 +723,7 @@ export function Dashboard({
                               className="bg-indigo-500 h-full rounded transition-all duration-300"
                               style={{ 
                                 width: `${metrics.simTickTime > 0 
-                                  ? Math.min(100, (time / metrics.simTickTime) * 100) 
+                                  ? Math.min(100, ((time as number) / metrics.simTickTime) * 100) 
                                   : 0}%` 
                               }}
                             />
