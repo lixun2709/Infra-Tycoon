@@ -12,7 +12,6 @@ import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
 import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
-import { NocDashboard } from './components/ui/NocDashboard'
 import { StorageDashboard } from './components/ui/StorageDashboard'
 import { AIDashboard } from './components/ui/AIDashboard'
 import { BlueprintManager } from './components/ui/BlueprintManager'
@@ -531,7 +530,6 @@ function App() {
         isOpen={isEconomyOpen}
         onClose={() => setIsEconomyOpen(false)}
       />
-      <NocDashboard />
       <StorageDashboard />
       <AIDashboard />
       <BlueprintManager />
