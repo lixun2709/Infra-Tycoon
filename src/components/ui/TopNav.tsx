@@ -151,28 +151,61 @@ export function TopNav({
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex items-center gap-1">
-        {[
-          { id: 'noc', label: 'NOC', icon: '📡', onClick: onToggleNOC },
-          { id: 'storage', label: 'STORAGE', icon: '🗄️', active: isStorageOpen, onClick: onToggleStorage },
-          { id: 'ai', label: 'AI CLUSTER', icon: '🧠', active: isAIDashboardOpen, onClick: toggleAIDashboard },
-          { id: 'global_map', label: 'MAP', icon: '🌍', onClick: onToggleGlobalMap },
-          { id: 'network', label: 'NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
-          { id: 'economy', label: 'FINANCE', icon: '💰', onClick: onToggleEconomy },
-          { id: 'terminal', label: 'TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
-          { id: 'handbook', label: 'DOCS', icon: '📖', onClick: onOpenHandbook },
-          { id: 'save', label: 'SAVE', icon: '💾', onClick: onToggleSaveManager },
-        ].map(tab => (
+      <nav className="flex items-center gap-2">
+        {/* Operations Dropdown */}
+        <div className="relative group">
           <Button
-            key={tab.id}
-            variant={tab.active ? 'primary' : 'ghost'}
-            onClick={tab.onClick}
-            icon={<span className="text-base mr-1">{tab.icon}</span>}
-            className="text-[9px] font-black tracking-widest px-4 h-9"
+            variant="ghost"
+            icon={<span className="text-base mr-1">⚙️</span>}
+            className="text-[9px] font-black tracking-widest px-4 h-9 bg-white/5 border border-white/10 hover:bg-white/10"
           >
-            {tab.label}
+            OPERATIONS <span className="text-[8px] ml-2 opacity-50">▼</span>
           </Button>
-        ))}
+          <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+            {[
+              { id: 'noc', label: 'NOC', icon: '📡', onClick: onToggleNOC },
+              { id: 'storage', label: 'STORAGE', icon: '🗄️', active: isStorageOpen, onClick: onToggleStorage },
+              { id: 'ai', label: 'AI CLUSTER', icon: '🧠', active: isAIDashboardOpen, onClick: toggleAIDashboard },
+              { id: 'network', label: 'NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={tab.onClick}
+                className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest flex items-center gap-3 transition-colors hover:bg-white/10 ${tab.active ? 'text-teal-400 bg-teal-500/10' : 'text-slate-300'}`}
+              >
+                <span className="text-sm">{tab.icon}</span> {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Management Dropdown */}
+        <div className="relative group">
+          <Button
+            variant="ghost"
+            icon={<span className="text-base mr-1">💼</span>}
+            className="text-[9px] font-black tracking-widest px-4 h-9 bg-white/5 border border-white/10 hover:bg-white/10"
+          >
+            MANAGEMENT <span className="text-[8px] ml-2 opacity-50">▼</span>
+          </Button>
+          <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
+            {[
+              { id: 'global_map', label: 'MAP', icon: '🌍', onClick: onToggleGlobalMap },
+              { id: 'economy', label: 'FINANCE', icon: '💰', onClick: onToggleEconomy },
+              { id: 'terminal', label: 'TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
+              { id: 'handbook', label: 'DOCS', icon: '📖', onClick: onOpenHandbook },
+              { id: 'save', label: 'SAVE', icon: '💾', onClick: onToggleSaveManager },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={tab.onClick}
+                className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest flex items-center gap-3 transition-colors hover:bg-white/10 ${tab.active ? 'text-teal-400 bg-teal-500/10' : 'text-slate-300'}`}
+              >
+                <span className="text-sm">{tab.icon}</span> {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </nav>
 
       {/* System Status & Operations Clock */}
