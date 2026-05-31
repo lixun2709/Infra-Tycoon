@@ -32,6 +32,7 @@ import type { EconomySlice } from './slices/economySlice'
 import type { ProgressionSlice } from './slices/progressionSlice'
 import type { ContractBlueprint, ActiveContract } from '../physics/contractLibrary'
 import type { MiscSlice } from './slices/miscSlice'
+import type { StorageSlice } from './slices/storageSlice'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -52,7 +53,6 @@ export type InfraState = {
   alerts: InfraAlert[]
   auditLogs: AuditLog[]
   isNetworkManagerOpen: boolean
-  isEocOpen: boolean
   networkLoad: number
   resilienceIndex: number
   // v2.0 SDDC Metrics
@@ -153,7 +153,6 @@ export type InfraState = {
   setNetworkManagerOpen: (open: boolean) => void
   setCurrentSiteId: (siteId: string) => void
   setMousePosition: (pos: Vector3 | null) => void
-  toggleEoc: () => void
   acknowledgeAllAlerts: () => void
   pushAlert: (severity: 'info' | 'warning' | 'critical', message: string, nodeId?: string) => void
   acknowledgeAlert: (id: string) => void
@@ -253,4 +252,4 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice
+} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice

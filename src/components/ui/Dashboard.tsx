@@ -6,18 +6,19 @@ import {
   Zap,
   Activity,
   Clock,
-  Database,
   ShieldAlert,
   HardDrive,
   Layers,
-  Globe
+  Globe,
+  FileText,
+  PlayCircle,
+  Settings
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { LevelUpOverlay } from './LevelUpOverlay'
-import { EmergencyOperationsCenter } from './EmergencyOperationsCenter'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
   if (!data || data.length === 0) return null
@@ -79,14 +80,20 @@ export function Dashboard({
     networkLoad,
     realTimePlayedSeconds, auditLogs,
     isHeatMapVisible, toggleHeatMap,
-    timeFormat
+    timeFormat,
+    incidents, postMortems, sites,
+    triggerSiteFailover, triggerPowerFailureDrill, triggerHVACFailureDrill
   } = useInfraStore(useShallow(state => ({
     alerts: state.alerts, acknowledgeAlert: state.acknowledgeAlert, acknowledgeAllAlerts: state.acknowledgeAllAlerts,
     totalPowerKW: state.totalPowerKW,
     networkLoad: state.networkLoad,
     realTimePlayedSeconds: state.realTimePlayedSeconds, auditLogs: state.auditLogs,
     isHeatMapVisible: state.isHeatMapVisible, toggleHeatMap: state.toggleHeatMap,
-    timeFormat: state.timeFormat
+    timeFormat: state.timeFormat,
+    incidents: state.incidents, postMortems: state.postMortems, sites: state.sites,
+    triggerSiteFailover: state.triggerSiteFailover,
+    triggerPowerFailureDrill: state.triggerPowerFailureDrill,
+    triggerHVACFailureDrill: state.triggerHVACFailureDrill
   })))
 
   const formatUptime = (totalSeconds: number) => {
@@ -99,6 +106,7 @@ export function Dashboard({
   }
 
   const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics' | 'observability'>(initialTab)
+  const [eventSubTab, setEventSubTab] = useState<'alerts' | 'incidents' | 'postmortems' | 'drills'>('alerts')
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
 
@@ -179,7 +187,7 @@ export function Dashboard({
       }
     >
       <div className="flex flex-col h-[75vh]">
-        <EmergencyOperationsCenter />
+
         <Tabs 
           tabs={tabs}
           activeTab={activeTab}
@@ -279,56 +287,192 @@ export function Dashboard({
           )}
 
           {activeTab === 'events' && (
-            <div className="grid grid-cols-2 gap-8 h-full">
-              <div className="space-y-4 flex flex-col">
-                <div className="flex justify-between items-center px-2">
-                  <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Active Incidents</h3>
-                  <div className="flex gap-2">
-                    <Button variant="ghost" className="text-[9px] border border-amber-500/30 text-amber-500 hover:bg-amber-500/10" onClick={() => useInfraStore.getState().triggerDisasterRecoveryDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
-                      TRIGGER DR DRILL
-                    </Button>
-                    <Button variant="ghost" className="text-[9px] border border-rose-500/30 text-rose-500 hover:bg-rose-500/10" onClick={() => useInfraStore.getState().triggerHVACFailureDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
-                      TRIGGER HVAC FAILURE
-                    </Button>
-                    <Button variant="ghost" className="text-[9px] border border-violet-500/30 text-violet-500 hover:bg-violet-500/10" onClick={() => useInfraStore.getState().triggerPowerFailureDrill(useInfraStore.getState().sites[0]?.id || 'site-1')}>
-                      SIMULATE POWER FAILURE
-                    </Button>
-                    <Button variant="ghost" className="text-[9px]" onClick={acknowledgeAllAlerts}>PURGE ALL</Button>
-                  </div>
-                </div>
-                <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                  {alerts.filter(a => !a.isAcknowledged).map(alert => (
-                    <Card key={alert.id} className={`${alert.severity === 'critical' ? 'border-rose-500/20' : ''}`}>
-                      <div className="flex gap-4">
-                        <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${alert.severity === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-amber-400'}`} />
-                        <div className="flex-1">
-                          <p className="text-[11px] font-bold text-slate-200 leading-relaxed">{alert.message}</p>
-                          <div className="flex justify-between items-center mt-3">
-                            <span className="text-[9px] font-mono text-slate-500">
-                              {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
-                            </span>
-                            <Button variant="ghost" className="h-7 text-[9px]" onClick={() => acknowledgeAlert(alert.id)}>RESOLVE</Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+            <div className="flex flex-col h-full gap-6">
+              {/* Sub-navigation */}
+              <div className="flex gap-3 px-2 border-b border-white/10 pb-4">
+                <button onClick={() => setEventSubTab('alerts')} className={`px-4 py-2 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all flex items-center gap-2 ${eventSubTab === 'alerts' ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]' : 'bg-slate-800/50 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}`}>
+                  <ShieldAlert size={14} /> Alerts
+                </button>
+                <button onClick={() => setEventSubTab('incidents')} className={`px-4 py-2 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all flex items-center gap-2 ${eventSubTab === 'incidents' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'bg-slate-800/50 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}`}>
+                  <Activity size={14} /> Major Incidents
+                  {incidents.filter(i => i.status === 'active').length > 0 && (
+                    <span className="ml-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
+                  )}
+                </button>
+                <button onClick={() => setEventSubTab('postmortems')} className={`px-4 py-2 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all flex items-center gap-2 ${eventSubTab === 'postmortems' ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'bg-slate-800/50 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}`}>
+                  <FileText size={14} /> Post-Mortems
+                </button>
+                <button onClick={() => setEventSubTab('drills')} className={`px-4 py-2 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all flex items-center gap-2 ${eventSubTab === 'drills' ? 'bg-teal-500/20 text-teal-400 border-teal-500/50 shadow-[0_0_15px_rgba(20,184,166,0.2)]' : 'bg-slate-800/50 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}`}>
+                  <PlayCircle size={14} /> Drill Operations
+                </button>
               </div>
 
-              <div className="space-y-4 flex flex-col opacity-60 hover:opacity-100 transition-opacity">
-                <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] px-2">Incident History</h3>
-                <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                  {alerts.filter(a => a.isAcknowledged).map(alert => (
-                    <Card key={alert.id} glass={false} className="bg-white/5">
-                      <p className="text-[10px] text-slate-400">{alert.message}</p>
-                      <p className="text-[8px] font-mono text-slate-600 mt-2">
-                        {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
-                      </p>
-                    </Card>
-                  ))}
+              {eventSubTab === 'alerts' && (
+                <div className="grid grid-cols-2 gap-8 flex-1 min-h-0">
+                  <div className="space-y-4 flex flex-col min-h-0">
+                    <div className="flex justify-between items-center px-2 shrink-0">
+                      <h3 className="text-xs font-black text-white uppercase tracking-[0.2em]">Active Alerts</h3>
+                      <Button variant="ghost" className="text-[9px]" onClick={acknowledgeAllAlerts}>PURGE ALL</Button>
+                    </div>
+                    <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                      {alerts.filter(a => !a.isAcknowledged).map(alert => (
+                        <Card key={alert.id} className={`${alert.severity === 'critical' ? 'border-rose-500/20' : ''}`}>
+                          <div className="flex gap-4">
+                            <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${alert.severity === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-amber-400'}`} />
+                            <div className="flex-1">
+                              <p className="text-[11px] font-bold text-slate-200 leading-relaxed">{alert.message}</p>
+                              <div className="flex justify-between items-center mt-3">
+                                <span className="text-[9px] font-mono text-slate-500">
+                                  {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
+                                </span>
+                                <Button variant="ghost" className="h-7 text-[9px]" onClick={() => acknowledgeAlert(alert.id)}>RESOLVE</Button>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 flex flex-col min-h-0 opacity-60 hover:opacity-100 transition-opacity">
+                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] px-2 shrink-0">Alert History</h3>
+                    <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                      {alerts.filter(a => a.isAcknowledged).map(alert => (
+                        <Card key={alert.id} glass={false} className="bg-white/5">
+                          <p className="text-[10px] text-slate-400">{alert.message}</p>
+                          <p className="text-[8px] font-mono text-slate-600 mt-2">
+                            {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: timeFormat === '12h' })}
+                          </p>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {eventSubTab === 'incidents' && (
+                <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                  {incidents.filter(i => i.status === 'active').length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-48 border border-white/5 rounded-2xl bg-white/5">
+                      <ShieldAlert className="w-8 h-8 text-emerald-500 mb-3 opacity-50" />
+                      <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">No Active Incidents</p>
+                      <p className="text-[10px] text-slate-500 mt-2">All systems operating within normal parameters.</p>
+                    </div>
+                  ) : (
+                    incidents.filter(i => i.status === 'active').map(incident => (
+                      <Card key={incident.id} className="border-rose-500/30 bg-rose-950/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
+                        <div className="flex gap-6">
+                          <div className="flex flex-col items-center justify-center shrink-0 w-24 border-r border-rose-500/20 pr-6">
+                            <Activity className="w-8 h-8 text-rose-500 mb-2 animate-pulse" />
+                            <Badge variant="error" className="animate-pulse">SEV-1</Badge>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-2">
+                              <div>
+                                <h3 className="text-lg font-black text-rose-400 uppercase tracking-tight">{incident.title}</h3>
+                                <p className="text-sm font-medium text-rose-200/80 mt-1">{incident.description}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">RTO Timer</p>
+                                <p className="text-xl font-mono font-black text-white">
+                                  {Math.floor(incident.rtoTargetSeconds / 60)}:{(incident.rtoTargetSeconds % 60).toString().padStart(2, '0')}
+                                </p>
+                              </div>
+                            </div>
+                            {incident.affectedSites.map(siteId => {
+                              const site = sites.find(s => s.id === siteId)
+                              return (
+                                <div key={siteId} className="mt-4 p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-xs font-bold text-white flex items-center gap-2">
+                                      <Globe className="w-3.5 h-3.5 text-slate-400" />
+                                      {site?.name || siteId}
+                                    </p>
+                                    <p className="text-[10px] text-slate-400 mt-1">Total Failure Detected. Failover required.</p>
+                                  </div>
+                                  <Button 
+                                    variant="ghost" 
+                                    className="bg-rose-500/20 text-rose-400 border border-rose-500/50 hover:bg-rose-500 hover:text-white"
+                                    onClick={() => triggerSiteFailover(siteId)}
+                                  >
+                                    EXECUTE FAILOVER
+                                  </Button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {eventSubTab === 'postmortems' && (
+                <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
+                  {postMortems.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-48 border border-white/5 rounded-2xl bg-white/5">
+                      <FileText className="w-8 h-8 text-slate-600 mb-3" />
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Post-Mortems Available</p>
+                    </div>
+                  ) : (
+                    postMortems.map(pm => (
+                      <Card key={pm.id} className="opacity-80 hover:opacity-100 transition-opacity">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Incident Report</p>
+                            <h3 className="text-sm font-bold text-white">{pm.title}</h3>
+                          </div>
+                          <Badge variant="ghost" className="bg-white/5">
+                            {new Date(pm.timestamp).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                        <div className="p-3 rounded-lg bg-black/40 border border-white/5 font-mono text-[10px] text-slate-300 leading-relaxed whitespace-pre-wrap">
+                          {pm.rcaText}
+                        </div>
+                        <div className="mt-4 flex gap-4 text-[10px] font-bold uppercase tracking-widest">
+                          <span className="text-emerald-400 flex items-center gap-1">
+                            <ShieldAlert size={12} /> RTO Met: Yes
+                          </span>
+                          <span className="text-slate-500 flex items-center gap-1">
+                            <Settings size={12} /> Root Cause Analysis Complete
+                          </span>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+
+              {eventSubTab === 'drills' && (
+                <div className="grid grid-cols-2 gap-6 flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+                  <Card className="border-violet-500/30 bg-violet-950/10 hover:bg-violet-950/20 cursor-pointer group transition-all" onClick={() => triggerPowerFailureDrill(sites[0]?.id || 'site-1')}>
+                    <div className="flex flex-col h-full items-center text-center p-4">
+                      <div className="w-12 h-12 rounded-full bg-violet-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Activity className="w-6 h-6 text-violet-400" />
+                      </div>
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest mb-2">Power Failure Drill</h4>
+                      <p className="text-[10px] text-slate-400 mb-6">Simulates a complete loss of utility power. Tests UPS endurance and generator startup sequencing.</p>
+                      <Button variant="ghost" className="w-full mt-auto bg-violet-500/20 text-violet-300 border-violet-500/30 group-hover:bg-violet-500 group-hover:text-white transition-colors">
+                        INITIATE DRILL
+                      </Button>
+                    </div>
+                  </Card>
+                  
+                  <Card className="border-cyan-500/30 bg-cyan-950/10 hover:bg-cyan-950/20 cursor-pointer group transition-all" onClick={() => triggerHVACFailureDrill(sites[0]?.id || 'site-1')}>
+                    <div className="flex flex-col h-full items-center text-center p-4">
+                      <div className="w-12 h-12 rounded-full bg-cyan-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Settings className="w-6 h-6 text-cyan-400" />
+                      </div>
+                      <h4 className="text-sm font-black text-white uppercase tracking-widest mb-2">HVAC Failure Drill</h4>
+                      <p className="text-[10px] text-slate-400 mb-6">Simulates a catastrophic cooling failure. Tests thermal mass resilience and thermal throttling response.</p>
+                      <Button variant="ghost" className="w-full mt-auto bg-cyan-500/20 text-cyan-300 border-cyan-500/30 group-hover:bg-cyan-500 group-hover:text-white transition-colors">
+                        INITIATE DRILL
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              )}
             </div>
           )}
 

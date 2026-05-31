@@ -10,10 +10,10 @@ import { OperatorHandbook } from './components/ui/OperatorHandbook'
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
-import { EmergencyOperationsCenter } from './components/ui/EmergencyOperationsCenter'
 import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
+import { StorageDashboard } from './components/ui/StorageDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { Rocket, X, TrendingUp, Sliders, LayoutGrid, Wind, Scaling, Box, Zap } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
@@ -44,6 +44,8 @@ function App() {
   const reputation = useInfraStore(s => s.reputation)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const toggleGlobalMap = useInfraStore(s => s.toggleGlobalMap)
+  const isStorageDashboardOpen = useInfraStore(s => s.isStorageDashboardOpen)
+  const toggleStorageDashboard = useInfraStore(s => s.toggleStorageDashboard)
 
   const fixState = useInfraStore(s => s.fixState)
 
@@ -199,16 +201,24 @@ function App() {
         }}
         onToggleEconomy={() => setIsEconomyOpen(!isEconomyOpen)}
         onToggleGlobalMap={toggleGlobalMap}
-        onToggleEOC={() => useInfraStore.getState().toggleEoc()}
         onOpenHandbook={() => setIsHandbookOpen(!isHandbookOpen)}
         onToggleSaveManager={() => setIsSaveManagerOpen(!isSaveManagerOpen)}
+        onToggleStorage={toggleStorageDashboard}
         isTerminalOpen={isTerminalOpen}
+        isStorageOpen={isStorageDashboardOpen}
       />
 
-      <EmergencyOperationsCenter />
+
 
       {isSaveManagerOpen && (
         <SaveManager onClose={() => setIsSaveManagerOpen(false)} />
+      )}
+
+      {isStorageDashboardOpen && (
+        <StorageDashboard 
+          isOpen={isStorageDashboardOpen} 
+          onClose={toggleStorageDashboard} 
+        />
       )}
       
       <GlobalMap />

@@ -15,6 +15,7 @@ import { createCameraSlice } from './slices/cameraSlice'
 import { createInteractionSlice } from './slices/interactionSlice'
 import { createEconomySlice } from './slices/economySlice'
 import { createProgressionSlice } from './slices/progressionSlice'
+import { createStorageSlice } from './slices/storageSlice'
 import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
@@ -41,7 +42,6 @@ export const useInfraStore = create<InfraState>()(
       alerts: [],
       auditLogs: [],
       isNetworkManagerOpen: false,
-      isEocOpen: false,
       isTerminalOpen: false,
       networkLoad: 0.1,
       resilienceIndex: 100,
@@ -104,6 +104,7 @@ export const useInfraStore = create<InfraState>()(
       ...createInteractionSlice(set, get, api),
       ...createEconomySlice(set, get, api),
       ...createProgressionSlice(set, get, api),
+      ...createStorageSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
       processCommand: (text) => handleCommand(get, set, text),

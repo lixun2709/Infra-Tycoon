@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { ShieldAlert } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
@@ -11,10 +10,12 @@ interface TopNavProps {
   onToggleTerminal: () => void
   onToggleEconomy: () => void
   onToggleGlobalMap: () => void
-  onToggleEOC: () => void
+
+  onToggleStorage: () => void
   onOpenHandbook: () => void
   onToggleSaveManager: () => void
   isTerminalOpen: boolean
+  isStorageOpen: boolean
 }
 
 export function TopNav({ 
@@ -23,10 +24,12 @@ export function TopNav({
   onToggleTerminal,
   onToggleEconomy,
   onToggleGlobalMap,
-  onToggleEOC,
+
+  onToggleStorage,
   onOpenHandbook,
   onToggleSaveManager,
   isTerminalOpen,
+  isStorageOpen,
 }: TopNavProps) {
   const { 
     currentSiteId, 
@@ -110,7 +113,7 @@ export function TopNav({
         </div>
 
         {/* Level & XP Bar */}
-        <div className="hidden xl:flex flex-col gap-1.5 w-32 ml-4">
+        <div className="hidden xl:flex flex-col gap-1.5 w-32">
           <div className="flex justify-between items-end">
             <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Tier {companyLevel}</span>
             <span className="text-[8px] font-black text-teal-400 tracking-wider uppercase">{Math.floor(xpPercentage)}%</span>
@@ -123,16 +126,7 @@ export function TopNav({
           </div>
         </div>
 
-        <Button 
-          variant="ghost" 
-          className="flex items-center gap-2 px-3 py-1.5 h-8 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl"
-          onClick={onToggleEOC}
-        >
-          <ShieldAlert size={14} className="animate-pulse" />
-          <span className="font-bold text-[10px] tracking-widest">EOC</span>
-        </Button>
 
-        <div className="h-8 w-px bg-white/10 mx-2" />
 
         {/* Site Selector Dropdown Style */}
         <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
@@ -156,6 +150,7 @@ export function TopNav({
       <nav className="flex items-center gap-1">
         {[
           { id: 'noc', label: 'NOC', icon: '📡', onClick: onToggleNOC },
+          { id: 'storage', label: 'STORAGE', icon: '🗄️', active: isStorageOpen, onClick: onToggleStorage },
           { id: 'global_map', label: 'MAP', icon: '🌍', onClick: onToggleGlobalMap },
           { id: 'network', label: 'NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
           { id: 'economy', label: 'FINANCE', icon: '💰', onClick: onToggleEconomy },
