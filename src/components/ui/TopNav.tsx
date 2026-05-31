@@ -107,12 +107,12 @@ export function TopNav({
       {/* Brand & Site Selector */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3 group cursor-default">
-          <div className="w-10 h-10 bg-gradient-to-br from-teal-400 to-emerald-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.3)] group-hover:shadow-[0_0_30px_rgba(45,212,191,0.5)] transition-all duration-500">
-            <span className="text-xl font-black text-[#020617]">IT</span>
+          <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg transition-all duration-500">
+            <span className="text-xl font-black text-white">IT</span>
           </div>
           <div className="hidden lg:block">
-            <h1 className="text-sm font-black text-white tracking-tighter uppercase leading-none">SDDC <span className="text-teal-400">Orchestrator</span></h1>
-            <p className="text-[9px] text-slate-500 font-bold tracking-[0.2em] uppercase mt-1">Enterprise Ops v2.0</p>
+            <h1 className="text-sm font-bold text-white tracking-tight leading-none">SDDC <span className="text-blue-400 font-normal">Orchestrator</span></h1>
+            <p className="text-[9px] text-slate-400 font-semibold tracking-wider uppercase mt-1">Enterprise Ops v2.0</p>
           </div>
         </div>
 
@@ -122,9 +122,9 @@ export function TopNav({
             <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Tier {companyLevel}</span>
             <span className="text-[8px] font-black text-teal-400 tracking-wider uppercase">{Math.floor(xpPercentage)}%</span>
           </div>
-          <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
+          <div className="h-1.5 w-full bg-slate-800/50 rounded-full overflow-hidden border border-slate-700/50">
             <div 
-              className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full shadow-[0_0_10px_rgba(45,212,191,0.5)] transition-all duration-1000"
+              className="h-full bg-blue-500 rounded-full transition-all duration-1000"
               style={{ width: `${xpPercentage}%` }}
             />
           </div>

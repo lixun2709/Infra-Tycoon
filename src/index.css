@@ -3,80 +3,84 @@
 @tailwind utilities;
 
 :root {
-  /* Colors */
-  --primary: #2dd4bf;
-  --primary-glow: rgba(45, 212, 191, 0.4);
-  --accent: #f97316;
-  --accent-glow: rgba(249, 115, 22, 0.4);
+  /* Rubrik Enterprise Colors */
+  --primary: #2563eb; /* Tailwind blue-600 */
+  --primary-light: #3b82f6;
+  --primary-glow: rgba(37, 99, 235, 0.15); /* Soft, non-neon glow */
+  --accent: #f59e0b;
   
-  --bg-dark: #0f172a;
-  --bg-deep: #020617;
-  --surface: rgba(13, 17, 23, 0.8);
-  --surface-light: rgba(30, 41, 59, 0.5);
+  --bg-dark: #0f172a; /* Slate 900 */
+  --bg-deep: #020617; /* Slate 950 - deep enterprise background */
+  --surface: #1e293b; /* Slate 800 - solid card background */
+  --surface-light: #334155; /* Slate 700 */
   
   --text-main: #f8fafc;
   --text-muted: #94a3b8;
   --text-dim: #64748b;
   
-  --border: rgba(255, 255, 255, 0.1);
-  --border-active: rgba(45, 212, 191, 0.5);
+  --border: #334155;
+  --border-active: #3b82f6;
   
   /* Effects */
-  --glass-blur: blur(24px);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-glow: 0 0 15px var(--primary-glow);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.4), 0 8px 10px -6px rgb(0 0 0 / 0.2);
+  --shadow-soft: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
 }
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-200 overflow-hidden font-sans;
+    @apply text-slate-200 overflow-hidden font-sans;
     background-color: var(--bg-deep);
   }
 }
 
 @layer components {
+  /* Solid, crisp enterprise cards */
   .glass-dark {
     background-color: var(--surface);
-    backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
-    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.02);
+    box-shadow: var(--shadow-soft);
+    border-radius: 0.5rem;
   }
   
   .glass-panel {
-    background-color: rgba(8, 12, 18, 0.72);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    background-color: var(--bg-dark);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-xl);
   }
   
   .glass-teal {
-    @apply bg-[#2dd4bf]/5 backdrop-blur-xl border border-[#2dd4bf]/20;
-    box-shadow: 0 0 20px rgba(45, 212, 191, 0.05), inset 0 0 10px rgba(45, 212, 191, 0.05);
+    background-color: var(--surface);
+    border: 1px solid var(--primary);
+    box-shadow: var(--shadow-soft);
   }
 
+  /* Removed neon glows, keeping class names for compatibility but rendering as soft shadows or nothing */
   .neo-glow-teal {
-    box-shadow: 0 0 15px var(--primary-glow);
+    box-shadow: 0 4px 12px var(--primary-glow);
   }
 
   .neo-glow-orange {
-    box-shadow: 0 0 15px var(--accent-glow);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.15);
   }
 
   .btn-base {
-    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 active:scale-95;
+    @apply px-4 py-2 rounded-md font-semibold transition-all duration-200 flex items-center gap-2 active:scale-95;
   }
 
   .btn-primary {
-    @apply btn-base bg-teal-500/10 text-teal-400 border border-teal-500/30 hover:bg-teal-500/20 hover:border-teal-500/50;
-    box-shadow: 0 0 15px rgba(45, 212, 191, 0.1);
+    @apply btn-base text-white border border-transparent;
+    background-color: var(--primary);
+  }
+  .btn-primary:hover {
+    background-color: var(--primary-light);
   }
 
   .btn-ghost {
-    @apply btn-base text-slate-400 hover:text-slate-100 hover:bg-white/5;
+    @apply btn-base text-slate-400 hover:text-slate-100 hover:bg-slate-800;
   }
 
   .btn-danger {
-    @apply btn-base bg-rose-500/10 text-rose-400 border border-rose-500/30 hover:bg-rose-500/20 hover:border-rose-500/50;
+    @apply btn-base bg-rose-600 text-white border border-transparent hover:bg-rose-500;
   }
 }
 
@@ -86,27 +90,25 @@
 .animate-scan-horizontal { animation: scan-horizontal 8s linear infinite; }
 
 .custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--primary) 20%, transparent);
+  background: var(--surface-light);
   border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--primary) 40%, transparent);
+  background: var(--border-active);
 }
 
 /* Centralized Tailwind Class Overrides for Theme Synchronization */
-.text-teal-400 {
-  color: var(--primary) !important;
+/* Overriding teal classes to use the new primary blue */
+.text-teal-400, .text-teal-500, .text-emerald-400 {
+  color: var(--primary-light) !important;
 }
-.text-teal-500 {
-  color: var(--primary) !important;
-}
-.bg-teal-500 {
+.bg-teal-500, .bg-teal-400, .bg-emerald-400 {
   background-color: var(--primary) !important;
 }
 .bg-teal-500\/10 {
