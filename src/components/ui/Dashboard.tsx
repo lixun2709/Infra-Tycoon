@@ -12,7 +12,8 @@ import {
   Globe,
   FileText,
   PlayCircle,
-  Settings
+  Settings,
+  Database
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
