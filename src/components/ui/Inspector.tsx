@@ -5,6 +5,7 @@ import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
 import { Card, Button, Badge, Tabs } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
+import { VisualRack } from './VisualRack'
 
 export function Inspector() {
   const { 
@@ -183,9 +184,14 @@ export function Inspector() {
                     )}
                   </div>
                 </Card>
-              )}
+                <div className="mt-4">
+                  <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Hardware Layout</h3>
+                  <VisualRack rack={selectedNode} hardware={nodes.filter(n => n.parentRackId === selectedNode.id)} />
+                </div>
+              </div>
+            )}
 
-              <Card title="Specifications" className="bg-transparent" glass={false}>
+            <Card title="Specifications" className="bg-transparent" glass={false}>
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Form Factor</span>
