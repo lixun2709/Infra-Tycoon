@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { 
@@ -35,8 +36,14 @@ function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: 
     return `${x},${y}`
   }).join(' L ')
 
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+
   return (
-    <div className="w-full mt-3 overflow-hidden" style={{ height: `${height}px` }}>
+    <div 
+      className="w-full mt-3 overflow-visible relative" 
+      style={{ height: `${height}px` }}
+      onMouseLeave={() => setHoverIdx(null)}
+    >
       <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
         <defs>
           <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
@@ -65,7 +72,62 @@ function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: 
             className="drop-shadow-md"
           />
         )}
+        
+        {/* Interactive Hover Zones */}
+        {data.map((val, idx) => (
+          <rect
+            key={idx}
+            x={idx * step - (step / 2)}
+            y={0}
+            width={step}
+            height={height}
+            fill="transparent"
+            className="cursor-crosshair"
+            onMouseEnter={() => setHoverIdx(idx)}
+          />
+        ))}
+
+        {/* Hover Line */}
+        {hoverIdx !== null && (
+          <line
+            x1={hoverIdx * step}
+            y1={0}
+            x2={hoverIdx * step}
+            y2={height}
+            stroke={color}
+            strokeWidth="1"
+            strokeDasharray="2,2"
+            opacity={0.5}
+          />
+        )}
+
+        {/* Hover Point */}
+        {hoverIdx !== null && (
+          <circle
+            cx={hoverIdx * step}
+            cy={height - (((data[hoverIdx] ?? 0) - min) / (max - min)) * height}
+            r="4"
+            fill={color}
+            stroke="#fff"
+            strokeWidth="2"
+          />
+        )}
       </svg>
+      
+      {/* Tooltip */}
+      <AnimatePresence>
+        {hoverIdx !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 5, scale: 0.9 }}
+            className="absolute -top-8 px-2 py-1 bg-slate-900 border border-slate-700 text-white text-[9px] font-mono font-bold rounded shadow-xl pointer-events-none whitespace-nowrap z-50"
+            style={{ left: `${Math.min(Math.max(hoverIdx * step - 20, 0), width - 40)}px` }}
+          >
+            {data[hoverIdx].toFixed(1)}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

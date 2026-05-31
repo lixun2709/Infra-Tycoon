@@ -932,7 +932,7 @@ export function Inspector() {
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       <ConfirmDialog 
         isOpen={showDecommissionConfirm}
@@ -943,7 +943,7 @@ export function Inspector() {
         onConfirm={confirmDecommission}
         onCancel={() => setShowDecommissionConfirm(false)}
       />
-      </motion.div>
+
     </>
   )
 }

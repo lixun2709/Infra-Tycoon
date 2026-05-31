@@ -1,6 +1,7 @@
 import React from 'react'
+import { motion, HTMLMotionProps } from 'framer-motion'
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends Omit<HTMLMotionProps<"button">, "variant"> {
   variant?: 'primary' | 'ghost' | 'danger'
   icon?: React.ReactNode
   isLoading?: boolean
@@ -21,7 +22,10 @@ export const Button: React.FC<ButtonProps> = ({
   }[variant]
 
   return (
-    <button 
+    <motion.button 
+      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       className={`${variantClass} ${className} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
       disabled={isLoading || props.disabled}
       {...props}
@@ -31,6 +35,6 @@ export const Button: React.FC<ButtonProps> = ({
       {isLoading && (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2" />
       )}
-    </button>
+    </motion.button>
   )
 }

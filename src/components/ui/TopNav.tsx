@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
@@ -106,7 +107,13 @@ export function TopNav({
   }
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] h-[3.25rem] glass-panel rounded-[2rem] flex items-center justify-between px-5 gap-8 shadow-2xl">
+    <motion.div 
+      layout
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] h-[3.25rem] glass-panel rounded-[2rem] flex items-center justify-between px-5 gap-8 shadow-2xl border border-white/10"
+    >
       {/* Brand & Site Selector */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-3 group cursor-default">
@@ -258,6 +265,6 @@ export function TopNav({
           </span>
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
