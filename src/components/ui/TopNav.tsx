@@ -42,7 +42,9 @@ export function TopNav({
     experience,
     xpToNextLevel,
     realTimePlayedSeconds,
-    toggleFacilityFeed
+    toggleFacilityFeed,
+    isAIDashboardOpen,
+    toggleAIDashboard
   } = useInfraStore(useShallow(state => ({
     currentSiteId: state.currentSiteId, 
     sites: state.sites, 
