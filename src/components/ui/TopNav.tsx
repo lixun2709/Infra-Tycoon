@@ -3,6 +3,9 @@ import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
+import { 
+  Activity, Database, Brain, Globe, DollarSign, Terminal as TerminalIcon, Book, Save, Settings, Briefcase 
+} from 'lucide-react'
 
 interface TopNavProps {
   onOpenNetwork: () => void
@@ -156,24 +159,24 @@ export function TopNav({
         <div className="relative group">
           <Button
             variant="ghost"
-            icon={<span className="text-base mr-1">⚙️</span>}
+            icon={<Settings className="w-4 h-4 mr-1" />}
             className="text-[9px] font-black tracking-widest px-4 h-9 bg-white/5 border border-white/10 hover:bg-white/10"
           >
             OPERATIONS <span className="text-[8px] ml-2 opacity-50">▼</span>
           </Button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
             {[
-              { id: 'noc', label: 'NOC', icon: '📡', onClick: onToggleNOC },
-              { id: 'storage', label: 'STORAGE', icon: '🗄️', active: isStorageOpen, onClick: onToggleStorage },
-              { id: 'ai', label: 'AI CLUSTER', icon: '🧠', active: isAIDashboardOpen, onClick: toggleAIDashboard },
-              { id: 'network', label: 'NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
+              { id: 'noc', label: 'NOC', icon: <Activity className="w-4 h-4" />, onClick: onToggleNOC },
+              { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
+              { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
+              { id: 'network', label: 'NETWORK', icon: <Globe className="w-4 h-4" />, active: isNetworkManagerOpen, onClick: onOpenNetwork },
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={tab.onClick}
                 className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest flex items-center gap-3 transition-colors hover:bg-white/10 ${tab.active ? 'text-teal-400 bg-teal-500/10' : 'text-slate-300'}`}
               >
-                <span className="text-sm">{tab.icon}</span> {tab.label}
+                {tab.icon} {tab.label}
               </button>
             ))}
           </div>
@@ -183,25 +186,25 @@ export function TopNav({
         <div className="relative group">
           <Button
             variant="ghost"
-            icon={<span className="text-base mr-1">💼</span>}
+            icon={<Briefcase className="w-4 h-4 mr-1" />}
             className="text-[9px] font-black tracking-widest px-4 h-9 bg-white/5 border border-white/10 hover:bg-white/10"
           >
             MANAGEMENT <span className="text-[8px] ml-2 opacity-50">▼</span>
           </Button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
             {[
-              { id: 'global_map', label: 'MAP', icon: '🌍', onClick: onToggleGlobalMap },
-              { id: 'economy', label: 'FINANCE', icon: '💰', onClick: onToggleEconomy },
-              { id: 'terminal', label: 'TERMINAL', icon: '⌨️', active: isTerminalOpen, onClick: onToggleTerminal },
-              { id: 'handbook', label: 'DOCS', icon: '📖', onClick: onOpenHandbook },
-              { id: 'save', label: 'SAVE', icon: '💾', onClick: onToggleSaveManager },
+              { id: 'global_map', label: 'MAP', icon: <Globe className="w-4 h-4" />, onClick: onToggleGlobalMap },
+              { id: 'economy', label: 'FINANCE', icon: <DollarSign className="w-4 h-4" />, onClick: onToggleEconomy },
+              { id: 'terminal', label: 'TERMINAL', icon: <TerminalIcon className="w-4 h-4" />, active: isTerminalOpen, onClick: onToggleTerminal },
+              { id: 'handbook', label: 'DOCS', icon: <Book className="w-4 h-4" />, onClick: onOpenHandbook },
+              { id: 'save', label: 'SAVE', icon: <Save className="w-4 h-4" />, onClick: onToggleSaveManager },
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={tab.onClick}
                 className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest flex items-center gap-3 transition-colors hover:bg-white/10 ${tab.active ? 'text-teal-400 bg-teal-500/10' : 'text-slate-300'}`}
               >
-                <span className="text-sm">{tab.icon}</span> {tab.label}
+                {tab.icon} {tab.label}
               </button>
             ))}
           </div>
