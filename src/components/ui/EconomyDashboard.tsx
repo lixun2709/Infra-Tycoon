@@ -16,6 +16,7 @@ import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
 import { getReputationTier } from '../../store/slices/economySlice'
+import { useAnimatedNumber } from '../../hooks/useAnimatedNumber'
 
 interface EconomyDashboardProps {
   isOpen: boolean
@@ -65,6 +66,11 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
 
   const monthlyProfit = totalMRR - estimatedMRE
 
+  const animatedBalance = useAnimatedNumber(balance)
+  const animatedMRR = useAnimatedNumber(totalMRR)
+  const animatedMRE = useAnimatedNumber(estimatedMRE)
+  const animatedProfit = useAnimatedNumber(monthlyProfit)
+
   const tabs: TabItem[] = [
     { id: 'overview', label: 'Financial Overview', icon: <DollarSign size={20} /> },
     { id: 'banking', label: 'Corporate Banking', icon: <Globe size={20} /> },
@@ -105,7 +111,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                 <div className="mt-auto pt-6 border-t border-slate-800">
                   <div className="bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
                     <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-1">Current Balance</p>
-                    <p className="text-2xl font-black text-emerald-400">${balance.toLocaleString()}</p>
+                    <p className="text-2xl font-black text-emerald-400">${Math.floor(animatedBalance).toLocaleString()}</p>
                   </div>
                 </div>
               </div>
@@ -115,9 +121,9 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                 {activeTab === 'overview' && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="grid grid-cols-3 gap-6">
-                      <MetricCard label="Monthly Revenue (MRR)" value={`$${totalMRR.toLocaleString()}`} trend={totalMRR > 0 ? 'up' : 'neutral'} icon={TrendingUp} color="text-emerald-400" />
-                      <MetricCard label="Operating Expenses (MRE)" value={`$${estimatedMRE.toLocaleString()}`} trend="down" icon={TrendingDown} color="text-rose-400" />
-                      <MetricCard label="Net Monthly Profit" value={`$${monthlyProfit.toLocaleString()}`} trend={monthlyProfit >= 0 ? 'up' : 'down'} icon={BarChart3} color={monthlyProfit >= 0 ? 'text-teal-400' : 'text-rose-400'} />
+                      <MetricCard label="Monthly Revenue (MRR)" value={`$${Math.floor(animatedMRR).toLocaleString()}`} trend={totalMRR > 0 ? 'up' : 'neutral'} icon={TrendingUp} color="text-emerald-400" />
+                      <MetricCard label="Operating Expenses (MRE)" value={`$${Math.floor(animatedMRE).toLocaleString()}`} trend="down" icon={TrendingDown} color="text-rose-400" />
+                      <MetricCard label="Net Monthly Profit" value={`$${Math.floor(animatedProfit).toLocaleString()}`} trend={monthlyProfit >= 0 ? 'up' : 'down'} icon={BarChart3} color={monthlyProfit >= 0 ? 'text-teal-400' : 'text-rose-400'} />
                     </div>
 
                     <div className="bg-slate-900/30 border border-slate-800 rounded-3xl p-8">

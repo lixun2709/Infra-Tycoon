@@ -19,6 +19,8 @@ import {
 
 type Category = 'compute' | 'storage' | 'network' | 'security' | 'identity' | 'facility' | 'rack'
 
+import { Drawer, Tooltip } from './base'
+
 interface ProcurementMenuProps {
   isOpen: boolean
   onToggle: (open: boolean) => void
@@ -122,45 +124,35 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
         </div>
       )}
 
-      {/* Asset Catalog Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-12 bg-black/80 backdrop-blur-sm" onClick={() => onToggle(false)}>
-          <div 
-            className="w-full max-w-5xl h-[80vh] glass-panel rounded-[3rem] flex overflow-hidden shadow-2xl"
-            onClick={e => e.stopPropagation()}
-          >
-            {/* Left Rail: Categories */}
-            <div className="w-24 bg-slate-900/20 border-r border-slate-800 flex flex-col py-8 gap-4">
-              {categories.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`group relative flex flex-col items-center py-4 gap-2 transition-all ${
-                    activeCategory === cat.id ? 'text-teal-400' : 'text-slate-600 hover:text-slate-400'
-                  }`}
-                >
-                  <cat.icon size={24} className={activeCategory === cat.id ? 'drop-shadow-[0_0_10px_rgba(20,184,166,0.5)]' : ''} />
-                  <span className="text-[7px] font-black uppercase tracking-widest">{cat.label}</span>
-                  {activeCategory === cat.id && (
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-teal-500 rounded-l-full" />
-                  )}
-                </button>
-              ))}
-            </div>
+      {/* Asset Catalog Drawer */}
+      <Drawer
+        isOpen={isOpen}
+        onClose={() => onToggle(false)}
+        title="Asset Catalog"
+        width="w-[600px]"
+      >
+        <div className="flex flex-col h-full gap-6">
+          {/* Categories Horizontal Rail */}
+          <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar shrink-0">
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
+                className={`group flex items-center gap-2 px-4 py-3 rounded-xl border transition-all shrink-0 ${
+                  activeCategory === cat.id 
+                    ? 'bg-teal-500/10 border-teal-500/30 text-teal-400 shadow-[0_0_15px_rgba(20,184,166,0.1)]' 
+                    : 'bg-white/5 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10'
+                }`}
+              >
+                <cat.icon size={16} />
+                <span className="text-[10px] font-black uppercase tracking-widest">{cat.label}</span>
+              </button>
+            ))}
+          </div>
 
-            {/* Right Pane: Content */}
-            <div className="flex-1 flex flex-col">
-              <div className="p-10 border-b border-slate-800 bg-slate-900/10 flex justify-between items-center">
-                <div>
-                  <h2 className="text-3xl font-black tracking-tighter uppercase text-white">Asset Catalog</h2>
-                  <p className="text-[10px] text-teal-400 font-black uppercase tracking-[0.3em] mt-2">
-                    Current Site: {currentSiteName}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-10 grid grid-cols-2 gap-8 bg-slate-900/5 custom-scrollbar">
-                {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => {
+          {/* Asset Grid */}
+          <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-4 custom-scrollbar">
+            {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => {
                   const unlocked = isHardwareUnlocked(item.key) && balance >= 0
                   const lockMessage = balance < 0 ? "Bankrupt: Balance < 0" : `Unlocks at Level ${item.minLevel}`
                   return (
@@ -193,31 +185,27 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
                       </p>
                     </div>
 
-                    <div className="flex items-center justify-between pt-6 border-t border-white/5">
+                    <div className="flex items-center justify-between pt-4 mt-2 border-t border-white/5">
                       <div className="flex gap-4">
-                        <div className="flex flex-col">
-                          <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest">Type</span>
-                          <span className="text-[10px] font-black text-slate-400 uppercase">{item.type}</span>
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[7px] font-black text-slate-600 uppercase tracking-widest">Mass</span>
-                          <span className="text-[10px] font-black text-slate-400 uppercase">{item.uHeight * 12}kg</span>
-                        </div>
+                        <Tooltip content={`${item.uHeight * 12}kg total mass`}>
+                          <div className="flex flex-col">
+                            <span className="text-[7px] font-black text-slate-500 uppercase tracking-widest">Mass</span>
+                            <span className="text-[10px] font-black text-slate-300 uppercase">{item.uHeight * 12}kg</span>
+                          </div>
+                        </Tooltip>
                       </div>
-                      <div className={`px-6 py-2.5 rounded-xl transition-all border ${
-                        unlocked ? 'bg-teal-500/5 group-hover:bg-teal-500 group-hover:text-[#020617] border-teal-500/20' : 'bg-slate-800/50 border-slate-700'
+                      <div className={`px-4 py-2 rounded-xl transition-all border ${
+                        unlocked ? 'bg-teal-500/10 group-hover:bg-teal-500 group-hover:text-[#020617] border-teal-500/30' : 'bg-slate-800/50 border-slate-700'
                       }`}>
                         <span className="text-[9px] font-black uppercase tracking-[0.2em]">{unlocked ? 'Stage Asset' : 'Locked'}</span>
                       </div>
                     </div>
                   </button>
-                  )
-                })}
-              </div>
-            </div>
+                )
+              })}
           </div>
         </div>
-      )}
+      </Drawer>
     </div>
   )
 }
