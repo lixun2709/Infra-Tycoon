@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 import { 
-  Activity, Database, Brain, Globe, DollarSign, Terminal as TerminalIcon, Book, Save, Settings, Briefcase 
+  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign
 } from 'lucide-react'
 
 interface TopNavProps {
@@ -13,13 +13,14 @@ interface TopNavProps {
   onToggleNOC: () => void
   onToggleTerminal: () => void
   onToggleEconomy: () => void
+  onToggleMissions: () => void
   onToggleGlobalMap: () => void
-
-  onToggleStorage: () => void
   onOpenHandbook: () => void
   onToggleSaveManager: () => void
-  isTerminalOpen: boolean
-  isStorageOpen: boolean
+  onToggleStorage: () => void
+  isTerminalOpen?: boolean
+  isStorageOpen?: boolean
+  isMissionOpen?: boolean
 }
 
 export function TopNav({ 
@@ -27,19 +28,22 @@ export function TopNav({
   onToggleNOC,
   onToggleTerminal,
   onToggleEconomy,
+  onToggleMissions,
   onToggleGlobalMap,
-
-  onToggleStorage,
   onOpenHandbook,
   onToggleSaveManager,
+  onToggleStorage,
   isTerminalOpen,
   isStorageOpen,
+  isMissionOpen
 }: TopNavProps) {
   const { 
     currentSiteId, 
     sites, 
     setCurrentSiteId, 
     isNetworkManagerOpen,
+    isNOCDashboardOpen,
+    isEconomyOpen,
     timeFormat,
     setTimeFormat,
     companyLevel,
@@ -60,6 +64,8 @@ export function TopNav({
     experience: state.experience,
     xpToNextLevel: state.xpToNextLevel,
     isNetworkManagerOpen: state.isNetworkManagerOpen,
+    isNOCDashboardOpen: state.isNOCDashboardOpen,
+    isEconomyOpen: state.isEconomyOpen,
     toggleFacilityFeed: state.toggleFacilityFeed,
     isAIDashboardOpen: state.isAIDashboardOpen,
     toggleAIDashboard: state.toggleAIDashboard
@@ -108,11 +114,10 @@ export function TopNav({
 
   return (
     <motion.div 
-      layout
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
+      initial={{ y: -100, x: "-50%", opacity: 0 }}
+      animate={{ y: 0, x: "-50%", opacity: 1 }}
       transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-      className="fixed top-6 left-1/2 -translate-x-1/2 z-[100] h-[3.25rem] glass-panel rounded-[2rem] flex items-center justify-between px-5 gap-8 shadow-2xl border border-white/10"
+      className="fixed top-6 left-1/2 z-[100] h-[3.25rem] glass-panel rounded-[2rem] flex items-center justify-between px-5 gap-8 shadow-2xl border border-white/10"
     >
       {/* Brand & Site Selector */}
       <div className="flex items-center gap-6">
@@ -162,31 +167,55 @@ export function TopNav({
 
       {/* Main Navigation */}
       <nav className="flex items-center gap-2">
-        {/* Operations Dropdown */}
-        <div className="relative group">
-          <Button
-            variant="ghost"
-            icon={<Settings className="w-4 h-4 mr-1" />}
-            className="text-[9px] font-black tracking-widest px-4 h-9 bg-white/5 border border-white/10 hover:bg-white/10"
+        {/* Primary Dashboards */}
+        <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5">
+          <button 
+            onClick={onToggleNOC}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 ${
+              isNOCDashboardOpen 
+                ? 'bg-sky-500/20 text-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.3)]' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
           >
-            OPERATIONS <span className="text-[8px] ml-2 opacity-50">▼</span>
-          </Button>
-          <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
-            {[
-              { id: 'noc', label: 'NOC', icon: <Activity className="w-4 h-4" />, onClick: onToggleNOC },
-              { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
-              { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
-              { id: 'network', label: 'NETWORK', icon: <Globe className="w-4 h-4" />, active: isNetworkManagerOpen, onClick: onOpenNetwork },
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={tab.onClick}
-                className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest flex items-center gap-3 transition-colors hover:bg-white/10 ${tab.active ? 'text-teal-400 bg-teal-500/10' : 'text-slate-300'}`}
-              >
-                {tab.icon} {tab.label}
-              </button>
-            ))}
-          </div>
+            <Activity size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">NOC</span>
+          </button>
+          
+          <button 
+            onClick={onOpenNetwork}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 ${
+              isNetworkManagerOpen 
+                ? 'bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Network size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Network</span>
+          </button>
+
+          <button 
+            onClick={onToggleEconomy}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 ${
+              isEconomyOpen 
+                ? 'bg-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.3)]' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <DollarSign size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Economy</span>
+          </button>
+
+          <button 
+            onClick={onToggleMissions}
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all duration-200 ${
+              isMissionOpen 
+                ? 'bg-[#ff5a36]/20 text-[#ff5a36] shadow-[0_0_15px_rgba(255,90,54,0.3)]' 
+                : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+            }`}
+          >
+            <Target size={14} />
+            <span className="text-[10px] font-black uppercase tracking-widest">Missions</span>
+          </button>
         </div>
 
         {/* Management Dropdown */}
@@ -196,12 +225,13 @@ export function TopNav({
             icon={<Briefcase className="w-4 h-4 mr-1" />}
             className="text-[9px] font-black tracking-widest px-4 h-9 bg-white/5 border border-white/10 hover:bg-white/10"
           >
-            MANAGEMENT <span className="text-[8px] ml-2 opacity-50">▼</span>
+            TOOLS <span className="text-[8px] ml-2 opacity-50">▼</span>
           </Button>
           <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
             {[
               { id: 'global_map', label: 'MAP', icon: <Globe className="w-4 h-4" />, onClick: onToggleGlobalMap },
-              { id: 'economy', label: 'FINANCE', icon: <DollarSign className="w-4 h-4" />, onClick: onToggleEconomy },
+              { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
+              { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
               { id: 'terminal', label: 'TERMINAL', icon: <TerminalIcon className="w-4 h-4" />, active: isTerminalOpen, onClick: onToggleTerminal },
               { id: 'handbook', label: 'DOCS', icon: <Book className="w-4 h-4" />, onClick: onOpenHandbook },
               { id: 'save', label: 'SAVE', icon: <Save className="w-4 h-4" />, onClick: onToggleSaveManager },

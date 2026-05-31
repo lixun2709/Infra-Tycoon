@@ -1,5 +1,6 @@
 import React from 'react'
-import { motion, HTMLMotionProps } from 'framer-motion'
+import { motion } from 'framer-motion'
+import type { HTMLMotionProps } from 'framer-motion'
 
 interface ButtonProps extends Omit<HTMLMotionProps<"button">, "variant"> {
   variant?: 'primary' | 'ghost' | 'danger'

@@ -124,7 +124,7 @@ function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: 
             className="absolute -top-8 px-2 py-1 bg-slate-900 border border-slate-700 text-white text-[9px] font-mono font-bold rounded shadow-xl pointer-events-none whitespace-nowrap z-50"
             style={{ left: `${Math.min(Math.max(hoverIdx * step - 20, 0), width - 40)}px` }}
           >
-            {data[hoverIdx].toFixed(1)}
+            {data[hoverIdx]?.toFixed(1) ?? '0.0'}
           </motion.div>
         )}
       </AnimatePresence>

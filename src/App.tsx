@@ -9,7 +9,7 @@ import { OperatorHandbook } from './components/ui/OperatorHandbook'
 
 import { TopNav } from './components/ui/TopNav'
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
-import { MissionHUD } from './components/ui/MissionHUD'
+import { MissionDashboard } from './components/ui/MissionDashboard'
 import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { StorageDashboard } from './components/ui/StorageDashboard'
@@ -38,6 +38,7 @@ function App() {
   const [nocInitialTab, setNocInitialTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics'>('overview')
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   const [isHandbookOpen, setIsHandbookOpen] = useState(false)
+  const [isMissionDashboardOpen, setIsMissionDashboardOpen] = useState(false)
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   const [isEconomyOpen, setIsEconomyOpen] = useState(false)
   
@@ -202,12 +203,14 @@ function App() {
            }
         }}
         onToggleEconomy={() => setIsEconomyOpen(!isEconomyOpen)}
+        onToggleMissions={() => setIsMissionDashboardOpen(!isMissionDashboardOpen)}
         onToggleGlobalMap={toggleGlobalMap}
         onOpenHandbook={() => setIsHandbookOpen(!isHandbookOpen)}
         onToggleSaveManager={() => setIsSaveManagerOpen(!isSaveManagerOpen)}
         onToggleStorage={toggleStorageDashboard}
         isTerminalOpen={isTerminalOpen}
         isStorageOpen={isStorageDashboardOpen}
+        isMissionOpen={isMissionDashboardOpen}
       />
 
 
@@ -220,6 +223,13 @@ function App() {
         <StorageDashboard 
           isOpen={isStorageDashboardOpen} 
           onClose={toggleStorageDashboard} 
+        />
+      )}
+
+      {isMissionDashboardOpen && (
+        <MissionDashboard
+          isOpen={isMissionDashboardOpen}
+          onClose={() => setIsMissionDashboardOpen(false)}
         />
       )}
       
@@ -517,7 +527,6 @@ function App() {
         />
       )}
       <GlobalNetwork />
-      <MissionHUD />
       <IncidentHUD />
 
       <Inspector />
@@ -530,9 +539,7 @@ function App() {
         isOpen={isEconomyOpen}
         onClose={() => setIsEconomyOpen(false)}
       />
-      <StorageDashboard />
       <AIDashboard />
-      <BlueprintManager />
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
       {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
 
