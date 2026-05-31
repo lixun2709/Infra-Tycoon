@@ -16,37 +16,54 @@ import {
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
-import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
-import { AreaChart, Area, ResponsiveContainer } from 'recharts'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { LevelUpOverlay } from './LevelUpOverlay'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
   if (!data || data.length === 0) return null
-  const chartData = data.map((val) => ({ value: val }))
-  const domainMax = Math.max(...data, maxVal)
+  const max = Math.max(...data, maxVal, 0.001)
+  const min = 0
+  const width = 240
+  const step = width / Math.max(1, data.length - 1)
+  
+  // Create bezier curve points for a smooth line instead of jagged edges
+  const points = data.map((val, idx) => {
+    const x = idx * step
+    const y = height - ((val - min) / (max - min)) * height
+    return `${x},${y}`
+  }).join(' L ')
 
   return (
-    <div className="w-full mt-3" style={{ height: `${height}px` }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={chartData}>
-          <defs>
-            <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-              <stop offset="95%" stopColor={color} stopOpacity={0}/>
-            </linearGradient>
-          </defs>
-          <Area 
-            type="monotone" 
-            dataKey="value" 
-            stroke={color} 
-            strokeWidth={2}
-            fillOpacity={1} 
-            fill={`url(#gradient-${color.replace('#', '')})`} 
-            isAnimationActive={false}
+    <div className="w-full mt-3 overflow-hidden" style={{ height: `${height}px` }}>
+      <svg className="w-full h-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`gradient-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.0} />
+          </linearGradient>
+        </defs>
+        <path
+          d={`M 0,${height} L ${points} L ${width},${height} Z`}
+          fill={`url(#gradient-${color.replace('#', '')})`}
+          className="transition-all duration-300"
+        />
+        <path
+          d={`M ${points}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          className="transition-all duration-300 drop-shadow-md"
+        />
+        {data.length > 0 && (
+          <circle
+            cx={width}
+            cy={height - (((data[data.length - 1] ?? 0) - min) / (max - min)) * height}
+            r="3"
+            fill={color}
+            className="drop-shadow-md"
           />
-        </AreaChart>
-      </ResponsiveContainer>
+        )}
+      </svg>
     </div>
   )
 }
