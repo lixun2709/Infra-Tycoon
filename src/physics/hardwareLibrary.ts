@@ -78,6 +78,41 @@ export const HARDWARE_CATALOG = {
       { type: 'network', count: 4, labelPrefix: 'eth' },
     ],
   },
+  H100_AI_NODE_4U: {
+    name: 'H100 AI SuperNODE (4U)',
+    uHeight: 4,
+    wattage: 10200, // 10.2kW for 8x H100
+    type: 'compute',
+    color: '#059669', // Emerald 600
+    purchasePrice: 250000,
+    storageTB: 30, // Local NVMe
+    useCase: 'Massive parallel compute for LLM training. Requires direct liquid cooling and Infiniband networking to avoid severe thermal throttling and latency penalties.',
+    maxOperatingTemp: 90,
+    throttleTemp: 80,
+    heatEfficiency: 0.98, // Almost all power becomes heat
+    minLevel: 5,
+    portLayout: [
+      { type: 'power', count: 1, labelPrefix: 'pwr' },
+      { type: 'network', count: 48, labelPrefix: 'port' },
+      { type: 'network', count: 4, labelPrefix: 'uplink' }
+    ]
+  },
+  INFINIBAND_SWITCH_1U: {
+    name: 'Infiniband Fabric Switch (1U)',
+    uHeight: 1,
+    wattage: 800,
+    type: 'network',
+    color: '#eab308', // Yellow 500
+    purchasePrice: 25000,
+    storageTB: 0,
+    useCase: 'Ultra-low latency, 400Gbps switch required for bridging AI SuperNODEs into cohesive training clusters.',
+    minLevel: 5,
+    portLayout: [
+      { type: 'power', count: 2, labelPrefix: 'pwr' },
+      { type: 'network', count: 32, labelPrefix: 'ib' },
+      { type: 'network', count: 4, labelPrefix: 'uplink' }
+    ]
+  },
   COMPUTE_1U: {
     name: 'Compute (1U)',
     uHeight: 1,

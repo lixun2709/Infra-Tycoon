@@ -25,6 +25,33 @@ import type {
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
+import { Vector3 } from 'three'
+import type { 
+  InfraNode, 
+  Connection, 
+  CloudLink, 
+  Site, 
+  DatacenterHall,
+  InfraAlert, 
+  AuditLog, 
+  DnsRecord, 
+  DhcpLease, 
+  NtpSyncStatus, 
+  PostMortem, 
+  Blueprint, 
+  ApplicationDeployment,
+  ServiceType,
+  ServiceStatus,
+  SaveMetadata,
+  TechnicianTicket,
+  VirtualMachine,
+  Incident,
+  BankLoan,
+  ReputationHistoryEntry
+} from './infraTypes'
+import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
+import type { TerminalStateRecord } from './terminalTypes'
+import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
 import type { ThemeKey } from './themeTypes'
 import type { CameraSlice } from './slices/cameraSlice'
 import type { InteractionSlice } from './slices/interactionSlice'
@@ -33,6 +60,7 @@ import type { ProgressionSlice } from './slices/progressionSlice'
 import type { ContractBlueprint, ActiveContract } from '../physics/contractLibrary'
 import type { MiscSlice } from './slices/miscSlice'
 import type { StorageSlice } from './slices/storageSlice'
+import type { AISlice } from './slices/aiSlice'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -252,4 +280,4 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice
+} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice

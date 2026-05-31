@@ -12,8 +12,11 @@ import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionHUD } from './components/ui/MissionHUD'
 import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
-import { EconomyDashboard } from './components/ui/EconomyDashboard'
+import { NocDashboard } from './components/ui/NocDashboard'
 import { StorageDashboard } from './components/ui/StorageDashboard'
+import { AIDashboard } from './components/ui/AIDashboard'
+import { BlueprintManager } from './components/ui/BlueprintManager'
+import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { Rocket, X, TrendingUp, Sliders, LayoutGrid, Wind, Scaling, Box, Zap } from 'lucide-react'
 import type { HardwareCatalogKey } from './physics/hardwareLibrary'
@@ -528,6 +531,10 @@ function App() {
         isOpen={isEconomyOpen}
         onClose={() => setIsEconomyOpen(false)}
       />
+      <NocDashboard />
+      <StorageDashboard />
+      <AIDashboard />
+      <BlueprintManager />
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
       {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
 

@@ -102,6 +102,9 @@ export interface ApplicationComponent extends Component {
   nodeId: string
   status: 'deploying' | 'running' | 'error'
   progress: number
+  aiEpochs?: number
+  aiFlopsDelivered?: number
+  aiStatus?: 'training' | 'stalled' | 'completed'
 }
 
 // Storage Component: Physical array configuration, RAID status, and IOPS loading

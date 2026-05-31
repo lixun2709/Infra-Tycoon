@@ -16,6 +16,7 @@ import { createInteractionSlice } from './slices/interactionSlice'
 import { createEconomySlice } from './slices/economySlice'
 import { createProgressionSlice } from './slices/progressionSlice'
 import { createStorageSlice } from './slices/storageSlice'
+import { createAISlice } from './slices/aiSlice'
 import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
@@ -105,6 +106,7 @@ export const useInfraStore = create<InfraState>()(
       ...createEconomySlice(set, get, api),
       ...createProgressionSlice(set, get, api),
       ...createStorageSlice(set, get, api),
+      ...createAISlice(set, get, api),
 
       // --- ROOT ACTIONS ---
       processCommand: (text) => handleCommand(get, set, text),

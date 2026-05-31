@@ -5,12 +5,13 @@ export interface ApplicationRequirement {
   minStorageGB: number
   minCores: number
   requiredServices: ServiceType[]
+  minFLOPS?: number
 }
 
 export interface Application {
   id: string
   name: string
-  category: 'web' | 'database' | 'storage' | 'security' | 'orchestration'
+  category: 'web' | 'database' | 'storage' | 'security' | 'orchestration' | 'ai'
   description: string
   requirements: ApplicationRequirement
   icon: string // For holographic representation
@@ -78,5 +79,21 @@ export const APPLICATION_CATALOG: Record<string, Application> = {
     icon: '☸️',
     color: '#326ce5',
     deploymentCost: 2500
+  },
+  llm_training_gpt4: {
+    id: 'llm_training_gpt4',
+    name: 'LLM Foundation Training (100B+ Params)',
+    category: 'ai',
+    description: 'Massive parallel training workload. Requires H100 SuperNODEs and Infiniband networking to prevent stalled epochs.',
+    requirements: {
+      minRAMGB: 4096,
+      minStorageGB: 10000,
+      minCores: 512,
+      requiredServices: [],
+      minFLOPS: 100000 // Requires massive throughput
+    },
+    icon: '🧠',
+    color: '#059669',
+    deploymentCost: 50000
   }
 }

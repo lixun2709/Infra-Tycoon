@@ -54,7 +54,9 @@ export function TopNav({
     experience: state.experience,
     xpToNextLevel: state.xpToNextLevel,
     isNetworkManagerOpen: state.isNetworkManagerOpen,
-    toggleFacilityFeed: state.toggleFacilityFeed
+    toggleFacilityFeed: state.toggleFacilityFeed,
+    isAIDashboardOpen: state.isAIDashboardOpen,
+    toggleAIDashboard: state.toggleAIDashboard
   })))
   const activeSite = sites.find(s => s.id === currentSiteId)
   const xpPercentage = Math.min(100, (experience / xpToNextLevel) * 100)
@@ -151,6 +153,7 @@ export function TopNav({
         {[
           { id: 'noc', label: 'NOC', icon: '📡', onClick: onToggleNOC },
           { id: 'storage', label: 'STORAGE', icon: '🗄️', active: isStorageOpen, onClick: onToggleStorage },
+          { id: 'ai', label: 'AI CLUSTER', icon: '🧠', active: isAIDashboardOpen, onClick: toggleAIDashboard },
           { id: 'global_map', label: 'MAP', icon: '🌍', onClick: onToggleGlobalMap },
           { id: 'network', label: 'NETWORK', icon: '🌐', active: isNetworkManagerOpen, onClick: onOpenNetwork },
           { id: 'economy', label: 'FINANCE', icon: '💰', onClick: onToggleEconomy },
