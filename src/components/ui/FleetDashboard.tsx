@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Modal, Card, Button, Input } from './base'
+import { Modal, Card, Button } from './base'
 import { Server, ShieldAlert, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
 
@@ -42,10 +42,11 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
             <p className="text-sm text-slate-400">Current active blueprint version for hardware validation.</p>
           </div>
           <div className="flex items-center space-x-2">
-            <Input 
+            <input 
+              type="text"
               value={targetVersionInput}
               onChange={(e) => setTargetVersionInput(e.target.value)}
-              className="w-32 bg-slate-900 font-mono"
+              className="w-32 bg-slate-900 font-mono px-3 py-1.5 rounded border border-slate-700 text-white"
             />
             <Button variant="primary" onClick={handleUpdateGlobalTarget}>Apply</Button>
           </div>

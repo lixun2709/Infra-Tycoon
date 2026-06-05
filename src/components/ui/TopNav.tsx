@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 import { 
-  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert
+  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server
 } from 'lucide-react'
 
 interface TopNavProps {

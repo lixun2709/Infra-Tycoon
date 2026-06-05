@@ -232,7 +232,7 @@ function App() {
       />
 
       {isSaveManagerOpen && (
-        <SaveManager isOpen={isSaveManagerOpen} onClose={() => setIsSaveManagerOpen(false)} />
+        <SaveManager onClose={() => setIsSaveManagerOpen(false)} />
       )}
 
       <SecurityDashboard 
