@@ -22,6 +22,18 @@ import type {
   BankLoan,
   ReputationHistoryEntry
 } from './infraTypes'
+
+export interface CloudProvider {
+  id: string
+  name: string
+  spotPricePerNode: number
+  reservedPricePerNode: number
+  baseLatencyMs: number
+  reliability: number // 0.0 to 1.0
+  activeSpotInstances: number
+  reservedInstances: number
+}
+
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
@@ -105,10 +117,18 @@ export type InfraState = {
   repayLoan: (id: string, amount: number) => void
   adjustReputation: (amount: number, reason: string) => void
   
-  // v7.0 Global & Hybrid
+  // v7.0 Global & Hybrid Cloud Bursting
   cloudBurstingActive: boolean
-  activeCloudInstances: number
+  activeCloudInstances: number // Total across all providers
   setCloudBursting: (active: boolean) => void
+
+  // v27.0 Multi-Cloud Vendor Marketplace
+  cloudProviders: CloudProvider[]
+  activeCloudProviderId: string | null
+  setCloudProvider: (id: string | null) => void
+  purchaseReservedInstance: (providerId: string, count: number) => void
+  updateSpotInstances: (providerId: string, instances: number) => void
+  
   isGlobalMapOpen: boolean
   toggleGlobalMap: () => void
   assistantTargetId: string | null

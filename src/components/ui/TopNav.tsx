@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 import {
-  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server, Wind
+  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server, Wind, Cloud
 } from 'lucide-react'
 
 interface TopNavProps {
@@ -25,8 +25,10 @@ interface TopNavProps {
   isEconomyOpen?: boolean
   isAutomationOpen?: boolean
   onToggleAutomation?: () => void
-  isSecurityOpen?: boolean
-  onToggleSecurity?: () => void
+  isSecurityOpen: boolean
+  onToggleSecurity: () => void
+  isCloudOpen: boolean
+  onToggleCloud: () => void
   isFleetDashboardOpen?: boolean
   onToggleFleet?: () => void
   isLoadBalancerOpen?: boolean
@@ -56,6 +58,8 @@ export function TopNav({
   onToggleAutomation,
   isSecurityOpen,
   onToggleSecurity,
+  isCloudOpen,
+  onToggleCloud,
   isFleetDashboardOpen,
   onToggleFleet,
   isLoadBalancerOpen,
@@ -260,6 +264,7 @@ export function TopNav({
               { id: 'facility', label: 'FACILITY & HVAC', icon: <Wind className="w-4 h-4" />, active: isFacilityOpen, onClick: onToggleFacility },
               { id: 'security', label: 'SECURITY SOC', icon: <ShieldAlert className="w-4 h-4" />, active: isSecurityOpen, onClick: onToggleSecurity },
               { id: 'automation', label: 'AUTOMATION', icon: <Activity className="w-4 h-4" />, active: isAutomationOpen, onClick: onToggleAutomation },
+              { id: 'cloud', label: 'HYBRID CLOUD', icon: <Cloud className="w-4 h-4" />, active: isCloudOpen, onClick: onToggleCloud },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
               { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
               { id: 'terminal', label: 'TERMINAL', icon: <TerminalIcon className="w-4 h-4" />, active: isTerminalOpen, onClick: onToggleTerminal },

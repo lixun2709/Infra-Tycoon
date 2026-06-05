@@ -1,6 +1,8 @@
 # Changelog
 
 ### [Unreleased]
+- Day 27: **Multi-Cloud Bursting Architecture**
+  - Introduced dynamic Hybrid Cloud vendor marketplace (Spot vs Reserved instances) and FinOps Analytics dashboard.
 - Day 26: **SOC & Automation Dashboard Overhaul**
   - Redesigned the Automation panel into a fully-featured CI/CD and Infrastructure-as-Code (IaC) pipeline visualizer.
   - Upgraded Security Operations Center (SOC) panel with a Global OSINT Threat Intelligence feed and IPS/IDS analytics logs.

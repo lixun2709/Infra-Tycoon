@@ -116,8 +116,10 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       return sum + (base * stressMultiplier * ageMultiplier)
     }, 0)
 
-    // Cloud: $300 per instance per month
-    const cloudCostPerMonth = get().cloudBurstingActive ? (get().activeCloudInstances * 300) : 0
+    // Multi-Cloud OpEx
+    const cloudCostPerMonth = get().cloudProviders ? get().cloudProviders.reduce((sum, p) => 
+      sum + (p.activeSpotInstances * p.spotPricePerNode) + (p.reservedInstances * p.reservedPricePerNode)
+    , 0) : 0
     
     // Egress: $0.10 per GB (charged directly over the month)
     const egressCostPerMonth = get().cloudEgressGB * 0.1 * 3600 // roughly extrapolating per second usage
