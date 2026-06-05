@@ -1,7 +1,7 @@
 export type HardwareCatalogSpec = {
   uHeight: number
   wattage: number
-  type: 'compute' | 'storage' | 'backup' | 'network' | 'cooling' | 'load_balancer' | 'rack' | 'security' | 'identity' | 'facility'
+  type: 'compute' | 'storage' | 'backup' | 'network' | 'cooling' | 'load_balancer' | 'rack' | 'security' | 'identity' | 'facility' | 'edge_cache'
   color: string
   purchasePrice: number
   portLayout: PortLayoutItem[]
@@ -296,6 +296,37 @@ export const HARDWARE_CATALOG = {
     portLayout: [
       { type: 'power', count: 2, labelPrefix: 'pwr' },
       { type: 'network', count: 2, labelPrefix: 'eth' },
+    ],
+  },
+
+  // --- LOAD BALANCER & EDGE ---
+  F5_LOAD_BALANCER_1U: {
+    name: 'Hardware Load Balancer (1U)',
+    uHeight: 1,
+    wattage: 250,
+    type: 'load_balancer',
+    color: '#0ea5e9',
+    purchasePrice: 4000,
+    storageTB: 0,
+    useCase: 'Distributes application traffic across backend compute pools to prevent overload.',
+    portLayout: [
+      { type: 'power', count: 2, labelPrefix: 'pwr' },
+      { type: 'network', count: 8, labelPrefix: 'eth' }
+    ],
+  },
+  EDGE_CACHE_APPLIANCE_2U: {
+    name: 'Edge Cache Appliance (2U)',
+    uHeight: 2,
+    wattage: 400,
+    type: 'edge_cache',
+    color: '#14b8a6',
+    purchasePrice: 6500,
+    storageTB: 50,
+    useCase: 'High-speed NVMe edge delivery node for serving static content and offloading backbone bandwidth.',
+    minLevel: 4,
+    portLayout: [
+      { type: 'power', count: 2, labelPrefix: 'pwr' },
+      { type: 'network', count: 4, labelPrefix: 'eth' }
     ],
   },
 

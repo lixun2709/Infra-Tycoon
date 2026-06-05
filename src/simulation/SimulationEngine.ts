@@ -18,6 +18,7 @@ import { KubernetesSystem } from './ecs/systems/KubernetesSystem'
 import { TicketingSystem } from './ecs/systems/TicketingSystem'
 import { IncidentSystem } from './ecs/systems/IncidentSystem'
 import { AISystem } from './ecs/systems/AISystem'
+import { LoadBalancerSystem } from './ecs/systems/LoadBalancerSystem'
 import { SystemManager } from './ecs/SystemManager'
 
 /**
@@ -47,6 +48,7 @@ export class SimulationEngine {
     this.systemManager.registerSystem(new ProvisioningSystem(this.world), 30)
     this.systemManager.registerSystem(new KubernetesSystem(this.world), 31) // K8s evaluates node health and schedules pods
     this.systemManager.registerSystem(new ApplicationSystem(this.world), 15) // Apps
+    this.systemManager.registerSystem(new LoadBalancerSystem(this.world), 16) // Load balancers process after apps
     this.systemManager.registerSystem(new AISystem(this.world), 16)
     
     const telemetrySys = new TelemetrySystem(this.world)

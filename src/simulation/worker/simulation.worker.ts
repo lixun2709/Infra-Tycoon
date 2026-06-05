@@ -423,6 +423,33 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           }
           // status and currentPowerKW are calculated inside worker systems, so do NOT overwrite them!
         }
+        }
+      }
+    }
+
+    // 4.8 Update Load Balancer & Edge Cache Components
+    if (node.type === 'load_balancer') {
+      if (!world.hasComponent('loadBalancer', node.id)) {
+        world.addComponent('loadBalancer', {
+          entityId: node.id,
+          targetGroupIds: [],
+          activeConnections: 0,
+          totalThroughputGbps: 0,
+          healthCheckInterval: 5000,
+          lastHealthCheck: 0,
+          routingMethod: 'least_connections'
+        } as import('../ecs/types').LoadBalancerComponent)
+      }
+    }
+
+    if (node.type === 'edge_cache') {
+      if (!world.hasComponent('edgeCache', node.id)) {
+        world.addComponent('edgeCache', {
+          entityId: node.id,
+          cacheHitRatio: 0,
+          bandwidthSavedGbps: 0,
+          totalRequests: 0
+        } as import('../ecs/types').EdgeCacheComponent)
       }
     }
   })
@@ -438,8 +465,10 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       appId: app.appId,
       nodeId: app.nodeId,
       status: app.status,
-      progress: app.progress
-    } as ApplicationComponent)
+      progress: app.progress,
+      loadBalancerId: app.loadBalancerId,
+      targetGroupIds: app.targetGroupIds
+    } as import('../ecs/types').ApplicationComponent)
     
     const nodePower = world.getComponent<PowerComponent>('power', app.nodeId)
     if (nodePower) {

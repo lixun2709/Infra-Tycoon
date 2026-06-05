@@ -195,6 +195,7 @@ export type InfraState = {
   removeApplication: (id: string) => void
   deployVirtualMachine: (vmId: string, nodeId: string, config: Omit<VirtualMachine, 'id' | 'nodeId' | 'status' | 'uptimeTicks'>) => void
   startVMotion: (vmId: string, targetNodeId: string) => void
+  configureLoadBalancer: (deploymentId: string, loadBalancerId: string, targetGroupIds: string[]) => void
   
   // Infrastructure Core Actions
   processTick: (dt?: number) => void

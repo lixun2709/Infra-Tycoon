@@ -277,3 +277,18 @@ export interface VmComponent extends Component {
   migratingToNodeId?: string // Target node during vMotion
   migrationProgress?: number // 0-100
 }
+
+export interface LoadBalancerComponent extends Component {
+  targetGroupIds: string[]
+  activeConnections: number
+  totalThroughputGbps: number
+  healthCheckInterval: number
+  lastHealthCheck: number
+  routingMethod: 'round_robin' | 'least_connections'
+}
+
+export interface EdgeCacheComponent extends Component {
+  cacheHitRatio: number
+  bandwidthSavedGbps: number
+  totalRequests: number
+}

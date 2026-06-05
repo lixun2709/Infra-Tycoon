@@ -8,6 +8,7 @@ export interface AppSlice {
   removeApplication: (id: string) => void
   deployVirtualMachine: (vmId: string, nodeId: string, config: Omit<VirtualMachine, 'id' | 'nodeId' | 'status' | 'uptimeTicks'>) => void
   startVMotion: (vmId: string, targetNodeId: string) => void
+  configureLoadBalancer: (deploymentId: string, loadBalancerId: string, targetGroupIds: string[]) => void
 }
 
 export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, get) => ({
@@ -104,5 +105,14 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
       }
     })
     get().pushAlert('info', `Initiated vMotion for VM ${vmId} to ${targetNodeId.slice(0,8)}`)
+  },
+
+  configureLoadBalancer: (deploymentId, loadBalancerId, targetGroupIds) => {
+    set(state => ({
+      applications: state.applications.map(app => 
+        app.id === deploymentId ? { ...app, loadBalancerId, targetGroupIds } : app
+      )
+    }))
+    get().pushAlert('info', `Load Balancer ${loadBalancerId.slice(0,8)} configured for deployment.`)
   }
 })

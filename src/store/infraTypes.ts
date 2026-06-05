@@ -70,7 +70,7 @@ export interface ActiveContract {
   accumulatedPenalty: number
 }
 
-export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer' | 'security' | 'identity' | 'facility'
+export type InfraNodeType = 'rack' | 'compute' | 'storage' | 'network' | 'backup' | 'cooling' | 'load_balancer' | 'security' | 'identity' | 'facility' | 'edge_cache'
 export type RackStatus = 'online' | 'power_overload'
 export type HealthStatus = 'healthy' | 'degraded' | 'critical'
 export type AlertSeverity = 'info' | 'warning' | 'critical'
@@ -336,6 +336,8 @@ export type ApplicationDeployment = {
   aiEpochs?: number
   aiFlopsDelivered?: number
   aiStatus?: 'training' | 'stalled' | 'completed'
+  loadBalancerId?: string
+  targetGroupIds?: string[]
 }
 
 export interface CloudLink {

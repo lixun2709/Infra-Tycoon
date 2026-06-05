@@ -233,7 +233,9 @@ export class SimulationWorkerManager {
       appId: a.appId,
       nodeId: a.nodeId,
       status: a.status,
-      progress: a.progress
+      progress: a.progress,
+      loadBalancerId: a.loadBalancerId,
+      targetGroupIds: a.targetGroupIds
     }))
 
     const compactVMs = virtualMachines.map(v => ({

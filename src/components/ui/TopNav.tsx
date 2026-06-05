@@ -29,6 +29,8 @@ interface TopNavProps {
   onToggleSecurity?: () => void
   isFleetDashboardOpen?: boolean
   onToggleFleet?: () => void
+  isLoadBalancerOpen?: boolean
+  onToggleLoadBalancer?: () => void
 }
 
 export function TopNav({ 
@@ -51,7 +53,9 @@ export function TopNav({
   isSecurityOpen,
   onToggleSecurity,
   isFleetDashboardOpen,
-  onToggleFleet
+  onToggleFleet,
+  isLoadBalancerOpen,
+  onToggleLoadBalancer
 }: TopNavProps) {
   const { 
     currentSiteId, 
@@ -243,6 +247,7 @@ export function TopNav({
             {[
               { id: 'global_map', label: 'MAP', icon: <Globe className="w-4 h-4" />, onClick: onToggleGlobalMap },
               { id: 'fleet', label: 'FLEET & FIRMWARE', icon: <Server className="w-4 h-4" />, active: isFleetDashboardOpen, onClick: onToggleFleet },
+              { id: 'load_balancer', label: 'ADC & EDGE', icon: <Network className="w-4 h-4" />, active: isLoadBalancerOpen, onClick: onToggleLoadBalancer },
               { id: 'security', label: 'SECURITY SOC', icon: <ShieldAlert className="w-4 h-4" />, active: isSecurityOpen, onClick: onToggleSecurity },
               { id: 'automation', label: 'AUTOMATION', icon: <Activity className="w-4 h-4" />, active: isAutomationOpen, onClick: onToggleAutomation },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },

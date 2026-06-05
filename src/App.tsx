@@ -17,6 +17,7 @@ import { AIDashboard } from './components/ui/AIDashboard'
 import { AutomationDashboard } from './components/ui/AutomationDashboard'
 import { SecurityDashboard } from './components/ui/SecurityDashboard'
 import { FleetDashboard } from './components/ui/FleetDashboard'
+import { LoadBalancerDashboard } from './components/ui/LoadBalancerDashboard'
 
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
@@ -47,6 +48,7 @@ function App() {
   const [isAutomationOpen, setIsAutomationOpen] = useState(false)
   const [isSecurityOpen, setIsSecurityOpen] = useState(false)
   const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
+  const [isLoadBalancerOpen, setIsLoadBalancerOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const balance = useInfraStore(s => s.balance)
@@ -225,6 +227,8 @@ function App() {
         onToggleSecurity={() => setIsSecurityOpen(!isSecurityOpen)}
         isFleetDashboardOpen={isFleetDashboardOpen}
         onToggleFleet={() => setIsFleetDashboardOpen(!isFleetDashboardOpen)}
+        isLoadBalancerOpen={isLoadBalancerOpen}
+        onToggleLoadBalancer={() => setIsLoadBalancerOpen(!isLoadBalancerOpen)}
       />
 
       {isSaveManagerOpen && (
@@ -239,6 +243,11 @@ function App() {
       <FleetDashboard 
         isOpen={isFleetDashboardOpen}
         onClose={() => setIsFleetDashboardOpen(false)}
+      />
+
+      <LoadBalancerDashboard
+        isOpen={isLoadBalancerOpen}
+        onClose={() => setIsLoadBalancerOpen(false)}
       />
 
       {isStorageDashboardOpen && (

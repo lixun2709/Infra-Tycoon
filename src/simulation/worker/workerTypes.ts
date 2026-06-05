@@ -80,6 +80,8 @@ export interface CompactApplication {
   nodeId: string
   status: 'deploying' | 'running' | 'error'
   progress: number
+  loadBalancerId?: string
+  targetGroupIds?: string[]
 }
 
 export interface CompactContract {
