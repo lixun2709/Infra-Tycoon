@@ -64,6 +64,7 @@ export const useInfraStore = create<InfraState>()(
       consecutiveNegativeMonths: 0,
       isBankrupt: false,
       isGlobalMapOpen: false,
+      globalTargetFirmware: 'v1.0.0',
       cloudBurstingActive: false,
       activeCloudInstances: 0,
       dnsRecords: [],
@@ -517,7 +518,8 @@ export const useInfraStore = create<InfraState>()(
         hallWidthCount: state.hallWidthCount,
         hallLengthCount: state.hallLengthCount,
         halls: state.halls,
-        automationPolicies: state.automationPolicies
+        automationPolicies: state.automationPolicies,
+        globalTargetFirmware: state.globalTargetFirmware
       })
     }
   )

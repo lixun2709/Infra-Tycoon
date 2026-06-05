@@ -26,6 +26,8 @@ export interface TransformComponent extends Component {
   rateLimitGbps?: number
   maintenanceMode?: boolean
   isThrottled?: boolean
+  firmwareVersion?: string
+  isFlashing?: boolean
 }
 
 // Connection Component: Network link state
@@ -203,6 +205,7 @@ export interface SecurityComponent extends Component {
   isImmutable?: boolean // Cannot be encrypted
   microsegmentationEnabled?: boolean // Reduces lateral spread chance
   infectionType?: 'worm' | 'targeted' | 'zero_day'
+  isFirmwareOutdated?: boolean
 }
 
 // Hypervisor Component: Node-level ESXi properties

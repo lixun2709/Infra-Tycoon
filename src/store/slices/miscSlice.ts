@@ -8,6 +8,7 @@ export interface MiscSlice {
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
   toggleMaintenanceMode: (nodeId: string) => void
+  triggerFirmwareUpgrade: (nodeIds: string[]) => void
   setCloudBursting: (active: boolean) => void
   saveSiteAsBlueprint: (name: string) => void
   applyBlueprint: (id: string) => void
@@ -139,6 +140,22 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       pushAlert('info', `Maintenance Mode Disabled: ${node.name} returned to high-availability pool.`)
     }
     audioManager.playEffect('click')
+  },
+
+  triggerFirmwareUpgrade: (nodeIds: string[]) => {
+    const { pushAlert, globalTargetFirmware } = get()
+    set(state => ({
+      nodes: state.nodes.map(n => nodeIds.includes(n.id) ? { ...n, isFlashing: true, maintenanceMode: true } : n)
+    }))
+    pushAlert('info', `Firmware Upgrade Initiated: Safe operational drain and BIOS flashing started for ${nodeIds.length} nodes.`)
+    audioManager.playEffect('click')
+
+    setTimeout(() => {
+      set(state => ({
+        nodes: state.nodes.map(n => nodeIds.includes(n.id) ? { ...n, isFlashing: false, maintenanceMode: false, firmwareVersion: globalTargetFirmware } : n)
+      }))
+      get().pushAlert('success', `Firmware Upgrade Complete: ${nodeIds.length} nodes successfully flashed to ${globalTargetFirmware}.`)
+    }, 15000)
   },
 
   setCloudBursting: (active) => set({ cloudBurstingActive: active }),

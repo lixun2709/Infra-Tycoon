@@ -368,7 +368,8 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         infectionProgress: 0,
         encryptionRate: 0.05,
         isIsolated: node.isIsolated ?? false,
-        microsegmentationEnabled: node.microsegmentationEnabled ?? false
+        microsegmentationEnabled: node.microsegmentationEnabled ?? false,
+        isFirmwareOutdated: node.firmwareVersion !== payload.globalTargetFirmware
       } as import('../ecs/types').SecurityComponent)
     } else {
       const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', node.id)
@@ -376,6 +377,7 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         if (node.infectionState !== undefined) security.infectionState = node.infectionState
         if (node.isIsolated !== undefined) security.isIsolated = node.isIsolated
         if (node.microsegmentationEnabled !== undefined) security.microsegmentationEnabled = node.microsegmentationEnabled
+        if (payload.globalTargetFirmware) security.isFirmwareOutdated = node.firmwareVersion !== payload.globalTargetFirmware
       }
     }
 

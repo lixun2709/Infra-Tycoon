@@ -239,6 +239,8 @@ export interface InfraNode {
   corruptionState?: 'clean' | 'corrupted' | 'ransomware'
   isIsolated?: boolean
   microsegmentationEnabled?: boolean
+  firmwareVersion?: string
+  isFlashing?: boolean
 }
 
 export interface VirtualMachine {

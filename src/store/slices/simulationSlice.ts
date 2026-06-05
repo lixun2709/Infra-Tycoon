@@ -213,7 +213,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     })
     
     const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad, technicianTickets, incidents, automationPolicies } = get()
-    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad, technicianTickets, incidents, automationPolicies)
+    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad, technicianTickets, incidents, automationPolicies, get().globalTargetFirmware)
 
     get().refreshMarketContracts()
 
@@ -223,7 +223,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
   processTick: (dt = 1.0) => {
     // 0. Request Worker Tick (Asynchronous)
-    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents, get().automationPolicies)
+    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents, get().automationPolicies, get().globalTargetFirmware)
     simWorkerManager.requestTick(dt)
     
     const { nodes } = get()

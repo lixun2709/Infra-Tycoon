@@ -70,6 +70,8 @@ export interface CompactNode {
   infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
   isIsolated?: boolean
   microsegmentationEnabled?: boolean
+  firmwareVersion?: string
+  isFlashing?: boolean
 }
 
 export interface CompactApplication {
@@ -121,6 +123,7 @@ export interface SimInitPayload {
   tickets: TechnicianTicket[]
   incidents: Incident[]
   automationPolicies: AutomationPolicy[]
+  globalTargetFirmware: string
 }
 
 export interface SimSyncInputPayload {
@@ -134,6 +137,7 @@ export interface SimSyncInputPayload {
   tickets: TechnicianTicket[]
   incidents: Incident[]
   automationPolicies: AutomationPolicy[]
+  globalTargetFirmware: string
 }
 
 export interface SimSyncOutputPayload {
@@ -180,6 +184,8 @@ export interface SimSyncOutputPayload {
     corruptionState?: 'clean' | 'corrupted' | 'ransomware'
     coolingMethod?: 'air' | 'liquid_dlc' | 'immersion'
     waterFlowLPM?: number
+    firmwareVersion?: string
+    isFlashing?: boolean
   }>
   applications: Array<{
     id: string

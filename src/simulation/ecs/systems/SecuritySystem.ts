@@ -126,6 +126,7 @@ export class SecuritySystem extends System {
           if (secV.microsegmentationEnabled || secU.microsegmentationEnabled) spreadChance = 0.01
           if (secU.infectionType === 'zero_day') spreadChance = Math.max(spreadChance, 0.5)
           else if (secU.infectionType === 'targeted') spreadChance = 0.05
+          if (secV.isFirmwareOutdated) spreadChance = Math.max(spreadChance, 0.3) // High risk factor for outdated firmware
 
           if (pseudoRandom(connId, time) < spreadChance) {
             newlyExposed.push({ id: v, type: secU.infectionType })
@@ -143,6 +144,7 @@ export class SecuritySystem extends System {
           if (secV.microsegmentationEnabled || secU.microsegmentationEnabled) spreadChance = 0.01
           if (secV.infectionType === 'zero_day') spreadChance = Math.max(spreadChance, 0.5)
           else if (secV.infectionType === 'targeted') spreadChance = 0.05
+          if (secU.isFirmwareOutdated) spreadChance = Math.max(spreadChance, 0.3) // High risk factor for outdated firmware
 
           if (pseudoRandom(connId + "_rev", time) < spreadChance) {
             newlyExposed.push({ id: u, type: secV.infectionType })

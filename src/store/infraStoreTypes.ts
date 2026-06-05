@@ -95,6 +95,9 @@ export type InfraState = {
   consecutiveNegativeMonths: number
   isBankrupt: boolean
   
+  // v8.0 Firmware & Lifecycle
+  globalTargetFirmware: string
+  
   acceptContract: (blueprintId: string) => void
   cancelContract: (id: string) => void
   refreshMarketContracts: () => void
@@ -166,6 +169,7 @@ export type InfraState = {
   refreshHardware: (nodeId: string) => void
   repairHardware: (nodeId: string) => void
   toggleMaintenanceMode: (nodeId: string) => void
+  triggerFirmwareUpgrade: (nodeIds: string[]) => void
   installService: (nodeId: string, type: ServiceType) => void
   toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
   // Day 30 Actions
