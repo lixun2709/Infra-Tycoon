@@ -1,5 +1,5 @@
 import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload, SimInitPayload, SimSyncInputPayload } from './worker/workerTypes'
-import type { InfraNode, ApplicationDeployment, Connection, ActiveContract, VirtualMachine, PodData, TechnicianTicket, Incident } from '../store/infraTypes'
+import type { InfraNode, ApplicationDeployment, Connection, ActiveContract, VirtualMachine, PodData, TechnicianTicket, Incident, AutomationPolicy } from '../store/infraTypes'
 import { performanceMonitor } from './PerformanceMonitor'
 
 /**
@@ -167,7 +167,8 @@ export class SimulationWorkerManager {
     pods: PodData[],
     networkLoad: number,
     tickets: TechnicianTicket[],
-    incidents: Incident[]
+    incidents: Incident[],
+    automationPolicies: AutomationPolicy[]
   ): SimInitPayload {
     const start = performance.now()
     const compactNodes = nodes.map(n => ({
@@ -291,7 +292,8 @@ export class SimulationWorkerManager {
       pods: compactPods,
       networkLoad,
       tickets,
-      incidents
+      incidents,
+      automationPolicies
     }
     const timeMs = performance.now() - start
     const approxBytes = JSON.stringify(compacted).length
@@ -303,26 +305,26 @@ export class SimulationWorkerManager {
     return compacted
   }
 
-  public init(nodes: InfraNode[], applications: ApplicationDeployment[], virtualMachines: VirtualMachine[] = [], connections: Connection[] = [], contracts: ActiveContract[] = [], pods: PodData[] = [], networkLoad: number = 0, tickets: TechnicianTicket[] = [], incidents: Incident[] = []) {
+  public init(nodes: InfraNode[], applications: ApplicationDeployment[], virtualMachines: VirtualMachine[] = [], connections: Connection[] = [], contracts: ActiveContract[] = [], pods: PodData[] = [], networkLoad: number = 0, tickets: TechnicianTicket[] = [], incidents: Incident[] = [], automationPolicies: AutomationPolicy[] = []) {
     this.lastNodes = nodes
     this.lastApps = applications
     this.lastVMs = virtualMachines
     this.lastConnections = connections
     this.lastContracts = contracts
     this.lastNetworkLoad = networkLoad
-    const compacted = this.compactState(nodes, applications, connections, contracts, virtualMachines, pods, networkLoad, tickets, incidents)
+    const compacted = this.compactState(nodes, applications, connections, contracts, virtualMachines, pods, networkLoad, tickets, incidents, automationPolicies)
     this.sendTransferable('INIT', compacted)
     this.restartAttempts = 0 // Reset on successful user-triggered init
   }
 
-  public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[], virtualMachines: VirtualMachine[] = [], connections: Connection[] = [], contracts: ActiveContract[] = [], pods: PodData[] = [], networkLoad: number = 0, tickets: TechnicianTicket[] = [], incidents: Incident[] = []) {
+  public syncInput(nodes: InfraNode[], applications: ApplicationDeployment[], virtualMachines: VirtualMachine[] = [], connections: Connection[] = [], contracts: ActiveContract[] = [], pods: PodData[] = [], networkLoad: number = 0, tickets: TechnicianTicket[] = [], incidents: Incident[] = [], automationPolicies: AutomationPolicy[] = []) {
     this.lastNodes = nodes
     this.lastApps = applications
     this.lastVMs = virtualMachines
     this.lastConnections = connections
     this.lastContracts = contracts
     this.lastNetworkLoad = networkLoad
-    const compacted = this.compactState(nodes, applications, connections, contracts, virtualMachines, pods, networkLoad, tickets, incidents)
+    const compacted = this.compactState(nodes, applications, connections, contracts, virtualMachines, pods, networkLoad, tickets, incidents, automationPolicies)
     this.sendTransferable('SYNC_INPUT', compacted)
   }
 

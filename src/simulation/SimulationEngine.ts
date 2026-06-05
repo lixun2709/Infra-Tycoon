@@ -11,6 +11,7 @@ import { BackupSystem } from './ecs/systems/BackupSystem'
 import { SecuritySystem } from './ecs/systems/SecuritySystem'
 import { ObservabilitySystem } from './ecs/systems/ObservabilitySystem'
 import { ObservabilityTracer } from './observability/ObservabilityTracer'
+import { AutomationSystem } from './ecs/systems/AutomationSystem'
 import { SlaSystem } from './ecs/systems/SlaSystem'
 import { HypervisorSystem } from './ecs/systems/HypervisorSystem'
 import { KubernetesSystem } from './ecs/systems/KubernetesSystem'
@@ -53,6 +54,7 @@ export class SimulationEngine {
 
     this.systemManager.registerSystem(new SecuritySystem(this.world), 25) // Security before network/packet
     this.systemManager.registerSystem(new ObservabilitySystem(this.world, telemetrySys), 30) // Alerts based on Telemetry
+    this.systemManager.registerSystem(new AutomationSystem(this.world), 31) // Automation responds to telemetry/health
     this.systemManager.registerSystem(new BackupSystem(this.world), 32) // Backup evaluates before SLA
     this.systemManager.registerSystem(new SlaSystem(this.world), 35) // SLA evaluates after all apps and telemetry
   }

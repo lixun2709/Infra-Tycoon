@@ -772,3 +772,8 @@ Executing a DR Drill isolates a specific target site dynamically at the networki
 - **SLA Planned Maintenance**: The SLA System distinguishes between unplanned structural outages and Planned Maintenance (`maintenanceMode = true`). Server nodes correctly placed in maintenance mode do not incur financial penalties during their downtime window.
 - **Strict Backup Window Timeouts**: The Backup System enforces a strict 60s simulated execution window for backup data transfers. If a backup stream is aggressively throttled or bogged down by network congestion and fails to complete before the window expires, it reverts to an unprotected state.
 
+
+## Day 20: Infrastructure Automation Engine
+- **Deterministic Rules Engine**: The AutomationSystem continuously monitors telemetry across global, site, rack, and node scopes. Policies execute strictly within the ECS Worker for precise, framerate-independent triggers.
+- **Autonomous Remediation**: Supports proactive condition-action mappings (e.g., executing a graceful shutdown when ambient temperatures exceed 85°C to prevent thermal cascading).
+- **Alarm Throttling**: Customizable cooldown timers ensure high-frequency state changes do not trigger alarm fatigue or system thrashing.

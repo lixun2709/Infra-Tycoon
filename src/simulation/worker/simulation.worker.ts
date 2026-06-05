@@ -3,6 +3,7 @@ import { ThermalSystem } from '../ecs/systems/ThermalSystem'
 import { PacketSystem } from '../ecs/systems/PacketSystem'
 import { ObservabilitySystem } from '../ecs/systems/ObservabilitySystem'
 import { TelemetrySystem } from '../ecs/systems/TelemetrySystem'
+import { AutomationSystem } from '../ecs/systems/AutomationSystem'
 import type { SimMessage, SimInitPayload, SimSyncInputPayload, SimSyncOutputPayload } from './workerTypes'
 import type { Connection } from '../../store/infraTypes'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
@@ -622,6 +623,13 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
       }
     })
   }
+  // 6. Automation Policies Sync
+  if (payload.automationPolicies) {
+    const autoSys = engine.getSystemManager().getSystem(AutomationSystem)
+    if (autoSys) {
+      autoSys.setPolicies(payload.automationPolicies)
+    }
+  }
 }
 
 function sendSyncOutput() {
@@ -629,6 +637,12 @@ function sendSyncOutput() {
   const telemetry = engine.getTelemetry()
   const obs = engine.getSystemManager().getSystem(ObservabilitySystem)
   const alerts = obs ? obs.flushAlerts() : []
+  
+  let firedAutomationPolicies: { id: string, firedAt: number }[] = []
+  const autoSys = engine.getSystemManager().getSystem(AutomationSystem)
+  if (autoSys) {
+    firedAutomationPolicies = autoSys.flushFiredPolicies()
+  }
 
   const output: SimSyncOutputPayload = {
     nodes: [],
@@ -638,7 +652,8 @@ function sendSyncOutput() {
     connections: [],
     alerts,
     tickets: [],
-    incidents: []
+    incidents: [],
+    firedAutomationPolicies
   }
 
   // Collect results from components

@@ -1,6 +1,12 @@
 # Changelog
 
 ### [Unreleased]
+- Day 20: **Infrastructure Automation Engine**
+  - Added fully deterministic rules engine running in ECS Web Worker.
+  - Automation policies can target global, site, rack, or specific nodes.
+  - Supports condition-action mappings (e.g., Temp > 85°C -> Graceful Shutdown).
+  - Configurable cooldowns to prevent alarm fatigue and system thrashing.
+  - Premium Automation Dashboard for real-time policy management.
 - Day 15: **Network Routing Gameplay**
   - Added BGP-style Traffic Engineering (`routingWeight`) allowing manual steering of network flows.
   - Implemented Top-of-Rack Switch Enforcement rules: Cross-rack traffic that bypasses network switches now incurs massive latency penalties (+50ms).

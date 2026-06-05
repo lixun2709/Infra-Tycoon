@@ -23,6 +23,8 @@ interface TopNavProps {
   isMissionOpen?: boolean
   isNOCDashboardOpen?: boolean
   isEconomyOpen?: boolean
+  isAutomationOpen?: boolean
+  onToggleAutomation?: () => void
 }
 
 export function TopNav({ 
@@ -39,7 +41,9 @@ export function TopNav({
   isStorageOpen,
   isMissionOpen,
   isNOCDashboardOpen,
-  isEconomyOpen
+  isEconomyOpen,
+  isAutomationOpen,
+  onToggleAutomation
 }: TopNavProps) {
   const { 
     currentSiteId, 
@@ -230,6 +234,7 @@ export function TopNav({
           <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
             {[
               { id: 'global_map', label: 'MAP', icon: <Globe className="w-4 h-4" />, onClick: onToggleGlobalMap },
+              { id: 'automation', label: 'AUTOMATION', icon: <Activity className="w-4 h-4" />, active: isAutomationOpen, onClick: onToggleAutomation },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
               { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
               { id: 'terminal', label: 'TERMINAL', icon: <TerminalIcon className="w-4 h-4" />, active: isTerminalOpen, onClick: onToggleTerminal },

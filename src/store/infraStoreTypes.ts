@@ -35,6 +35,7 @@ import type { ContractBlueprint, ActiveContract } from '../physics/contractLibra
 import type { MiscSlice } from './slices/miscSlice'
 import type { StorageSlice } from './slices/storageSlice'
 import type { AISlice } from './slices/aiSlice'
+import type { AutomationSlice } from './slices/automationSlice'
 
 export type InfraState = {
   nodes: InfraNode[]
@@ -254,4 +255,4 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice
+} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice & AutomationSlice

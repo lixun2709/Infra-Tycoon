@@ -17,6 +17,7 @@ import { createEconomySlice } from './slices/economySlice'
 import { createProgressionSlice } from './slices/progressionSlice'
 import { createStorageSlice } from './slices/storageSlice'
 import { createAISlice } from './slices/aiSlice'
+import { createAutomationSlice } from './slices/automationSlice'
 import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
@@ -107,6 +108,7 @@ export const useInfraStore = create<InfraState>()(
       ...createProgressionSlice(set, get, api),
       ...createStorageSlice(set, get, api),
       ...createAISlice(set, get, api),
+      ...createAutomationSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
       processCommand: (text) => handleCommand(get, set, text),
@@ -514,7 +516,8 @@ export const useInfraStore = create<InfraState>()(
         facilityWingsCount: state.facilityWingsCount,
         hallWidthCount: state.hallWidthCount,
         hallLengthCount: state.hallLengthCount,
-        halls: state.halls
+        halls: state.halls,
+        automationPolicies: state.automationPolicies
       })
     }
   )

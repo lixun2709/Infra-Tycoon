@@ -181,6 +181,22 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       totalRoomBTU
     })
 
+    if (payload.firedAutomationPolicies && payload.firedAutomationPolicies.length > 0) {
+      let updatedPolicies = get().automationPolicies
+      let changed = false
+      payload.firedAutomationPolicies.forEach(fired => {
+        const idx = updatedPolicies.findIndex(p => p.id === fired.id)
+        if (idx !== -1) {
+          updatedPolicies = [...updatedPolicies]
+          updatedPolicies[idx] = { ...updatedPolicies[idx], lastFiredAt: fired.firedAt } as import('../infraTypes').AutomationPolicy
+          changed = true
+        }
+      })
+      if (changed) {
+        set({ automationPolicies: updatedPolicies })
+      }
+    }
+
     // Process background-fired alerts from the ObservabilitySystem
     if (payload.alerts && payload.alerts.length > 0) {
       payload.alerts.forEach(alert => {
@@ -196,8 +212,8 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       set({ _lastTelemetry: telemetry } as Partial<InfraState>)
     })
     
-    const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad, technicianTickets, incidents } = get()
-    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad, technicianTickets, incidents)
+    const { nodes, applications, virtualMachines, connections, activeContracts, networkLoad, technicianTickets, incidents, automationPolicies } = get()
+    simWorkerManager.init(nodes, applications, virtualMachines, connections, activeContracts, [], networkLoad, technicianTickets, incidents, automationPolicies)
 
     get().refreshMarketContracts()
 
@@ -207,7 +223,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
   processTick: (dt = 1.0) => {
     // 0. Request Worker Tick (Asynchronous)
-    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents)
+    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents, get().automationPolicies)
     simWorkerManager.requestTick(dt)
     
     const { nodes } = get()

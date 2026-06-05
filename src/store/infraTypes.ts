@@ -33,6 +33,33 @@ export interface ReputationHistoryEntry {
   reason: string
 }
 
+// --- Automation Types ---
+
+export type AutomationConditionType = 
+  | 'temp_above' 
+  | 'health_degraded' 
+  | 'power_loss'
+  | 'cpu_above'
+  | 'memory_above'
+
+export type AutomationActionType = 
+  | 'reboot_node' 
+  | 'shutdown_node' 
+  | 'notify_only'
+
+export interface AutomationPolicy {
+  id: string
+  name: string
+  enabled: boolean
+  targetLevel: 'global' | 'site' | 'rack' | 'node' | 'application'
+  targetId?: string // Optional specific target depending on level
+  conditionType: AutomationConditionType
+  conditionValue: number | string // e.g. 85 for temp, 'degraded' for health
+  actionType: AutomationActionType
+  cooldownMs: number // Cooldown to prevent spamming
+  lastFiredAt: number
+}
+
 export interface ActiveContract {
   id: string
   blueprintId: string

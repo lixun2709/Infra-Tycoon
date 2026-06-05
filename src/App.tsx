@@ -14,6 +14,7 @@ import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { StorageDashboard } from './components/ui/StorageDashboard'
 import { AIDashboard } from './components/ui/AIDashboard'
+import { AutomationDashboard } from './components/ui/AutomationDashboard'
 
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
@@ -41,6 +42,7 @@ function App() {
   const [isMissionDashboardOpen, setIsMissionDashboardOpen] = useState(false)
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   const [isEconomyOpen, setIsEconomyOpen] = useState(false)
+  const [isAutomationOpen, setIsAutomationOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const balance = useInfraStore(s => s.balance)
@@ -213,6 +215,8 @@ function App() {
         isMissionOpen={isMissionDashboardOpen}
         isNOCDashboardOpen={isNOCDashboardOpen}
         isEconomyOpen={isEconomyOpen}
+        isAutomationOpen={isAutomationOpen}
+        onToggleAutomation={() => setIsAutomationOpen(!isAutomationOpen)}
       />
 
 
@@ -540,6 +544,10 @@ function App() {
       <EconomyDashboard 
         isOpen={isEconomyOpen}
         onClose={() => setIsEconomyOpen(false)}
+      />
+      <AutomationDashboard 
+        isOpen={isAutomationOpen}
+        onClose={() => setIsAutomationOpen(false)}
       />
       <AIDashboard />
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}

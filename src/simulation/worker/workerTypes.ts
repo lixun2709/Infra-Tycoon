@@ -1,4 +1,4 @@
-import type { SystemState, Connection, TechnicianTicket, Incident } from '../../store/infraTypes'
+import type { SystemState, Connection, TechnicianTicket, Incident, AutomationPolicy } from '../../store/infraTypes'
 import type { TraceSpan } from '../observability/types'
 
 export type SimMessageType = 
@@ -119,6 +119,7 @@ export interface SimInitPayload {
   networkLoad: number
   tickets: TechnicianTicket[]
   incidents: Incident[]
+  automationPolicies: AutomationPolicy[]
 }
 
 export interface SimSyncInputPayload {
@@ -131,6 +132,7 @@ export interface SimSyncInputPayload {
   networkLoad: number
   tickets: TechnicianTicket[]
   incidents: Incident[]
+  automationPolicies: AutomationPolicy[]
 }
 
 export interface SimSyncOutputPayload {
@@ -221,6 +223,7 @@ export interface SimSyncOutputPayload {
   }>
   tickets?: TechnicianTicket[]
   incidents?: Incident[]
+  firedAutomationPolicies?: { id: string, firedAt: number }[]
 }
 
 export interface SimTelemetryPayload {
