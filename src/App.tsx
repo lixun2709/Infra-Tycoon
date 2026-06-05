@@ -14,6 +14,7 @@ import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { StorageDashboard } from './components/ui/StorageDashboard'
 import { CloudDashboard } from './components/ui/CloudDashboard'
+import { ServiceDeskDashboard } from './components/ui/ServiceDeskDashboard'
 import { AIDashboard } from './components/ui/AIDashboard'
 import { AutomationDashboard } from './components/ui/AutomationDashboard'
 import { SecurityDashboard } from './components/ui/SecurityDashboard'
@@ -49,6 +50,7 @@ function App() {
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   const [isEconomyOpen, setIsEconomyOpen] = useState(false)
   const [isCloudOpen, setIsCloudOpen] = useState(false)
+  const [isITSMOpen, setIsITSMOpen] = useState(false)
   const [isAutomationOpen, setIsAutomationOpen] = useState(false)
   const [isSecurityOpen, setIsSecurityOpen] = useState(false)
   const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
@@ -233,6 +235,8 @@ function App() {
         onToggleSecurity={() => setIsSecurityOpen(!isSecurityOpen)}
         isCloudOpen={isCloudOpen}
         onToggleCloud={() => setIsCloudOpen(!isCloudOpen)}
+        isITSMOpen={isITSMOpen}
+        onToggleITSM={() => setIsITSMOpen(!isITSMOpen)}
         isFleetDashboardOpen={isFleetDashboardOpen}
         onToggleFleet={() => setIsFleetDashboardOpen(!isFleetDashboardOpen)}
         isLoadBalancerOpen={isLoadBalancerOpen}
@@ -260,6 +264,11 @@ function App() {
       <CloudDashboard
         isOpen={isCloudOpen}
         onClose={() => setIsCloudOpen(false)}
+      />
+
+      <ServiceDeskDashboard
+        isOpen={isITSMOpen}
+        onClose={() => setIsITSMOpen(false)}
       />
 
       <FleetDashboard 

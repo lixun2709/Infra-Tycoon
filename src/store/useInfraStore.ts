@@ -19,6 +19,7 @@ import { createStorageSlice } from './slices/storageSlice'
 import { createAISlice } from './slices/aiSlice'
 import { createAutomationSlice } from './slices/automationSlice'
 import { createCloudSlice, getInitialCloudState } from './slices/cloudSlice'
+import { createItsmSlice } from './slices/itsmSlice'
 import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
@@ -115,6 +116,7 @@ export const useInfraStore = create<InfraState>()(
       ...createAISlice(set, get, api),
       ...createAutomationSlice(set, get, api),
       ...createCloudSlice(set, get, api),
+      ...createItsmSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
       processCommand: (text) => handleCommand(get, set, text),

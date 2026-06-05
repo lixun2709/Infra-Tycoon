@@ -817,7 +817,9 @@ function sendSyncOutput() {
       status: comp.status,
       totalSeconds: comp.totalSeconds,
       elapsedSeconds: comp.elapsedSeconds,
-      progress: Math.min(100, Math.round((comp.elapsedSeconds / comp.totalSeconds) * 100))
+      progress: Math.min(100, Math.round((comp.elapsedSeconds / comp.totalSeconds) * 100)),
+      severity: (comp as any).severity || 'P2',
+      slaTargetSeconds: (comp as any).slaTargetSeconds || 120
     })
   })
 

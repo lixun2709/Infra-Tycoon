@@ -1,6 +1,8 @@
 # Changelog
 
 ### [Unreleased]
+- Day 29: **Customer Contract SLA Penalties**: Breaching hardware repair SLAs now inflicts severe monthly OpEx fines and Reputation damage.
+- Day 28: **ITSM Service Desk Architecture**: Introduced ITIL-compliant tracking for hardware failures, SLA metrics, and a Kanban board for dispatching Smart Hands.
 - Day 27: **Multi-Cloud Bursting Architecture**
   - Introduced dynamic Hybrid Cloud vendor marketplace (Spot vs Reserved instances) and FinOps Analytics dashboard.
 - Day 26: **SOC & Automation Dashboard Overhaul**

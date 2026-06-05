@@ -110,7 +110,9 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       elapsedSeconds: 0,
       totalSeconds: 20,
       cost,
-      progress: 0
+      progress: 0,
+      severity: 'P2' as const,
+      slaTargetSeconds: 120
     }
 
     set(state => ({

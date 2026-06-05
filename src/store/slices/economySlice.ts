@@ -63,6 +63,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       loans,
       consecutiveNegativeMonths,
       isBankrupt,
+      technicianTickets,
       pushAlert
     } = get()
 
@@ -96,6 +97,33 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         }
       }
       return contract
+    })
+
+    // ITSM Service Desk SLA Enforcement (Day 29)
+    let monthlyITSMFines = 0
+    let itsmBreachCount = 0
+    const updatedTickets = technicianTickets.map(ticket => {
+      if (ticket.status === 'completed') return ticket
+
+      let fineAccruedThisTick = 0
+      if (ticket.elapsedSeconds > ticket.slaTargetSeconds) {
+        // Ticket is currently breached
+        const penaltyRate = ticket.severity === 'P1' ? 100 : ticket.severity === 'P2' ? 25 : ticket.severity === 'P3' ? 5 : 1
+        fineAccruedThisTick = penaltyRate * dt
+      }
+
+      let newFinesAccumulated = (ticket.breachFinesAccumulated || 0) + fineAccruedThisTick
+      
+      if (isMonthEnd && newFinesAccumulated > 0) {
+        monthlyITSMFines += newFinesAccumulated
+        itsmBreachCount++
+        newFinesAccumulated = 0 // Reset for next month
+      }
+
+      return {
+        ...ticket,
+        breachFinesAccumulated: newFinesAccumulated
+      }
     })
 
     // OPEX calculations (Normalized where 3600 seconds = 1 Month)
@@ -150,7 +178,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         }
       }).filter(loan => loan.remainingAmount > 0)
 
-      const netPayout = monthlyRevenue - monthlyPenalty - totalExpensesPerMonth - totalLoanPayment
+      const netPayout = monthlyRevenue - monthlyPenalty - monthlyITSMFines - totalExpensesPerMonth - totalLoanPayment
       newBalance += netPayout
       
       if (totalLoanPayment > 0) {
@@ -161,11 +189,17 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         ? updatedContracts.reduce((sum, c) => sum + (c.totalTicks > 0 ? c.uptimeTicks / c.totalTicks : 1), 0) / updatedContracts.length 
         : 1.0
       
-      const repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
-      if (repChange !== 0 && updatedContracts.length > 0) {
-        get().adjustReputation(repChange, 'Monthly SLA Performance')
+      let repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
+      
+      // ITSM SLA Reputation Hit
+      if (itsmBreachCount > 0) {
+        repChange -= (itsmBreachCount * 3)
       }
-      pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, OPEX: -$${totalExpensesPerMonth}, Loans: -$${totalLoanPayment}, Penalties: -$${monthlyPenalty})`)
+
+      if (repChange !== 0 && (updatedContracts.length > 0 || itsmBreachCount > 0)) {
+        get().adjustReputation(repChange, 'Monthly SLA & ITSM Performance')
+      }
+      pushAlert('info', `MONTHLY PAYOUT: $${netPayout.toLocaleString()} (Rev: $${monthlyRevenue}, OPEX: -$${totalExpensesPerMonth}, ITSM Fines: -$${monthlyITSMFines}, Loans: -$${totalLoanPayment}, Penalties: -$${monthlyPenalty})`)
 
       if (updatedContracts.length > 0) {
         if (avgUptime >= 0.99) {
@@ -198,14 +232,22 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         updatedContracts.length = 0 // Clear all active contracts
       }
       
-      set({ loans: updatedLoans, consecutiveNegativeMonths: newConsecutiveNegativeMonths, isBankrupt: newIsBankrupt })
+      set({ 
+        activeContracts: updatedContracts, 
+        technicianTickets: updatedTickets,
+        realTimePlayedSeconds: nextRealTimePlayedSeconds,
+        balance: newBalance,
+        loans: updatedLoans,
+        consecutiveNegativeMonths: newConsecutiveNegativeMonths,
+        isBankrupt: newIsBankrupt
+      })
+    } else {
+      set({ 
+        activeContracts: updatedContracts, 
+        technicianTickets: updatedTickets,
+        realTimePlayedSeconds: nextRealTimePlayedSeconds 
+      })
     }
-
-    set({ 
-      activeContracts: updatedContracts,
-      balance: newBalance,
-      realTimePlayedSeconds: nextRealTimePlayedSeconds
-    })
   },
   
   takeLoan: (name: string, principal: number, interestRate: number, minimumMonthlyPayment: number) => {

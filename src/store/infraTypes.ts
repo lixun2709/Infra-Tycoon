@@ -373,6 +373,9 @@ export interface Connection {
   routingWeight?: number
 }
 
+export type TicketSeverity = 'P1' | 'P2' | 'P3' | 'P4'
+export type SlaStatus = 'Healthy' | 'Approaching Breach' | 'Breached'
+
 export interface TechnicianTicket {
   id: string
   nodeId: string
@@ -383,6 +386,10 @@ export interface TechnicianTicket {
   totalSeconds: number
   cost: number
   progress: number
+  severity: TicketSeverity
+  slaTargetSeconds: number
+  priorityFee?: number
+  breachFinesAccumulated?: number
 }
 
 // v6.0 Banking & Debt

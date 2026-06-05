@@ -284,4 +284,12 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice & AutomationSlice
+} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice & AutomationSlice & CloudSlice & ItsmSlice
+export interface CloudSlice {
+  // Methods for CloudSlice added dynamically in useInfraStore if any
+}
+
+export interface ItsmSlice {
+  expediteTicket: (ticketId: string) => void
+  resolveTicket: (ticketId: string) => void
+}

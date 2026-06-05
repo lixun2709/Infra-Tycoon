@@ -29,6 +29,8 @@ interface TopNavProps {
   onToggleSecurity: () => void
   isCloudOpen: boolean
   onToggleCloud: () => void
+  isITSMOpen: boolean
+  onToggleITSM: () => void
   isFleetDashboardOpen?: boolean
   onToggleFleet?: () => void
   isLoadBalancerOpen?: boolean
@@ -60,6 +62,8 @@ export function TopNav({
   onToggleSecurity,
   isCloudOpen,
   onToggleCloud,
+  isITSMOpen,
+  onToggleITSM,
   isFleetDashboardOpen,
   onToggleFleet,
   isLoadBalancerOpen,
@@ -265,6 +269,7 @@ export function TopNav({
               { id: 'security', label: 'SECURITY SOC', icon: <ShieldAlert className="w-4 h-4" />, active: isSecurityOpen, onClick: onToggleSecurity },
               { id: 'automation', label: 'AUTOMATION', icon: <Activity className="w-4 h-4" />, active: isAutomationOpen, onClick: onToggleAutomation },
               { id: 'cloud', label: 'HYBRID CLOUD', icon: <Cloud className="w-4 h-4" />, active: isCloudOpen, onClick: onToggleCloud },
+              { id: 'itsm', label: 'SERVICE DESK', icon: <Briefcase className="w-4 h-4" />, active: isITSMOpen, onClick: onToggleITSM },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
               { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
               { id: 'terminal', label: 'TERMINAL', icon: <TerminalIcon className="w-4 h-4" />, active: isTerminalOpen, onClick: onToggleTerminal },
