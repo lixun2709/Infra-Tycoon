@@ -21,6 +21,7 @@ export interface InventorySlice {
   toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
   isolateNode: (id: string) => void
   formatNode: (id: string) => void
+  toggleMicrosegmentation: (id: string, enabled: boolean) => void
   triggerRansomwareSimulation: () => void
   triggerDRDrill: (siteId?: string, severity?: 'low' | 'high') => void
 }
@@ -256,6 +257,13 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const { updateNode, pushAlert } = get()
     updateNode(id, { isIsolated: true })
     pushAlert('warning', 'Node has been logically isolated from the network.')
+    audioManager.playEffect('click')
+  },
+
+  toggleMicrosegmentation: (id, enabled) => {
+    const { updateNode, pushAlert } = get()
+    updateNode(id, { microsegmentationEnabled: enabled })
+    pushAlert('info', `Microsegmentation ${enabled ? 'enabled' : 'disabled'} on node. Lateral spread severely limited.`)
     audioManager.playEffect('click')
   },
 

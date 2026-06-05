@@ -238,6 +238,7 @@ export interface InfraNode {
   lastBackupTime?: number
   corruptionState?: 'clean' | 'corrupted' | 'ransomware'
   isIsolated?: boolean
+  microsegmentationEnabled?: boolean
 }
 
 export interface VirtualMachine {

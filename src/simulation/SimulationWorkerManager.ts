@@ -220,7 +220,9 @@ export class SimulationWorkerManager {
       maintenanceMode: n.maintenanceMode ?? false,
       backupStatus: n.backupStatus,
       lastBackupTime: n.lastBackupTime,
-      corruptionState: n.corruptionState
+      corruptionState: n.corruptionState,
+      isIsolated: n.isIsolated ?? false,
+      microsegmentationEnabled: n.microsegmentationEnabled ?? false
     }))
 
     const compactApps = applications.map(a => ({

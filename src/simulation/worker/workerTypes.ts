@@ -69,6 +69,7 @@ export interface CompactNode {
   corruptionState?: 'clean' | 'corrupted' | 'ransomware'
   infectionState?: 'clean' | 'exposed' | 'infected' | 'encrypting' | 'locked'
   isIsolated?: boolean
+  microsegmentationEnabled?: boolean
 }
 
 export interface CompactApplication {

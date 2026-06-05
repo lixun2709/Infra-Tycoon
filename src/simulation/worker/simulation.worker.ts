@@ -367,13 +367,15 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
         infectionState: node.infectionState ?? 'clean',
         infectionProgress: 0,
         encryptionRate: 0.05,
-        isIsolated: false
+        isIsolated: node.isIsolated ?? false,
+        microsegmentationEnabled: node.microsegmentationEnabled ?? false
       } as import('../ecs/types').SecurityComponent)
     } else {
       const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', node.id)
       if (security) {
         if (node.infectionState !== undefined) security.infectionState = node.infectionState
         if (node.isIsolated !== undefined) security.isIsolated = node.isIsolated
+        if (node.microsegmentationEnabled !== undefined) security.microsegmentationEnabled = node.microsegmentationEnabled
       }
     }
 

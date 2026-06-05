@@ -777,3 +777,9 @@ Executing a DR Drill isolates a specific target site dynamically at the networki
 - **Deterministic Rules Engine**: The AutomationSystem continuously monitors telemetry across global, site, rack, and node scopes. Policies execute strictly within the ECS Worker for precise, framerate-independent triggers.
 - **Autonomous Remediation**: Supports proactive condition-action mappings (e.g., executing a graceful shutdown when ambient temperatures exceed 85°C to prevent thermal cascading).
 - **Alarm Throttling**: Customizable cooldown timers ensure high-frequency state changes do not trigger alarm fatigue or system thrashing.
+
+## Day 21: Enterprise Security Operations Center (SOC)
+- **Active Threat Mitigation**: Players can now actively defend against ransomware propagation. The Security Operations Center (SOC) visualizes node infection states (Clean, Exposed, Infected, Encrypting, Locked).
+- **Zero-Trust Microsegmentation**: Deploying microsegmentation onto critical nodes mathematically chokes the probability of lateral malware propagation down to 1%.
+- **Logical Quarantine**: Nodes can be actively isolated from the network to stop active spread.
+- **Format Drive Recovery**: If a node is fully locked by ransomware, it must be forcefully formatted via the SOC, requiring the node to be completely re-provisioned from scratch.

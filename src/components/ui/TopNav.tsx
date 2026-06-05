@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 import { 
-  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign
+  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert
 } from 'lucide-react'
 
 interface TopNavProps {
@@ -25,6 +25,8 @@ interface TopNavProps {
   isEconomyOpen?: boolean
   isAutomationOpen?: boolean
   onToggleAutomation?: () => void
+  isSecurityOpen?: boolean
+  onToggleSecurity?: () => void
 }
 
 export function TopNav({ 
@@ -43,7 +45,9 @@ export function TopNav({
   isNOCDashboardOpen,
   isEconomyOpen,
   isAutomationOpen,
-  onToggleAutomation
+  onToggleAutomation,
+  isSecurityOpen,
+  onToggleSecurity
 }: TopNavProps) {
   const { 
     currentSiteId, 
@@ -234,6 +238,7 @@ export function TopNav({
           <div className="absolute top-full left-0 mt-2 w-48 bg-slate-950/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 overflow-hidden py-1">
             {[
               { id: 'global_map', label: 'MAP', icon: <Globe className="w-4 h-4" />, onClick: onToggleGlobalMap },
+              { id: 'security', label: 'SECURITY SOC', icon: <ShieldAlert className="w-4 h-4" />, active: isSecurityOpen, onClick: onToggleSecurity },
               { id: 'automation', label: 'AUTOMATION', icon: <Activity className="w-4 h-4" />, active: isAutomationOpen, onClick: onToggleAutomation },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
               { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },

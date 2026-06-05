@@ -15,6 +15,7 @@ import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { StorageDashboard } from './components/ui/StorageDashboard'
 import { AIDashboard } from './components/ui/AIDashboard'
 import { AutomationDashboard } from './components/ui/AutomationDashboard'
+import { SecurityDashboard } from './components/ui/SecurityDashboard'
 
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
@@ -43,6 +44,7 @@ function App() {
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   const [isEconomyOpen, setIsEconomyOpen] = useState(false)
   const [isAutomationOpen, setIsAutomationOpen] = useState(false)
+  const [isSecurityOpen, setIsSecurityOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const balance = useInfraStore(s => s.balance)
@@ -217,6 +219,8 @@ function App() {
         isEconomyOpen={isEconomyOpen}
         isAutomationOpen={isAutomationOpen}
         onToggleAutomation={() => setIsAutomationOpen(!isAutomationOpen)}
+        isSecurityOpen={isSecurityOpen}
+        onToggleSecurity={() => setIsSecurityOpen(!isSecurityOpen)}
       />
 
 
@@ -224,6 +228,11 @@ function App() {
       {isSaveManagerOpen && (
         <SaveManager onClose={() => setIsSaveManagerOpen(false)} />
       )}
+
+      <SecurityDashboard 
+        isOpen={isSecurityOpen}
+        onClose={() => setIsSecurityOpen(false)}
+      />
 
       {isStorageDashboardOpen && (
         <StorageDashboard 

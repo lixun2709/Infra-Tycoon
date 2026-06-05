@@ -1,6 +1,11 @@
 # Changelog
 
 ### [Unreleased]
+- Day 21: **Enterprise Security Operations Center (SOC)**
+  - Interactive SOC Dashboard to visualize datacenter threat landscape.
+  - Mitigate ransomware lateral propagation using active GUI controls.
+  - Implemented Microsegmentation (Zero-Trust) and Logical Node Isolation.
+  - Format Drive capabilities for irrecoverable encrypted nodes.
 - Day 20: **Infrastructure Automation Engine**
   - Added fully deterministic rules engine running in ECS Web Worker.
   - Automation policies can target global, site, rack, or specific nodes.

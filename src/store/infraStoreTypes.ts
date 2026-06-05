@@ -206,6 +206,7 @@ export type InfraState = {
   advanceProvisioningState: (id: string) => void
   isolateNode: (id: string) => void
   formatNode: (id: string) => void
+  toggleMicrosegmentation: (id: string, enabled: boolean) => void
   triggerRansomwareSimulation: () => void
   triggerDRDrill: (siteId?: string, severity?: 'low' | 'high') => void
   
