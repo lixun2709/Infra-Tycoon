@@ -422,6 +422,19 @@ export const HARDWARE_CATALOG = {
     maxPowerKW: 30.0,
     maxWeightKG: 1500,
     heatEfficiency: 0.1, // dissipates 90% of heat directly
+  },
+  RACK_12U_EDGE: {
+    name: 'Micro-Edge Rack (12U)',
+    uHeight: 12,
+    wattage: 50,
+    type: 'rack',
+    color: '#1f2937',
+    purchasePrice: 25000,
+    storageTB: 0,
+    useCase: 'Ruggedized self-contained edge rack. Requires no external CRAC cooling but limited to 12U.',
+    portLayout: [],
+    maxPowerKW: 2.0,
+    maxWeightKG: 600,
   }
 } as const satisfies Record<string, HardwareCatalogSpec>
 

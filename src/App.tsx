@@ -14,7 +14,7 @@ import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { StorageDashboard } from './components/ui/StorageDashboard'
 import { AIDashboard } from './components/ui/AIDashboard'
-import { BlueprintManager } from './components/ui/BlueprintManager'
+
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
 import { Rocket, X, TrendingUp, Sliders, LayoutGrid, Wind, Scaling, Box, Zap } from 'lucide-react'
@@ -211,6 +211,8 @@ function App() {
         isTerminalOpen={isTerminalOpen}
         isStorageOpen={isStorageDashboardOpen}
         isMissionOpen={isMissionDashboardOpen}
+        isNOCDashboardOpen={isNOCDashboardOpen}
+        isEconomyOpen={isEconomyOpen}
       />
 
 

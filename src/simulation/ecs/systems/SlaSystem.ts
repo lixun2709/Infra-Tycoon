@@ -8,6 +8,7 @@ export class SlaSystem extends System {
   private executionTickCounter = 0
   private healthyAppCounts = new Map<string, number>()
   private healthyAppFaultDomains = new Map<string, Set<string>>()
+  private healthyAppRegions = new Map<string, Set<string>>()
   private failedAppReasons = new Map<string, { isolated: number, blackholed: number, power: number, ransomware: number, plannedMaintenance: number, other: number }>()
 
   public update(_dt: number): void {
@@ -27,6 +28,7 @@ export class SlaSystem extends System {
     this.healthyAppCounts.clear()
     
     this.healthyAppFaultDomains.forEach((set) => set.clear()) // Reset sets instead of discarding
+    this.healthyAppRegions.forEach((set) => set.clear())
     // Do not clear the map itself for fault domains, just the sets within
 
     this.failedAppReasons.forEach((reasons) => {
@@ -65,6 +67,13 @@ export class SlaSystem extends System {
           }
           // Fault domain is rack if known, otherwise the node itself
           domainSet.add(transform?.parentRackId || app.nodeId)
+
+          let regionSet = this.healthyAppRegions.get(app.appId)
+          if (!regionSet) {
+             regionSet = new Set<string>()
+             this.healthyAppRegions.set(app.appId, regionSet)
+          }
+          regionSet.add(transform?.siteId || 'unknown')
         } else {
           const reasons = this.failedAppReasons.get(app.appId)!
           if (isMaintenance) reasons.plannedMaintenance++
@@ -96,6 +105,14 @@ export class SlaSystem extends System {
         if (req.redundant) {
            domains = this.healthyAppFaultDomains.get(req.appId)?.size || 0
            activeCount = Math.min(activeCount, domains)
+        }
+
+        let regions = 0
+        if (req.multiRegion) {
+           regions = this.healthyAppRegions.get(req.appId)?.size || 0
+           if (regions < 2) {
+             activeCount = 0 // Forced failure if multi-region is violated
+           }
         }
         
         if (activeCount < req.count) {

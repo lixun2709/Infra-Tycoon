@@ -3,8 +3,22 @@ import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import { HARDWARE_CATALOG } from '../physics/hardwareLibrary'
 
 export const INITIAL_SITES: Site[] = [
-  { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
-  { id: 'site-2', name: 'DR-Site', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 40.71, lng: -74.00 } }
+  { id: 'site-1', name: 'Primary-DC', type: 'core', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } },
+  { id: 'site-2', name: 'DR-Site', type: 'core', isDisaster: false, region: 'US-East', energySource: 'Grid', geoCoords: { lat: 40.71, lng: -74.00 } }
+]
+
+export const EXPANSION_REGIONS = [
+  // Edge Nodes
+  { region: 'US-West', geoCoords: { lat: 37.77, lng: -122.41 }, name: 'Silicon Valley Edge', cost: 1200000, type: 'edge' as const },
+  { region: 'AP-South', geoCoords: { lat: 1.35, lng: 103.81 }, name: 'Singapore Transit', cost: 1500000, type: 'edge' as const },
+  { region: 'EU-North', geoCoords: { lat: 59.32, lng: 18.06 }, name: 'Stockholm Compute', cost: 950000, type: 'edge' as const },
+  { region: 'SA-East', geoCoords: { lat: -23.55, lng: -46.63 }, name: 'São Paulo PoP', cost: 750000, type: 'edge' as const },
+  { region: 'AF-South', geoCoords: { lat: -33.92, lng: 18.42 }, name: 'Cape Town Gateway', cost: 800000, type: 'edge' as const },
+  
+  // Mega-Core Cloud Regions
+  { region: 'US-East-2', geoCoords: { lat: 39.04, lng: -77.48 }, name: 'Ashburn Core', cost: 25000000, type: 'core' as const },
+  { region: 'AP-North', geoCoords: { lat: 35.67, lng: 139.65 }, name: 'Tokyo Core', cost: 30000000, type: 'core' as const },
+  { region: 'EU-Central', geoCoords: { lat: 50.11, lng: 8.68 }, name: 'Frankfurt Core', cost: 28000000, type: 'core' as const }
 ]
 
 export const INITIAL_TERMINAL_STATE = {

@@ -32,7 +32,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {icon && <span className="w-4 h-4">{icon}</span>}
-      {children}
+      {children as React.ReactNode}
       {isLoading && (
         <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin ml-2" />
       )}

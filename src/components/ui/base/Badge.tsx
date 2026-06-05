@@ -19,12 +19,13 @@ export const Badge: React.FC<BadgeProps> = ({
     error: 'bg-rose-500/20 text-rose-300 border-transparent',
     info: 'bg-blue-500/20 text-blue-300 border-transparent',
     ghost: 'bg-slate-500/20 text-slate-300 border-transparent'
-  }[variant]
+  }
 
   return (
     <span className={`
       px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border
-      ${styles}
+      ${styles[variant]} 
+      ${glow ? 'shadow-[0_0_10px_rgba(255,255,255,0.1)]' : ''} 
       ${className}
     `}>
       {children}

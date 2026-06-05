@@ -21,6 +21,8 @@ interface TopNavProps {
   isTerminalOpen?: boolean
   isStorageOpen?: boolean
   isMissionOpen?: boolean
+  isNOCDashboardOpen?: boolean
+  isEconomyOpen?: boolean
 }
 
 export function TopNav({ 
@@ -35,15 +37,15 @@ export function TopNav({
   onToggleStorage,
   isTerminalOpen,
   isStorageOpen,
-  isMissionOpen
+  isMissionOpen,
+  isNOCDashboardOpen,
+  isEconomyOpen
 }: TopNavProps) {
   const { 
     currentSiteId, 
     sites, 
     setCurrentSiteId, 
     isNetworkManagerOpen,
-    isNOCDashboardOpen,
-    isEconomyOpen,
     timeFormat,
     setTimeFormat,
     companyLevel,
@@ -64,8 +66,6 @@ export function TopNav({
     experience: state.experience,
     xpToNextLevel: state.xpToNextLevel,
     isNetworkManagerOpen: state.isNetworkManagerOpen,
-    isNOCDashboardOpen: state.isNOCDashboardOpen,
-    isEconomyOpen: state.isEconomyOpen,
     toggleFacilityFeed: state.toggleFacilityFeed,
     isAIDashboardOpen: state.isAIDashboardOpen,
     toggleAIDashboard: state.toggleAIDashboard

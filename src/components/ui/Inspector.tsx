@@ -1,5 +1,5 @@
 import React from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'

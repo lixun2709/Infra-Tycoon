@@ -7,6 +7,7 @@ export interface ContractRequirement {
   appId: string
   count: number
   redundant?: boolean // Must be on different racks
+  multiRegion?: boolean // Must be on different sites
 }
 
 export interface ContractBlueprint {
@@ -73,6 +74,7 @@ export type AuditLog = {
 export type Site = {
   id: string
   name: string
+  type: 'core' | 'edge'
   isDisaster: boolean
   region: string
   energySource: 'Renewable' | 'Grid'

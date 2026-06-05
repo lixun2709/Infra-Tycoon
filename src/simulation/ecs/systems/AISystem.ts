@@ -5,7 +5,7 @@ import { APPLICATION_CATALOG } from '../../../physics/applicationLibrary'
 
 export class AISystem extends System {
   constructor(world: World) {
-    super(world, ['application'])
+    super(world)
   }
 
   update(dt: number) {
@@ -20,7 +20,7 @@ export class AISystem extends System {
     const isNodeConnectedToIB = (nodeId: string): boolean => {
       let hasIB = false
       connections.forEach(conn => {
-        if (conn.status !== 'online') return
+        if (conn.status !== 'active') return
         if (conn.startNodeId === nodeId || conn.endNodeId === nodeId) {
           const remoteId = conn.startNodeId === nodeId ? conn.endNodeId : conn.startNodeId
           const remoteTransform = transforms.get(remoteId)
@@ -47,13 +47,7 @@ export class AISystem extends System {
       if (!power || power.systemState !== 'running' || !transform) return
 
       // AI models generate massive thermal and power load.
-      if (transform.catalogKey === 'H100_AI_NODE_4U') {
-        // High utilization during training
-        if (power.currentPowerKW < power.maxPowerKW * 0.9) {
-           // We do not set it here directly, power is handled by PowerSystem, 
-           // but we can assume it's running near max.
-        }
-      }
+      // High utilization during training is handled by PowerSystem
 
       // Check Networking
       const hasIB = isNodeConnectedToIB(nodeId)

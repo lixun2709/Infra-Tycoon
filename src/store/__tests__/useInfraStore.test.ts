@@ -16,7 +16,7 @@ describe('useInfraStore v2.0', () => {
     // Reset sites to default
     useInfraStore.setState({
       sites: [
-        { id: 'site-1', name: 'Primary-DC', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } }
+        { id: 'site-1', name: 'Primary-DC', type: 'core', isDisaster: false, region: 'EU-West', energySource: 'Renewable', geoCoords: { lat: 52.36, lng: 4.89 } }
       ],
       currentSiteId: 'site-1'
     })

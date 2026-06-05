@@ -25,33 +25,7 @@ import type {
 import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
 import type { TerminalStateRecord } from './terminalTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
-import { Vector3 } from 'three'
-import type { 
-  InfraNode, 
-  Connection, 
-  CloudLink, 
-  Site, 
-  DatacenterHall,
-  InfraAlert, 
-  AuditLog, 
-  DnsRecord, 
-  DhcpLease, 
-  NtpSyncStatus, 
-  PostMortem, 
-  Blueprint, 
-  ApplicationDeployment,
-  ServiceType,
-  ServiceStatus,
-  SaveMetadata,
-  TechnicianTicket,
-  VirtualMachine,
-  Incident,
-  BankLoan,
-  ReputationHistoryEntry
-} from './infraTypes'
-import type { HardwareCatalogKey } from '../physics/hardwareLibrary'
-import type { TerminalStateRecord } from './terminalTypes'
-import type { SimSyncOutputPayload, SimTelemetryPayload } from '../simulation/worker/workerTypes'
+
 import type { ThemeKey } from './themeTypes'
 import type { CameraSlice } from './slices/cameraSlice'
 import type { InteractionSlice } from './slices/interactionSlice'

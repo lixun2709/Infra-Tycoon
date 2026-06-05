@@ -8,6 +8,7 @@ export interface EconomySlice {
   adjustReputation: (amount: number, reason: string) => void
   takeLoan: (name: string, principal: number, interestRate: number, minimumMonthlyPayment: number) => void
   repayLoan: (id: string, amount: number) => void
+  purchaseSite: (region: string, name: string, geoCoords: {lat: number, lng: number}, cost: number, type: 'core' | 'edge') => boolean
 }
 
 export function getReputationTier(rep: number): 'Blacklisted' | 'Unproven' | 'Reliable' | 'Enterprise Trusted' | 'Mission Critical' {
@@ -248,5 +249,32 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     })
     
     pushAlert('info', `LOAN REPAYMENT: $${amount.toLocaleString()} paid towards corporate debt.`)
+  },
+
+  purchaseSite: (region: string, name: string, geoCoords: {lat: number, lng: number}, cost: number, type: 'core' | 'edge') => {
+    const state = get()
+    
+    if (state.balance < cost) {
+      state.pushAlert('warning', `Insufficient funds to purchase ${name} (${type} site). Requires $${cost.toLocaleString()}.`)
+      return false
+    }
+    
+    const newSite = {
+      id: crypto.randomUUID(),
+      name,
+      type,
+      isDisaster: false,
+      region,
+      energySource: 'Grid' as const,
+      geoCoords
+    }
+    
+    set({
+      balance: state.balance - cost,
+      sites: [...state.sites, newSite]
+    })
+    
+    state.pushAlert('info', `Successfully procured ${name} ${type} region in ${region}.`)
+    return true
   }
 })

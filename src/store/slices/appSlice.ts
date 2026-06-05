@@ -12,9 +12,23 @@ export interface AppSlice {
 
 export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, get) => ({
   deployApplication: (appId, nodeId) => {
-    const { balance, pushAlert } = get()
+    const state = get()
+    const { balance, pushAlert, nodes, sites } = state
     const spec = APPLICATION_CATALOG[appId]
     if (!spec) return
+
+    const targetNode = nodes.find(n => n.id === nodeId)
+    if (!targetNode) return
+
+    const site = sites.find(s => s.id === targetNode.siteId)
+    
+    // EDGE DEPLOYMENT ENFORCEMENT
+    if (spec.requirements.maxLatencyMs && spec.requirements.maxLatencyMs <= 35) {
+      if (!site || site.type !== 'edge') {
+        pushAlert('warning', `DEPLOYMENT BLOCKED: ${spec.name} requires <${spec.requirements.maxLatencyMs}ms latency. Must be deployed in an Edge Site.`)
+        return
+      }
+    }
 
     const deploymentCost = spec.deploymentCost || 0
     if (balance < deploymentCost) {

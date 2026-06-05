@@ -68,8 +68,6 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
     }))
   }
 
-  const currentSiteName = sites.find(s => s.id === currentSiteId)?.name
-
   return (
     <div className={`fixed bottom-8 z-[200] transition-all duration-500 ease-out ${selectedNodeId ? 'right-[576px]' : 'right-8'}`}>
       {/* Main Toggle Button */}
@@ -153,8 +151,20 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
           {/* Asset Grid */}
           <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-4 custom-scrollbar">
             {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => {
-                  const unlocked = isHardwareUnlocked(item.key) && balance >= 0
-                  const lockMessage = balance < 0 ? "Bankrupt: Balance < 0" : `Unlocks at Level ${item.minLevel}`
+                  const currentSite = sites.find(s => s.id === currentSiteId)
+                  const isEdgeSite = currentSite?.type === 'edge'
+                  
+                  let unlocked = isHardwareUnlocked(item.key) && balance >= 0
+                  let lockMessage = balance < 0 ? "Bankrupt: Balance < 0" : `Unlocks at Level ${item.minLevel}`
+                  
+                  if (item.key === 'RACK_12U_EDGE' && !isEdgeSite) {
+                    unlocked = false
+                    lockMessage = "Edge Site Required"
+                  } else if (item.type === 'rack' && item.key !== 'RACK_12U_EDGE' && isEdgeSite) {
+                    unlocked = false
+                    lockMessage = "Core Site Required"
+                  }
+
                   return (
                   <button
                     key={item.key}

@@ -74,7 +74,7 @@ function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: 
         )}
         
         {/* Interactive Hover Zones */}
-        {data.map((val, idx) => (
+        {data.map((_, idx) => (
           <rect
             key={idx}
             x={idx * step - (step / 2)}
@@ -174,6 +174,7 @@ export function Dashboard({
   const [eventSubTab, setEventSubTab] = useState<'alerts' | 'incidents' | 'postmortems' | 'drills'>('alerts')
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
+
 
   const nodes = useInfraStore.getState().nodes
   useInfraStore(s => s.nodes.length)
