@@ -423,7 +423,6 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
           }
           // status and currentPowerKW are calculated inside worker systems, so do NOT overwrite them!
         }
-        }
       }
     }
 
