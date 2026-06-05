@@ -1,5 +1,6 @@
 import { useMissionStore } from '../../store/useMissionStore'
 import { MISSION_CATALOG, MISSION_ORDER } from '../../physics/missionLibrary'
+import type { MissionBlueprint, ObjectiveBlueprint } from '../../physics/missionLibrary'
 import { motion } from 'framer-motion'
 import { CheckCircle2, Target, Trophy, Activity, Zap } from 'lucide-react'
 import { Badge } from './base/Badge'
@@ -44,11 +45,11 @@ const MissionContent = ({
   completedObjectiveIds, 
   startMission 
 }: { 
-  activeMission: any
+  activeMission: MissionBlueprint
   completedObjectiveIds: string[]
   startMission: (id: string) => void
 }) => {
-  const completedCount = activeMission.objectives.filter((o: any) => completedObjectiveIds.includes(o.id)).length
+  const completedCount = activeMission.objectives.filter((o: ObjectiveBlueprint) => completedObjectiveIds.includes(o.id)).length
   const totalCount = activeMission.objectives.length
   const progressPercent = (completedCount / totalCount) * 100
   const isMissionComplete = completedCount === totalCount
@@ -110,7 +111,7 @@ const MissionContent = ({
       <div className="space-y-4">
         <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] px-2">Objectives</h4>
         <div className="grid grid-cols-1 gap-3">
-          {activeMission.objectives.map((obj: any, idx: number) => {
+          {activeMission.objectives.map((obj: ObjectiveBlueprint, idx: number) => {
             const isComplete = completedObjectiveIds.includes(obj.id)
             return (
               <motion.div 

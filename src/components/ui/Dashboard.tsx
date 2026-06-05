@@ -23,6 +23,7 @@ import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { LevelUpOverlay } from './LevelUpOverlay'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
   if (!data || data.length === 0) return null
   const max = Math.max(...data, maxVal, 0.001)
   const min = 0
@@ -36,7 +37,7 @@ function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: 
     return `${x},${y}`
   }).join(' L ')
 
-  const [hoverIdx, setHoverIdx] = useState<number | null>(null)
+
 
   return (
     <div 

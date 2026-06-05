@@ -26,6 +26,7 @@ export function useAnimatedNumber(value: number, duration: number = 500) {
     if (value !== startValue) {
       requestAnimationFrame(animate)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, duration])
 
   return displayValue

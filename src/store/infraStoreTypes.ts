@@ -287,6 +287,7 @@ export type InfraState = {
 } & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice & AutomationSlice & CloudSlice & ItsmSlice
 export interface CloudSlice {
   // Methods for CloudSlice added dynamically in useInfraStore if any
+  _isCloudSlice?: boolean
 }
 
 export interface ItsmSlice {

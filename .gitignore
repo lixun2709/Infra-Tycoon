@@ -25,3 +25,4 @@ dist-ssr
 
 # Agent workflow files
 .agents/workflows/workflow-paln.md
+.agents/workflows/workflow-plan2.md

@@ -80,7 +80,7 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
       <Tabs 
         tabs={tabs} 
         activeTab={activeTab} 
-        onChange={(id) => setActiveTab(id as any)} 
+        onChange={(id) => setActiveTab(id as typeof activeTab)} 
       />
 
       <div className="p-6 h-[600px] overflow-y-auto">

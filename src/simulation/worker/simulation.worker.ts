@@ -818,8 +818,8 @@ function sendSyncOutput() {
       totalSeconds: comp.totalSeconds,
       elapsedSeconds: comp.elapsedSeconds,
       progress: Math.min(100, Math.round((comp.elapsedSeconds / comp.totalSeconds) * 100)),
-      severity: (comp as any).severity || 'P2',
-      slaTargetSeconds: (comp as any).slaTargetSeconds || 120
+      severity: ((comp as unknown as { severity?: import('../../store/infraTypes').TicketSeverity }).severity || 'P2') as import('../../store/infraTypes').TicketSeverity,
+      slaTargetSeconds: (comp as unknown as { slaTargetSeconds?: number }).slaTargetSeconds || 120
     })
   })
 

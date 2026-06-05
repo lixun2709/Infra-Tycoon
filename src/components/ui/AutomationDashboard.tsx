@@ -93,7 +93,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
                   <label className="block text-slate-400 text-xs mb-1 uppercase tracking-wider">Scope / Target Level</label>
                   <select 
                     value={newPolicy.targetLevel}
-                    onChange={(e) => setNewPolicy({...newPolicy, targetLevel: e.target.value as any})}
+                    onChange={(e) => setNewPolicy({...newPolicy, targetLevel: e.target.value as 'global' | 'site' | 'rack' | 'node' | 'application'})}
                     className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-slate-200 outline-none focus:border-cyan-500 font-mono text-xs"
                   >
                     <option value="global">Global (All Nodes)</option>
@@ -120,7 +120,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
                   <label className="block text-slate-400 text-xs mb-1 uppercase tracking-wider">Condition Type</label>
                   <select 
                     value={newPolicy.conditionType}
-                    onChange={(e) => setNewPolicy({...newPolicy, conditionType: e.target.value as any})}
+                    onChange={(e) => setNewPolicy({...newPolicy, conditionType: e.target.value as AutomationConditionType})}
                     className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-slate-200 outline-none focus:border-cyan-500 font-mono text-xs"
                   >
                     <option value="temp_above">Temperature Above (°C)</option>
@@ -146,7 +146,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
                   <label className="block text-slate-400 text-xs mb-1 uppercase tracking-wider">Action Type</label>
                   <select 
                     value={newPolicy.actionType}
-                    onChange={(e) => setNewPolicy({...newPolicy, actionType: e.target.value as any})}
+                    onChange={(e) => setNewPolicy({...newPolicy, actionType: e.target.value as AutomationActionType})}
                     className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-slate-200 outline-none focus:border-cyan-500 font-mono text-xs"
                   >
                     <option value="notify_only">Send Notification Only</option>

@@ -79,7 +79,7 @@ export function CloudDashboard({ isOpen, onClose }: CloudDashboardProps) {
       <Tabs 
         tabs={tabs} 
         activeTab={activeTab} 
-        onChange={(id) => setActiveTab(id as any)} 
+        onChange={(id) => setActiveTab(id as typeof activeTab)} 
       />
 
       <div className="p-6 h-[600px] overflow-y-auto">

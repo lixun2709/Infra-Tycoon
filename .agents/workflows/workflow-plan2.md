@@ -2,473 +2,473 @@
 description: 
 ---
 
-# CONFIGURATION
+# ENTERPRISE STABILIZATION & PRODUCTIZATION EXECUTION PROMPT
 
-DAY= 148
-
-# EXECUTION PROMPT
+Read and analyze the COMPLETE repository before making ANY modifications.
 
 Read and strictly follow:
 
-1. Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
-2. Entire `.ai` folder
-3. Entire `prompts` folder
-
-You are executing ONLY:
-
-Day ${DAY}
-
-from:
-Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
-
-DO NOT execute:
-
-* future roadmap tasks
-* speculative systems
-* unrelated systems
-* placeholder future architecture
-* optional expansions outside Day ${DAY}
-
-Stay strictly scoped to:
-Day ${DAY} objective, architecture, deliverables, systems, and validation requirements.
+1. plan.md
+2. Infra-Tycoon-Detailed-365-Day-Enterprise-SDLC.md
+3. Entire `.ai` folder
+4. Entire `prompts` folder
+5. USER_GUIDE.md
+6. CHANGELOG.md
+7. All gameplay systems
+8. All mission systems
+9. All ECS/simulation systems
+10. All rendering systems
+11. All QA/testing systems
 
 IMPORTANT:
 
-This project is NOT:
+This phase is NOT about adding random new features.
 
-* a casual game
-* a frontend demo
-* a decorative sandbox
+This phase is focused on:
 
-This project IS:
-an enterprise-grade datacenter operational digital twin simulator.
-
-Every implementation decision must preserve:
-
-* ECS determinism
-* worker-thread correctness
-* multiplayer-readiness
+* stabilization
+* cleanup
+* architecture hardening
+* gameplay refinement
+* onboarding quality
+* operational realism
+* UX consistency
+* optimization
 * scalability
-* infrastructure realism
-* operational authenticity
-* rendering stability
-* synchronization correctness
 * maintainability
-
-You MUST think like:
-
-* infrastructure architect
-* simulation engineer
-* ECS engine developer
-* datacenter operations engineer
-* enterprise systems engineer
-
-NOT:
-
-* indie game developer
-* UI-only frontend developer
-
-PHASE 1 — REPOSITORY ANALYSIS
-
-Before modifying ANYTHING:
-
-Perform a deep analysis of:
-
-* repository architecture
-* ECS systems
-* simulation worker pipeline
-* Zustand state flow
-* rendering systems
-* synchronization layers
-* networking systems
-* thermal systems
-* electrical systems
-* environmental systems
-* room systems
-* rack systems
-* camera systems
-* UI architecture
-* expansion systems
-* infrastructure generation systems
-
-Identify:
-
-* affected systems
-* execution dependencies
-* architectural risks
-* deterministic simulation risks
-* synchronization implications
-* scalability concerns
-* performance bottlenecks
-* memory implications
-* overlapping systems
-* reusable abstractions
-* technical debt
-* worker authority boundaries
-
-You MUST understand:
-how Day ${DAY} integrates into the existing ecosystem BEFORE implementation begins.
-
-DO NOT immediately code.
-
-PHASE 2 — IMPLEMENTATION PLAN
-
-Before implementation:
-
-Create:
-implementation_plan.md
-
-The implementation plan MUST include:
-
-* architecture analysis
-* affected systems
-* execution flow
-* ECS impact
-* worker-thread impact
-* multiplayer implications
-* deterministic considerations
-* synchronization implications
-* rendering implications
-* performance implications
-* memory implications
-* scalability analysis
-* rollback/risk analysis
-* validation strategy
-* operational realism considerations
-
-The plan MUST explain:
-WHY each implementation decision is architecturally correct.
-
-DO NOT implement before the plan is complete.
-
-PHASE 3 — IMPLEMENTATION EXECUTION
-
-Implementation requirements:
-
-* implement incrementally
-* preserve architecture quality
-* preserve deterministic execution
-* preserve worker authority
-* preserve ECS compatibility
-* preserve multiplayer-readiness
-* preserve scalability
-* preserve synchronization correctness
-* preserve operational authenticity
-* preserve rendering consistency
-* preserve performance stability
+* enterprise-grade productization
 
 DO NOT:
 
-* create temporary hacks
-* duplicate simulation authority
-* bypass ECS systems
-* move simulation logic into UI
-* create fake placeholder realism
-* introduce hidden coupling
-* overengineer unnecessarily
-* rewrite unrelated systems
-* create magic systems
-* break synchronization flow
+* add feature bloat
+* add disconnected mechanics
+* add experimental systems
+* add placeholder systems
+* rewrite working architecture unnecessarily
+* create fake complexity
+* create non-realistic mechanics
+* break determinism
+* break scalability
+* break operational realism
 
-IMPORTANT:
-All infrastructure behavior must:
+The goal is to make Infra-Tycoon feel:
 
-* originate logically
-* propagate realistically
-* synchronize deterministically
-* integrate architecturally
+* polished
+* coherent
+* immersive
+* scalable
+* stable
+* maintainable
+* production-ready
+* enterprise-grade
+* learnable
+* enjoyable from start to end
 
-PHASE 4 — ENTERPRISE VALIDATION
+You are acting as:
 
-After implementation:
+* principal software architect
+* gameplay systems designer
+* enterprise infrastructure engineer
+* ECS simulation architect
+* multiplayer scalability engineer
+* QA lead
+* UX architect
+* production optimization specialist
+* technical debt auditor
+* productization engineer
 
-Run:
+PHASE 1 — FULL REPOSITORY AUDIT
 
-* npm run lint
-* npx tsc --noEmit
-* npm run build
-* npm test
+Before implementation:
 
-Fix ALL:
+Perform deep analysis of:
 
-* lint issues
-* type issues
-* build failures
-* synchronization regressions
-* ECS regressions
-* worker regressions
-* rendering regressions
-* multiplayer regressions
-* architecture regressions
-* performance regressions
-
-DO NOT leave:
-
-* warnings
-* TODOs
-* dead code
-* broken abstractions
-* placeholder implementations
-* partial systems
-
-PHASE 5 — REALISM & ARCHITECTURE VALIDATION
-
-After tests pass:
-
-Deeply verify:
-
-* infrastructure realism
-* operational authenticity
-* ECS determinism
-* synchronization correctness
-* worker authority correctness
-* simulation stability
-* rendering consistency
-* scalability
-* camera consistency
+* architecture quality
+* gameplay flow
+* onboarding flow
+* mission progression
+* simulation systems
+* ECS boundaries
+* worker-thread synchronization
+* Zustand store structure
+* rendering systems
+* Three.js/R3F performance
+* multiplayer readiness
 * UI/UX consistency
-* rack realism
-* thermal realism
-* cooling realism
-* electrical realism
-* networking realism
-* datacenter architectural realism
+* telemetry systems
+* infrastructure realism
+* operational realism
+* memory usage
+* object lifecycle management
+* event propagation
+* technical debt
+* dead code
+* duplicated logic
+* stale systems
+* unused assets
+* unused components
+* outdated documentation
+* unstable gameplay loops
+* scalability risks
+* security risks
+* unsafe patterns
+* rendering inefficiencies
+* unnecessary complexity
+* architectural inconsistencies
+
+Detect and document:
+
+* weak gameplay loops
+* onboarding friction
+* unnecessary systems
+* confusing UX flows
+* architecture risks
+* stale abstractions
+* overengineered systems
+* performance bottlenecks
+* synchronization risks
+* render bottlenecks
+* memory leaks
+* unstable state flows
+* fake gameplay systems
+* disconnected systems
+* inconsistent visuals
+* inconsistent interactions
+* mission pacing issues
+* progression balancing issues
+
+DO NOT immediately start coding.
+
+PHASE 2 — STABILIZATION PLAN
+
+Create:
+stabilization_plan.md
+
+The plan MUST include:
+
+* cleanup strategy
+* gameplay refinement strategy
+* onboarding refinement strategy
+* UX simplification strategy
+* architecture hardening strategy
+* ECS validation strategy
+* multiplayer readiness validation
+* rendering optimization strategy
+* memory optimization strategy
+* QA strategy
+* technical debt removal strategy
+* documentation synchronization strategy
+* scalability strategy
+* operational realism preservation strategy
+* performance stabilization strategy
+* risk analysis
+* rollback considerations
+
+Prioritize:
+
+1. stability
+2. clarity
+3. maintainability
+4. consistency
+5. immersion
+6. onboarding
+7. operational realism
+8. scalability
+
+NOT:
+new feature count.
+
+PHASE 3 — ENTERPRISE CLEANUP & HARDENING
+
+Perform deep cleanup:
+
+* remove dead code
+* remove duplicated logic
+* remove stale systems
+* remove unused components
+* remove unused assets
+* remove placeholder logic
+* remove abandoned abstractions
+* remove unstable patterns
+* remove unnecessary rerenders
+* remove architecture inconsistencies
+* remove fake gameplay systems
+* remove unnecessary complexity
+
+Refactor ONLY where beneficial.
+
+Preserve:
+
+* existing gameplay flow
+* existing progression
+* existing mission systems
+* existing ECS determinism
+* existing infrastructure realism
+
+DO NOT break working systems unnecessarily.
+
+PHASE 4 — GAMEPLAY & UX REFINEMENT
+
+Improve:
+
+* onboarding flow
+* mission pacing
+* progression clarity
+* operational feedback
+* infrastructure readability
+* player guidance
+* UI hierarchy
+* cognitive load
+* interaction consistency
+* gameplay readability
+* camera usability
+* operational immersion
+* player retention
+* learning flow
+
+Gameplay should feel:
+
+* intuitive
+* rewarding
+* strategically deep
+* operationally authentic
+* educational
+* immersive
+* enterprise-grade
+
+NOT:
+overwhelming or bloated.
+
+PHASE 5 — PERFORMANCE & SCALABILITY
+
+Optimize:
+
+* render performance
+* draw calls
+* object allocations
+* event propagation
+* store subscriptions
+* simulation update flow
+* object pooling
+* instancing
+* culling
+* memory allocation
+* update frequency
+* worker communication
+* ECS iteration patterns
 
 Ensure:
-Day ${DAY} improves the project architecturally —
-NOT just visually.
 
-PHASE 6 — DOCUMENTATION SYNCHRONIZATION
+* stable FPS
+* stable memory usage
+* no excessive rerenders
+* no memory leaks
+* no simulation instability
+* no synchronization regressions
+
+PHASE 6 — SECURITY & STABILITY AUDIT
+
+Audit and improve:
+
+* unsafe patterns
+* unsafe state mutations
+* unsafe local storage usage
+* unrestricted debug systems
+* multiplayer trust assumptions
+* unstable async flows
+* unbounded object creation
+* infinite loops
+* race conditions
+* stale references
+* invalid cleanup logic
+
+Ensure:
+the platform is stable and production-ready.
+
+PHASE 7 — VISUAL & OPERATIONAL CONSISTENCY
+
+Unify:
+
+* visual hierarchy
+* spacing systems
+* typography
+* panel styles
+* animation behavior
+* lighting consistency
+* interaction behavior
+* color hierarchy
+* HUD consistency
+* operational feedback consistency
+
+The platform should feel:
+cohesive and professionally designed.
+
+PHASE 8 — DOCUMENTATION SYNCHRONIZATION
 
 IMPORTANT:
-Documentation synchronization is a REQUIRED implementation deliverable.
 
-The task is considered INCOMPLETE if documentation is skipped, partially updated, outdated, or inconsistent with the repository state.
-
-Before updating documentation:
-
-Re-analyze the CURRENT repository state AFTER implementation completion.
-
-Analyze:
-
-* updated systems
-* modified workflows
-* rendering changes
-* ECS changes
-* UI/UX changes
-* environmental systems
-* operational mechanics
-* simulation behavior
-* room systems
-* infrastructure systems
-* synchronization flow
-* deployment systems
-* architecture changes
-
-Documentation MUST reflect ONLY the ACTUAL repository implementation.
-
-NEVER document:
-
-* speculative systems
-* future roadmap systems
-* fake implementations
-* incomplete systems as finished features
+Documentation synchronization is REQUIRED.
 
 Update:
 
 * USER_GUIDE.md
-* Documentation Center / Simulation Docs tab
+* gameplay documentation
+* onboarding documentation
+* mission documentation
 * architecture documentation
 * operational documentation
 * troubleshooting documentation
-* system documentation
+* QA documentation
 * CHANGELOG.md
+
+Ensure:
+documentation matches ACTUAL repository state.
 
 Documentation MUST explain:
 
-* WHAT changed
-* WHY it behaves that way
-* HOW users interact with it
-* operational impact
-* infrastructure implications
-* architectural reasoning
+* gameplay systems
+* progression systems
+* mission systems
+* operational concepts
+* infrastructure concepts
+* onboarding flow
+* controls
+* strategic gameplay concepts
 
-Documentation quality MUST match enterprise platforms such as:
+The docs should feel similar to:
 
 * VMware
+* AWS
 * Cisco
 * Rubrik
-* NetApp
 * Kubernetes
-* AWS
+* NetApp
 
-The Documentation Center MUST feel:
+PHASE 9 — VALIDATION & QA
 
-* enterprise-grade
-* operationally useful
-* visually synchronized with the platform
-* interactive and professional
+Run:
 
-Architecture documentation MUST explain:
+* npm run lint
+* npm run typecheck
+* npm run build
+* npm run test
 
-* ECS flow
-* worker-thread systems
-* synchronization architecture
-* rendering architecture
-* scalability strategy
-* deterministic simulation constraints
-* infrastructure generation systems
-* state authority flow
+Run:
 
-Update CHANGELOG.md with:
+* gameplay validation
+* progression validation
+* onboarding validation
+* UI validation
+* rendering validation
+* ECS validation
+* multiplayer validation
+* performance validation
+* memory validation
+* regression validation
 
-* new systems
-* architecture changes
-* rendering upgrades
-* operational changes
-* UI/UX upgrades
-* optimizations
-* bug fixes
-* deprecated systems
+Fix ALL:
 
-Generate:
-documentation_update_report_day_${DAY}.md
+* warnings
+* lint issues
+* type issues
+* build issues
+* unstable tests
+* flaky systems
+* broken progression
+* UI inconsistencies
+* architecture regressions
 
-The report MUST include:
-
-* updated documentation files
-* newly created documentation
-* removed outdated sections
-* updated workflows
-* updated architecture sections
-* synchronized systems
-* remaining documentation gaps
-
-IMPORTANT:
-Documentation updates MUST appear in git diff output.
-
-If documentation files were not significantly modified:
-the task is considered INCOMPLETE.
-
-PHASE 7 — IMPLEMENTATION REPORT
-
-After completion:
+PHASE 10 — FINAL REPORTS
 
 Generate:
-implementation_report_day_${DAY}.md
 
-IMPORTANT:
-Write the report in:
-simple human-understandable language.
+* implementation_report.md
+* architecture_audit.md
+* gameplay_refinement_report.md
+* technical_debt_report.md
+* performance_report.md
+* scalability_report.md
+* security_audit_report.md
+* production_readiness_report.md
+
+Reports MUST use:
+simple human-readable language.
 
 Avoid:
+AI filler text.
 
-* vague wording
-* overly academic explanations
-* generic AI filler text
-
-The report MUST include:
-
-* implementation summary
-* architectural impact
-* scalability impact
-* rendering impact
-* ECS impact
-* synchronization impact
-* operational realism improvements
-* performance notes
-* risks addressed
-* validation summary
-
-PHASE 8 — FINAL EXECUTION VALIDATION
+PHASE 11 — FINAL VALIDATION
 
 Before git operations:
 
 Re-verify:
 
-* architecture integrity
-* ECS determinism
-* worker-thread correctness
-* synchronization stability
-* rendering consistency
+* gameplay quality
+* onboarding quality
+* mission pacing
 * operational realism
+* ECS determinism
 * scalability
-* infrastructure authenticity
-* documentation synchronization
-* UI/UX consistency
+* rendering consistency
+* memory stability
+* synchronization correctness
+* multiplayer readiness
+* documentation consistency
+* architecture consistency
 
 Ensure:
+the repository feels:
+stable, polished, maintainable, scalable, immersive, and production-ready.
 
-* no partial systems remain
-* no stale documentation exists
-* no fake implementations exist
-* no broken abstractions exist
-
-PHASE 9 — GIT OPERATIONS
+PHASE 12 — GIT OPERATIONS
 
 ONLY AFTER:
-
-* implementation completes
-* validation passes
-* documentation is synchronized
-* architecture verification completes
-* tests pass
-* build passes
-* typecheck passes
-* lint passes
+everything passes successfully.
 
 Execute:
 
 git add .
 
-git commit -m "Version2 | Day ${DAY} | auto-completed implementation for Day ${DAY} (objective)"
+git commit -m "Enterprise Stabilization & Productization Pass"
 
 git push
 
-DO NOT skip verification before commit/push.
-
-PHASE 10 — FINAL OUTPUT
-
-After everything is complete:
+PHASE 13 — FINAL OUTPUT
 
 Provide:
 
-1. concise implementation summary
-2. architectural impact summary
-3. scalability/performance notes
-4. operational realism improvements
-5. documentation synchronization summary
-6. step-by-step manual verification steps
+1. cleanup summary
+2. architecture improvements
+3. gameplay refinement summary
+4. onboarding improvements
+5. UX improvements
+6. performance improvements
+7. security improvements
+8. technical debt reductions
+9. scalability improvements
+10. operational realism improvements
+11. documentation synchronization summary
+12. remaining future risks
+13. manual verification steps
 
-Manual verification steps MUST:
+Manual verification MUST allow validating:
 
-* be easy to follow
-* visually validate functionality
-* validate operational behavior
-* validate infrastructure realism
-* validate rendering consistency
-* validate synchronization correctness
-* validate no regressions occurred
+* gameplay progression
+* onboarding flow
+* mission flow
+* infrastructure realism
+* operational realism
+* UI consistency
+* rendering consistency
+* simulation stability
+* performance stability
+* multiplayer readiness
 
 FINAL GOAL
 
-The implementation must move Infra-Tycoon closer to:
-a believable enterprise datacenter operational digital twin platform.
+Infra-Tycoon should feel like:
+
+a polished enterprise-grade hyperscaler operations simulator that users can learn, enjoy, understand, and progress through from start to end.
 
 NOT:
-
-* a decorative infrastructure game
-* a disconnected simulation sandbox
-* a prototype rendering demo
-* a collection of unrelated systems
-
-The final repository should feel:
-
-* enterprise-grade
-* scalable
-* deterministic
-* architecturally consistent
-* operationally authentic
-* professionally documented
-* multiplayer-ready
-* infrastructure-realistic
+an experimental feature sandbox or disconnected prototype collection.

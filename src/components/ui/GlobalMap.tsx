@@ -69,7 +69,7 @@ export function GlobalMap() {
 
   useEffect(() => {
     if (!isOpen) {
-      setScale(1) // reset scale on close
+      setTimeout(() => setScale(1), 0) // reset scale on close
       return
     }
     const timer = setInterval(() => setTime(new Date()), 1000)
