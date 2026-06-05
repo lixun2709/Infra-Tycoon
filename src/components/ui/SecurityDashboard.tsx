@@ -14,7 +14,8 @@ import {
   Search,
   Radar,
   RadioTower,
-  Cpu
+  Cpu,
+  Globe
 } from 'lucide-react'
 import { Modal, Card, Badge, Button, Tabs, type TabItem } from './base'
 
@@ -32,7 +33,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
     triggerRansomwareSimulation 
   } = useInfraStore()
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'nodes'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'intel' | 'nodes'>('overview')
   const [searchQuery, setSearchQuery] = useState('')
 
   // Filter for servers and storage
@@ -61,6 +62,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'THREAT LANDSCAPE', icon: <Radar size={14} /> },
+    { id: 'intel', label: 'GLOBAL OSINT', icon: <Globe size={14} /> },
     { id: 'nodes', label: 'ASSET MITIGATION', icon: <Server size={14} /> }
   ]
 
@@ -286,6 +288,59 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
                 </Card>
               </div>
 
+            </div>
+          )}
+
+          {activeTab === 'intel' && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <Card className="col-span-2 p-5 border-slate-700/50 bg-[#0a0f18]">
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <Globe size={14} className="text-cyan-400" /> Active Threat Intelligence (OSINT)
+                  </h3>
+                  <div className="space-y-3 font-mono text-xs">
+                    <div className="flex items-center gap-4 bg-slate-900 p-3 rounded border border-slate-800">
+                      <Badge variant="error" className="animate-pulse">CRITICAL</Badge>
+                      <span className="text-red-400 font-bold">CVE-2026-9921</span>
+                      <span className="text-slate-400">Zero-day RCE in ESXi v8.x</span>
+                      <span className="text-slate-600 ml-auto">2m ago</span>
+                    </div>
+                    <div className="flex items-center gap-4 bg-slate-900 p-3 rounded border border-slate-800">
+                      <Badge variant="warning">HIGH</Badge>
+                      <span className="text-yellow-400 font-bold">APT-44</span>
+                      <span className="text-slate-400">Targeting North American Datacenters</span>
+                      <span className="text-slate-600 ml-auto">14m ago</span>
+                    </div>
+                    <div className="flex items-center gap-4 bg-slate-900 p-3 rounded border border-slate-800">
+                      <Badge variant="info">INFO</Badge>
+                      <span className="text-cyan-400 font-bold">Botnet Activity</span>
+                      <span className="text-slate-400">DDoS precursor traffic detected at Edge</span>
+                      <span className="text-slate-600 ml-auto">1h ago</span>
+                    </div>
+                    <div className="flex items-center gap-4 bg-slate-900 p-3 rounded border border-slate-800">
+                      <Badge variant="warning">HIGH</Badge>
+                      <span className="text-yellow-400 font-bold">CVE-2026-8102</span>
+                      <span className="text-slate-400">Palo Alto VPN bypass</span>
+                      <span className="text-slate-600 ml-auto">3h ago</span>
+                    </div>
+                  </div>
+                </Card>
+                <Card className="p-5 border-slate-700/50 bg-[#0a0f18]">
+                  <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2 mb-4">
+                    <ShieldAlert size={14} className="text-rose-400" /> IPS/IDS Logs
+                  </h3>
+                  <div className="space-y-2 font-mono text-[10px] text-slate-500">
+                    <div className="flex justify-between"><span className="text-red-400">DROP</span><span>TCP 445 (SMB)</span></div>
+                    <div className="flex justify-between"><span className="text-emerald-400">ALLOW</span><span>TCP 443 (HTTPS)</span></div>
+                    <div className="flex justify-between"><span className="text-red-400">DROP</span><span>UDP 53 (DNS Amp)</span></div>
+                    <div className="flex justify-between"><span className="text-red-400">DROP</span><span>TCP 22 (SSH Brute)</span></div>
+                    <div className="flex justify-between"><span className="text-emerald-400">ALLOW</span><span>TCP 80 (HTTP)</span></div>
+                    <div className="flex justify-between"><span className="text-emerald-400">ALLOW</span><span>TCP 443 (HTTPS)</span></div>
+                    <div className="flex justify-between"><span className="text-red-400">DROP</span><span>ICMP (Ping Flood)</span></div>
+                    <div className="flex justify-between"><span className="text-red-400">DROP</span><span>TCP 3389 (RDP)</span></div>
+                  </div>
+                </Card>
+              </div>
             </div>
           )}
 

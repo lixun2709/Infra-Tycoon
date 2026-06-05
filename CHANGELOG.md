@@ -1,6 +1,14 @@
 # Changelog
 
 ### [Unreleased]
+- Day 26: **SOC & Automation Dashboard Overhaul**
+  - Redesigned the Automation panel into a fully-featured CI/CD and Infrastructure-as-Code (IaC) pipeline visualizer.
+  - Upgraded Security Operations Center (SOC) panel with a Global OSINT Threat Intelligence feed and IPS/IDS analytics logs.
+  - Wrapped both dashboards in enterprise-grade draggable `Modal` components to prevent layout overlap with peripheral telemetry.
+- Day 25: **Facility & HVAC Management**
+  - Implemented real-time datacenter thermal telemetry and physical containment (Cold Aisle / Hot Aisle) purchasing mechanisms.
+- Day 24: **Disaster Recovery (DRaaS)**
+  - Implemented cross-site backup and bare-metal Ransomware recovery operations.
 - Day 21: **Enterprise Security Operations Center (SOC)**
   - Interactive SOC Dashboard to visualize datacenter threat landscape.
   - Mitigate ransomware lateral propagation using active GUI controls.
