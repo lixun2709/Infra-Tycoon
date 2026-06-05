@@ -133,7 +133,36 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         evaluate: (state) => state.nodes.some(n => n.catalogKey === 'LIQUID_CDU')
       }
     ]
+  },
+  m5: {
+    id: 'm5',
+    title: 'Infrastructure Operations OS',
+    description: 'Use the new enterprise Terminal shell to bootstrap bare-metal nodes.',
+    rewardText: 'Infrastructure Operations Console Mastery',
+    rewardCash: 15000,
+    rewardXp: 1500,
+    objectives: [
+      {
+        id: 'm5_obj1',
+        label: 'BMC Initialization',
+        description: 'Open the console and run `poweron` to initialize a node.',
+        evaluate: (state) => state.nodes.some(n => n.type === 'compute' && n.systemState === 'running')
+      },
+      {
+        id: 'm5_obj2',
+        label: 'Node Identity',
+        description: 'Set a hostname using the `hostname` command in the shell.',
+        evaluate: (state) => state.nodes.some(n => !!n.hostname)
+      },
+      {
+        id: 'm5_obj3',
+        label: 'Network Bootstrap',
+        description: 'Configure a management interface using `ip setup`.',
+        evaluate: (state) => state.nodes.some(n => !!n.managementIP)
+      }
+    ]
   }
 }
 
-export const MISSION_ORDER = ['m1', 'm2', 'm3', 'm4']
+export const MISSION_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5']
+

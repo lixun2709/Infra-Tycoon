@@ -1,11 +1,6 @@
 import type { InfraState } from '../infraStoreTypes'
 import type { TerminalSession, TerminalPane, TerminalStateRecord } from '../terminalTypes'
 import type { InfraNode } from '../infraTypes'
-import { TECHNICAL_MANUALS } from '../../physics/Manuals'
-import { performanceMonitor } from '../../simulation/PerformanceMonitor'
-import { PrometheusExporter } from '../../simulation/observability/PrometheusExporter'
-import { ObservabilityTracer } from '../../simulation/observability/ObservabilityTracer'
-import { ObservabilityAlerting } from '../../simulation/observability/ObservabilityAlerting'
 
 export type CommandAuthority = 'READ_ONLY' | 'OPERATIONAL' | 'SIMULATION_CRITICAL'
 

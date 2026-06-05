@@ -12,7 +12,7 @@ export interface SimulationSlice {
   initializeSimulation: () => void
   handleWorkerOutput: (payload: SimSyncOutputPayload) => void
   getSimulationTelemetry: () => SimTelemetryPayload | null
-  sendTerminalCommand: (payload: any) => void
+  sendTerminalCommand: (payload: unknown) => void
 }
 
 export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationSlice> = (set, get) => ({

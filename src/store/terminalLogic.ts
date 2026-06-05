@@ -17,10 +17,7 @@ export function handleCommand(
   
   const activeSession = siteState.sessions.find(s => s.id === siteState.activeSessionId)
   if (!activeSession) return
-  const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId) || activeSession.panes[0]
-  if (!activePane) return
-
-  const { nodes, updateNode, dnsRecords } = get()
+  const { nodes } = get()
   
   // --- 1. ALIAS SUBSTITUTION ---
   let processedCmd = text.trim()
@@ -45,9 +42,9 @@ export function handleCommand(
   const cmdLower = (args[0] || "").toLowerCase()
 
   const output: string[] = [] 
-  let newContext = { ...activePane.context }
-  let newCwd = activePane.cwd
-  let forceClear = { value: false }
+  const newContext = { ...activePane.context }
+  const newCwd = activePane.cwd
+  const forceClear = { value: false }
 
   // --- 5. CORE COMMAND LOGIC ---
   const targetNode = nodes.find(n => n.id === newContext.targetId)

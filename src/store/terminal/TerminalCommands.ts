@@ -1,10 +1,9 @@
-import { registerCommand } from './CommandRegistry'
+import { registerCommand, COMMAND_REGISTRY } from './CommandRegistry'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import { PrometheusExporter } from '../../simulation/observability/PrometheusExporter'
 import { ObservabilityTracer } from '../../simulation/observability/ObservabilityTracer'
 import { ObservabilityAlerting } from '../../simulation/observability/ObservabilityAlerting'
-import type { TerminalSession, TerminalPane } from '../terminalTypes'
 
 export function initializeTerminalCommands() {
   registerCommand({
@@ -148,7 +147,7 @@ export function initializeTerminalCommands() {
     name: 'ip',
     authority: 'OPERATIONAL',
     description: 'Show / manipulate routing, networking devices, interfaces and tunnels.',
-    execute: ({ args, newContext, targetNode, get, set, output }) => {
+    execute: ({ args, newContext, targetNode, get, output }) => {
       if (args[1] === 'setup') {
         const [,,ip, gw, dns] = args
         if (newContext.mode === 'ssh' && targetNode) {
@@ -192,7 +191,7 @@ export function initializeTerminalCommands() {
     name: 'export',
     authority: 'OPERATIONAL',
     description: 'Set environment variables.',
-    execute: ({ args, siteState, siteId, set, output }) => {
+    execute: ({ args, siteState, output, _set, siteId }) => {
       const expr = args[1]
       if (!expr) {
         Object.entries(siteState.envVars).forEach(([k, v]) => output.push(`${k}=${v}`))
