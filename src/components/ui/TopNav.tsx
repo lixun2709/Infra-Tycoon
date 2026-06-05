@@ -4,8 +4,8 @@ import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
-import { 
-  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server
+import {
+  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server, Wind
 } from 'lucide-react'
 
 interface TopNavProps {
@@ -31,6 +31,10 @@ interface TopNavProps {
   onToggleFleet?: () => void
   isLoadBalancerOpen?: boolean
   onToggleLoadBalancer?: () => void
+  isBackupOpen?: boolean
+  onToggleBackup?: () => void
+  isFacilityOpen?: boolean
+  onToggleFacility?: () => void
 }
 
 export function TopNav({ 
@@ -55,7 +59,11 @@ export function TopNav({
   isFleetDashboardOpen,
   onToggleFleet,
   isLoadBalancerOpen,
-  onToggleLoadBalancer
+  onToggleLoadBalancer,
+  isBackupOpen,
+  onToggleBackup,
+  isFacilityOpen,
+  onToggleFacility
 }: TopNavProps) {
   const { 
     currentSiteId, 
@@ -248,6 +256,8 @@ export function TopNav({
               { id: 'global_map', label: 'MAP', icon: <Globe className="w-4 h-4" />, onClick: onToggleGlobalMap },
               { id: 'fleet', label: 'FLEET & FIRMWARE', icon: <Server className="w-4 h-4" />, active: isFleetDashboardOpen, onClick: onToggleFleet },
               { id: 'load_balancer', label: 'ADC & EDGE', icon: <Network className="w-4 h-4" />, active: isLoadBalancerOpen, onClick: onToggleLoadBalancer },
+              { id: 'backup', label: 'BACKUP & DR', icon: <Database className="w-4 h-4" />, active: isBackupOpen, onClick: onToggleBackup },
+              { id: 'facility', label: 'FACILITY & HVAC', icon: <Wind className="w-4 h-4" />, active: isFacilityOpen, onClick: onToggleFacility },
               { id: 'security', label: 'SECURITY SOC', icon: <ShieldAlert className="w-4 h-4" />, active: isSecurityOpen, onClick: onToggleSecurity },
               { id: 'automation', label: 'AUTOMATION', icon: <Activity className="w-4 h-4" />, active: isAutomationOpen, onClick: onToggleAutomation },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },

@@ -12,9 +12,6 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
   const loadBalancers = useMemo(() => nodes.filter(n => n.type === 'load_balancer'), [nodes])
   const edgeNodes = useMemo(() => nodes.filter(n => n.type === 'edge_cache'), [nodes])
 
-  // Get unassigned apps vs assigned
-  const unassignedApps = useMemo(() => applications.filter(a => !a.loadBalancerId && a.status === 'running'), [applications])
-  
   const handleAssignLB = (appId: string, lbId: string) => {
     // For simplicity, auto-assign the app's current compute node as the first target
     // In a full implementation, you'd select multiple targets.
@@ -116,8 +113,7 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
                       </div>
                       <div className="text-xs text-slate-500 font-mono mb-3">ID: {lb.id.slice(0, 8)}</div>
                       <Button 
-                        variant={isActiveForApp ? 'success' : 'primary'}
-                        size="sm"
+                        variant={isActiveForApp ? 'ghost' : 'primary'}
                         className="w-full text-xs font-bold"
                         onClick={() => handleAssignLB(selectedApp, lb.id)}
                         disabled={isActiveForApp}

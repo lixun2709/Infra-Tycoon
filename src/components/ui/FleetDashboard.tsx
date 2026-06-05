@@ -2,16 +2,12 @@ import { useState, useMemo } from 'react'
 import { Modal, Card, Button } from './base'
 import { Server, ShieldAlert, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
-
 export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
-  const nodes = useInfraStore(s => s.nodes)
-  const globalTargetFirmware = useInfraStore(s => s.globalTargetFirmware)
-  const setGlobalTargetFirmware = useInfraStore(s => s.setGlobalTargetFirmware)
-  const triggerFirmwareUpgrade = useInfraStore(s => s.triggerFirmwareUpgrade)
+  const { nodes, globalTargetFirmware, triggerFirmwareUpgrade } = useInfraStore()
 
   const [targetVersionInput, setTargetVersionInput] = useState(globalTargetFirmware)
 
-  const hardwareNodes = useMemo(() => nodes.filter(n => n.type === 'compute' || n.type === 'storage' || n.type === 'switch'), [nodes])
+  const hardwareNodes = useMemo(() => nodes.filter(n => n.type === 'compute' || n.type === 'storage' || n.type === 'network' || n.type === 'load_balancer'), [nodes])
 
   const outdatedNodes = useMemo(() => hardwareNodes.filter(n => n.firmwareVersion !== globalTargetFirmware), [hardwareNodes, globalTargetFirmware])
   
@@ -21,7 +17,7 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
 
   const handleUpdateGlobalTarget = () => {
     if (targetVersionInput.trim() !== '') {
-      setGlobalTargetFirmware(targetVersionInput.trim())
+      useInfraStore.setState({ globalTargetFirmware: targetVersionInput.trim() })
     }
   }
 
@@ -75,7 +71,7 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
         <div className="flex justify-between items-center mb-4 px-2">
           <h3 className="font-bold text-slate-300">Outdated Hardware List</h3>
           <Button 
-            variant={outdatedNodes.length > 0 ? 'warning' : 'outline'} 
+            variant={outdatedNodes.length > 0 ? 'primary' : 'ghost'} 
             disabled={outdatedNodes.length === 0}
             onClick={handleDeployAll}
             className="flex items-center space-x-2"
@@ -105,7 +101,7 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
                     <div className="text-xs text-orange-400 font-mono">Current: {node.firmwareVersion || 'Unknown'}</div>
                     <div className="text-xs text-green-400 font-mono">Target: {globalTargetFirmware}</div>
                   </div>
-                  <Button size="sm" variant="outline" onClick={() => triggerFirmwareUpgrade([node.id])} disabled={node.isFlashing || node.maintenanceMode}>
+                  <Button variant="ghost" onClick={() => triggerFirmwareUpgrade([node.id])} disabled={node.isFlashing || node.maintenanceMode}>
                     {node.isFlashing ? 'Flashing...' : 'Update'}
                   </Button>
                 </div>
@@ -118,7 +114,7 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
   )
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Fleet Hardware Management" size="lg">
+    <Modal isOpen={isOpen} onClose={onClose} title="Fleet Firmware Management" icon={<Server size={24} className="text-white" />}>
       <div className="p-4 h-[600px] flex flex-col">
         {renderContent()}
       </div>

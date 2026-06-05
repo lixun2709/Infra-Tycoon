@@ -411,6 +411,34 @@ export const HARDWARE_CATALOG = {
     ],
   },
 
+  // --- COOLING EXPANSION ---
+  INROW_CRAC_42U: {
+    name: 'In-Row CRAC (42U)',
+    uHeight: 42,
+    wattage: 5000,
+    type: 'cooling',
+    color: '#0ea5e9',
+    purchasePrice: 15000,
+    storageTB: 0,
+    useCase: 'Advanced localized cooling for high-density aisles.',
+    btuOutput: -120000,
+    minLevel: 5,
+    portLayout: [{ type: 'power', count: 2, labelPrefix: 'pwr' }]
+  },
+  CHILLED_DOOR_AQUARIUS: {
+    name: 'Chilled Door H/X',
+    uHeight: 4, // Attaches to rear, simulating small U usage
+    wattage: 1000,
+    type: 'cooling',
+    color: '#0284c7',
+    purchasePrice: 28000,
+    storageTB: 0,
+    useCase: 'Rear-door heat exchanger. Massive localized cooling for AI clusters.',
+    btuOutput: -250000,
+    minLevel: 6,
+    portLayout: [{ type: 'power', count: 1, labelPrefix: 'pwr' }]
+  },
+
   // --- BASE ---
   RACK_42U: {
     name: 'Server Rack (42U)',

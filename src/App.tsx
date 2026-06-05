@@ -18,6 +18,8 @@ import { AutomationDashboard } from './components/ui/AutomationDashboard'
 import { SecurityDashboard } from './components/ui/SecurityDashboard'
 import { FleetDashboard } from './components/ui/FleetDashboard'
 import { LoadBalancerDashboard } from './components/ui/LoadBalancerDashboard'
+import { BackupDashboard } from './components/ui/BackupDashboard'
+import { FacilityDashboard } from './components/ui/FacilityDashboard'
 
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
@@ -49,6 +51,8 @@ function App() {
   const [isSecurityOpen, setIsSecurityOpen] = useState(false)
   const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
   const [isLoadBalancerOpen, setIsLoadBalancerOpen] = useState(false)
+  const [isBackupOpen, setIsBackupOpen] = useState(false)
+  const [isFacilityOpen, setIsFacilityOpen] = useState(false)
   
   const nodes = useInfraStore(s => s.nodes)
   const balance = useInfraStore(s => s.balance)
@@ -229,6 +233,10 @@ function App() {
         onToggleFleet={() => setIsFleetDashboardOpen(!isFleetDashboardOpen)}
         isLoadBalancerOpen={isLoadBalancerOpen}
         onToggleLoadBalancer={() => setIsLoadBalancerOpen(!isLoadBalancerOpen)}
+        isBackupOpen={isBackupOpen}
+        onToggleBackup={() => setIsBackupOpen(!isBackupOpen)}
+        isFacilityOpen={isFacilityOpen}
+        onToggleFacility={() => setIsFacilityOpen(!isFacilityOpen)}
       />
 
       {isSaveManagerOpen && (
@@ -250,9 +258,19 @@ function App() {
         onClose={() => setIsFleetDashboardOpen(false)}
       />
 
-      <LoadBalancerDashboard
+      <LoadBalancerDashboard 
         isOpen={isLoadBalancerOpen}
         onClose={() => setIsLoadBalancerOpen(false)}
+      />
+
+      <BackupDashboard
+        isOpen={isBackupOpen}
+        onClose={() => setIsBackupOpen(false)}
+      />
+
+      <FacilityDashboard
+        isOpen={isFacilityOpen}
+        onClose={() => setIsFacilityOpen(false)}
       />
 
       {isStorageDashboardOpen && (

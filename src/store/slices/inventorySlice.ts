@@ -24,6 +24,10 @@ export interface InventorySlice {
   toggleMicrosegmentation: (id: string, enabled: boolean) => void
   triggerRansomwareSimulation: () => void
   triggerDRDrill: (siteId?: string, severity?: 'low' | 'high') => void
+  triggerBackup: (nodeId: string) => void
+  triggerGlobalBackup: () => void
+  restoreFromBackup: (nodeId: string) => void
+  upgradeRackContainment: (rackId: string, containment: 'none' | 'cold_aisle' | 'hot_aisle') => void
 }
 
 export const createInventorySlice: StateCreator<InfraState, [], [], InventorySlice> = (set, get) => ({
@@ -332,5 +336,68 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
     pushAlert('warning', `DR Drill Initiated: Power cut to ${numToFail} nodes. SLA RTO evaluation active.`)
     audioManager.playEffect('alert')
+  },
+
+  triggerBackup: (nodeId: string) => {
+    const { updateNode, pushAlert } = get()
+    updateNode(nodeId, { backupStatus: 'unprotected' })
+    pushAlert('info', `Backup job queued for node.`)
+  },
+
+  triggerGlobalBackup: () => {
+    const { nodes, updateNode, pushAlert } = get()
+    let count = 0
+    nodes.forEach(n => {
+      if ((n.type === 'compute' || n.type === 'storage') && n.systemState === 'running') {
+        updateNode(n.id, { backupStatus: 'unprotected' })
+        count++
+      }
+    })
+    pushAlert('info', `Global Backup initiated for ${count} nodes.`)
+    audioManager.playEffect('success')
+  },
+
+  restoreFromBackup: (nodeId: string) => {
+    const { nodes, updateNode, pushAlert } = get()
+    const node = nodes.find(n => n.id === nodeId)
+    if (!node) return
+
+    if (node.backupStatus !== 'protected') {
+      pushAlert('critical', `Restore failed. Node has no protected snapshot.`)
+      return
+    }
+
+    // Perform disaster recovery restore
+    updateNode(nodeId, {
+      infectionState: 'clean',
+      corruptionState: 'clean',
+      isIsolated: false,
+      isBlackholed: false,
+      systemState: 'booting',
+      bootProgress: 0,
+      provisioningState: 'provisioned' // Bypass patching/bootstrap if it was fully provisioned
+    })
+
+    pushAlert('info', `Disaster Recovery successful for node ${node.name}. Restoring from snapshot...`)
+    audioManager.playEffect('success')
+  },
+
+  upgradeRackContainment: (rackId: string, containment: 'none' | 'cold_aisle' | 'hot_aisle') => {
+    const { nodes, updateNode, balance, pushAlert } = get()
+    const node = nodes.find(n => n.id === rackId)
+    if (!node || node.type !== 'rack') return
+    
+    // Day 25 Pricing
+    const cost = containment === 'cold_aisle' ? 5000 : 8000
+    
+    if (balance < cost) {
+      pushAlert('critical', `Insufficient funds for containment upgrade. Need $${cost}.`)
+      return
+    }
+    
+    set({ balance: balance - cost })
+    updateNode(rackId, { containmentType: containment })
+    pushAlert('info', `Rack ${node.name} upgraded to ${containment === 'cold_aisle' ? 'Cold Aisle' : 'Hot Aisle'} Containment!`)
+    audioManager.playEffect('click')
   }
 })

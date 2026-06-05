@@ -275,7 +275,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
                     />
                   </div>
                   <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     className="w-full h-8 text-[10px] tracking-widest font-black uppercase border-indigo-500 text-indigo-400 hover:bg-indigo-950/50"
                     onClick={handleGlobalLockdown}
                     disabled={stats.exposed === 0 && stats.infected === 0 && stats.encrypting === 0}
@@ -338,16 +338,16 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant={node.microsegmentationEnabled ? 'primary' : 'ghost'} onClick={() => toggleMicrosegmentation(node.id, !node.microsegmentationEnabled)} icon={<ShieldCheck size={14} />} className={`h-8 text-[10px] font-black tracking-widest ${node.microsegmentationEnabled ? 'bg-blue-600/20 text-blue-400 border-blue-500/50 hover:bg-blue-600/30' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200 border-slate-700'}`}>
+                          <Button variant={node.microsegmentationEnabled ? 'primary' : 'ghost'} onClick={() => toggleMicrosegmentation(node.id, !node.microsegmentationEnabled)} icon={<ShieldCheck size={14} />} className={`h-8 text-[10px] font-black tracking-widest ${node.microsegmentationEnabled ? 'bg-blue-600/20 text-blue-400 border-blue-500/50 hover:bg-blue-600/30' : 'bg-slate-800/50 text-slate-400 hover:text-slate-200 border-slate-700'}`}>
                             MICROSEG
                           </Button>
 
-                          <Button size="sm" variant="ghost" onClick={() => isolateNode(node.id)} disabled={node.isIsolated} icon={<WifiOff size={14} />} className={`h-8 text-[10px] font-black tracking-widest ${node.isIsolated ? 'opacity-40 cursor-not-allowed bg-indigo-950 text-indigo-500 border-indigo-900' : 'hover:bg-indigo-500/20 hover:text-indigo-400 border-slate-700 text-slate-300 hover:border-indigo-500/50'}`}>
+                          <Button variant="ghost" onClick={() => isolateNode(node.id)} disabled={node.isIsolated} icon={<WifiOff size={14} />} className={`h-8 text-[10px] font-black tracking-widest ${node.isIsolated ? 'opacity-40 cursor-not-allowed bg-indigo-950 text-indigo-500 border-indigo-900' : 'hover:bg-indigo-500/20 hover:text-indigo-400 border-slate-700 text-slate-300 hover:border-indigo-500/50'}`}>
                             {node.isIsolated ? 'ISOLATED' : 'ISOLATE'}
                           </Button>
 
                           {isCritical && (
-                            <Button size="sm" variant={node.isIsolated ? 'primary' : 'ghost'} onClick={() => formatNode(node.id)} icon={<TerminalSquare size={14} />} className="h-8 text-[10px] font-black tracking-widest ml-2 border-red-500/50">
+                            <Button variant="ghost" onClick={() => formatNode(node.id)} icon={<TerminalSquare size={14} />} className="h-8 text-[10px] font-black tracking-widest ml-2 border-red-500/50">
                               FORMAT DRIVE
                             </Button>
                           )}

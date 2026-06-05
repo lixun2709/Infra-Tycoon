@@ -107,6 +107,8 @@ export interface ApplicationComponent extends Component {
   aiEpochs?: number
   aiFlopsDelivered?: number
   aiStatus?: 'training' | 'stalled' | 'completed'
+  loadBalancerId?: string
+  targetGroupIds?: string[]
 }
 
 // Storage Component: Physical array configuration, RAID status, and IOPS loading

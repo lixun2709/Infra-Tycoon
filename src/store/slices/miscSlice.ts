@@ -154,7 +154,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       set(state => ({
         nodes: state.nodes.map(n => nodeIds.includes(n.id) ? { ...n, isFlashing: false, maintenanceMode: false, firmwareVersion: globalTargetFirmware } : n)
       }))
-      get().pushAlert('success', `Firmware Upgrade Complete: ${nodeIds.length} nodes successfully flashed to ${globalTargetFirmware}.`)
+      get().pushAlert('info', `Firmware Upgrade Complete: ${nodeIds.length} nodes successfully flashed to ${globalTargetFirmware}.`)
     }, 15000)
   },
 

@@ -214,6 +214,9 @@ export type InfraState = {
   toggleMicrosegmentation: (id: string, enabled: boolean) => void
   triggerRansomwareSimulation: () => void
   triggerDRDrill: (siteId?: string, severity?: 'low' | 'high') => void
+  triggerBackup: (nodeId: string) => void
+  triggerGlobalBackup: () => void
+  restoreFromBackup: (nodeId: string) => void
   
   // Day 7: Logical Networking
   verifyService: (nodeId: string, type: ServiceType) => boolean
