@@ -190,6 +190,11 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
           updatedPolicies = [...updatedPolicies]
           updatedPolicies[idx] = { ...updatedPolicies[idx], lastFiredAt: fired.firedAt } as import('../infraTypes').AutomationPolicy
           changed = true
+
+          // Intercept specific actions that require store-level side effects
+          if (updatedPolicies[idx].actionType === 'auto_dispatch_smart_hands' && fired.nodeId) {
+            get().repairHardware(fired.nodeId)
+          }
         }
       })
       if (changed) {

@@ -1,6 +1,7 @@
 # Changelog
 
 ### [Unreleased]
+- Day 30: **ITSM Auto-Remediation & Escalation Policies**: Players can now configure Automation Policies to automatically dispatch Smart Hands technicians ($1,500 fee) upon hardware failure, reducing micromanagement at hyperscale.
 - Day 29: **Customer Contract SLA Penalties**: Breaching hardware repair SLAs now inflicts severe monthly OpEx fines and Reputation damage.
 - Day 28: **ITSM Service Desk Architecture**: Introduced ITIL-compliant tracking for hardware failures, SLA metrics, and a Kanban board for dispatching Smart Hands.
 - Day 27: **Multi-Cloud Bursting Architecture**

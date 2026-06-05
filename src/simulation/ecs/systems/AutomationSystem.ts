@@ -5,7 +5,7 @@ import type { ThermalComponent, TransformComponent, PowerComponent } from '../ty
 
 export class AutomationSystem extends System {
   private policies: AutomationPolicy[] = []
-  private firedPolicies: { id: string, firedAt: number }[] = []
+  private firedPolicies: { id: string, firedAt: number, nodeId?: string }[] = []
 
   constructor(world: World) {
     super(world)
@@ -46,6 +46,10 @@ export class AutomationSystem extends System {
           }
         } else if (policy.conditionType === 'health_degraded') {
           if (transform.healthStatus === 'degraded' || transform.healthStatus === 'failed') {
+            conditionMet = true
+          }
+        } else if (policy.conditionType === 'hardware_failure') {
+          if (transform.healthStatus === 'failed' || transform.isBlackholed) {
             conditionMet = true
           }
         } else if (policy.conditionType === 'power_loss') {
@@ -99,10 +103,13 @@ export class AutomationSystem extends System {
         message: `[AUTOMATION] Policy '${policy.name}' threshold reached on ${nodeName}.`,
         nodeId
       })
+    } else if (policy.actionType === 'auto_dispatch_smart_hands') {
+      actionTaken = true
+      // Event logic handled in store via payload syncing
     }
 
     if (actionTaken) {
-      this.firedPolicies.push({ id: policy.id, firedAt: now })
+      this.firedPolicies.push({ id: policy.id, firedAt: now, nodeId })
       policy.lastFiredAt = now // Update local reference immediately to prevent multiple triggers in same tick
     }
   }

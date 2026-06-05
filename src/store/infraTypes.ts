@@ -41,11 +41,13 @@ export type AutomationConditionType =
   | 'power_loss'
   | 'cpu_above'
   | 'memory_above'
+  | 'hardware_failure'
 
 export type AutomationActionType = 
   | 'reboot_node' 
   | 'shutdown_node' 
   | 'notify_only'
+  | 'auto_dispatch_smart_hands'
 
 export interface AutomationPolicy {
   id: string

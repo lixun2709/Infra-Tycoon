@@ -232,7 +232,7 @@ export interface SimSyncOutputPayload {
   }>
   tickets?: TechnicianTicket[]
   incidents?: Incident[]
-  firedAutomationPolicies?: { id: string, firedAt: number }[]
+  firedAutomationPolicies?: { id: string, firedAt: number, nodeId?: string }[]
 }
 
 export interface SimTelemetryPayload {

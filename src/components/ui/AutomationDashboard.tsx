@@ -124,7 +124,8 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
                     className="w-full bg-slate-950 border border-slate-700 p-2 rounded text-slate-200 outline-none focus:border-cyan-500 font-mono text-xs"
                   >
                     <option value="temp_above">Temperature Above (°C)</option>
-                    <option value="health_degraded">Health Degraded / Failed</option>
+                    <option value="health_degraded">Health Degraded</option>
+                    <option value="hardware_failure">Hardware Failure</option>
                     <option value="power_loss">Power Loss (UPS mode)</option>
                   </select>
                 </div>
@@ -151,6 +152,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
                     <option value="notify_only">Send Notification Only</option>
                     <option value="shutdown_node">Graceful Shutdown</option>
                     <option value="reboot_node">Hard Reboot Node</option>
+                    <option value="auto_dispatch_smart_hands">Auto-Dispatch Smart Hands ($1,500)</option>
                   </select>
                 </div>
               </div>
