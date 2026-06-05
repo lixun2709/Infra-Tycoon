@@ -59,6 +59,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
       title="Infrastructure Automation"
       icon={<Settings size={32} />}
       width="lg"
+      zIndex="z-[150]"
       className="max-w-4xl !bg-slate-950 border-slate-800"
     >
       <div className="w-full bg-slate-900/90 text-slate-300 font-mono p-6 overflow-y-auto space-y-6 flex-1 border border-slate-700/50 rounded-lg shadow-2xl backdrop-blur-xl h-[70vh] custom-scrollbar">

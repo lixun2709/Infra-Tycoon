@@ -240,6 +240,11 @@ function App() {
         onClose={() => setIsSecurityOpen(false)}
       />
 
+      <AutomationDashboard
+        isOpen={isAutomationOpen}
+        onClose={() => setIsAutomationOpen(false)}
+      />
+
       <FleetDashboard 
         isOpen={isFleetDashboardOpen}
         onClose={() => setIsFleetDashboardOpen(false)}

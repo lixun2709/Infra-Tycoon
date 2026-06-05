@@ -128,9 +128,9 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
       onClose={onClose}
       title="SECURITY OPERATIONS CENTER"
       icon={<Fingerprint size={20} className="text-cyan-400" />}
-      width="2xl"
+      width="xl"
       zIndex="z-[150]"
-      headerContent={
+      headerExtra={
         <div className="flex items-center gap-6 ml-4">
            <div className="flex flex-col items-end mr-2">
               <span className="text-[9px] text-slate-500 uppercase tracking-widest">DEFCON Level</span>

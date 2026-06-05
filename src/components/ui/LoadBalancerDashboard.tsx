@@ -136,7 +136,7 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
   )
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="ADC & Edge Delivery" icon={<Globe size={20} className="text-teal-400" />} size="lg" zIndex="z-[150]">
+    <Modal isOpen={isOpen} onClose={onClose} title="ADC & Edge Delivery" icon={<Globe size={20} className="text-teal-400" />} width="lg" zIndex="z-[150]">
       <div className="p-4 h-[600px] flex flex-col">
         {renderContent()}
       </div>
