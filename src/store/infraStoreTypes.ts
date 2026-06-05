@@ -266,6 +266,7 @@ export type InfraState = {
   getSimulationTelemetry: () => SimTelemetryPayload | null
   initializeSimulation: () => void
   handleWorkerOutput: (payload: SimSyncOutputPayload) => void
+  sendTerminalCommand: (payload: any) => void
 
   // v2.0 Management Plane Additions
   isChaosMode: boolean

@@ -371,11 +371,16 @@ export class SimulationWorkerManager {
   private send(type: 'INIT', payload: SimInitPayload): void
   private send(type: 'SYNC_INPUT', payload: SimSyncInputPayload): void
   private send(type: 'TICK', payload: { dt: number }): void
+  private send(type: 'TERMINAL_CMD', payload: any): void
   private send(type: 'PING'): void
   private send(type: string, payload?: unknown) {
     if (this.worker) {
       this.worker.postMessage({ type, payload })
     }
+  }
+
+  public sendTerminalCommand(payload: any) {
+    this.send('TERMINAL_CMD', payload)
   }
 
   private sendTransferable(type: string, payload: unknown) {

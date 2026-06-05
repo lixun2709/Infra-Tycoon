@@ -9,6 +9,7 @@ export type SimMessageType =
   | 'TELEMETRY'
   | 'PING'
   | 'PONG'
+  | 'TERMINAL_CMD'
 
 export interface CompactNode {
   id: string
@@ -259,6 +260,13 @@ export interface SimTelemetryPayload {
   spans?: TraceSpan[]
 }
 
+export interface SimTerminalCmdPayload {
+  action: string
+  targetId?: string
+  siteId?: string
+  args?: string[]
+}
+
 export type SimMessage = 
   | { type: 'INIT'; payload: SimInitPayload }
   | { type: 'SYNC_INPUT'; payload: SimSyncInputPayload }
@@ -266,5 +274,6 @@ export type SimMessage =
   | { type: 'FACILITY_FEED'; payload: { feed: 'A' | 'B'; status: boolean } }
   | { type: 'SYNC_OUTPUT'; payload: SimSyncOutputPayload }
   | { type: 'TELEMETRY'; payload: SimTelemetryPayload }
+  | { type: 'TERMINAL_CMD'; payload: SimTerminalCmdPayload }
   | { type: 'PING'; payload?: undefined }
   | { type: 'PONG'; payload?: undefined }

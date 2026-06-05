@@ -267,6 +267,12 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return () => clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo(0, scrollRef.current.scrollHeight)
+    }
+  })
+
   // Auto-attach to selected node
   useEffect(() => {
     if (selectedNodeId) {

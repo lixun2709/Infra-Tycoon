@@ -87,6 +87,68 @@ function processQueue() {
           })
           break
         }
+
+        case 'TERMINAL_CMD': {
+          const { action, targetId, siteId } = data.payload
+          const world = engine.getWorld()
+          if (action === 'poweron' && targetId) {
+             const power = world.getComponent<PowerComponent>('power', targetId)
+             if (power && !power.breakerTripped) {
+                power.systemState = 'booting'
+                power.isPowered = true
+                const prov = world.getComponent<ProvisioningComponent>('provisioning', targetId)
+                if (prov) {
+                   prov.state = 'bootstrapped'
+                   prov.bootProgress = 0
+                }
+             }
+          } else if (action === 'isolate' && targetId) {
+             const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', targetId)
+             if (security) {
+                security.isIsolated = true
+             }
+             const transform = world.getComponent<TransformComponent>('transform', targetId)
+             if (transform) {
+                transform.isBlackholed = true
+             }
+          } else if (action === 'format' && targetId) {
+             const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', targetId)
+             if (security) {
+                security.infectionState = 'clean'
+                security.infectionProgress = 0
+             }
+             const storage = world.getComponent<StorageComponent>('storage', targetId)
+             if (storage) {
+                storage.usedStorageTB = 0
+                storage.physicalUsedStorageTB = 0
+             }
+          } else if (action === 'dr-drill' && siteId) {
+             import('../ecs/systems/PowerSystem').then(({ PowerSystem }) => {
+                PowerSystem.facilityFeeds.A = false
+                PowerSystem.facilityFeeds.B = false
+             })
+          } else if (action === 'pdu reset' && targetId) {
+             const power = world.getComponent<PowerComponent>('power', targetId)
+             if (power) {
+               power.breakerTripped = false
+               power.overloadSeconds = 0
+             }
+             const rack = world.getComponent<RackComponent>('rack', targetId)
+             if (rack) {
+               rack.status = 'online'
+             }
+          } else if (action === 'ransomware-drill') {
+             const storageNodes = Array.from(world.getComponentMap<StorageComponent>('storage').entries())
+             if (storageNodes.length > 0) {
+                const randomNodeId = storageNodes[Math.floor(Math.random() * storageNodes.length)][0]
+                const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', randomNodeId)
+                if (security) {
+                   security.infectionState = 'infected'
+                }
+             }
+          }
+          break
+        }
       }
     } catch (err) {
       console.error('[[Worker Thread]] Error processing message in FIFO queue:', err)
