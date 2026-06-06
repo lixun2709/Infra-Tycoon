@@ -12,6 +12,7 @@ export interface CommandContext {
   siteState: TerminalStateRecord
   activeSession: TerminalSession
   activePane: TerminalPane
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   newContext: any
   newCwd: string
   targetNode: InfraNode | undefined

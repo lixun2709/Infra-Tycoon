@@ -20,7 +20,7 @@ import type {
 } from '../ecs/types'
 
 const engine = new SimulationEngine()
-console.log('[[Worker Thread]] Simulation Worker Online')
+
 
 // FIFO Command Queue for transaction/state synchronization safety
 const commandQueue: SimMessage[] = []
@@ -63,7 +63,7 @@ function processQueue() {
     try {
       switch (data.type) {
         case 'INIT':
-          console.log('[[Worker Thread]] Processing INIT command')
+
           handleSyncInput(data.payload)
           break
 
@@ -83,7 +83,7 @@ function processQueue() {
           import('../ecs/systems/PowerSystem').then(({ PowerSystem }) => {
             if (feed === 'A') PowerSystem.facilityFeeds.A = status
             if (feed === 'B') PowerSystem.facilityFeeds.B = status
-            console.log(`[[Worker Thread]] Utility Feed ${feed} is now ${status ? 'ONLINE' : 'OFFLINE'}`)
+
           })
           break
         }
@@ -198,17 +198,11 @@ function handleSyncInput(payload: SimInitPayload | SimSyncInputPayload) {
   const currentEntities = world.getEntitiesWith([])
 
   // 3. Reconcile & Prune Leaks: expunge entities missing in the incoming payload
-  let prunedCount = 0
   currentEntities.forEach(id => {
     if (!incomingIds.has(id)) {
       world.removeEntity(id)
-      prunedCount++
     }
   })
-
-  if (prunedCount > 0) {
-    console.log(`[[Worker Thread Reconciler]] Pruned ${prunedCount} deleted entities from simulation.`)
-  }
 
   // 4. Update Node Components (using Granular Diffing to preserve Worker-driven simulation state)
   nodes.forEach(node => {

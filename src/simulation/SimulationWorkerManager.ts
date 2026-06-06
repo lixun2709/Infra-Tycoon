@@ -56,7 +56,7 @@ export class SimulationWorkerManager {
   }
 
   public start() {
-    console.log('[[WorkerManager]] Initializing Simulation Worker...')
+
     this.worker = new Worker(new URL('./worker/simulation.worker.ts', import.meta.url), {
       type: 'module'
     })
@@ -86,7 +86,7 @@ export class SimulationWorkerManager {
       switch (type) {
         case 'PONG':
           this.lastHeartbeatTime = Date.now()
-          if (Math.random() > 0.9) console.log('[[WorkerManager]] Heartbeat PONG received (sampled)')
+
           break
 
         case 'SYNC_OUTPUT': {
@@ -127,7 +127,7 @@ export class SimulationWorkerManager {
       }
 
       this.send('PING')
-      if (Math.random() > 0.9) console.log('[[WorkerManager]] Heartbeat PING sent (sampled)')
+
     }, 2000)
   }
 
@@ -171,7 +171,7 @@ export class SimulationWorkerManager {
     automationPolicies: AutomationPolicy[],
     globalTargetFirmware: string
   ): SimInitPayload {
-    const start = performance.now()
+
     const compactNodes = nodes.map(n => ({
       id: n.id,
       name: n.name || n.hostname || n.id.slice(0, 8),
@@ -303,13 +303,6 @@ export class SimulationWorkerManager {
       automationPolicies,
       globalTargetFirmware
     }
-    const timeMs = performance.now() - start
-    const approxBytes = JSON.stringify(compacted).length
-
-    if (Math.random() > 0.95) {
-      console.log(`[[WorkerManager Telemetry]] Serialization Compaction: ${approxBytes} bytes in ${timeMs.toFixed(3)}ms`)
-    }
-
     return compacted
   }
 
@@ -371,7 +364,7 @@ export class SimulationWorkerManager {
   private send(type: 'INIT', payload: SimInitPayload): void
   private send(type: 'SYNC_INPUT', payload: SimSyncInputPayload): void
   private send(type: 'TICK', payload: { dt: number }): void
-  private send(type: 'TERMINAL_CMD', payload: any): void
+  private send(type: 'TERMINAL_CMD', payload: unknown): void
   private send(type: 'PING'): void
   private send(type: string, payload?: unknown) {
     if (this.worker) {
@@ -379,7 +372,7 @@ export class SimulationWorkerManager {
     }
   }
 
-  public sendTerminalCommand(payload: any) {
+  public sendTerminalCommand(payload: unknown) {
     this.send('TERMINAL_CMD', payload)
   }
 

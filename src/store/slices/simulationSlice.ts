@@ -216,7 +216,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
   },
 
   initializeSimulation: () => {
-    console.log('[[Store]] Initializing Simulation Worker integration...')
+
     simWorkerManager.onOutput((payload) => get().handleWorkerOutput(payload))
     simWorkerManager.onTelemetry((telemetry) => {
       set({ _lastTelemetry: telemetry } as Partial<InfraState>)

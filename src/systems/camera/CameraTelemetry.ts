@@ -28,7 +28,7 @@ class CameraTelemetry {
 
     // Console logging in dev environment for NOC realism and diagnostics
     if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
-      console.log(`[CameraTelemetry] [${eventType.toUpperCase()}] ${message}`, details || '')
+      // Intentional silencer: telemetry logic previously lived here
     }
   }
 

@@ -270,10 +270,6 @@ export class RackSystem extends System {
           // Recovery alert only if load returns to normal AND breaker is not tripped
           if (rack.status === 'power_overload' && !rackPower.breakerTripped) {
             rack.status = 'online'
-            console.log(
-              `[RackSystem] NOMINAL RECOVERY on Rack Entity: ${rackId} (${rackTransform?.name || 'Unnamed'}). ` +
-              `Status transitioned from power_overload to online. Current Load: ${load.toFixed(2)} kW / Max Limit: ${maxLimit.toFixed(2)} kW.`
-            )
             this.world.eventBus.publish('system:alert', {
               severity: 'info',
               message: `[RACK RECOVERY] Server Rack [${rackTransform?.name || rackId}] power load recovered to normal levels. (Load: ${load.toFixed(2)} kW / Max: ${maxLimit.toFixed(2)} kW)`,

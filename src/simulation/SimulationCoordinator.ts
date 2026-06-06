@@ -67,7 +67,7 @@ export class SimulationCoordinator {
     }
 
     this.intervalId = setInterval(runLoop, this.tickRateMs)
-    console.log(`[[SimulationCoordinator]] Simulation Engine loop active at ${this.tickRateMs}ms tickrate.`)
+
   }
 
   public stop(): void {
@@ -78,7 +78,7 @@ export class SimulationCoordinator {
       this.intervalId = null
     }
     this.emit({ type: 'STATUS_CHANGE', running: false })
-    console.log('[[SimulationCoordinator]] Simulation Engine loop stopped.')
+
   }
 
   public isRunning(): boolean {
