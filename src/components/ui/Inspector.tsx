@@ -5,7 +5,7 @@ import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
-import { Card, Button, Badge, Tabs } from './system'
+import { Card, Button, Badge, Tabs, Panel } from './system'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import { VisualRack } from './VisualRack'
 

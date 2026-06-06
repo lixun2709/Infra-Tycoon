@@ -17,8 +17,7 @@ import {
   Database,
   Wind,
   Server,
-  Briefcase,
-  Network
+  Briefcase
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './system'
 import { useUIStore } from '../../store/useUIStore'
