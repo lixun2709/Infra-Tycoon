@@ -1,2 +1,4 @@
 # Performance Report
-Extracting highly volatile telemetry and observability metrics from the main useInfraStore directly reduces the cascading invalidation of React hooks. Re-renders are localized.
+
+## Overview
+The ECS world maintains high cache-hit rates due to O(1) query indexing. Rerenders on the UI side were drastically minimized by consolidating useInfraStore hooks into precise useShallow selectors for discrete domains.

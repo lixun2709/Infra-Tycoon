@@ -226,23 +226,24 @@ export function Inspector() {
                 </div>
 
                 {selectedNode.type === 'rack' && (selectedNode.status === 'power_overload' || selectedNode.breakerTripped) && (
-                  <div className="mt-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex flex-col gap-3">
-                    <div className="flex items-start gap-2.5">
-                      <span className="text-lg">⚡</span>
-                      <div>
-                        <p className="text-[10px] font-black text-rose-400 uppercase tracking-wider">PDU BREAKER TRIPPED</p>
-                        <p className="text-[8px] text-rose-400/80 font-bold uppercase tracking-wider mt-0.5">
-                          Load exceeded safety limit. Grid power cut.
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => resetRackBreaker(selectedNode.id)}
-                      className="w-full py-2 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-[0_4px_12px_rgba(239,68,68,0.2)]"
-                    >
-                      Reset Circuit Breaker
-                    </button>
-                  </div>
+                  <Panel variant="alert" className="mt-4">
+                    <div className="flex items-start gap-2.5 mb-3">
+  <span className="text-lg">⚡</span>
+  <div>
+    <p className="text-[10px] font-black uppercase tracking-wider">PDU BREAKER TRIPPED</p>
+    <p className="text-[8px] font-bold uppercase tracking-wider mt-0.5 opacity-80">
+      Load exceeded safety limit. Grid power cut.
+    </p>
+  </div>
+</div>
+                    <Button
+  variant="danger"
+  className="w-full py-2 text-[9px] justify-center tracking-widest"
+  onClick={() => resetRackBreaker(selectedNode.id)}
+>
+  RESET CIRCUIT BREAKER
+</Button>
+</Panel>
                 )}
 
                 {selectedNode.totalStorageTB != null && selectedNode.totalStorageTB > 0 && (

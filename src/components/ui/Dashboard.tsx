@@ -249,7 +249,7 @@ export function Dashboard({
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'OVERVIEW', icon: <LayoutDashboard size={14} /> },
-    { id: 'networking', label: 'NETWORKING', icon: <Network size={14} /> },
+
     { id: 'facility', label: 'FACILITY', icon: <Wind size={14} /> },
     { id: 'fleet', label: 'FLEET', icon: <Server size={14} /> },
     { id: 'itsm', label: 'TICKETING', icon: <Briefcase size={14} /> },

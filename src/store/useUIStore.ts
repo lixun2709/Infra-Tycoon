@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Vector3 } from 'three';
-import { audioManager } from '../utils/AudioManager';
+import { audioManager } from '../utils/AudioManager'
+import { logger } from '../core/telemetry/Logger';
 import type { ThemeKey } from './themeTypes';
 import type { InfraAlert } from './infraTypes';
 

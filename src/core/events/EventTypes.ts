@@ -51,12 +51,26 @@ export interface ContractCompletedEvent extends BaseEvent {
   payload: { contractId: string, payout: number, reputationChange: number }
 }
 
+export interface TerminalCommandEvent extends BaseEvent {
+  category: 'TERMINAL'
+  type: 'TERMINAL_COMMAND'
+  payload: { command: string, success: boolean, siteId: string, targetNode?: string }
+}
+
+export interface UINotificationEvent extends BaseEvent {
+  category: 'UI'
+  type: 'UI_NOTIFICATION'
+  payload: { message: string, severity: string, nodeId?: string }
+}
+
 export type AppEvent = 
   | SimulationTickEvent 
   | HardwareDeployedEvent 
   | ThermalCriticalEvent 
   | PowerOverloadEvent
   | ContractCompletedEvent
+  | TerminalCommandEvent
+  | UINotificationEvent
   | (BaseEvent & { payload?: any }) // Fallback for dynamically dispatched events
 
 export type EventHandler<T extends AppEvent = AppEvent> = (event: T) => void

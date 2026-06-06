@@ -43,8 +43,8 @@ export const createProgressionSlice: StateCreator<InfraState, [], [], Progressio
     if (experience >= xpToNextLevel) {
       const nextLevel = companyLevel + 1
       // Adjusted pacing curve: slower mid game but faster early game to hook the player
-      const baseRequirement = 1000
-      const newXpRequirement = Math.floor(baseRequirement * Math.pow(1.65, nextLevel - 1))
+      const baseRequirement = 800
+      const newXpRequirement = Math.floor(baseRequirement * Math.pow(1.5, nextLevel - 1))
       
       set({ 
         companyLevel: nextLevel,
