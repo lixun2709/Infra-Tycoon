@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect } from 'react'
 import { useInfraStore } from '../store/useInfraStore'
+import { useTerminalStore } from '../store/useTerminalStore'
 
 export function useHotkeys() {
   const { 
@@ -9,10 +10,11 @@ export function useHotkeys() {
     addTerminalSession, 
     nodes,
     selectedNodeId,
-    setSelectedNode,
-    setIsTerminalOpen,
-    isTerminalOpen
+    setSelectedNode
   } = useInfraStore()
+  
+  const isTerminalOpen = useTerminalStore(s => s.isTerminalOpen)
+  const setIsTerminalOpen = useTerminalStore(s => s.setIsTerminalOpen)
   
   const siteTerminal = terminalStates[currentSiteId]
 

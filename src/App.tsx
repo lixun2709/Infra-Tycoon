@@ -4,6 +4,7 @@ import { Dashboard } from './components/ui/Dashboard'
 import { GlobalNetwork } from './components/ui/GlobalNetwork'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
+import { useTerminalStore } from './store/useTerminalStore'
 import { useUIStore } from './store/useUIStore'
 import { useState, useMemo, useEffect } from 'react'
 import { Terminal } from './components/ui/Terminal'
@@ -58,7 +59,8 @@ function App() {
   const balance = useInfraStore(s => s.balance)
   const reputation = useInfraStore(s => s.reputation)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
-  const toggleGlobalMap = useInfraStore(s => s.toggleGlobalMap)
+  const toggleGlobalMap = useUIStore(s => s.toggleGlobalMap)
+  
   const isStorageDashboardOpen = useInfraStore(s => s.isStorageDashboardOpen)
   const toggleStorageDashboard = useInfraStore(s => s.toggleStorageDashboard)
 
@@ -85,8 +87,6 @@ function App() {
   const overloadedRackCount = useInfraStore((s) => s.overloadedRackCount)
   const {
     selectedNodeId,
-    setIsTerminalOpen,
-    isTerminalOpen,
     addTerminalSession,
     terminalStates,
     renderQuality,
@@ -108,6 +108,9 @@ function App() {
     expandHall,
     halls
   } = useInfraStore()
+
+  const isTerminalOpen = useTerminalStore(s => s.isTerminalOpen)
+  const setIsTerminalOpen = useTerminalStore(s => s.setIsTerminalOpen)
 
   const [isFacilityPanelOpen, setIsFacilityPanelOpen] = useState(false)
 
@@ -145,7 +148,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress)
     }
-  }, [isTerminalOpen, setIsTerminalOpen])
+  }, [ setIsTerminalOpen])
 
   useEffect(() => {
     const handleF2Key = (e: KeyboardEvent) => {

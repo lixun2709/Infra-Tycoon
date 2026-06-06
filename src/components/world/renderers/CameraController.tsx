@@ -4,6 +4,7 @@ import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useUIStore } from '../../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
 import { useInput } from '../../../contexts/InputContext'
 import { audioManager } from '../../../utils/AudioManager'
@@ -27,7 +28,7 @@ const V_ZERO = new THREE.Vector3(0, 0, 0)
 export function CameraController() {
   const { camera, controls } = useThree()
   
-  const isGlobalMapOpen = useInfraStore(s => s.isGlobalMapOpen)
+  const isGlobalMapOpen = useUIStore(s => s.isGlobalMapOpen)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const nodes = useInfraStore(useShallow(s => s.nodes))

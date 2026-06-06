@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useUIStore } from '../../store/useUIStore'
 import { Globe, Server, Plus, X, Cpu, HardDrive, Activity, Shield, Zap, Crosshair, Navigation } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { Site } from '../../store/infraTypes'
@@ -35,8 +36,8 @@ function reverseProjectCoords(xPercent: number, yPercent: number) {
 }
 
 export function GlobalMap() {
-  const isOpen = useInfraStore(s => s.isGlobalMapOpen)
-  const toggleGlobalMap = useInfraStore(s => s.toggleGlobalMap)
+  const isOpen = useUIStore(s => s.isGlobalMapOpen)
+  const toggleGlobalMap = useUIStore(s => s.toggleGlobalMap)
   const sites = useInfraStore(s => s.sites)
   const nodesCount = useInfraStore(s => s.nodes.length)
   const setCurrentSiteId = useInfraStore(s => s.setCurrentSiteId)
