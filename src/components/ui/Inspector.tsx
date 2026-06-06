@@ -1,6 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useObservabilityStore } from '../../store/useObservabilityStore'
 import { useUIStore } from '../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'

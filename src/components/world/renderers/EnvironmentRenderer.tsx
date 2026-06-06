@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Text, Environment } from '@react-three/drei'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useTelemetryStore } from '../../../store/useTelemetryStore'
 import { useShallow } from 'zustand/react/shallow'
 import { audioManager } from '../../../utils/AudioManager'
 
@@ -587,10 +588,10 @@ function PlatformStairs({ position, rotation }: { position: [number, number, num
 
 // --- MAIN ENVIRONMENT RENDERER COMPONENT ---
 export function EnvironmentRenderer() {
-  const { totalRoomBTU, halls } = useInfraStore(useShallow(state => ({
-    totalRoomBTU: state.totalRoomBTU,
+  const { halls } = useInfraStore(useShallow(state => ({
     halls: state.halls
   })))
+  const totalRoomBTU = useTelemetryStore(state => state.totalRoomBTU)
   const isHot = totalRoomBTU > 50000
 
   const CEILING_Y = 5.5

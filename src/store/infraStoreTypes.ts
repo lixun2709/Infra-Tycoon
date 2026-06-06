@@ -53,10 +53,10 @@ export type InfraState = {
   nodes: InfraNode[]
   connections: Connection[]
   cloudLinks: CloudLink[]
-  cloudEgressGB: number
-  totalPowerKW: number
-  totalRoomBTU: number
-  overloadedRackCount: number
+
+
+
+
   selectedNodeId: string | null
   patchingActive: boolean
   activePatchSource: { nodeId: string; portId: string } | null
@@ -68,17 +68,17 @@ export type InfraState = {
   alerts: InfraAlert[]
   auditLogs: AuditLog[]
   isNetworkManagerOpen: boolean
-  networkLoad: number
-  resilienceIndex: number
+
+
   // v2.0 SDDC Metrics
-  operationalBudget: number
+
   capacityUnits: number
-  realTimePlayedSeconds: number
+
   dnsRecords: DnsRecord[]
   dhcpLeases: DhcpLease[]
   availableIPPool: string[]
   ntpSyncStatus: NtpSyncStatus[]
-  networkUptime: number
+
   postMortems: PostMortem[]
   incidents: Incident[]
   blueprints: Blueprint[]
@@ -98,16 +98,16 @@ export type InfraState = {
   terminalStates: Record<string, TerminalStateRecord>
   
   // v6.0 Economy & Progression
-  playerAuthority: 'READ_ONLY' | 'OPERATIONAL' | 'SIMULATION_CRITICAL'
-  setPlayerAuthority: (auth: 'READ_ONLY' | 'OPERATIONAL' | 'SIMULATION_CRITICAL') => void
-  balance: number
-  reputation: number
+
+  set
+
+
   reputationHistory: ReputationHistoryEntry[]
   activeContracts: ActiveContract[]
   marketContracts: ContractBlueprint[]
   loans: BankLoan[]
-  consecutiveNegativeMonths: number
-  isBankrupt: boolean
+
+
   
   // v8.0 Firmware & Lifecycle
   globalTargetFirmware: string
@@ -121,7 +121,7 @@ export type InfraState = {
   
   // v7.0 Global & Hybrid Cloud Bursting
   cloudBurstingActive: boolean
-  activeCloudInstances: number // Total across all providers
+ // Total across all providers
   setCloudBursting: (active: boolean) => void
 
   // v27.0 Multi-Cloud Vendor Marketplace
@@ -134,7 +134,7 @@ export type InfraState = {
   isGlobalMapOpen: boolean
   toggleGlobalMap: () => void
   assistantTargetId: string | null
-  isAutoPilot: boolean
+
   renderQuality: 'ultra' | 'auto' | 'low'
   setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
   activeTheme: ThemeKey

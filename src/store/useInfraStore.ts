@@ -32,12 +32,12 @@ export const useInfraStore = create<InfraState>()(
       nodes: [],
       connections: [],
       cloudLinks: [],
-      cloudEgressGB: 0,
-      totalPowerKW: 0,
-      totalRoomBTU: 0,
-      overloadedRackCount: 0,
+
+
+
+
       selectedNodeId: null,
-      patchingActive: false,
+      patchingActive: false, balance: 100000, activeContracts: [], reputation: 50, reputationHistory: [], operationalBudget: 1000000, playerAuthority: 'SIMULATION_CRITICAL', isAutoPilot: false, isBankrupt: false, consecutiveNegativeMonths: 0, loans: [], auditLogs: [], postMortems: [], incidents: [], technicianTickets: [], realTimePlayedSeconds: 0, networkLoad: 0.1, resilienceIndex: 100, totalPowerKW: 0, totalRoomBTU: 0, overloadedRackCount: 0, networkUptime: 100, cloudEgressGB: 0, activeCloudInstances: 0,
       activePatchSource: null,
       mousePosition: null,
       sites: INITIAL_SITES,
@@ -45,33 +45,33 @@ export const useInfraStore = create<InfraState>()(
       placementMode: false,
       pendingRackType: null,
       alerts: [],
-      auditLogs: [],
+
       isNetworkManagerOpen: false,
       isTerminalOpen: false,
-      networkLoad: 0.1,
-      resilienceIndex: 100,
-      postMortems: [],
-      incidents: [],
-      isAutoPilot: false,
+
+
+
+
+
       assistantTargetId: null,
       isSaveManagerOpen: false,
       terminalStates: INITIAL_TERMINAL_STATE,
       deploymentQueue: [],
       isHeatMapVisible: false,
-      realTimePlayedSeconds: 0,
-      playerAuthority: 'SIMULATION_CRITICAL',
-      setPlayerAuthority: (auth) => set({ playerAuthority: auth }),
-      balance: 100000,
-      reputation: 50,
-      reputationHistory: [],
-      activeContracts: [],
-      loans: [],
-      consecutiveNegativeMonths: 0,
-      isBankrupt: false,
+
+
+
+
+
+
+
+
+
+
       isGlobalMapOpen: false,
       globalTargetFirmware: 'v1.0.0',
       cloudBurstingActive: false,
-      activeCloudInstances: 0,
+
 
       ...getInitialCloudState(),
 
@@ -79,14 +79,14 @@ export const useInfraStore = create<InfraState>()(
       dhcpLeases: [],
       availableIPPool: Array.from({ length: 154 }, (_, i) => `10.0.0.${101 + i}`),
       ntpSyncStatus: [],
-      networkUptime: 100,
-      operationalBudget: 1000000,
+
+
       capacityUnits: 0,
       blueprints: [],
       previewBlueprintId: null,
       applications: [],
       virtualMachines: [],
-      technicianTickets: [],
+
       isChaosMode: false,
       renderQuality: 'auto',
       activeTheme: 'cyberpunk',

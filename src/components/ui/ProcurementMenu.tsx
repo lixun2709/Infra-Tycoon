@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useGameplayStore } from '../../store/useGameplayStore'
 import { useShallow } from 'zustand/react/shallow'
 import { HARDWARE_CATALOG, type HardwareCatalogKey, type HardwareCatalogSpec } from '../../physics/hardwareLibrary'
 import type { LucideIcon } from 'lucide-react'

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useGameplayStore } from '../../store/useGameplayStore'
 import { useUIStore } from '../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
 import { Button } from './system/Button'

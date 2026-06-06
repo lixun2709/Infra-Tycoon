@@ -14,6 +14,8 @@ import {
   X
 } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useGameplayStore } from '../../store/useGameplayStore'
+import { useTelemetryStore } from '../../store/useTelemetryStore'
 import { useShallow } from 'zustand/react/shallow'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
 import { getReputationTier } from '../../store/slices/economySlice'

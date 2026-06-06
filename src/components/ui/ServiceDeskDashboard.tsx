@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useObservabilityStore } from '../../store/useObservabilityStore'
 import { 
   Headset, 
   Wrench, 

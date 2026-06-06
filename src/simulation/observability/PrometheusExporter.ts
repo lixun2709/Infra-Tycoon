@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useInfraStore } from '../../store/useInfraStore'
+import { useGameplayStore } from '../../store/useGameplayStore'
+import { useObservabilityStore } from '../../store/useObservabilityStore'
 import { performanceMonitor } from '../PerformanceMonitor'
 
 export class PrometheusExporter {

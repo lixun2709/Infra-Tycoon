@@ -7,7 +7,7 @@ import { initializeTerminalCommands } from './terminal/TerminalCommands'
 // Initialize commands once
 initializeTerminalCommands()
 
-import { logger } from '../utils/logger'
+import { logger } from '../core/telemetry'
 
 export function handleCommand(
   get: () => InfraState, 

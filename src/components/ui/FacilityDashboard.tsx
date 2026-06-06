@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useGameplayStore } from '../../store/useGameplayStore'
 import { 
   Wind, 
   ThermometerSun, 

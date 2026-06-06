@@ -11,6 +11,12 @@ import { Terminal } from './components/ui/Terminal'
 import { OperatorHandbook } from './components/ui/OperatorHandbook'
 
 import { TopNav } from './components/ui/TopNav'
+import { CommandMenu } from './components/ui/system/CommandMenu'
+import { TerminalLayout } from './components/ui/TerminalLayout'
+import { initializeStateMigration } from './store/migrationLayer'
+
+initializeStateMigration()
+
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionDashboard } from './components/ui/MissionDashboard'
 import { IncidentHUD } from './components/ui/IncidentHUD'
@@ -56,8 +62,8 @@ function App() {
 
   
   const nodes = useInfraStore(s => s.nodes)
-  const balance = useInfraStore(s => s.balance)
-  const reputation = useInfraStore(s => s.reputation)
+  const balance = useGameplayStore(s => s.balance)
+  const reputation = useGameplayStore(s => s.reputation)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const toggleGlobalMap = useUIStore(s => s.toggleGlobalMap)
   
@@ -135,7 +141,7 @@ function App() {
 
   const pendingType = useInfraStore(s => s.pendingRackType)
   const cloudBurstingActive = useInfraStore(s => s.cloudBurstingActive)
-  const activeCloudInstances = useInfraStore(s => s.activeCloudInstances)
+  const activeCloudInstances = useTelemetryStore(s => s.activeCloudInstances)
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {

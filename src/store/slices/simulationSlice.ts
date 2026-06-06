@@ -6,7 +6,9 @@ import { calculateRackPower, recalculateRoomStats } from '../../physics/powerEng
 import type { InfraNode, ApplicationDeployment } from '../infraTypes'
 import type { SimSyncOutputPayload, SimTelemetryPayload } from '../../simulation/worker/workerTypes'
 import { simulationCoordinator } from '../../simulation/SimulationCoordinator'
-import { useMissionStore } from '../useMissionStore'
+import { useUIStore } from '../useUIStore'
+import { useTelemetryStore } from '../useTelemetryStore'
+import { useObservabilityStore } from '../useObservabilityStore'
 
 export interface SimulationSlice {
   processTick: (dt?: number) => void
@@ -133,9 +135,9 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     }
 
     // Sync tickets and incidents from worker
-    let updatedTickets = get().technicianTickets
+    let updatedTickets = useObservabilityStore.getState().technicianTickets
     if (payload.tickets) {
-      updatedTickets = get().technicianTickets.map((ticket: any) => {
+      updatedTickets = useObservabilityStore.getState().technicianTickets.map((ticket: any) => {
         const update = payload.tickets!.find(t => t.id === ticket.id)
         if (update) {
           return { ...ticket, ...update }
@@ -144,16 +146,16 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       }).filter((t: any) => t.status !== 'completed')
     }
 
-    let updatedIncidents = get().incidents
+    let updatedIncidents = useObservabilityStore.getState().incidents
     const newPostMortems: import('../infraTypes').PostMortem[] = []
     if (payload.incidents) {
-      updatedIncidents = get().incidents.map((incident: any) => {
+      updatedIncidents = useObservabilityStore.getState().incidents.map((incident: any) => {
         const update = payload.incidents!.find(i => i.id === incident.id)
         if (update) {
           if (!incident.isResolved && update.isResolved) {
              newPostMortems.push({
                id: crypto.randomUUID(),
-               incidentNumber: get().postMortems.length + newPostMortems.length + 1,
+               incidentNumber: useObservabilityStore.getState().postMortems.length + newPostMortems.length + 1,
                timestamp: update.resolvedTimestamp || Date.now(),
                nodeName: 'Affected Nodes: ' + update.affectedNodes.length,
                nodeId: update.siteId,
@@ -167,7 +169,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
         return incident
       })
       
-      const newFromWorker = payload.incidents.filter(pi => !get().incidents.find((i: any) => i.id === pi.id))
+      const newFromWorker = payload.incidents.filter(pi => !useObservabilityStore.getState().incidents.find((i: any) => i.id === pi.id))
       updatedIncidents = [...updatedIncidents, ...newFromWorker]
     }
 
@@ -178,14 +180,22 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       connections: updatedConnections,
       activeContracts: updatedContractsStore,
       sites: updatedSites,
-      technicianTickets: updatedTickets,
-      incidents: updatedIncidents,
-      postMortems: [...get().postMortems, ...newPostMortems],
-      overloadedRackCount,
-      siteMetricsHistory,
-      totalPowerKW,
-      totalRoomBTU
+      siteMetricsHistory
     })
+
+    useTelemetryStore.getState().setTelemetryValue('totalPowerKW', totalPowerKW)
+    useTelemetryStore.getState().setTelemetryValue('totalRoomBTU', totalRoomBTU)
+    useTelemetryStore.getState().setTelemetryValue('overloadedRackCount', overloadedRackCount)
+
+    if (updatedTickets !== useObservabilityStore.getState().technicianTickets) {
+      useObservabilityStore.setState({ technicianTickets: updatedTickets })
+    }
+    if (updatedIncidents !== useObservabilityStore.getState().incidents) {
+      useObservabilityStore.setState({ incidents: updatedIncidents })
+    }
+    if (newPostMortems.length > 0) {
+      useObservabilityStore.setState(s => ({ postMortems: [...s.postMortems, ...newPostMortems] }))
+    }
 
     if (payload.firedAutomationPolicies && payload.firedAutomationPolicies.length > 0) {
       let updatedPolicies = get().automationPolicies
@@ -234,7 +244,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
   processTick: (dt = 1.0) => {
     // 0. Request Worker Tick (Asynchronous)
-    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, get().technicianTickets, get().incidents, get().automationPolicies, get().globalTargetFirmware)
+    simWorkerManager.syncInput(get().nodes, get().applications, get().virtualMachines, get().connections, get().activeContracts, [], get().networkLoad, useObservabilityStore.getState().technicianTickets, useObservabilityStore.getState().incidents, get().automationPolicies, get().globalTargetFirmware)
     simWorkerManager.requestTick(dt)
     
     const { nodes } = get()

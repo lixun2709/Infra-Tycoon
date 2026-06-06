@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import { Modal, Card, Button, Badge } from './system'
 import { Server, Activity, ArrowRightLeft, Globe, Database, Network } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useGameplayStore } from '../../store/useGameplayStore'
 import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
 
 export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
