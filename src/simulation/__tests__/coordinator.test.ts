@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { simulationCoordinator, type SimEvent } from '../SimulationCoordinator'
 import { useInfraStore } from '../../store/useInfraStore'
-import { useTelemetryStore } from '../../store/useTelemetryStore'
 
 vi.mock('../../store/useInfraStore', () => {
   const mockState = {

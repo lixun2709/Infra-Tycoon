@@ -101,13 +101,13 @@ export function handleCommand(
         'SIMULATION_CRITICAL': 3
       }
       
-      const requiredLevel = authLevels[commandDef.authority] || 3
-      const currentLevel = authLevels[playerAuthority] || 1
+      const requiredLevel = authLevels[commandDef.authority as keyof typeof authLevels] || 3
+      const currentLevel = authLevels[playerAuthority as keyof typeof authLevels] || 1
 
       if (requiredLevel > currentLevel) {
         output.push(`[[RED]]PERMISSION DENIED: Command '${cmdLower}' requires ${commandDef.authority} authority.[[RESET]]`)
         output.push(`Current session authority: ${playerAuthority}`)
-        logger.warn(`Unauthorized terminal command attempt`, {
+        logger.warn('TerminalKernel', `Unauthorized terminal command attempt`, {
           command: cmdLower,
           requiredAuth: commandDef.authority,
           currentAuth: playerAuthority,
@@ -139,7 +139,7 @@ export function handleCommand(
   }
 
   // --- 7. FINAL UPDATE ---
-  logger.info(`Terminal Command Executed`, {
+  logger.info('TerminalKernel', `Terminal Command Executed`, {
     siteId,
     targetNode: targetNode?.id || 'none',
     command: cmdLower,

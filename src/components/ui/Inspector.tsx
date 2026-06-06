@@ -1,8 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { useInfraStore } from '../../store/useInfraStore'
-import { useObservabilityStore } from '../../store/useObservabilityStore'
 import { useUIStore } from '../../store/useUIStore'
+import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
@@ -65,7 +64,7 @@ export function Inspector() {
     upgradeRackPDU: state.upgradeRackPDU
   })))
 
-  const timeFormat = useUIStore(s => s.timeFormat)
+  const timeFormat = useUIStore((s: any) => s.timeFormat)
 
   const selectedNode = nodes.find((n: any) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'electrical' | 'services' | 'lifecycle' | 'virtualization'>('details')

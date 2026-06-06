@@ -4,6 +4,8 @@ import { Dashboard } from './components/ui/Dashboard'
 import { GlobalNetwork } from './components/ui/GlobalNetwork'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
+import { useGameplayStore } from './store/useGameplayStore'
+import { useTelemetryStore } from './store/useTelemetryStore'
 import { useTerminalStore } from './store/useTerminalStore'
 import { useUIStore } from './store/useUIStore'
 import { useState, useMemo, useEffect } from 'react'
@@ -11,11 +13,8 @@ import { Terminal } from './components/ui/Terminal'
 import { OperatorHandbook } from './components/ui/OperatorHandbook'
 
 import { TopNav } from './components/ui/TopNav'
-import { CommandMenu } from './components/ui/system/CommandMenu'
-import { TerminalLayout } from './components/ui/TerminalLayout'
-import { initializeStateMigration } from './store/migrationLayer'
 
-initializeStateMigration()
+
 
 import { ProcurementMenu } from './components/ui/ProcurementMenu'
 import { MissionDashboard } from './components/ui/MissionDashboard'
@@ -93,8 +92,6 @@ function App() {
   const overloadedRackCount = useInfraStore((s) => s.overloadedRackCount)
   const {
     selectedNodeId,
-    addTerminalSession,
-    terminalStates,
     renderQuality,
     setRenderQuality,
     activeTheme,
@@ -116,6 +113,8 @@ function App() {
   } = useInfraStore()
 
   const isTerminalOpen = useTerminalStore(s => s.isTerminalOpen)
+  const terminalStates = useInfraStore(s => s.terminalStates)
+  const addTerminalSession = useInfraStore(s => s.addTerminalSession)
   const setIsTerminalOpen = useTerminalStore(s => s.setIsTerminalOpen)
 
   const [isFacilityPanelOpen, setIsFacilityPanelOpen] = useState(false)

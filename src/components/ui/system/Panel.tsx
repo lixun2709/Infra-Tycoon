@@ -1,5 +1,5 @@
 import React from 'react'
-import { motion, HTMLMotionProps } from 'framer-motion'
+import { motion, type HTMLMotionProps } from 'framer-motion'
 
 interface PanelProps extends HTMLMotionProps<'div'> {
   title?: string

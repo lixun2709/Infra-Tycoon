@@ -3,7 +3,6 @@ import { useState, useMemo } from 'react'
 import { Card, Button } from './system'
 import { Server, ShieldAlert, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
-import { useGameplayStore } from '../../store/useGameplayStore'
 export const FleetTab = () => {
   const { nodes, globalTargetFirmware, triggerFirmwareUpgrade } = useInfraStore()
 

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { config } from '../../utils/config'
 import { EventBus } from '../events'
-import { EventCategory, EventSeverity } from '../events/EventTypes'
+import { type EventSeverity } from '../events/EventTypes'
 
 interface OperationalContext {
   source: string
@@ -41,7 +41,7 @@ class TelemetryLogger {
     const event = {
       id: this.generateId(),
       timestamp: Date.now(),
-      category: EventCategory.TELEMETRY,
+      category: 'TELEMETRY',
       type: `LOG_${severity}`,
       source: context.source,
       severity,

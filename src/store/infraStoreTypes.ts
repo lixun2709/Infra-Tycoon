@@ -98,10 +98,23 @@ export type InfraState = {
   terminalStates: Record<string, TerminalStateRecord>
   
   // v6.0 Economy & Progression
-
-  set
-
-
+  balance: number;
+  reputation: number;
+  operationalBudget: number;
+  playerAuthority: any;
+  isAutoPilot: boolean;
+  isBankrupt: boolean;
+  consecutiveNegativeMonths: number;
+  realTimePlayedSeconds: number;
+  networkLoad: number;
+  resilienceIndex: number;
+  totalPowerKW: number;
+  totalRoomBTU: number;
+  overloadedRackCount: number;
+  networkUptime: number;
+  cloudEgressGB: number;
+  activeCloudInstances: number;
+  setPlayerAuthority: any;
   reputationHistory: ReputationHistoryEntry[]
   activeContracts: ActiveContract[]
   marketContracts: ContractBlueprint[]

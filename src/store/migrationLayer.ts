@@ -2,6 +2,7 @@ import { useInfraStore } from './useInfraStore'
 import { useTelemetryStore } from './useTelemetryStore'
 import { useObservabilityStore } from './useObservabilityStore'
 import { useGameplayStore } from './useGameplayStore'
+import { useUIStore } from './useUIStore'
 
 /**
  * Migration Layer
@@ -50,3 +51,8 @@ export function initializeStateMigration() {
     } as any)
   })
 }
+
+  // Sync UI State
+  useUIStore.subscribe((state) => {
+    useInfraStore.setState({ alerts: state.alerts } as any)
+  })

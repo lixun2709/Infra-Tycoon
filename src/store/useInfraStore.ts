@@ -125,6 +125,7 @@ export const useInfraStore = create<InfraState>()(
       
       // UI PROXY ACTIONS
       setNetworkLoad: (load) => useUIStore.getState().setNetworkLoad(load),
+  setPlayerAuthority: (auth: any) => set({ playerAuthority: auth }),
       setNetworkManagerOpen: (open) => useUIStore.getState().setNetworkManagerOpen(open),
       setCurrentSiteId: (siteId) => useUIStore.getState().setCurrentSiteId(siteId),
       setMousePosition: (pos) => useUIStore.getState().setMousePosition(pos),

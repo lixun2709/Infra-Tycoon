@@ -1,4 +1,4 @@
-import { AppEvent, EventHandler } from './EventTypes'
+import type { AppEvent, EventHandler } from './EventTypes'
 
 type SubscriptionId = string
 
