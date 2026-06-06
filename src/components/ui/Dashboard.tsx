@@ -133,6 +133,23 @@ function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: 
   )
 }
 
+function PollingSparklineChart({ 
+  pollValue, color, maxVal, height = 40 
+}: { 
+  pollValue: () => number, color: string, maxVal: number, height?: number 
+}) {
+  const [data, setData] = useState<number[]>(() => Array(5).fill(pollValue()))
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setData(prev => [...prev.slice(-24), pollValue()])
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [pollValue])
+
+  return <SparklineChart data={data} color={color} maxVal={maxVal} height={height} />
+}
+
 export function Dashboard({ 
   onClose,
   initialTab = 'overview'
@@ -177,26 +194,26 @@ export function Dashboard({
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
 
 
-  const nodes = useInfraStore.getState().nodes
-  useInfraStore(s => s.nodes.length)
-  const allHardware = nodes.filter((n: import('../../store/infraTypes').InfraNode) => n.type !== 'rack' && n.type !== 'cooling')
-  const globalHealthyCount = allHardware.filter((n: import('../../store/infraTypes').InfraNode) => n.healthStatus === 'healthy' || !n.healthStatus).length
-  const globalHealthIndex = allHardware.length > 0 ? Math.round((globalHealthyCount / allHardware.length) * 100) : 100
-
-  const [powerHistory, setPowerHistory] = useState<number[]>([totalPowerKW, totalPowerKW, totalPowerKW, totalPowerKW, totalPowerKW])
-  const [networkHistory, setNetworkHistory] = useState<number[]>([networkLoad, networkLoad, networkLoad, networkLoad, networkLoad])
-  const [healthHistory, setHealthHistory] = useState<number[]>([globalHealthIndex, globalHealthIndex, globalHealthIndex, globalHealthIndex, globalHealthIndex])
-  const [fpsHistory, setFpsHistory] = useState<number[]>([60, 60, 60, 60, 60])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setPowerHistory(prev => [...prev.slice(-24), totalPowerKW])
-      setNetworkHistory(prev => [...prev.slice(-24), networkLoad])
-      setHealthHistory(prev => [...prev.slice(-24), globalHealthIndex])
-      setFpsHistory(prev => [...prev.slice(-24), performanceMonitor.getMetrics().fps])
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [totalPowerKW, networkLoad, globalHealthIndex])
+  const { globalHealthIndex, globalHealthyCount, totalHardwareCount, slottedUnits } = useInfraStore(useShallow(state => {
+    let hwCount = 0
+    let healthyCount = 0
+    let slotted = 0
+    for (const n of state.nodes) {
+      if (n.parentRackId) slotted++
+      if (n.type !== 'rack' && n.type !== 'cooling') {
+        hwCount++
+        if (n.healthStatus === 'healthy' || !n.healthStatus) {
+          healthyCount++
+        }
+      }
+    }
+    return {
+      globalHealthIndex: hwCount > 0 ? Math.round((healthyCount / hwCount) * 100) : 100,
+      globalHealthyCount: healthyCount,
+      totalHardwareCount: hwCount,
+      slottedUnits: slotted
+    }
+  }))
 
   useEffect(() => {
     if (activeTab !== 'diagnostics') return
@@ -281,9 +298,17 @@ export function Dashboard({
                       style={{ width: `${globalHealthIndex}%` }}
                     />
                   </div>
-                  <SparklineChart data={healthHistory} color={globalHealthIndex > 80 ? '#14b8a6' : '#ef4444'} maxVal={100} />
+                  <PollingSparklineChart 
+                    pollValue={() => {
+                      const allHW = useInfraStore.getState().nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
+                      const healthy = allHW.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
+                      return allHW.length > 0 ? Math.round((healthy / allHW.length) * 100) : 100
+                    }} 
+                    color={globalHealthIndex > 80 ? '#14b8a6' : '#ef4444'} 
+                    maxVal={100} 
+                  />
                   <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">
-                    {globalHealthyCount} / {allHardware.length} Nodes Operational
+                    {globalHealthyCount} / {totalHardwareCount} Nodes Operational
                   </p>
                 </Card>
 
@@ -295,7 +320,7 @@ export function Dashboard({
                   <div className="w-full bg-slate-950 h-1 rounded-full overflow-hidden">
                     <div className="bg-teal-500 h-full" style={{ width: '99.9%' }} />
                   </div>
-                  <SparklineChart data={[99.98, 99.99, 99.99, 99.98, 99.99, 99.99]} color="#10b981" maxVal={100} />
+                  <PollingSparklineChart pollValue={() => 99.99} color="#10b981" maxVal={100} />
                   <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">Zero Violations in Current Cycle</p>
                 </Card>
 
@@ -310,7 +335,7 @@ export function Dashboard({
                       style={{ width: `${networkLoad * 100}%` }} 
                     />
                   </div>
-                  <SparklineChart data={networkHistory.map(n => n * 100)} color="#f59e0b" maxVal={100} />
+                  <PollingSparklineChart pollValue={() => useInfraStore.getState().networkLoad * 100} color="#f59e0b" maxVal={100} />
                   <p className="text-[10px] text-slate-500 mt-3 font-bold uppercase tracking-widest">
                     Fabric Throughput Monitoring Active
                   </p>
@@ -334,7 +359,7 @@ export function Dashboard({
                       <div>
                         <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Density</p>
                         <p className="text-xl font-black text-slate-200">
-                          {nodes.filter(n => n.parentRackId).length} Units
+                          {slottedUnits} Units
                         </p>
                       </div>
                       <div>
@@ -347,7 +372,7 @@ export function Dashboard({
                       </div>
                     </div>
                   </div>
-                  <SparklineChart data={powerHistory} color="#ff5a36" maxVal={50} height={50} />
+                  <PollingSparklineChart pollValue={() => useInfraStore.getState().totalPowerKW} color="#ff5a36" maxVal={50} height={50} />
                 </div>
               </Card>
             </div>
@@ -587,7 +612,7 @@ export function Dashboard({
                         <span className={`${metrics.fps > 55 ? 'text-emerald-400' : 'text-amber-400'} text-base font-bold`}>{metrics.fps}</span>
                         <span className="text-[9px] text-slate-500">FPS ({metrics.frameTime.toFixed(1)}ms)</span>
                       </div>
-                      <SparklineChart data={fpsHistory} color={metrics.fps > 55 ? '#10b981' : '#f59e0b'} height={25} maxVal={60} />
+                      <PollingSparklineChart pollValue={() => performanceMonitor.getMetrics().fps} color={metrics.fps > 55 ? '#10b981' : '#f59e0b'} height={25} maxVal={60} />
                       <div className="flex justify-between text-[9px] text-slate-400/90 border-t border-slate-800/40 pt-1 mt-1">
                         <span>1% Low: <span className="font-bold text-amber-500">{metrics.onePercentLowFps ?? metrics.fps}</span></span>
                         <span>Jitter: <span className="font-bold text-sky-400">{metrics.frameJitter?.toFixed(1) ?? '0.0'}ms</span></span>

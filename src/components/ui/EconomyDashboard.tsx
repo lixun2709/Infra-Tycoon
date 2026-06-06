@@ -37,7 +37,6 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
     companyLevel: state.companyLevel,
     reputationHistory: state.reputationHistory || []
   })))
-  useInfraStore(s => s.nodes.length)
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active' | 'banking' | 'reputation'>('overview')
 
   // Calculate MRR and MRE
@@ -46,16 +45,39 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
     return sum + (bp?.monthlyMRR || 0)
   }, 0)
 
-  const nodes = useInfraStore.getState().nodes
-  const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
+  const { totalPowerKW, rackCount, throttledNodeCount, totalDegradationPenalty, activeCloudInstances, cloudEgressGB, cloudBurstingActive } = useInfraStore(useShallow(state => {
+    let powerW = 0
+    let rCount = 0
+    let throttled = 0
+    let degradationPenalty = 0
+
+    for (const n of state.nodes) {
+      powerW += (n.wattage || 0)
+      if (n.type === 'rack') rCount++
+      if (n.type !== 'rack' && n.type !== 'cooling') {
+        const throttleMult = n.isThrottled ? 2.5 : 1.0
+        const degMult = 1 + ((n.degradation || 0) / 100)
+        degradationPenalty += (100 * throttleMult * degMult)
+        if (n.isThrottled) throttled++
+      }
+    }
+
+    return {
+      totalPowerKW: powerW / 1000,
+      rackCount: rCount,
+      throttledNodeCount: throttled,
+      totalDegradationPenalty: degradationPenalty,
+      activeCloudInstances: state.activeCloudInstances,
+      cloudEgressGB: state.cloudEgressGB,
+      cloudBurstingActive: state.cloudBurstingActive
+    }
+  }))
+
   const powerCostPerMonth = totalPowerKW * 90
-  const rackRentPerMonth = nodes.filter(n => n.type === 'rack').length * 500
-  const maintenanceCostPerMonth = nodes.reduce((sum, n) => {
-    if (n.type === 'rack' || n.type === 'cooling') return sum
-    return sum + (100 * (n.isThrottled ? 2.5 : 1.0) * (1 + ((n.degradation || 0) / 100)))
-  }, 0)
-  const cloudCostPerMonth = useInfraStore.getState().cloudBurstingActive ? (useInfraStore.getState().activeCloudInstances * 300) : 0
-  const egressCostPerMonth = useInfraStore.getState().cloudEgressGB * 0.1 * 3600 // Roughly assuming GB per second over a month (3600s)
+  const rackRentPerMonth = rackCount * 500
+  const maintenanceCostPerMonth = totalDegradationPenalty
+  const cloudCostPerMonth = cloudBurstingActive ? (activeCloudInstances * 300) : 0
+  const egressCostPerMonth = cloudEgressGB * 0.1 * 3600
 
   const totalLoanPayment = loans.reduce((sum, loan) => {
     const interest = loan.remainingAmount * loan.interestRate
@@ -130,28 +152,28 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                       <h3 className="text-lg font-black text-white uppercase tracking-tight mb-6">Financial Statement</h3>
                       <div className="space-y-4">
                         <ExpenseItem label="Energy & Power Usage" amount={-powerCostPerMonth} sub={`${totalPowerKW.toFixed(2)} KW Average Load`} />
-                        <ExpenseItem label="Colocation Rack Rental" amount={-rackRentPerMonth} sub={`${nodes.filter(n => n.type === 'rack').length} Active Racks`} />
+                        <ExpenseItem label="Colocation Rack Rental" amount={-rackRentPerMonth} sub={`${rackCount} Active Racks`} />
                         <ExpenseItem 
                           label="Hardware Maintenance & Stress" 
                           amount={-maintenanceCostPerMonth} 
-                          sub={`${nodes.filter(n => n.isThrottled).length} Nodes Throttled`} 
+                          sub={`${throttledNodeCount} Nodes Throttled`} 
                         />
                         <div className="h-px bg-slate-800 my-4" />
                         <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest mb-4">Hybrid Cloud Metrics</p>
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full ${useInfraStore.getState().cloudBurstingActive ? 'bg-blue-500 animate-pulse' : 'bg-slate-700'}`} />
+                            <div className={`w-3 h-3 rounded-full ${cloudBurstingActive ? 'bg-blue-500 animate-pulse' : 'bg-slate-700'}`} />
                             <span className="text-xs font-bold text-white uppercase">Cloud Bursting</span>
                           </div>
                           <button 
-                            onClick={() => useInfraStore.getState().setCloudBursting(!useInfraStore.getState().cloudBurstingActive)}
-                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${useInfraStore.getState().cloudBurstingActive ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                            onClick={() => useInfraStore.getState().setCloudBursting(!cloudBurstingActive)}
+                            className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${cloudBurstingActive ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
                           >
-                            {useInfraStore.getState().cloudBurstingActive ? 'ACTIVE' : 'ACTIVATE'}
+                            {cloudBurstingActive ? 'ACTIVE' : 'ACTIVATE'}
                           </button>
                         </div>
-                        <ExpenseItem label="Cloud Instance Payout" amount={-cloudCostPerMonth} sub={`${useInfraStore.getState().activeCloudInstances} Virtual Instances`} />
-                        <ExpenseItem label="Network Egress Fees" amount={-egressCostPerMonth} sub={`${useInfraStore.getState().cloudEgressGB.toFixed(1)} GB Transferred/s`} />
+                        <ExpenseItem label="Cloud Instance Payout" amount={-cloudCostPerMonth} sub={`${activeCloudInstances} Virtual Instances`} />
+                        <ExpenseItem label="Network Egress Fees" amount={-egressCostPerMonth} sub={`${cloudEgressGB.toFixed(1)} GB Transferred/s`} />
                         <div className="h-px bg-slate-800 my-4" />
                         <ExpenseItem label="Contract Revenue" amount={totalMRR} sub={`${activeContracts.length} Service Level Agreements`} />
                         <div className="h-px bg-slate-800 my-4" />
