@@ -1,73 +1,45 @@
-# React + TypeScript + Vite
+# SDDC Orchestrator (Infra-Tycoon)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SDDC Orchestrator is a highly realistic enterprise-grade hyperscaler operations simulator. Build, scale, and manage a sprawling Software-Defined Data Center (SDDC) from the ground up.
 
-Currently, two official plugins are available:
+## Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Authoritative Infrastructure Shell**: A fully functional pseudo-kernel terminal allowing you to execute commands to manage your fleet, network interfaces, power states, and DNS configurations.
+- **Enterprise-Grade Observability**: Complete NOC Operations Dashboard providing full visibility into telemetry, logs, diagnostics, and event streams.
+- **Deterministic Simulation**: Real-time simulation of power draw, cooling BTUs, bandwidth, latency, and hardware health over time using a high-performance ECS (Entity Component System) architecture.
+- **Advanced Network Topologies**: Realistically simulate Layer 2 / Layer 3 protocols, DHCP assignments, DNS resolution, and physical cabling constraints.
+- **Multi-Cloud Bursting**: Scale beyond on-premises infrastructure using cloud providers to absorb workload spikes dynamically.
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **React 18** + **TypeScript**
+- **Vite** for fast, optimized builds
+- **Zustand** for complex, highly optimized state management (`useShallow` enforced for performance)
+- **Framer Motion** for micro-animations and seamless UI transitions
+- **Three.js / React Three Fiber** for immersive, performant 3D rack visualization
 
-## Expanding the ESLint configuration
+## Running the Simulator
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+2. Start the development server:
+   ```bash
+   npm run dev
+   ```
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3. Build for production:
+   ```bash
+   npm run build
+   ```
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## Development & Best Practices
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+- **Strict TypeScript**: This project strictly enforces `noImplicitAny` and avoids runtime type failures.
+- **ECS-Compatible**: When adding new mechanics, keep state deterministic by relying on `SimulationEngine` and worker-compatible patterns.
+- **UX Consistency**: We utilize standard UI primitives (`Card`, `Modal`, `Badge`) to maintain the "glass-panel" enterprise operating system aesthetic. Avoid hardcoded styles where standard tokens can be used.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+## License
+Proprietary (Internal Use Only)
