@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Vector3 } from 'three';
 import { audioManager } from '../utils/AudioManager'
-import { logger } from '../core/telemetry/Logger';
+;
 import type { ThemeKey } from './themeTypes';
 import type { InfraAlert } from './infraTypes';
 
@@ -23,7 +23,6 @@ export interface UIState {
   mousePosition: Vector3 | null;
   isHeatMapVisible: boolean;
   isGlobalMapOpen: boolean;
-  isTerminalOpen: boolean;
   renderQuality: 'ultra' | 'auto' | 'low';
   activeTheme: ThemeKey;
   timeFormat: '24h' | '12h';
@@ -35,7 +34,6 @@ export interface UIState {
   setMousePosition: (pos: Vector3 | null) => void;
   toggleHeatMap: () => void;
   toggleGlobalMap: () => void;
-  setIsTerminalOpen: (val: boolean) => void;
   setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void;
   setTheme: (theme: ThemeKey) => void;
   setTimeFormat: (format: '24h' | '12h') => void;
@@ -51,7 +49,6 @@ export const useUIStore = create<UIState>((set) => ({
   mousePosition: null,
   isHeatMapVisible: false,
   isGlobalMapOpen: false,
-  isTerminalOpen: false,
   renderQuality: 'auto',
   activeTheme: 'cyberpunk',
   timeFormat: '24h',
@@ -63,7 +60,6 @@ export const useUIStore = create<UIState>((set) => ({
   setMousePosition: (pos) => set({ mousePosition: pos }),
   toggleHeatMap: () => set((state) => ({ isHeatMapVisible: !state.isHeatMapVisible })),
   toggleGlobalMap: () => set((state) => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
-  setIsTerminalOpen: (val) => set({ isTerminalOpen: val }),
   setRenderQuality: (quality) => set({ renderQuality: quality }),
   setTheme: (theme) => set({ activeTheme: theme }),
   setTimeFormat: (format) => set({ timeFormat: format }),

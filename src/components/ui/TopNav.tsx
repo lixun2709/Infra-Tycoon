@@ -279,7 +279,7 @@ export function TopNav({
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={tab.onClick}
+                onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); tab.onClick?.(); }} onClick={tab.onClick}
                 className={`w-full text-left px-4 py-3 text-[10px] font-black tracking-widest flex items-center gap-3 transition-colors hover:bg-white/10 ${tab.active ? 'text-teal-400 bg-teal-500/10' : 'text-slate-300'}`}
               >
                 {tab.icon} {tab.label}

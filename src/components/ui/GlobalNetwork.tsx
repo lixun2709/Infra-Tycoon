@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useUIStore } from '../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
-import { Modal, Tabs } from './system'
 import type { ServiceType } from '../../store/infraTypes'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 
@@ -238,10 +237,10 @@ export function GlobalNetwork() {
                 })
               )}
            </div>
-              </div>
-    </Modal>
-  )
-}
+        </div>
+      </div>
+    )
+  }
 
   const renderPatching = () => {
     const racks = nodes.filter((n: any) => n.siteId === currentSiteId && n.type === 'rack')
@@ -787,16 +786,23 @@ export function GlobalNetwork() {
         </div>
 
         {/* Navigation Tabs */}
-        <Tabs 
-          tabs={[
-            { id: 'topology', label: 'Topology' },
-            { id: 'patching', label: 'Patch Panel' },
-            { id: 'services', label: 'Orchestration' },
-            { id: 'sdn', label: 'SDN Engineering' },
-          ]}
-          activeTab={activeTab}
-          onChange={(id) => { setActiveTab(id as 'topology' | 'patching' | 'services' | 'sdn'); setConfiguringService(null); }}
-        />
+        <div className="flex gap-2 bg-slate-950/60 p-1.5 rounded-2xl border border-white/5 w-fit relative z-10 backdrop-blur-xl">
+          {[
+            { id: 'topology', label: 'Topology', icon: '📐' },
+            { id: 'patching', label: 'Patch Panel', icon: '🔌' },
+            { id: 'services', label: 'Orchestration', icon: '⚡' },
+            { id: 'sdn', label: 'SDN Engineering', icon: '🌐' },
+          ].map(tab => (
+            <button 
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id as 'topology' | 'patching' | 'services' | 'sdn'); setConfiguringService(null); }}
+              className={`px-6 py-2.5 rounded-xl text-[9px] font-black transition-all flex items-center gap-2 uppercase tracking-[0.1em] ${activeTab === tab.id ? 'bg-teal-500 text-slate-950 shadow-[0_10px_30px_rgba(45,212,191,0.2)]' : 'text-slate-500 hover:text-white hover:bg-white/5'}`}
+            >
+              <span className="text-base">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {/* Content Area */}
         <div className="flex-1 overflow-hidden flex flex-col relative z-10 mt-2">

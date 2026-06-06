@@ -145,7 +145,7 @@ function App() {
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() === 't' && (e.target as HTMLElement).tagName !== 'INPUT') {
-        setIsTerminalOpen(!isTerminalOpen)
+        setIsTerminalOpen(!useTerminalStore.getState().isTerminalOpen)
       }
     }
 
@@ -216,7 +216,7 @@ function App() {
           setIsNOCDashboardOpen(!isNOCDashboardOpen)
         }}
         onToggleTerminal={() => {
-           setIsTerminalOpen(!isTerminalOpen)
+           setIsTerminalOpen(!useTerminalStore.getState().isTerminalOpen)
            if (siteTerminal && siteTerminal.sessions.length === 0) {
               addTerminalSession('Main Console')
            }

@@ -24,6 +24,7 @@ import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
 import { useUIStore } from './useUIStore'
+import { useTerminalStore } from './useTerminalStore'
 
 export const useInfraStore = create<InfraState>()(
   persist<InfraState, [], [], any>(
@@ -131,7 +132,7 @@ export const useInfraStore = create<InfraState>()(
       setMousePosition: (pos) => useUIStore.getState().setMousePosition(pos),
       toggleHeatMap: () => useUIStore.getState().toggleHeatMap(),
       toggleGlobalMap: () => useUIStore.getState().toggleGlobalMap(),
-      setIsTerminalOpen: (val) => useUIStore.getState().setIsTerminalOpen(val),
+      setIsTerminalOpen: (val) => useTerminalStore.getState().setIsTerminalOpen(val),
       setRenderQuality: (quality) => useUIStore.getState().setRenderQuality(quality),
       setTheme: (theme) => useUIStore.getState().setTheme(theme),
 
