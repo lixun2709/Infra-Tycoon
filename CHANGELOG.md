@@ -1,67 +1,19 @@
-# Changelog
+# CHANGELOG
 
-### [Unreleased]
-- Day 30: **ITSM Auto-Remediation & Escalation Policies**: Players can now configure Automation Policies to automatically dispatch Smart Hands technicians ($1,500 fee) upon hardware failure, reducing micromanagement at hyperscale.
-- Day 29: **Customer Contract SLA Penalties**: Breaching hardware repair SLAs now inflicts severe monthly OpEx fines and Reputation damage.
-- Day 28: **ITSM Service Desk Architecture**: Introduced ITIL-compliant tracking for hardware failures, SLA metrics, and a Kanban board for dispatching Smart Hands.
-- Day 27: **Multi-Cloud Bursting Architecture**
-  - Introduced dynamic Hybrid Cloud vendor marketplace (Spot vs Reserved instances) and FinOps Analytics dashboard.
-- Day 26: **SOC & Automation Dashboard Overhaul**
-  - Redesigned the Automation panel into a fully-featured CI/CD and Infrastructure-as-Code (IaC) pipeline visualizer.
-  - Upgraded Security Operations Center (SOC) panel with a Global OSINT Threat Intelligence feed and IPS/IDS analytics logs.
-  - Wrapped both dashboards in enterprise-grade draggable `Modal` components to prevent layout overlap with peripheral telemetry.
-- Day 25: **Facility & HVAC Management**
-  - Implemented real-time datacenter thermal telemetry and physical containment (Cold Aisle / Hot Aisle) purchasing mechanisms.
-- Day 24: **Disaster Recovery (DRaaS)**
-  - Implemented cross-site backup and bare-metal Ransomware recovery operations.
-- Day 21: **Enterprise Security Operations Center (SOC)**
-  - Interactive SOC Dashboard to visualize datacenter threat landscape.
-  - Mitigate ransomware lateral propagation using active GUI controls.
-  - Implemented Microsegmentation (Zero-Trust) and Logical Node Isolation.
-  - Format Drive capabilities for irrecoverable encrypted nodes.
-- Day 20: **Infrastructure Automation Engine**
-  - Added fully deterministic rules engine running in ECS Web Worker.
-  - Automation policies can target global, site, rack, or specific nodes.
-  - Supports condition-action mappings (e.g., Temp > 85°C -> Graceful Shutdown).
-  - Configurable cooldowns to prevent alarm fatigue and system thrashing.
-  - Premium Automation Dashboard for real-time policy management.
-- Day 15: **Network Routing Gameplay**
-  - Added BGP-style Traffic Engineering (`routingWeight`) allowing manual steering of network flows.
-  - Implemented Top-of-Rack Switch Enforcement rules: Cross-rack traffic that bypasses network switches now incurs massive latency penalties (+50ms).
-  - Added "SDN Traffic Engineering" tab to `GlobalNetwork.tsx` for real-time link QoS configuration.
-- Day 14: **Power Distribution Architecture**
-  - Added Electrical telemetry tab to Inspector (Rack PDU feeds, device phases, PSU redundancy).
-  - Configurable server phases (L1, L2, L3) with strict Phase Balancer inside ECS.
-  - Procurement options: Dual Power Supplies for Servers ($400) and Redundant A+B PDUs for Racks ($2500).
-  - Facility Grid Toggles (A/B) in the top nav to trigger simulated utility outages.
-- Day 13: **Cooling Optimization Gameplay**
+## [v3.0.0] - Infrastructure Operating System Evolution
 
 ### Added
-- **SLA Violation Penalties**: Automatic penalty calculation and payout deductions when uptime drops below contract target SLA.
-- **Ransomware Drills & Formatting**: Node infection propagation mechanics with `ransomware-drill` simulation command, paired with `format [node_id]` functionality.
-- **Node Isolation & Terminal Extension**: `isolate [node_id]` and `format [node_id]` commands added to bootstrap kernel, preventing lateral movement of zero-day exploits.
-- **DR Drills (RPO Validation)**: DR Drills now strictly evaluate Recovery Point Objectives (RPO). Storage split-brain scenarios are automatically detected if replication is broken during isolation events.
-- **Ticketing Priority Queue**: `TicketingSystem` now supports P1-P4 SLA priorities. Emergency tickets override queue limits to ensure critical systems recover rapidly.
-- **Incident Root Cause Analysis**: Replaced naive anomaly detection with intelligent clustering. Mass failures are traced to a single root cause (e.g., Rack Power Overload) preventing alert fatigue.
-- **Ransomware Microsegmentation**: Added `microsegmentationEnabled` and `isImmutable` backup rules to severely restrict malware lateral spread. Zero-Day exploits introduced.
-- **VMware DRS CPU Overcommit**: Hypervisor now dynamically tracks vCPU overcommit against pCPUs. Ratios above 4:1 impose CPU Ready Time degradation penalties.
-- **Storage vMotion (svMotion)**: DRS now actively evacuates VMs from datastores reaching 90% utilization.
-- **Kubernetes Quorum Mechanics**: Losing etcd quorum (`cluster.masters.length < totalMasters / 2 + 1`) halts scheduling and evictions, forcing the control plane to read-only.
-- **Kubernetes OOMKilled Simulation**: Pods now dynamically jitter memory usage; breaching `memoryLimit` immediately terminates the pod with `OOMKilled` status and applies crashloop backoffs.
-- **Enterprise Testing Coverage**: Extensive unit tests built for `HypervisorSystem`, `KubernetesSystem`, and `IncidentSystem` to validate deterministic DRS, Quorum handling, and RPO/RTO validation.
-- Comprehensive documentation synchronization for enterprise features.
-- In-App Document Center mapping via AST.
-- Dynamic rendering LOD based on camera zoom and active node count.
-- **Operations Realism II**: Hardened `BackupSystem` against capacity/blackhole failures. Verified `SecuritySystem` lateral propagation scaling. Implemented space-aware bounds checking for DRS `svMotion` to prevent out-of-storage cascades.
-- **Operations Realism IV**: Added MTTR-based incident escalation (L1 -> L2 -> L3). Upgraded SLA logic to bypass penalties during Planned Maintenance (`maintenanceMode`). Added strict Backup Window Timeouts (60s) to `BackupSystem`.
-- **Operations Realism (Day 150)**: Hardened VMware Simulation physics. Validated strict 4:1 CPU Ready Time threshold for `HypervisorSystem`. Verified DRS `svMotion` prevents Datastore capacity overflows. HA failover gracefully re-queues orphaned VMs upon abrupt host power loss.
-### Changed
-- ECS Simulation moved to independent Web Worker for strictly deterministic lock-steps.
-- React components refactored to consume Zustand store updates driven by Worker IPC.
+- **CommandRegistry Framework**: Centralized parsing and safe dispatching of all terminal commands.
+- **TERMINAL_CMD Payload System**: Web Worker interface for receiving deterministically structured terminal payloads directly from the UI.
+- **Auto-Scrolling Terminal View**: Enhanced gameplay realism via automatic UX log tracking.
+- **Mission 5: Infrastructure Operations OS**: New progression tier directly tied to successful node bootstrapping via the console.
+- **Enterprise Emulation Docs**: Cisco/ESXi style operating documentation across operations, troubleshooting, and missions.
 
-### Fixed
-- Fixed cascading thermal propagation where open slots did not accurately trigger bypass air leaks.
-- Resolved 3-Phase power imbalance issue during rack rapid provisioning.
-- **Ticketing Systems & Priority Queues**: TicketingSystem now supports a robust P1-P4 priority queue logic and effectively preempts regular queues during emergency tickets (Day 129).
-- **Incident Hardening**: IncidentSystem logic validated against enterprise DR, RTO, and RPO compliance tests (Day 130).
-- **SLA Zero-Allocation Overhaul**: SlaSystem utilizes pre-cached Object-Pooling techniques to perform lockstep accounting for thousands of servers without GC stutter (Day 131).
+### Changed
+- Re-architected `terminalLogic.ts` to strictly prevent direct ECS physics modifications from the React UI thread.
+- `poweron`, `pdu reset`, `format`, `dr-drill`, and `ransomware-drill` now route completely asynchronously to the `SimulationWorkerManager`.
+- Node boot conditions require correct utility feeds (A/B) from physical upstream models before returning operational status.
+
+### Removed
+- `eval` paths and unsafe node property injections in the terminal layer.
+- Obsolete monolithic `handleCommand` if/else logic block.
