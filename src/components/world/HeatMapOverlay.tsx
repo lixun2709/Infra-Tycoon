@@ -12,14 +12,14 @@ export function HeatMapOverlay() {
   if (!isHeatMapVisible) return null
 
   // Check if there is at least one Environmental Sensor in the site to "provide" the data
-  const hasSensor = nodes.some(n => n.catalogKey === 'ENV_SENSOR')
+  const hasSensor = nodes.some((n: any) => n.catalogKey === 'ENV_SENSOR')
   if (!hasSensor) return null
 
-  const racks = nodes.filter(n => n.type === 'rack')
+  const racks = nodes.filter((n: any) => n.type === 'rack')
 
   return (
     <group>
-      {racks.map(rack => {
+      {racks.map((rack: any) => {
         const temp = rack.temperature || 20
         // Color scale: 20C (Green) to 40C (Red)
         const factor = Math.min(1, Math.max(0, (temp - 20) / 20))

@@ -818,7 +818,7 @@ export function EnvironmentRenderer() {
       {[-45, -15, 15, 45].map((wX) =>
         [-45, -15, 15, 45].map((wZ) => {
           // Omit columns if they fall inside active room campus
-          const isNearRoom = halls.some(h => Math.abs(h.x * 30 - wX) < 25 && Math.abs(h.z * 30 - wZ) < 25)
+          const isNearRoom = halls.some((h: any) => Math.abs(h.x * 30 - wX) < 25 && Math.abs(h.z * 30 - wZ) < 25)
           if (isNearRoom) return null
 
           return (
@@ -886,9 +886,9 @@ export function EnvironmentRenderer() {
         const slots: { tx: number; tz: number }[] = []
         for (let tx = -2; tx <= 2; tx++) {
           for (let tz = -2; tz <= 2; tz++) {
-            const occupied = halls.some(h => h.x === tx && h.z === tz)
+            const occupied = halls.some((h: any) => h.x === tx && h.z === tz)
             if (!occupied) {
-              const adjacent = halls.some(h => Math.abs(h.x - tx) + Math.abs(h.z - tz) === 1)
+              const adjacent = halls.some((h: any) => Math.abs(h.x - tx) + Math.abs(h.z - tz) === 1)
               if (adjacent) {
                 slots.push({ tx, tz })
               }
@@ -924,11 +924,11 @@ export function EnvironmentRenderer() {
       })()}
 
       {/* 5. ERECT ROOM PLATFORM STEEL FRAMING, RAILINGS & ACCESS STAIRS */}
-      {halls.map((hall) => {
-        const hasN = halls.some(h => h.x === hall.x && h.z === hall.z - 1)
-        const hasS = halls.some(h => h.x === hall.x && h.z === hall.z + 1)
-        const hasW = halls.some(h => h.x === hall.x - 1 && h.z === hall.z)
-        const hasE = halls.some(h => h.x === hall.x + 1 && h.z === hall.z)
+      {halls.map((hall: any) => {
+        const hasN = halls.some((h: any) => h.x === hall.x && h.z === hall.z - 1)
+        const hasS = halls.some((h: any) => h.x === hall.x && h.z === hall.z + 1)
+        const hasW = halls.some((h: any) => h.x === hall.x - 1 && h.z === hall.z)
+        const hasE = halls.some((h: any) => h.x === hall.x + 1 && h.z === hall.z)
 
         return (
           <PlatformEdges 
@@ -947,8 +947,8 @@ export function EnvironmentRenderer() {
 
       {/* Place Access Staircase dynamically on the exposed West exit of Central (0, 0) hall */}
       {(() => {
-        const centralHall = halls.find(h => h.x === 0 && h.z === 0)
-        const hasW = halls.some(h => h.x === -1 && h.z === 0)
+        const centralHall = halls.find((h: any) => h.x === 0 && h.z === 0)
+        const hasW = halls.some((h: any) => h.x === -1 && h.z === 0)
         if (centralHall && !hasW) {
           return (
             <PlatformStairs 
@@ -965,15 +965,15 @@ export function EnvironmentRenderer() {
           Wrap the active halls interior assets in elevated position group (+1.6m)
           ==================================================== */}
       <group position={[0, 1.6, 0]}>
-        {halls.map((hall) => {
+        {halls.map((hall: any) => {
           const hx = hall.x * 30
           const hz = hall.z * 30
 
           // Check adjacent grid neighbors
-          const hasN = halls.some(h => h.x === hall.x && h.z === hall.z - 1)
-          const hasS = halls.some(h => h.x === hall.x && h.z === hall.z + 1)
-          const hasW = halls.some(h => h.x === hall.x - 1 && h.z === hall.z)
-          const hasE = halls.some(h => h.x === hall.x + 1 && h.z === hall.z)
+          const hasN = halls.some((h: any) => h.x === hall.x && h.z === hall.z - 1)
+          const hasS = halls.some((h: any) => h.x === hall.x && h.z === hall.z + 1)
+          const hasW = halls.some((h: any) => h.x === hall.x - 1 && h.z === hall.z)
+          const hasE = halls.some((h: any) => h.x === hall.x + 1 && h.z === hall.z)
 
           return (
             <group key={`hall-int-${hall.id}`}>
@@ -1161,13 +1161,13 @@ export function EnvironmentRenderer() {
         })}
 
         {/* INSIDE CLUTTER: Elevated with room */}
-        {halls.map((hall) => {
+        {halls.map((hall: any) => {
           const hx = hall.x * 30
           const hz = hall.z * 30
 
-          const hasN = halls.some(h => h.x === hall.x && h.z === hall.z - 1)
-          const hasW = halls.some(h => h.x === hall.x - 1 && h.z === hall.z)
-          const hasE = halls.some(h => h.x === hall.x + 1 && h.z === hall.z)
+          const hasN = halls.some((h: any) => h.x === hall.x && h.z === hall.z - 1)
+          const hasW = halls.some((h: any) => h.x === hall.x - 1 && h.z === hall.z)
+          const hasE = halls.some((h: any) => h.x === hall.x + 1 && h.z === hall.z)
 
           return (
             <group key={`inner-clutter-${hall.id}`}>

@@ -37,8 +37,8 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
   setNetworkManagerOpen: (open) => set({ isNetworkManagerOpen: open }),
   setCurrentSiteId: (siteId) => set({ currentSiteId: siteId }),
   setMousePosition: (pos) => set({ mousePosition: pos }),
-  toggleHeatMap: () => set(state => ({ isHeatMapVisible: !state.isHeatMapVisible })),
-  toggleGlobalMap: () => set(state => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
+  toggleHeatMap: () => set((state: any) => ({ isHeatMapVisible: !state.isHeatMapVisible })),
+  toggleGlobalMap: () => set((state: any) => ({ isGlobalMapOpen: !state.isGlobalMapOpen })),
   setIsTerminalOpen: (val: boolean) => set({ isTerminalOpen: val }),
   setRenderQuality: (quality) => set({ renderQuality: quality }),
   setTheme: (theme) => set({ activeTheme: theme }),
@@ -69,7 +69,7 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
     }
     else if (severity === 'warning') audioManager.playEffect('alert')
     
-    set((state) => ({
+    set((state: any) => ({
       alerts: [{ 
         id: crypto.randomUUID(), 
         timestamp: Date.now(), 
@@ -83,22 +83,22 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
   },
 
   acknowledgeAlert: (id) => {
-    set((state) => {
-      const alert = state.alerts.find(a => a.id === id)
+    set((state: any) => {
+      const alert = state.alerts.find((a: any) => a.id === id)
       if (alert) {
         const normalized = normalizeAlertMessage(alert.message)
         const key = `${alert.severity}:${normalized}:${alert.nodeId || ''}`
         acknowledgedAt.set(key, Date.now())
       }
       return {
-        alerts: state.alerts.map(a => a.id === id ? { ...a, isAcknowledged: true } : a)
+        alerts: state.alerts.map((a: any) => a.id === id ? { ...a, isAcknowledged: true } : a)
       }
     })
   },
 
   acknowledgeAllAlerts: () => {
-    set((state) => {
-      state.alerts.forEach(alert => {
+    set((state: any) => {
+      state.alerts.forEach((alert: any) => {
         if (!alert.isAcknowledged) {
           const normalized = normalizeAlertMessage(alert.message)
           const key = `${alert.severity}:${normalized}:${alert.nodeId || ''}`
@@ -106,7 +106,7 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
         }
       })
       return {
-        alerts: state.alerts.map(a => ({ ...a, isAcknowledged: true }))
+        alerts: state.alerts.map((a: any) => ({ ...a, isAcknowledged: true }))
       }
     })
   }

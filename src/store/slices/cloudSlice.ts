@@ -42,7 +42,7 @@ const DEFAULT_PROVIDERS: CloudProvider[] = [
 
 export const createCloudSlice: StateCreator<InfraState, [], [], CloudSlice> = (set, get) => ({
   setCloudProvider: (id) => {
-    const provider = get().cloudProviders.find(p => p.id === id)
+    const provider = get().cloudProviders.find((p: any) => p.id === id)
     if (provider) {
       set({ activeCloudProviderId: id })
       get().pushAlert('info', `Hybrid Cloud Gateway connected to ${provider.name}.`)
@@ -55,11 +55,11 @@ export const createCloudSlice: StateCreator<InfraState, [], [], CloudSlice> = (s
   purchaseReservedInstance: (providerId, count) => {
     const { cloudProviders, pushAlert } = get()
     
-    const provider = cloudProviders.find(p => p.id === providerId)
+    const provider = cloudProviders.find((p: any) => p.id === providerId)
     if (!provider) return
 
     set({
-      cloudProviders: cloudProviders.map(p => 
+      cloudProviders: cloudProviders.map((p: any) => 
         p.id === providerId ? { ...p, reservedInstances: p.reservedInstances + count } : p
       )
     })
@@ -70,13 +70,13 @@ export const createCloudSlice: StateCreator<InfraState, [], [], CloudSlice> = (s
   updateSpotInstances: (providerId, instances) => {
     const { cloudProviders } = get()
     
-    const updatedProviders = cloudProviders.map(p => 
+    const updatedProviders = cloudProviders.map((p: any) => 
       p.id === providerId ? { ...p, activeSpotInstances: instances } : p
     )
     
     // Calculate total
     let totalInstances = 0
-    updatedProviders.forEach(p => {
+    updatedProviders.forEach((p: any) => {
       totalInstances += p.activeSpotInstances + p.reservedInstances
     })
 

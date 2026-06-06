@@ -29,14 +29,14 @@ export function StorageDashboard({ isOpen, onClose }: StorageDashboardProps) {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'clusters' | 'data_services'>('overview')
 
-  const storageNodes = nodes.filter(n => n.type === 'storage')
-  const totalCapacity = storageNodes.reduce((acc, n) => acc + (n.totalStorageTB || 0), 0)
-  const totalUsed = storageNodes.reduce((acc, n) => acc + (n.usedStorageTB || 0), 0)
-  const physicalUsed = storageNodes.reduce((acc, n) => acc + (n.physicalUsedStorageTB || n.usedStorageTB || 0), 0)
+  const storageNodes = nodes.filter((n: any) => n.type === 'storage')
+  const totalCapacity = storageNodes.reduce((acc: any, n: any) => acc + (n.totalStorageTB || 0), 0)
+  const totalUsed = storageNodes.reduce((acc: any, n: any) => acc + (n.usedStorageTB || 0), 0)
+  const physicalUsed = storageNodes.reduce((acc: any, n: any) => acc + (n.physicalUsedStorageTB || n.usedStorageTB || 0), 0)
   
-  const degradedNodes = storageNodes.filter(n => n.storageStatus === 'degraded' || n.storageStatus === 'highly_degraded')
-  const rebuildingNodes = storageNodes.filter(n => n.storageStatus === 'rebuilding')
-  const failedNodes = storageNodes.filter(n => n.storageStatus === 'failed')
+  const degradedNodes = storageNodes.filter((n: any) => n.storageStatus === 'degraded' || n.storageStatus === 'highly_degraded')
+  const rebuildingNodes = storageNodes.filter((n: any) => n.storageStatus === 'rebuilding')
+  const failedNodes = storageNodes.filter((n: any) => n.storageStatus === 'failed')
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'OVERVIEW', icon: <Activity size={14} /> },
@@ -100,7 +100,7 @@ export function StorageDashboard({ isOpen, onClose }: StorageDashboardProps) {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {rebuildingNodes.map(node => (
+                    {rebuildingNodes.map((node: any) => (
                       <Card key={node.id} className="p-4 flex items-center gap-4">
                         <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center border border-yellow-500/30">
                           <RefreshCw className="text-yellow-400 animate-spin" size={20} />
@@ -132,7 +132,7 @@ export function StorageDashboard({ isOpen, onClose }: StorageDashboardProps) {
                   <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">No storage nodes deployed</span>
                 </div>
               ) : (
-                storageNodes.map(node => {
+                storageNodes.map((node: any) => {
                   const isDegraded = node.storageStatus === 'degraded' || node.storageStatus === 'highly_degraded' || node.storageStatus === 'failed'
                   return (
                     <Card key={node.id} className={`p-5 flex flex-col gap-4 transition-colors ${isDegraded ? 'border-amber-500/50 bg-amber-950/10' : ''}`}>
@@ -202,7 +202,7 @@ export function StorageDashboard({ isOpen, onClose }: StorageDashboardProps) {
                    <span className="text-xs text-slate-500 font-bold uppercase tracking-widest">No storage nodes deployed</span>
                  </div>
               ) : (
-                storageNodes.map(node => (
+                storageNodes.map((node: any) => (
                   <Card key={node.id} className="p-5 flex items-center justify-between">
                     <div>
                       <h4 className="text-sm font-bold text-white mb-1">{node.catalogKey || 'Storage Array'}</h4>

@@ -96,7 +96,7 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
   const { processCommand } = useInfraStore(useShallow(state => ({
     processCommand: state.processCommand
   })))
-  const targetNode = nodeId ? useInfraStore.getState().nodes.find(n => n.id === nodeId) : null
+  const targetNode = nodeId ? useInfraStore.getState().nodes.find((n: any) => n.id === nodeId) : null
 
   useEffect(() => {
     const interval = setInterval(() => setTick(t => t + 1), 1000)
@@ -130,12 +130,12 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
       return x - Math.floor(x)
     }
 
-    const currentSiteNodes = useInfraStore.getState().nodes.filter(n => n.siteId === siteId).slice(0, 12)
+    const currentSiteNodes = useInfraStore.getState().nodes.filter((n: any) => n.siteId === siteId).slice(0, 12)
 
     return {
       cpu: pseudoRand(1) * 10 + cpuBase,
       mem: pseudoRand(2) * 5 + memBase,
-      procMetrics: (targetNode ? targetNode.services : currentSiteNodes).map((_, i) => ({
+      procMetrics: (targetNode ? targetNode.services : currentSiteNodes).map((_: any, i: any) => ({
         cpu: pseudoRand(i + 10) * 12,
         mem: pseudoRand(i + 20) * 5
       }))
@@ -180,7 +180,7 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
          </thead>
          <tbody>
            {targetNode ? (
-             targetNode.services.map((s, i) => {
+             targetNode.services.map((s: any, i: any) => {
                const metric = metrics.procMetrics[i]
                const cpuVal = metric ? metric.cpu : 0
                const memVal = metric ? metric.mem : 0
@@ -195,7 +195,7 @@ const TopMonitor: React.FC<{ nodeId?: string | null, siteId: string }> = ({ node
                )
              })
            ) : (
-             useInfraStore.getState().nodes.filter(n => n.siteId === siteId).slice(0, 12).map((n, i) => {
+             useInfraStore.getState().nodes.filter((n: any) => n.siteId === siteId).slice(0, 12).map((n: any, i: any) => {
                const metric = metrics.procMetrics[i]
                const cpuVal = metric ? metric.cpu : 0
                const memVal = metric ? metric.mem : 0
@@ -223,7 +223,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useInfraStore(s => s.nodes.length)
 
   const topActiveSessionId = siteState?.activeSessionId
-  const topActiveSession = siteState?.sessions?.find(s => s.id === topActiveSessionId)
+  const topActiveSession = siteState?.sessions?.find((s: any) => s.id === topActiveSessionId)
   const topActivePaneId = topActiveSession?.activePaneId
   
   const { 
@@ -277,9 +277,9 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   useEffect(() => {
     if (selectedNodeId) {
       const nodes = useInfraStore.getState().nodes
-      const node = nodes.find(n => n.id === selectedNodeId)
+      const node = nodes.find((n: any) => n.id === selectedNodeId)
       if (node && node.type !== 'rack' && siteState?.sessions) {
-        const existingSession = siteState.sessions.find(s => s.panes.some(p => p.context.targetId === selectedNodeId))
+        const existingSession = siteState.sessions.find((s: any) => s.panes.some((p: any) => p.context.targetId === selectedNodeId))
         if (existingSession) {
           setActiveSession(existingSession.id)
         } else {
@@ -294,11 +294,11 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const { sessions, activeSessionId, layout } = siteState
   const firstSession = sessions[0]
   if (!firstSession) return null
-  const activeSession = sessions.find(s => s.id === activeSessionId) || firstSession
+  const activeSession = sessions.find((s: any) => s.id === activeSessionId) || firstSession
   const { panes, activePaneId, layout: sessionLayout } = activeSession
   const firstPane = panes[0]
   if (!firstPane) return null
-  const activePane = panes.find(p => p.id === activePaneId) || firstPane
+  const activePane = panes.find((p: any) => p.id === activePaneId) || firstPane
 
   // Auto-scroll logic
   // We use the effect inside Terminal because it needs scrollRef
@@ -324,7 +324,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       e.preventDefault()
       const commands = ['ls', 'cd', 'cat', 'pwd', 'clear', 'history', 'man', 'top', 'show', 'volume', 'sla', 'ssh', 'ping', 'nmap', 'exit', 'vserver', 'protection_status', 'iptables', 'alias', 'export', 'watch', 'nano']
       const nodes = useInfraStore.getState().nodes
-      const nodeIps = nodes.filter(n => n.siteId === currentSiteId).flatMap(n => n.ports.map(p => p.ip).filter(Boolean))
+      const nodeIps = nodes.filter((n: any) => n.siteId === currentSiteId).flatMap(n => n.ports.map((p: any) => p.ip).filter(Boolean))
       const suggestions = [...commands, ...nodeIps] as string[]
       
       const lastPart = input.split(/\s+/).pop()?.toLowerCase() || ''
@@ -344,7 +344,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }
 
   const renderPane = (pane: TerminalPane, isFocused: boolean) => {
-    const paneNode = pane.context.targetId ? useInfraStore.getState().nodes.find(n => n.id === pane.context.targetId) : null
+    const paneNode = pane.context.targetId ? useInfraStore.getState().nodes.find((n: any) => n.id === pane.context.targetId) : null
     
     if (pane.context.mode === 'nano') return <NanoEditor key={pane.id} pane={pane} siteId={currentSiteId} />
     if (pane.context.mode === 'top') return <TopMonitor key={pane.id} nodeId={pane.context.targetId} siteId={currentSiteId} />
@@ -440,7 +440,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         </div>
         
         <div className="flex-1 flex items-center gap-1 overflow-x-auto no-scrollbar">
-          {sessions.map(s => (
+          {sessions.map((s: any) => (
             <div 
               key={s.id}
               onClick={() => setActiveSession(s.id)}
@@ -479,7 +479,7 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       </div>
 
       <div className={`flex-1 flex min-h-0 relative z-10 ${sessionLayout === 'vertical' ? 'flex-col' : 'flex-row'}`}>
-         {panes.map(p => renderPane(p, p.id === activePaneId))}
+         {panes.map((p: any) => renderPane(p, p.id === activePaneId))}
       </div>
 
       <div className="h-10 bg-black/40 border-t border-white/5 px-8 flex items-center justify-between relative z-20">

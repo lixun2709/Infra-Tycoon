@@ -33,8 +33,8 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     
     const siteState = useInfraStore.getState().terminalStates['site-1']
     expect(siteState).toBeDefined()
-    const activeSession = siteState!.sessions.find(s => s.id === siteState!.activeSessionId)!
-    const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId)!
+    const activeSession = siteState!.sessions.find((s: any) => s.id === siteState!.activeSessionId)!
+    const activePane = activeSession.panes.find((p: any) => p.id === activeSession.activePaneId)!
     
     expect(activePane.history).toContain('ls')
     expect(activePane.history).toContain('pwd')
@@ -56,7 +56,7 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     splitTerminalPane('vertical')
     const stateWithSplit = useInfraStore.getState().terminalStates['site-1']
     expect(stateWithSplit).toBeDefined()
-    const activeSession = stateWithSplit!.sessions.find(s => s.id === stateWithSplit!.activeSessionId)!
+    const activeSession = stateWithSplit!.sessions.find((s: any) => s.id === stateWithSplit!.activeSessionId)!
     expect(activeSession.panes.length).toBe(2)
     
     // Verify independent history
@@ -75,7 +75,7 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     expect(finalState).toBeDefined()
     const session2 = finalState!.sessions[2]
     expect(session2).toBeDefined()
-    const activePaneInS2 = session2!.panes.find(p => p.id === session2!.activePaneId)!
+    const activePaneInS2 = session2!.panes.find((p: any) => p.id === session2!.activePaneId)!
     
     expect(activePaneInS2.history).toContain('echo session_active')
     const finalSession0 = finalState!.sessions[0]

@@ -14,13 +14,20 @@ import {
   FileText,
   PlayCircle,
   Settings,
-  Database
+  Database,
+  Wind,
+  Server,
+  Briefcase,
+  Network
 } from 'lucide-react'
 import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
 import { LevelUpOverlay } from './LevelUpOverlay'
+import { FacilityTab } from './FacilityDashboard'
+import { FleetTab } from './FleetDashboard'
+import { ServiceDeskTab } from './ServiceDeskDashboard'
 
 function SparklineChart({ data, color = '#10b981', height = 40, maxVal = 100 }: { data: number[], color?: string, height?: number, maxVal?: number }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null)
@@ -155,7 +162,7 @@ export function Dashboard({
   initialTab = 'overview'
 }: { 
   onClose: () => void
-  initialTab?: 'overview' | 'events' | 'audit' | 'diagnostics' | 'observability'
+  initialTab?: 'overview' | 'events' | 'audit' | 'diagnostics' | 'observability' | 'facility' | 'fleet' | 'itsm'
 }) {
   const {
     alerts, acknowledgeAlert, acknowledgeAllAlerts,
@@ -188,7 +195,7 @@ export function Dashboard({
     return `${pad(m)}:${pad(s)}`
   }
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics' | 'observability'>(initialTab)
+  const [activeTab, setActiveTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics' | 'observability' | 'facility' | 'fleet' | 'itsm'>(initialTab)
   const [eventSubTab, setEventSubTab] = useState<'alerts' | 'incidents' | 'postmortems' | 'drills'>('alerts')
 
   const [metrics, setMetrics] = useState<PerformanceMetrics>(performanceMonitor.getMetrics())
@@ -237,10 +244,14 @@ export function Dashboard({
     }
   }
 
-  const activeAlerts = alerts.filter(a => !a.isAcknowledged).length
+  const activeAlerts = alerts.filter((a: any) => !a.isAcknowledged).length
 
   const tabs: TabItem[] = [
     { id: 'overview', label: 'OVERVIEW', icon: <LayoutDashboard size={14} /> },
+    { id: 'networking', label: 'NETWORKING', icon: <Network size={14} /> },
+    { id: 'facility', label: 'FACILITY', icon: <Wind size={14} /> },
+    { id: 'fleet', label: 'FLEET', icon: <Server size={14} /> },
+    { id: 'itsm', label: 'TICKETING', icon: <Briefcase size={14} /> },
     { id: 'events', label: activeAlerts > 0 ? `EVENTS (${activeAlerts})` : 'EVENTS', icon: <ShieldAlert size={14} /> },
     { id: 'observability', label: 'OBSERVABILITY', icon: <Activity size={14} /> },
     { id: 'audit', label: 'AUDIT LOGS', icon: <Layers size={14} /> },
@@ -300,8 +311,8 @@ export function Dashboard({
                   </div>
                   <PollingSparklineChart 
                     pollValue={() => {
-                      const allHW = useInfraStore.getState().nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
-                      const healthy = allHW.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
+                      const allHW = useInfraStore.getState().nodes.filter((n: any) => n.type !== 'rack' && n.type !== 'cooling')
+                      const healthy = allHW.filter((n: any) => n.healthStatus === 'healthy' || !n.healthStatus).length
                       return allHW.length > 0 ? Math.round((healthy / allHW.length) * 100) : 100
                     }} 
                     color={globalHealthIndex > 80 ? '#14b8a6' : '#ef4444'} 
@@ -387,7 +398,7 @@ export function Dashboard({
                 </button>
                 <button onClick={() => setEventSubTab('incidents')} className={`px-4 py-2 text-[10px] font-black tracking-widest uppercase rounded-lg border transition-all flex items-center gap-2 ${eventSubTab === 'incidents' ? 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 'bg-slate-800/50 text-slate-500 border-transparent hover:bg-slate-800 hover:text-slate-300'}`}>
                   <Activity size={14} /> Major Incidents
-                  {incidents.filter(i => !i.isResolved).length > 0 && (
+                  {incidents.filter((i: any) => !i.isResolved).length > 0 && (
                     <span className="ml-1 w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
                   )}
                 </button>
@@ -407,7 +418,7 @@ export function Dashboard({
                       <Button variant="ghost" className="text-[9px]" onClick={acknowledgeAllAlerts}>PURGE ALL</Button>
                     </div>
                     <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                      {alerts.filter(a => !a.isAcknowledged).map(alert => (
+                      {alerts.filter((a: any) => !a.isAcknowledged).map((alert: any) => (
                         <Card key={alert.id} className={`${alert.severity === 'critical' ? 'border-rose-500/20' : ''}`}>
                           <div className="flex gap-4">
                             <div className={`w-1.5 h-1.5 rounded-full mt-1.5 ${alert.severity === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-amber-400'}`} />
@@ -429,7 +440,7 @@ export function Dashboard({
                   <div className="space-y-4 flex flex-col min-h-0 opacity-60 hover:opacity-100 transition-opacity">
                     <h3 className="text-xs font-black text-slate-500 uppercase tracking-[0.2em] px-2 shrink-0">Alert History</h3>
                     <div className="space-y-3 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                      {alerts.filter(a => a.isAcknowledged).map(alert => (
+                      {alerts.filter((a: any) => a.isAcknowledged).map((alert: any) => (
                         <Card key={alert.id} glass={false} className="bg-white/5">
                           <p className="text-[10px] text-slate-400">{alert.message}</p>
                           <p className="text-[8px] font-mono text-slate-600 mt-2">
@@ -444,14 +455,14 @@ export function Dashboard({
 
               {eventSubTab === 'incidents' && (
                 <div className="space-y-4 overflow-y-auto flex-1 pr-2 custom-scrollbar">
-                  {incidents.filter(i => !i.isResolved).length === 0 ? (
+                  {incidents.filter((i: any) => !i.isResolved).length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-48 border border-white/5 rounded-2xl bg-white/5">
                       <ShieldAlert className="w-8 h-8 text-emerald-500 mb-3 opacity-50" />
                       <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest">No Active Incidents</p>
                       <p className="text-[10px] text-slate-500 mt-2">All systems operating within normal parameters.</p>
                     </div>
                   ) : (
-                    incidents.filter(i => !i.isResolved).map(incident => (
+                    incidents.filter((i: any) => !i.isResolved).map((incident: any) => (
                       <Card key={incident.id} className="border-rose-500/30 bg-rose-950/20 shadow-[0_0_30px_rgba(244,63,94,0.1)]">
                         <div className="flex gap-6">
                           <div className="flex flex-col items-center justify-center shrink-0 w-24 border-r border-rose-500/20 pr-6">
@@ -472,8 +483,8 @@ export function Dashboard({
                               </div>
                             </div>
                             {[incident.siteId].map(siteId => {
-                              const site = sites.find(s => s.id === siteId)
-                              const targetSite = sites.find(s => s.id !== siteId)?.id || 'site-1'
+                              const site = sites.find((s: any) => s.id === siteId)
+                              const targetSite = sites.find((s: any) => s.id !== siteId)?.id || 'site-1'
                               return (
                                 <div key={siteId} className="mt-4 p-4 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between">
                                   <div>
@@ -509,7 +520,7 @@ export function Dashboard({
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Post-Mortems Available</p>
                     </div>
                   ) : (
-                    postMortems.map(pm => (
+                    postMortems.map((pm: any) => (
                       <Card key={pm.id} className="opacity-80 hover:opacity-100 transition-opacity">
                         <div className="flex justify-between items-start mb-4">
                           <div>
@@ -573,7 +584,7 @@ export function Dashboard({
             <div className="max-w-4xl mx-auto space-y-4">
               <Card title="Security Audit Trail" subtitle="Immutable Compliance Logs">
                 <div className="space-y-1">
-                  {auditLogs.map(log => (
+                  {auditLogs.map((log: any) => (
                     <div key={log.id} className="py-4 border-b border-white/5 last:border-0 flex items-start justify-between gap-6 hover:bg-white/5 px-4 -mx-4 rounded-lg transition-colors">
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
@@ -598,6 +609,10 @@ export function Dashboard({
               </Card>
             </div>
           )}
+
+          {activeTab === 'facility' && <FacilityTab />}
+          {activeTab === 'fleet' && <FleetTab />}
+          {activeTab === 'itsm' && <ServiceDeskTab />}
 
           {activeTab === 'diagnostics' && (
             <div className="grid grid-cols-2 gap-8 font-mono text-[11px] text-slate-300">

@@ -80,8 +80,8 @@ export function GlobalMap() {
     if (nodesCount < 0) return []
     const nodes = useInfraStore.getState().nodes
     return sites.map((site: Site) => {
-      const siteHw = nodes.filter(n => n.siteId === site.id && n.type !== 'rack' && n.type !== 'cooling')
-      const healthyCount = siteHw.filter(n => n.healthStatus === 'healthy' || !n.healthStatus).length
+      const siteHw = nodes.filter((n: any) => n.siteId === site.id && n.type !== 'rack' && n.type !== 'cooling')
+      const healthyCount = siteHw.filter((n: any) => n.healthStatus === 'healthy' || !n.healthStatus).length
       const healthIndex = siteHw.length > 0 ? Math.round((healthyCount / siteHw.length) * 100) : 100
       const coords = projectCoords(site.geoCoords?.lat ?? 0, site.geoCoords?.lng ?? 0)
       return { ...site, healthIndex, coords, nodeCount: siteHw.length, hardware: siteHw }
@@ -89,7 +89,7 @@ export function GlobalMap() {
   }, [sites, nodesCount])
 
   const unclaimedRegions = useMemo(() => {
-    return EXPANSION_REGIONS.filter(er => !sites.some(s => s.region === er.region)).map(er => ({
+    return EXPANSION_REGIONS.filter(er => !sites.some((s: any) => s.region === er.region)).map(er => ({
       ...er,
       type: er.type || 'edge',
       coords: projectCoords(er.geoCoords.lat, er.geoCoords.lng)
@@ -98,7 +98,7 @@ export function GlobalMap() {
 
   if (!isOpen) return null
 
-  const selectedSite = siteData.find(s => s.id === selectedSiteId)
+  const selectedSite = siteData.find((s: any) => s.id === selectedSiteId)
   const selectedRegion = unclaimedRegions.find(r => r.region === selectedRegionId)
 
   // Graticule Lines (Lat/Lng Grid)
@@ -173,7 +173,7 @@ export function GlobalMap() {
                       <span className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Active Sites</span>
                     </div>
                     <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4 flex flex-col items-center justify-center text-center">
-                      <span className="text-3xl font-black text-blue-400">{siteData.reduce((acc, s) => acc + s.nodeCount, 0)}</span>
+                      <span className="text-3xl font-black text-blue-400">{siteData.reduce((acc: any, s: any) => acc + s.nodeCount, 0)}</span>
                       <span className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">Online Nodes</span>
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export function GlobalMap() {
                     <div>
                       <div className="flex justify-between items-end mb-1.5">
                         <span className="text-[10px] text-slate-400 flex items-center gap-1.5"><Cpu className="w-3 h-3 text-slate-500"/> Global Compute</span>
-                        <span className="text-xs font-bold text-slate-200">{siteData.reduce((acc, s) => acc + s.nodeCount * 32, 0)} vCPU</span>
+                        <span className="text-xs font-bold text-slate-200">{siteData.reduce((acc: any, s: any) => acc + s.nodeCount * 32, 0)} vCPU</span>
                       </div>
                       <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                         <div className="h-full bg-indigo-500 rounded-full" style={{ width: '45%' }} />
@@ -296,8 +296,8 @@ export function GlobalMap() {
                 {/* Map Data Overlay (SVG Paths) */}
                 <div className="absolute inset-12 z-10 pointer-events-none">
                   <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    {siteData.map((site, i) => 
-                      siteData.slice(i + 1).map((other) => {
+                    {siteData.map((site: any, i: any) => 
+                      siteData.slice(i + 1).map((other: any) => {
                         const sX = site.coords.x
                         const sY = site.coords.y
                         const oX = other.coords.x
@@ -331,7 +331,7 @@ export function GlobalMap() {
                 {/* Node Markers */}
                 <div className="absolute inset-12 z-20 pointer-events-none">
                   {/* Active Sites */}
-                  {siteData.map((site, i) => {
+                  {siteData.map((site: any, i: any) => {
                     const isSelected = selectedSiteId === site.id
                     const isHealthy = site.healthIndex > 80
                     const colorClass = isHealthy ? 'bg-emerald-500' : site.healthIndex > 50 ? 'bg-amber-500' : 'bg-red-500'

@@ -1,15 +1,15 @@
 import { useState, useMemo } from 'react'
-import { Modal, Card, Button } from './base'
+import { Card, Button } from './base'
 import { Server, ShieldAlert, Cpu, HardDrive, RefreshCw, Zap } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
-export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
+export const FleetTab = () => {
   const { nodes, globalTargetFirmware, triggerFirmwareUpgrade } = useInfraStore()
 
   const [targetVersionInput, setTargetVersionInput] = useState(globalTargetFirmware)
 
-  const hardwareNodes = useMemo(() => nodes.filter(n => n.type === 'compute' || n.type === 'storage' || n.type === 'network' || n.type === 'load_balancer'), [nodes])
+  const hardwareNodes = useMemo(() => nodes.filter((n: any) => n.type === 'compute' || n.type === 'storage' || n.type === 'network' || n.type === 'load_balancer'), [nodes])
 
-  const outdatedNodes = useMemo(() => hardwareNodes.filter(n => n.firmwareVersion !== globalTargetFirmware), [hardwareNodes, globalTargetFirmware])
+  const outdatedNodes = useMemo(() => hardwareNodes.filter((n: any) => n.firmwareVersion !== globalTargetFirmware), [hardwareNodes, globalTargetFirmware])
   
   const compliancePercentage = hardwareNodes.length > 0 
     ? Math.round(((hardwareNodes.length - outdatedNodes.length) / hardwareNodes.length) * 100) 
@@ -22,7 +22,7 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
   }
 
   const handleDeployAll = () => {
-    const idsToUpgrade = outdatedNodes.map(n => n.id)
+    const idsToUpgrade = outdatedNodes.map((n: any) => n.id)
     if (idsToUpgrade.length > 0) {
       triggerFirmwareUpgrade(idsToUpgrade)
     }
@@ -87,7 +87,7 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
           </div>
         ) : (
           <div className="space-y-2">
-            {outdatedNodes.map(node => (
+            {outdatedNodes.map((node: any) => (
               <div key={node.id} className="flex justify-between items-center p-3 bg-slate-800/50 border border-slate-700 rounded">
                 <div className="flex items-center space-x-3">
                   {node.type === 'compute' ? <Cpu className="w-5 h-5 text-indigo-400" /> : <HardDrive className="w-5 h-5 text-blue-400" />}
@@ -114,10 +114,10 @@ export const FleetDashboard = ({ isOpen, onClose }: { isOpen: boolean, onClose: 
   )
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Fleet Firmware Management" icon={<Server size={24} className="text-white" />}>
-      <div className="p-4 h-[600px] flex flex-col">
+    <div className="flex flex-col h-full overflow-y-auto">
+      <div className="p-4 flex-1">
         {renderContent()}
       </div>
-    </Modal>
+    </div>
   )
 }

@@ -10,6 +10,7 @@ export class SimulationWorkerManager {
   private worker: Worker | null = null
   private onOutputCallback: ((payload: SimSyncOutputPayload) => void) | null = null
   private onTelemetryCallback: ((payload: SimTelemetryPayload) => void) | null = null
+  private facilityFeedListener: EventListener | null = null
   
   private isProcessingTick = false
   private lastTickRequestTime = 0
@@ -44,14 +45,15 @@ export class SimulationWorkerManager {
       this.start()
 
       // Listen for global facility feed toggles from UI
-      window.addEventListener('infra:facilityFeedToggle', ((e: CustomEvent) => {
+      this.facilityFeedListener = ((e: CustomEvent) => {
         if (this.worker) {
           this.worker.postMessage({
             type: 'FACILITY_FEED',
             payload: e.detail
           })
         }
-      }) as EventListener)
+      }) as EventListener
+      window.addEventListener('infra:facilityFeedToggle', this.facilityFeedListener)
     }
   }
 
@@ -395,6 +397,10 @@ export class SimulationWorkerManager {
     if (this.worker) {
       this.worker.terminate()
       this.worker = null
+    }
+    if (this.facilityFeedListener && typeof window !== 'undefined') {
+      window.removeEventListener('infra:facilityFeedToggle', this.facilityFeedListener)
+      this.facilityFeedListener = null
     }
   }
 }

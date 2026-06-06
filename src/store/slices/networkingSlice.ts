@@ -39,7 +39,7 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
     const { nodes, connections, pushAlert } = get()
     
     // Check if ports are already connected
-    const existing = connections.find(c => 
+    const existing = connections.find((c: any) => 
       (c.startNodeId === sNodeId && c.startPortId === sPortId) ||
       (c.endNodeId === sNodeId && c.endPortId === sPortId) ||
       (c.startNodeId === tNodeId && c.startPortId === tPortId) ||
@@ -51,10 +51,10 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       return
     }
 
-    const sNode = nodes.find(n => n.id === sNodeId)
-    const tNode = nodes.find(n => n.id === tNodeId)
-    const sPort = sNode?.ports.find(p => p.id === sPortId)
-    const tPort = tNode?.ports.find(p => p.id === tPortId)
+    const sNode = nodes.find((n: any) => n.id === sNodeId)
+    const tNode = nodes.find((n: any) => n.id === tNodeId)
+    const sPort = sNode?.ports.find((p: any) => p.id === sPortId)
+    const tPort = tNode?.ports.find((p: any) => p.id === tPortId)
 
     if (!sPort || !tPort) {
       pushAlert('warning', 'Port not found. Cannot establish link.')
@@ -68,8 +68,8 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
     }
 
     // 1. Calculate realistic physical distance
-    const sRack = nodes.find(n => n.id === sNode?.parentRackId) || sNode
-    const tRack = nodes.find(n => n.id === tNode?.parentRackId) || tNode
+    const sRack = nodes.find((n: any) => n.id === sNode?.parentRackId) || sNode
+    const tRack = nodes.find((n: any) => n.id === tNode?.parentRackId) || tNode
     
     let lengthMeters = 5.0
     if (sRack && tRack) {
@@ -155,11 +155,11 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
       cost: totalCost
     }
 
-    const updatedNodes = nodes.map(n => {
+    const updatedNodes = nodes.map((n: any) => {
       if (n.id === sNodeId || n.id === tNodeId) {
         return {
           ...n,
-          ports: n.ports.map(p => {
+          ports: n.ports.map((p: any) => {
             if ((n.id === sNodeId && p.id === sPortId) || (n.id === tNodeId && p.id === tPortId)) {
               return { ...p, connectedTo: n.id === sNodeId ? tNodeId : sNodeId, status: 'up' as const }
             }
@@ -190,14 +190,14 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
 
   removeConnection: (id) => {
     const { connections, nodes } = get()
-    const conn = connections.find(c => c.id === id)
+    const conn = connections.find((c: any) => c.id === id)
     if (!conn) return
 
-    const updatedNodes = nodes.map(n => {
+    const updatedNodes = nodes.map((n: any) => {
       if (n.id === conn.startNodeId || n.id === conn.endNodeId) {
         return {
           ...n,
-          ports: n.ports.map(p => {
+          ports: n.ports.map((p: any) => {
             if (p.id === conn.startPortId || p.id === conn.endPortId) {
               return { ...p, connectedTo: null, status: 'down' as const }
             }
@@ -209,33 +209,33 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
     })
 
     set({ 
-      connections: connections.filter(c => c.id !== id),
+      connections: connections.filter((c: any) => c.id !== id),
       nodes: updatedNodes
     })
   },
 
   updateConnectionConfig: (id, config) => {
     const { connections } = get()
-    const updated = connections.map(c => c.id === id ? { ...c, ...config } : c)
+    const updated = connections.map((c: any) => c.id === id ? { ...c, ...config } : c)
     set({ connections: updated })
   },
 
   verifyService: (nodeId, type) => {
     const { nodes } = get()
-    const node = nodes.find(n => n.id === nodeId)
+    const node = nodes.find((n: any) => n.id === nodeId)
     if (!node) return false
-    return node.services?.some(s => s.type === type && s.status === 'running') || false
+    return node.services?.some((s: any) => s.type === type && s.status === 'running') || false
   },
 
   getServiceStatus: (type) => {
     const { nodes } = get()
-    const running = nodes.some(n => n.services?.some(s => s.type === type && s.status === 'running'))
+    const running = nodes.some((n: any) => n.services?.some((s: any) => s.type === type && s.status === 'running'))
     return running ? 'green' : 'red'
   },
 
   ping: (sourceId, targetIp) => {
     const { nodes, checkNetworkPath } = get()
-    const targetNode = nodes.find(n => n.ports.some(p => p.ip === targetIp))
+    const targetNode = nodes.find((n: any) => n.ports.some((p: any) => p.ip === targetIp))
     
     if (!targetNode) return { success: false, message: 'Destination Host Unreachable' }
     
@@ -257,6 +257,6 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
 
   validateReplication: (linkId) => {
     const { cloudLinks } = get()
-    return cloudLinks.some(l => l.id === linkId)
+    return cloudLinks.some((l: any) => l.id === linkId)
   }
 })

@@ -49,7 +49,7 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
 
   // Right-side confirmation panel
   if (pendingDeployId) {
-    const bp = blueprints.find(b => b.id === pendingDeployId)
+    const bp = blueprints.find((b: any) => b.id === pendingDeployId)
     return (
       <div className="fixed top-24 right-6 z-[110] w-80 bg-[#0a1128]/95 border border-blue-500/50 rounded-xl shadow-2xl p-6 backdrop-blur-md animate-in slide-in-from-right duration-300">
          <div className="mb-4">
@@ -129,14 +129,14 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
           <div className="bg-slate-900/60 p-5 rounded-lg border border-slate-700/30">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex justify-between">
               Current Site Compliance Check
-              <span className={`px-2 py-0.5 rounded text-[9px] ${compliance.filter(c => c.type === 'error').length > 0 ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}`}>
+              <span className={`px-2 py-0.5 rounded text-[9px] ${compliance.filter((c: any) => c.type === 'error').length > 0 ? 'bg-red-500/20 text-red-400 border border-red-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}`}>
                 {compliance.length === 0 ? 'PASSED' : `${compliance.length} ISSUES`}
               </span>
             </h3>
             
             {compliance.length > 0 ? (
               <div className="space-y-2">
-                {compliance.map((c, i) => (
+                {compliance.map((c: any, i: any) => (
                   <div key={i} className={`flex items-start gap-2 p-2 rounded text-[11px] ${c.type === 'error' ? 'bg-red-500/10 text-red-300 border border-red-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}`}>
                     <span className="mt-0.5">{c.type === 'error' ? '🚫' : '⚠️'}</span>
                     <span>{c.message}</span>
@@ -155,7 +155,7 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
               <p className="text-sm text-slate-600 text-center py-8">No blueprints found. Save a site to get started.</p>
             ) : (
               <div className="grid grid-cols-1 gap-3">
-                {blueprints.map(bp => (
+                {blueprints.map((bp: any) => (
                   <div key={bp.id} className="bg-slate-900/40 border border-slate-800 rounded-lg p-4 hover:border-slate-600 transition-colors group">
                     <div className="flex justify-between items-start mb-3">
                       <div>

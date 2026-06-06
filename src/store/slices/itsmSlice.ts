@@ -2,8 +2,8 @@ import type { StateCreator } from 'zustand'
 import type { InfraState, ItsmSlice } from '../infraStoreTypes'
 
 export const createItsmSlice: StateCreator<InfraState, [], [], ItsmSlice> = (set) => ({
-  expediteTicket: (ticketId: string) => set((state) => {
-    const ticket = state.technicianTickets.find(t => t.id === ticketId)
+  expediteTicket: (ticketId: string) => set((state: any) => {
+    const ticket = state.technicianTickets.find((t: any) => t.id === ticketId)
     if (!ticket) return state
     
     // Expedite cost ($2000 per priority bump)
@@ -16,7 +16,7 @@ export const createItsmSlice: StateCreator<InfraState, [], [], ItsmSlice> = (set
 
     return {
       balance: state.balance - cost,
-      technicianTickets: state.technicianTickets.map(t => 
+      technicianTickets: state.technicianTickets.map((t: any) => 
         t.id === ticketId 
           ? { ...t, priorityFee: (t.priorityFee || 0) + cost, totalSeconds: newTotal }
           : t
@@ -24,9 +24,9 @@ export const createItsmSlice: StateCreator<InfraState, [], [], ItsmSlice> = (set
     }
   }),
   
-  resolveTicket: (ticketId: string) => set((state) => {
+  resolveTicket: (ticketId: string) => set((state: any) => {
     return {
-      technicianTickets: state.technicianTickets.filter(t => t.id !== ticketId)
+      technicianTickets: state.technicianTickets.filter((t: any) => t.id !== ticketId)
     }
   })
 })

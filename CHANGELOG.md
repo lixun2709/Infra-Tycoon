@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## [v4.0.0] - Enterprise Stabilization & Optimization
+
+### Added
+- **Unified NOC Dashboard**: Centralized view for operations, observability, metrics, and incident response, eliminating disconnected menus.
+- **Visual Consistency System**: Standardized glassmorphism (`glass-panel`), typography, and padding across all HUD elements.
+
+### Changed
+- **Web Worker Event Hardening**: Fixed worker initialization memory leaks and strengthened backpressure mechanisms to ensure stability under heavy load.
+- **Renderer Performance**: Migrated to `lineSegments` and aggressive primitive Zustand selectors (`useShallow`) across the 3D pipeline, locking simulation framerates at 60 FPS even under heavy server-density scenarios.
+- **Dashboard Navigation**: Streamlined contextual top navigation, directly syncing with the NOC tabs.
+
+### Removed
+- Unused AI Subsystems, Chat interfaces, and related UI components to refocus the project entirely on deterministic hyperscaler emulation.
+- Fragmented individual dashboards (Service Desk, Facility, Fleet) in favor of the new unified NOC operations panel.
 ## [v3.0.0] - Infrastructure Operating System Evolution
 
 ### Added

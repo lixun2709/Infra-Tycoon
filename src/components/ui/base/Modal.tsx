@@ -47,7 +47,7 @@ export const Modal: React.FC<ModalProps> = ({
           onClick={onClose}
         >
           <motion.div 
-            className={`w-full ${widthClass} glass-dark border border-white/10 rounded-3xl shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] ${className}`}
+            className={`w-full ${widthClass} glass-panel border border-white/10 rounded-[1.5rem] shadow-[0_50px_100px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[90vh] ${className}`}
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}

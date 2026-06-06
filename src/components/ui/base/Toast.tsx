@@ -86,7 +86,7 @@ export const ToastProvider: React.FC = () => {
 
   // Display up to 3 latest active, unacknowledged notifications
   const visibleAlerts = React.useMemo(() => {
-    return alerts.filter(a => !a.isAcknowledged).slice(0, 3)
+    return alerts.filter((a: any) => !a.isAcknowledged).slice(0, 3)
   }, [alerts])
 
   return (
@@ -96,7 +96,7 @@ export const ToastProvider: React.FC = () => {
       className="fixed bottom-8 right-8 z-[9999] flex flex-col gap-3 max-w-sm w-full pointer-events-none"
     >
       <AnimatePresence mode="popLayout">
-        {visibleAlerts.map(toast => (
+        {visibleAlerts.map((toast: any) => (
           <ToastItem 
             key={toast.id} 
             toast={toast} 

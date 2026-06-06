@@ -18,10 +18,10 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
     const spec = APPLICATION_CATALOG[appId]
     if (!spec) return
 
-    const targetNode = nodes.find(n => n.id === nodeId)
+    const targetNode = nodes.find((n: any) => n.id === nodeId)
     if (!targetNode) return
 
-    const site = sites.find(s => s.id === targetNode.siteId)
+    const site = sites.find((s: any) => s.id === targetNode.siteId)
     
     // EDGE DEPLOYMENT ENFORCEMENT
     if (spec.requirements.maxLatencyMs && spec.requirements.maxLatencyMs <= 35) {
@@ -45,7 +45,7 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
       progress: 0
     }
 
-    set(state => ({
+    set((state: any) => ({
       applications: [...state.applications, newApp],
       balance: state.balance - deploymentCost
     }))
@@ -56,21 +56,21 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
     let progress = 0
     const interval = setInterval(() => {
       progress += 25
-      set(state => ({
-        applications: state.applications.map(a => a.id === newApp.id ? { ...a, progress } : a)
+      set((state: any) => ({
+        applications: state.applications.map((a: any) => a.id === newApp.id ? { ...a, progress } : a)
       }))
       if (progress >= 100) {
         clearInterval(interval)
-        set(state => ({
-          applications: state.applications.map(a => a.id === newApp.id ? { ...a, status: 'running' } : a)
+        set((state: any) => ({
+          applications: state.applications.map((a: any) => a.id === newApp.id ? { ...a, status: 'running' } : a)
         }))
       }
     }, 2000)
   },
 
   removeApplication: (id) => {
-    set(state => ({
-      applications: state.applications.filter(a => a.id !== id)
+    set((state: any) => ({
+      applications: state.applications.filter((a: any) => a.id !== id)
     }))
   },
 
@@ -85,21 +85,21 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
       migrationProgress: undefined
     }
 
-    set(state => ({
+    set((state: any) => ({
       virtualMachines: [...state.virtualMachines, newVm]
     }))
     get().pushAlert('info', `Deploying VM ${config.name} to ${nodeId.slice(0,8)}`)
   },
 
   startVMotion: (vmId, targetNodeId) => {
-    set(state => {
-      const vm = state.virtualMachines.find(v => v.id === vmId)
+    set((state: any) => {
+      const vm = state.virtualMachines.find((v: any) => v.id === vmId)
       if (!vm || vm.status !== 'running') {
         get().pushAlert('warning', `VM ${vmId} is not eligible for vMotion.`)
         return state
       }
       return {
-        virtualMachines: state.virtualMachines.map(v => 
+        virtualMachines: state.virtualMachines.map((v: any) => 
           v.id === vmId ? { ...v, status: 'migrating', migratingToNodeId: targetNodeId, migrationProgress: 0 } : v
         )
       }
@@ -108,8 +108,8 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
   },
 
   configureLoadBalancer: (deploymentId, loadBalancerId, targetGroupIds) => {
-    set(state => ({
-      applications: state.applications.map(app => 
+    set((state: any) => ({
+      applications: state.applications.map((app: any) => 
         app.id === deploymentId ? { ...app, loadBalancerId, targetGroupIds } : app
       )
     }))

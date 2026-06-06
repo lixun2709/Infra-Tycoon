@@ -10,16 +10,11 @@ import {
   ShieldCheck,
   TrendingDown
 } from 'lucide-react'
-import { Modal, Card, Badge, Button, Tabs, type TabItem } from './base'
+import { Card, Badge, Button, Tabs, type TabItem } from './base'
 import { ThermalSystem } from '../../simulation/ecs/systems/ThermalSystem'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 
-interface FacilityDashboardProps {
-  isOpen: boolean
-  onClose: () => void
-}
-
-export function FacilityDashboard({ isOpen, onClose }: FacilityDashboardProps) {
+export function FacilityTab() {
   const { 
     nodes, 
     currentSiteId,
@@ -29,15 +24,15 @@ export function FacilityDashboard({ isOpen, onClose }: FacilityDashboardProps) {
 
   const [activeTab, setActiveTab] = useState<'overview' | 'zones'>('overview')
 
-  const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
-  const coolingUnits = useMemo(() => nodes.filter(n => n.type === 'cooling' && n.siteId === currentSiteId), [nodes, currentSiteId])
+  const racks = useMemo(() => nodes.filter((n: any) => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
+  const coolingUnits = useMemo(() => nodes.filter((n: any) => n.type === 'cooling' && n.siteId === currentSiteId), [nodes, currentSiteId])
 
   const stats = useMemo(() => {
     let totalITHeatBTU = 0
     let totalCoolingCapacityBTU = 0
 
     // Approximate metrics based on hardware catalog specs
-    nodes.filter(n => n.siteId === currentSiteId).forEach(n => {
+    nodes.filter((n: any) => n.siteId === currentSiteId).forEach((n: any) => {
       if (n.type === 'compute' || n.type === 'storage' || n.type === 'load_balancer') {
         const pwr = HARDWARE_CATALOG[n.catalogKey as keyof typeof HARDWARE_CATALOG]?.wattage || 0
         // Approx 3.412 BTU per watt. If efficiency is e.g. 0.8, then 20% is lost as heat, plus IT heat.
@@ -77,19 +72,14 @@ export function FacilityDashboard({ isOpen, onClose }: FacilityDashboardProps) {
   }
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title="Datacenter Facility & HVAC" 
-      icon={<Wind size={24} className="text-sky-400" />}
-      width="xl"
-      zIndex="z-[150]"
-    >
-      <Tabs 
-        tabs={tabs} 
-        activeTab={activeTab} 
-        onChange={(id) => setActiveTab(id as typeof activeTab)} 
-      />
+    <div className="flex flex-col h-full">
+      <div className="px-6 pt-4">
+        <Tabs 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          onChange={(id) => setActiveTab(id as typeof activeTab)} 
+        />
+      </div>
 
       <div className="p-6 h-[600px] overflow-y-auto">
         {activeTab === 'overview' && (
@@ -154,7 +144,7 @@ export function FacilityDashboard({ isOpen, onClose }: FacilityDashboardProps) {
             </div>
 
             <div className="grid gap-3">
-              {racks.map(rack => {
+              {racks.map((rack: any) => {
                 const isColdAisle = rack.containmentType === 'cold_aisle'
                 const isHotAisle = rack.containmentType === 'hot_aisle'
 
@@ -212,6 +202,6 @@ export function FacilityDashboard({ isOpen, onClose }: FacilityDashboardProps) {
           </div>
         )}
       </div>
-    </Modal>
+    </div>
   )
 }

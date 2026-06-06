@@ -36,7 +36,7 @@ export function InteractionSystem() {
             break
           }
 
-          useInfraStore.setState(s => ({ balance: s.balance - spec.purchasePrice }))
+          useInfraStore.setState((s: any) => ({ balance: s.balance - spec.purchasePrice }))
 
           InputProcessor.getInstance().enqueueIntent({
             type: 'PLACE_HARDWARE',

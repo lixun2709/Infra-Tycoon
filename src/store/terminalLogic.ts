@@ -15,9 +15,9 @@ export function handleCommand(
   const siteState = get().terminalStates[siteId]
   if (!siteState) return
   
-  const activeSession = siteState.sessions.find(s => s.id === siteState.activeSessionId)
+  const activeSession = siteState.sessions.find((s: any) => s.id === siteState.activeSessionId)
   if (!activeSession) return
-  const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId) || activeSession.panes[0]
+  const activePane = activeSession.panes.find((p: any) => p.id === activeSession.activePaneId) || activeSession.panes[0]
   if (!activePane) return
   const { nodes } = get()
   
@@ -49,14 +49,14 @@ export function handleCommand(
   const forceClear = { value: false }
 
   // --- 5. CORE COMMAND LOGIC ---
-  const targetNode = nodes.find(n => n.id === newContext.targetId)
+  const targetNode = nodes.find((n: any) => n.id === newContext.targetId)
 
   if (newContext.mode === 'ssh' && targetNode) {
     const { connections } = get()
-    const hasOobLink = connections.some(c => {
+    const hasOobLink = connections.some((c: any) => {
       const isTarget = c.startNodeId === targetNode.id || c.endNodeId === targetNode.id
-      const sourcePort = nodes.find(n => n.id === c.startNodeId)?.ports.find(p => p.id === c.startPortId)
-      const destPort = nodes.find(n => n.id === c.endNodeId)?.ports.find(p => p.id === c.endPortId)
+      const sourcePort = nodes.find((n: any) => n.id === c.startNodeId)?.ports.find((p: any) => p.id === c.startPortId)
+      const destPort = nodes.find((n: any) => n.id === c.endNodeId)?.ports.find((p: any) => p.id === c.endPortId)
       return isTarget && (sourcePort?.type === 'network' || destPort?.type === 'network')
     })
     

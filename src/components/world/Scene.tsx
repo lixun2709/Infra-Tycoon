@@ -10,7 +10,6 @@ import { CableSystem } from './CableSystem'
 import { HeatMapOverlay } from './HeatMapOverlay'
 import { OverheadPowerSystem } from './renderers/OverheadPowerSystem'
 import { Rack } from './Rack'
-import { MountedUnit } from './MountedUnit'
 
 import { InteractionSystem } from '../../systems/InteractionSystem'
 import { useInput } from '../../contexts/InputContext'
@@ -18,13 +17,10 @@ import { useInput } from '../../contexts/InputContext'
 import { RenderStatsTracker } from './renderers/RenderStatsTracker'
 
 export function Scene() {
-  const { nodes, selectedNodeId, currentSiteId } = useInfraStore(useShallow(state => ({
-    nodes: state.nodes,
-    selectedNodeId: state.selectedNodeId,
-    currentSiteId: state.currentSiteId
-  })))
+  const currentSiteId = useInfraStore(s => s.currentSiteId)
+  const racks = useInfraStore(useShallow(state => state.nodes.filter((n: any) => n.type === 'rack' && n.siteId === currentSiteId)))
+  const selectedNodeId = useInfraStore(s => s.selectedNodeId)
   const { dispatchIntent } = useInput()
-  const racks = nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
 
   return (
     <Canvas 
@@ -47,28 +43,19 @@ export function Scene() {
         <HeatMapOverlay />
         <OverheadPowerSystem />
         <OverlayRenderer />
-
-        {racks.map((rack) => (
+        {racks.map((rack: any) => (
           <Rack
             key={rack.id}
             id={rack.id}
-            name={rack.name}
+            name={rack.name || rack.id}
             currentPowerKW={rack.currentPowerKW || 0}
             maxPowerKW={rack.maxPowerKW || 5.0}
             status={rack.status || 'online'}
-            position={rack.position}
+            position={rack.position!}
             isSelected={selectedNodeId === rack.id}
             containmentType={rack.containmentType}
             uHeight={rack.uHeight || 42}
-          >
-            {nodes.filter(n => n.parentRackId === rack.id).map(hw => (
-              <MountedUnit
-                key={hw.id}
-                node={hw}
-                isSelected={selectedNodeId === hw.id}
-              />
-            ))}
-          </Rack>
+          />
         ))}
       </group>
     </Canvas>

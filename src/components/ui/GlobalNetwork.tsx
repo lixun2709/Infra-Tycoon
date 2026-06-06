@@ -84,13 +84,13 @@ export function GlobalNetwork() {
   }
 
   const renderTopology = () => {
-    const siteRacks = nodes.filter(n => n.siteId === currentSiteId && n.type === 'rack')
+    const siteRacks = nodes.filter((n: any) => n.siteId === currentSiteId && n.type === 'rack')
     
     // Filter connections based on selected racks
-    const filteredConnections = connections.filter(conn => {
+    const filteredConnections = connections.filter((conn: any) => {
       if (selectedRackIds.size === 0) return false // v1.6: Only show selected
-      const sNode = nodes.find(n => n.id === conn.startNodeId)
-      const eNode = nodes.find(n => n.id === conn.endNodeId)
+      const sNode = nodes.find((n: any) => n.id === conn.startNodeId)
+      const eNode = nodes.find((n: any) => n.id === conn.endNodeId)
       return (sNode?.parentRackId && selectedRackIds.has(sNode.parentRackId)) || 
              (eNode?.parentRackId && selectedRackIds.has(eNode.parentRackId))
     })
@@ -111,12 +111,12 @@ export function GlobalNetwork() {
               </div>
               <div className="w-full bg-slate-950/50 border border-white/5 rounded-xl px-4 py-3 text-[10px] text-teal-400 font-black uppercase tracking-widest flex items-center gap-3">
                 <span className="text-sm">🛰️</span>
-                {sites.find(s => s.id === currentSiteId)?.name}
+                {sites.find((s: any) => s.id === currentSiteId)?.name}
               </div>
            </div>
            
            <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar scrollbar-hide">
-              {siteRacks.map(rack => (
+              {siteRacks.map((rack: any) => (
                 <div key={rack.id} className="space-y-1">
                   <div className={`flex items-center gap-2 p-2 rounded-lg transition-all ${selectedRackIds.has(rack.id) ? 'bg-teal-500/10 border border-teal-500/30' : 'hover:bg-white/5 border border-transparent'}`}>
                     <input 
@@ -133,7 +133,7 @@ export function GlobalNetwork() {
                         <span className="text-[10px] font-black text-slate-300 uppercase tracking-wider">{rack.name}</span>
                       </div>
                       <span className="text-[8px] text-slate-600 bg-slate-950 px-1.5 py-0.5 rounded-md">
-                        {nodes.filter(n => n.parentRackId === rack.id).length} U
+                        {nodes.filter((n: any) => n.parentRackId === rack.id).length} U
                       </span>
                     </button>
                   </div>
@@ -175,17 +175,17 @@ export function GlobalNetwork() {
                   <p className="text-xs text-slate-400 max-w-xs">Selected racks are physically present but not logically patched to the network fabric.</p>
                 </div>
               ) : (
-                filteredConnections.map(conn => {
-                  const sNode = nodes.find(n => n.id === conn.startNodeId)
-                  const eNode = nodes.find(n => n.id === conn.endNodeId)
-                  const sPort = sNode?.ports.find(p => p.id === conn.startPortId)
-                  const ePort = eNode?.ports.find(p => p.id === conn.endPortId)
+                filteredConnections.map((conn: any) => {
+                  const sNode = nodes.find((n: any) => n.id === conn.startNodeId)
+                  const eNode = nodes.find((n: any) => n.id === conn.endNodeId)
+                  const sPort = sNode?.ports.find((p: any) => p.id === conn.startPortId)
+                  const ePort = eNode?.ports.find((p: any) => p.id === conn.endPortId)
                   
                   // Determine Protocol Label
                   let protocol = 'TCP/IP'
-                  if (sNode?.services.some(s => s.type === 'storage') || eNode?.services.some(s => s.type === 'storage')) protocol = 'ISCSI'
-                  if (sNode?.services.some(s => s.type === 'DHCP') || eNode?.services.some(s => s.type === 'DHCP')) protocol = 'DHCP/UDP'
-                  if (sNode?.services.some(s => s.type === 'DNS') || eNode?.services.some(s => s.type === 'DNS')) protocol = 'DNS/53'
+                  if (sNode?.services?.some((s: any) => s.type === 'storage') || eNode?.services?.some((s: any) => s.type === 'storage')) protocol = 'ISCSI'
+                  if (sNode?.services?.some((s: any) => s.type === 'DHCP') || eNode?.services?.some((s: any) => s.type === 'DHCP')) protocol = 'DHCP/UDP'
+                  if (sNode?.services?.some((s: any) => s.type === 'DNS') || eNode?.services?.some((s: any) => s.type === 'DNS')) protocol = 'DNS/53'
 
                   return (
                     <div key={conn.id} className="bg-slate-950 p-5 rounded-2xl border border-white/5 flex items-center gap-6 relative overflow-hidden group">
@@ -237,18 +237,18 @@ export function GlobalNetwork() {
   }
 
   const renderPatching = () => {
-    const racks = nodes.filter(n => n.siteId === currentSiteId && n.type === 'rack')
-    const srcNodes = nodes.filter(n => n.parentRackId === srcRackId)
-    const dstNodes = nodes.filter(n => n.parentRackId === dstRackId)
+    const racks = nodes.filter((n: any) => n.siteId === currentSiteId && n.type === 'rack')
+    const srcNodes = nodes.filter((n: any) => n.parentRackId === srcRackId)
+    const dstNodes = nodes.filter((n: any) => n.parentRackId === dstRackId)
     
-    const srcNode = nodes.find(n => n.id === srcNodeId)
-    const srcPorts = srcNode?.ports.filter(p => !connections.some(c => (c.startNodeId === srcNodeId && c.startPortId === p.id) || (c.endNodeId === srcNodeId && c.endPortId === p.id))) || []
+    const srcNode = nodes.find((n: any) => n.id === srcNodeId)
+    const srcPorts = srcNode?.ports.filter((p: any) => !connections.some((c: any) => (c.startNodeId === srcNodeId && c.startPortId === p.id) || (c.endNodeId === srcNodeId && c.endPortId === p.id))) || []
     
-    const srcPort = srcPorts.find(p => p.id === srcPortId)
+    const srcPort = srcPorts.find((p: any) => p.id === srcPortId)
     
-    const dstNode = nodes.find(n => n.id === dstNodeId)
-    const dstPorts = dstNode?.ports.filter(p => {
-       const isUnused = !connections.some(c => (c.startNodeId === dstNodeId && c.startPortId === p.id) || (c.endNodeId === dstNodeId && c.endPortId === p.id))
+    const dstNode = nodes.find((n: any) => n.id === dstNodeId)
+    const dstPorts = dstNode?.ports.filter((p: any) => {
+       const isUnused = !connections.some((c: any) => (c.startNodeId === dstNodeId && c.startPortId === p.id) || (c.endNodeId === dstNodeId && c.endPortId === p.id))
        if (!srcPort) return isUnused
        return isUnused && p.type === srcPort.type
     }) || []
@@ -291,7 +291,7 @@ export function GlobalNetwork() {
                        onChange={(e) => { setSrcRackId(e.target.value); setSrcNodeId(''); setSrcPortId(''); }}
                      >
                        <option value="">Select Rack</option>
-                       {racks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                       {racks.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
                      </select>
                   </div>
 
@@ -304,7 +304,7 @@ export function GlobalNetwork() {
                        onChange={(e) => { setSrcNodeId(e.target.value); setSrcPortId(''); }}
                      >
                        <option value="">Select Node</option>
-                       {srcNodes.map(n => <option key={n.id} value={n.id}>{n.hostname || n.name} ({n.type})</option>)}
+                       {srcNodes.map((n: any) => <option key={n.id} value={n.id}>{n.hostname || n.name} ({n.type})</option>)}
                      </select>
                   </div>
 
@@ -317,7 +317,7 @@ export function GlobalNetwork() {
                        onChange={(e) => setSrcPortId(e.target.value)}
                      >
                        <option value="">Select Port</option>
-                       {srcPorts.map(p => <option key={p.id} value={p.id}>{p.label} ({p.type})</option>)}
+                       {srcPorts.map((p: any) => <option key={p.id} value={p.id}>{p.label} ({p.type})</option>)}
                      </select>
                   </div>
                </div>
@@ -342,7 +342,7 @@ export function GlobalNetwork() {
                        onChange={(e) => { setDstRackId(e.target.value); setDstNodeId(''); setDstPortId(''); }}
                      >
                        <option value="">Select Rack</option>
-                       {racks.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                       {racks.map((r: any) => <option key={r.id} value={r.id}>{r.name}</option>)}
                      </select>
                   </div>
 
@@ -355,7 +355,7 @@ export function GlobalNetwork() {
                        onChange={(e) => { setDstNodeId(e.target.value); setDstPortId(''); }}
                      >
                        <option value="">Select Node</option>
-                       {dstNodes.map(n => <option key={n.id} value={n.id}>{n.hostname || n.name} ({n.type})</option>)}
+                       {dstNodes.map((n: any) => <option key={n.id} value={n.id}>{n.hostname || n.name} ({n.type})</option>)}
                      </select>
                   </div>
 
@@ -368,7 +368,7 @@ export function GlobalNetwork() {
                        onChange={(e) => setDstPortId(e.target.value)}
                      >
                        <option value="">Select Port</option>
-                       {dstPorts.map(p => <option key={p.id} value={p.id}>{p.label} ({p.type})</option>)}
+                       {dstPorts.map((p: any) => <option key={p.id} value={p.id}>{p.label} ({p.type})</option>)}
                      </select>
                   </div>
                </div>
@@ -432,7 +432,7 @@ export function GlobalNetwork() {
               <div className="grid grid-cols-2 gap-6 p-2">
                  {services.map(type => {
                    const status = getServiceStatus(type)
-                   const hostingNodes = nodes.filter(n => n.services.some(s => s.type === type && s.status === 'running'))
+                   const hostingNodes = nodes.filter((n: any) => n.services.some((s: any) => s.type === type && s.status === 'running'))
                    const isFlipped = flippedServices.has(type)
                    
                    return (
@@ -463,7 +463,7 @@ export function GlobalNetwork() {
                                  <div className="text-[9px] font-black text-slate-600 uppercase tracking-widest border-b border-white/5 pb-2">Primary Controllers</div>
                                  {hostingNodes.length > 0 ? (
                                    <div className="space-y-2">
-                                     {hostingNodes.slice(0, 3).map(n => (
+                                     {hostingNodes.slice(0, 3).map((n: any) => (
                                        <div key={n.id} className="flex items-center justify-between text-[10px] font-bold text-slate-300 bg-slate-950/40 p-3 rounded-xl border border-white/5">
                                           <span>{n.hostname || n.name}</span>
                                           <span className="text-teal-400 font-mono text-[9px]">{n.managementIP}</span>
@@ -590,7 +590,7 @@ export function GlobalNetwork() {
               <div className="flex-1 space-y-6 overflow-y-auto custom-scrollbar scrollbar-hide pr-2">
                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Active Forward Lookup Zone</h4>
                  <div className="grid grid-cols-2 gap-4">
-                    {dnsRecords.map(record => (
+                    {dnsRecords.map((record: any) => (
                       <div key={record.id} className="bg-slate-950/60 p-5 rounded-3xl border border-white/5 flex justify-between items-center hover:border-teal-500/20 transition-all group">
                          <div>
                             <div className="text-[12px] font-black text-white tracking-tight">{record.hostname}</div>
@@ -642,7 +642,7 @@ export function GlobalNetwork() {
                     <span className="text-[9px] text-slate-600 font-bold uppercase">Subnet: 10.0.0.0/24</span>
                  </div>
                  <div className="grid grid-cols-3 gap-5 overflow-y-auto custom-scrollbar scrollbar-hide max-h-[500px] pr-2">
-                    {nodes.filter(n => n.managementIP && n.siteId === currentSiteId).map(n => (
+                    {nodes.filter((n: any) => n.managementIP && n.siteId === currentSiteId).map((n: any) => (
                       <div key={n.id} className="bg-slate-950/60 p-5 rounded-3xl border border-white/5 flex flex-col gap-3">
                          <div className="flex justify-between items-start">
                             <div className="text-[11px] font-black text-white truncate max-w-[120px]">{n.hostname || n.name}</div>
@@ -652,7 +652,7 @@ export function GlobalNetwork() {
                          <div className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">MAC: {n.macAddress || 'STATIC'}</div>
                       </div>
                     ))}
-                    {nodes.filter(n => n.managementIP && n.siteId === currentSiteId).length === 0 && (
+                    {nodes.filter((n: any) => n.managementIP && n.siteId === currentSiteId).length === 0 && (
                       <div className="col-span-3 py-20 text-center opacity-20">
                          <div className="text-4xl mb-4">🛰️</div>
                          <p className="text-xs font-black uppercase tracking-widest">No Active Leases Detected</p>
@@ -666,7 +666,7 @@ export function GlobalNetwork() {
               <div className="flex-1 space-y-6">
                  <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-white/5 pb-2">Time-Sync Distribution Status</h4>
                  <div className="grid grid-cols-2 gap-4 overflow-y-auto custom-scrollbar scrollbar-hide max-h-[500px] pr-2">
-                    {nodes.filter(n => n.siteId === currentSiteId && n.type !== 'rack').map(n => (
+                    {nodes.filter((n: any) => n.siteId === currentSiteId && n.type !== 'rack').map((n: any) => (
                       <div key={n.id} className="bg-slate-950/60 p-5 rounded-3xl border border-white/5 flex justify-between items-center">
                          <div className="flex items-center gap-4">
                             <div className="w-2 h-2 rounded-full bg-teal-500 animate-pulse shadow-[0_0_10px_rgba(45,212,191,0.5)]" />
@@ -705,11 +705,11 @@ export function GlobalNetwork() {
              <h4 className="text-sm font-black text-white uppercase tracking-widest mb-2">No Active Links</h4>
            </div>
         ) : (
-          connections.map(conn => {
-            const sNode = nodes.find(n => n.id === conn.startNodeId)
-            const eNode = nodes.find(n => n.id === conn.endNodeId)
-            const sPort = sNode?.ports.find(p => p.id === conn.startPortId)
-            const ePort = eNode?.ports.find(p => p.id === conn.endPortId)
+          connections.map((conn: any) => {
+            const sNode = nodes.find((n: any) => n.id === conn.startNodeId)
+            const eNode = nodes.find((n: any) => n.id === conn.endNodeId)
+            const sPort = sNode?.ports.find((p: any) => p.id === conn.startPortId)
+            const ePort = eNode?.ports.find((p: any) => p.id === conn.endPortId)
 
             return (
               <div key={conn.id} className="bg-slate-900/50 p-6 rounded-[2rem] border border-white/5 shadow-xl flex items-center gap-8 group hover:border-teal-500/20 transition-all">

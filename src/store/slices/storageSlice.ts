@@ -12,10 +12,10 @@ export interface StorageSlice {
 export const createStorageSlice: StateCreator<InfraState, [], [], StorageSlice> = (set, _get) => ({
   isStorageDashboardOpen: false,
   
-  toggleStorageDashboard: () => set(state => ({ isStorageDashboardOpen: !state.isStorageDashboardOpen })),
+  toggleStorageDashboard: () => set((state: any) => ({ isStorageDashboardOpen: !state.isStorageDashboardOpen })),
   
-  rebuildRaidArray: (nodeId) => set(state => {
-    const node = state.nodes.find(n => n.id === nodeId)
+  rebuildRaidArray: (nodeId) => set((state: any) => {
+    const node = state.nodes.find((n: any) => n.id === nodeId)
     if (!node || node.type !== 'storage' || node.storageStatus === 'healthy' || node.storageStatus === 'rebuilding') {
       return state // Cannot rebuild
     }
@@ -24,7 +24,7 @@ export const createStorageSlice: StateCreator<InfraState, [], [], StorageSlice> 
     // For now, allow rebuilding if degraded or failed
     
     return {
-      nodes: state.nodes.map(n => 
+      nodes: state.nodes.map((n: any) => 
         n.id === nodeId 
           ? { 
               ...n, 
@@ -38,9 +38,9 @@ export const createStorageSlice: StateCreator<InfraState, [], [], StorageSlice> 
     }
   }),
   
-  toggleDataService: (nodeId, service, enabled) => set(state => {
+  toggleDataService: (nodeId, service, enabled) => set((state: any) => {
     return {
-      nodes: state.nodes.map(n => {
+      nodes: state.nodes.map((n: any) => {
         if (n.id !== nodeId || n.type !== 'storage') return n
         if (service === 'deduplication') {
           return { ...n, deduplicationEnabled: enabled, deduplicationRatio: enabled ? 2.4 : 1.0 }
@@ -51,9 +51,9 @@ export const createStorageSlice: StateCreator<InfraState, [], [], StorageSlice> 
     }
   }),
   
-  setStorageTier: (nodeId, tier) => set(state => {
+  setStorageTier: (nodeId, tier) => set((state: any) => {
     return {
-      nodes: state.nodes.map(n => 
+      nodes: state.nodes.map((n: any) => 
         n.id === nodeId && n.type === 'storage'
           ? { ...n, tier }
           : n

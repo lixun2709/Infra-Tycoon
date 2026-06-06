@@ -171,7 +171,7 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
       </AnimatePresence>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-3">
-        {policies.map(policy => (
+        {policies.map((policy: any) => (
           <Card key={policy.id} className="p-3 bg-slate-900 border-slate-800 hover:border-slate-600 transition-colors">
             <div className="flex justify-between items-start mb-3">
               <div className="flex items-center gap-3">

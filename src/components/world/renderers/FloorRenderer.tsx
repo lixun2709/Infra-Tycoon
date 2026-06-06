@@ -119,7 +119,7 @@ export function FloorRenderer() {
 
   const ghostOccupied = ghostPos
     ? nodes.some(
-        n =>
+        (n: any) =>
           n.type === 'rack' &&
           n.siteId === currentSiteId &&
           Math.round(n.position.x) === ghostPos.x &&
@@ -282,7 +282,7 @@ export function FloorRenderer() {
   const expansionMarkers = useMemo(() => {
     const markers: { x: number; z: number; hx: number; hz: number; direction: 'N' | 'S' | 'E' | 'W' }[] = []
 
-    halls.forEach((hall) => {
+    halls.forEach((hall: any) => {
       const neighbors = [
         { dir: 'N' as const, tx: hall.x, tz: hall.z - 1, mx: hall.x * 30, mz: hall.z * 30 - 17.5 },
         { dir: 'S' as const, tx: hall.x, tz: hall.z + 1, mx: hall.x * 30, mz: hall.z * 30 + 17.5 },
@@ -293,7 +293,7 @@ export function FloorRenderer() {
       neighbors.forEach((n) => {
         // Only allow expansions within a 5x5 grid (grid index -2 to 2)
         if (Math.abs(n.tx) <= 2 && Math.abs(n.tz) <= 2) {
-          const neighborExists = halls.some((h) => h.x === n.tx && h.z === n.tz)
+          const neighborExists = halls.some((h: any) => h.x === n.tx && h.z === n.tz)
           if (!neighborExists) {
             const alreadyAdded = markers.some((m) => m.hx === hall.x && m.hz === hall.z && m.direction === n.dir)
             if (!alreadyAdded) {
@@ -331,7 +331,7 @@ export function FloorRenderer() {
           e.stopPropagation()
 
           const isOccupied = nodes.some(
-            n =>
+            (n: any) =>
               n.type === 'rack' &&
               n.siteId === currentSiteId &&
               Math.round(n.position.x) === ghostPos.x &&
@@ -351,7 +351,7 @@ export function FloorRenderer() {
       </mesh>
 
       {/* 2. Modular Epoxy Raised Floor Grids (One mesh per active hall) */}
-      {halls.map((hall) => (
+      {halls.map((hall: any) => (
         <mesh 
           key={hall.id}
           rotation={[-Math.PI / 2, 0, 0]} 
@@ -370,7 +370,7 @@ export function FloorRenderer() {
       {/* 3. Predefined Snap Slot Highlights (Only visible in placement mode) */}
       {placementMode && PREDEFINED_SLOTS.map((slot, idx) => {
         const isOccupied = nodes.some(
-          n =>
+          (n: any) =>
             n.type === 'rack' &&
             n.siteId === currentSiteId &&
             Math.round(n.position.x) === slot.x &&
@@ -432,7 +432,7 @@ export function FloorRenderer() {
       ))}
 
       {/* 6. Datacenter Core Details: 3D Row Labels & Emergency Signs */}
-      {halls.map((hall) => {
+      {halls.map((hall: any) => {
         const standardRows = [
           { id: 'ROW-A', z: -6, aisleType: 'cold' as const },
           { id: 'ROW-B', z: -2, aisleType: 'hot' as const },

@@ -30,10 +30,10 @@ export function CloudDashboard({ isOpen, onClose }: CloudDashboardProps) {
 
   const [activeTab, setActiveTab] = useState<'marketplace' | 'analytics'>('marketplace')
 
-  const totalSpot = cloudProviders.reduce((sum, p) => sum + p.activeSpotInstances, 0)
-  const totalReserved = cloudProviders.reduce((sum, p) => sum + p.reservedInstances, 0)
+  const totalSpot = cloudProviders.reduce((sum: any, p: any) => sum + p.activeSpotInstances, 0)
+  const totalReserved = cloudProviders.reduce((sum: any, p: any) => sum + p.reservedInstances, 0)
   
-  const totalOpex = cloudProviders.reduce((sum, p) => 
+  const totalOpex = cloudProviders.reduce((sum: any, p: any) => 
     sum + (p.activeSpotInstances * p.spotPricePerNode) + (p.reservedInstances * p.reservedPricePerNode)
   , 0)
 
@@ -104,7 +104,7 @@ export function CloudDashboard({ isOpen, onClose }: CloudDashboardProps) {
             </div>
 
             <div className="grid gap-4">
-              {cloudProviders.map(provider => {
+              {cloudProviders.map((provider: any) => {
                 const isActive = activeCloudProviderId === provider.id
                 return (
                   <Card 
@@ -189,7 +189,7 @@ export function CloudDashboard({ isOpen, onClose }: CloudDashboardProps) {
               </p>
               
               <div className="space-y-3">
-                {cloudProviders.map(p => (
+                {cloudProviders.map((p: any) => (
                   <div key={p.id} className="flex items-center justify-between bg-slate-950 p-3 rounded border border-slate-800">
                     <div className="flex items-center gap-2">
                       <Shield size={16} className="text-slate-500" />

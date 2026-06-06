@@ -14,14 +14,10 @@ import { IncidentHUD } from './components/ui/IncidentHUD'
 import { ApplicationBrowser } from './components/ui/ApplicationBrowser'
 import { StorageDashboard } from './components/ui/StorageDashboard'
 import { CloudDashboard } from './components/ui/CloudDashboard'
-import { ServiceDeskDashboard } from './components/ui/ServiceDeskDashboard'
-import { AIDashboard } from './components/ui/AIDashboard'
-import { AutomationDashboard } from './components/ui/AutomationDashboard'
-import { SecurityDashboard } from './components/ui/SecurityDashboard'
-import { FleetDashboard } from './components/ui/FleetDashboard'
 import { LoadBalancerDashboard } from './components/ui/LoadBalancerDashboard'
+import { SecurityDashboard } from './components/ui/SecurityDashboard'
+import { AutomationDashboard } from './components/ui/AutomationDashboard'
 import { BackupDashboard } from './components/ui/BackupDashboard'
-import { FacilityDashboard } from './components/ui/FacilityDashboard'
 
 import { EconomyDashboard } from './components/ui/EconomyDashboard'
 import { GlobalMap } from './components/ui/GlobalMap'
@@ -43,20 +39,18 @@ function App() {
   const setIsSaveManagerOpen = (val: boolean) => useInfraStore.setState({ isSaveManagerOpen: val })
   const [hardwareToAdd, setHardwareToAdd] = useState<HardwareCatalogKey | null>(null)
   const [isNOCDashboardOpen, setIsNOCDashboardOpen] = useState(false)
-  const [nocInitialTab, setNocInitialTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics'>('overview')
+  const [nocInitialTab, setNocInitialTab] = useState<'overview' | 'events' | 'audit' | 'diagnostics' | 'facility' | 'fleet' | 'itsm'>('overview')
   const [isProcurementOpen, setIsProcurementOpen] = useState(false)
   const [isHandbookOpen, setIsHandbookOpen] = useState(false)
   const [isMissionDashboardOpen, setIsMissionDashboardOpen] = useState(false)
   const [isAppBrowserOpen, setIsAppBrowserOpen] = useState(false)
   const [isEconomyOpen, setIsEconomyOpen] = useState(false)
   const [isCloudOpen, setIsCloudOpen] = useState(false)
-  const [isITSMOpen, setIsITSMOpen] = useState(false)
   const [isAutomationOpen, setIsAutomationOpen] = useState(false)
   const [isSecurityOpen, setIsSecurityOpen] = useState(false)
-  const [isFleetDashboardOpen, setIsFleetDashboardOpen] = useState(false)
   const [isLoadBalancerOpen, setIsLoadBalancerOpen] = useState(false)
   const [isBackupOpen, setIsBackupOpen] = useState(false)
-  const [isFacilityOpen, setIsFacilityOpen] = useState(false)
+
   
   const nodes = useInfraStore(s => s.nodes)
   const balance = useInfraStore(s => s.balance)
@@ -81,7 +75,7 @@ function App() {
     return () => clearInterval(timer)
   }, [])
 
-  const racks = useMemo(() => nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
+  const racks = useMemo(() => nodes.filter((n: any) => n.type === 'rack' && n.siteId === currentSiteId), [nodes, currentSiteId])
 
   const placeCatalogHardware = useInfraStore((s) => s.placeCatalogHardware)
   const totalPowerKW = useInfraStore((s) => s.totalPowerKW)
@@ -118,7 +112,7 @@ function App() {
   // Dynamic Design Tokens DOM Injector
   useEffect(() => {
     const root = document.documentElement
-    const themeSpec = THEMES[activeTheme]
+    const themeSpec = THEMES[activeTheme as ThemeKey]
     if (!themeSpec) return
     
     root.style.setProperty('--primary', themeSpec.primary)
@@ -235,16 +229,16 @@ function App() {
         onToggleSecurity={() => setIsSecurityOpen(!isSecurityOpen)}
         isCloudOpen={isCloudOpen}
         onToggleCloud={() => setIsCloudOpen(!isCloudOpen)}
-        isITSMOpen={isITSMOpen}
-        onToggleITSM={() => setIsITSMOpen(!isITSMOpen)}
-        isFleetDashboardOpen={isFleetDashboardOpen}
-        onToggleFleet={() => setIsFleetDashboardOpen(!isFleetDashboardOpen)}
+        isITSMOpen={isNOCDashboardOpen && nocInitialTab === 'itsm'}
+        onToggleITSM={() => { setNocInitialTab('itsm'); setIsNOCDashboardOpen(true); }}
+        isFleetDashboardOpen={isNOCDashboardOpen && nocInitialTab === 'fleet'}
+        onToggleFleet={() => { setNocInitialTab('fleet'); setIsNOCDashboardOpen(true); }}
         isLoadBalancerOpen={isLoadBalancerOpen}
         onToggleLoadBalancer={() => setIsLoadBalancerOpen(!isLoadBalancerOpen)}
         isBackupOpen={isBackupOpen}
         onToggleBackup={() => setIsBackupOpen(!isBackupOpen)}
-        isFacilityOpen={isFacilityOpen}
-        onToggleFacility={() => setIsFacilityOpen(!isFacilityOpen)}
+        isFacilityOpen={isNOCDashboardOpen && nocInitialTab === 'facility'}
+        onToggleFacility={() => { setNocInitialTab('facility'); setIsNOCDashboardOpen(true); }}
       />
 
       {isSaveManagerOpen && (
@@ -266,16 +260,6 @@ function App() {
         onClose={() => setIsCloudOpen(false)}
       />
 
-      <ServiceDeskDashboard
-        isOpen={isITSMOpen}
-        onClose={() => setIsITSMOpen(false)}
-      />
-
-      <FleetDashboard 
-        isOpen={isFleetDashboardOpen}
-        onClose={() => setIsFleetDashboardOpen(false)}
-      />
-
       <LoadBalancerDashboard 
         isOpen={isLoadBalancerOpen}
         onClose={() => setIsLoadBalancerOpen(false)}
@@ -284,11 +268,6 @@ function App() {
       <BackupDashboard
         isOpen={isBackupOpen}
         onClose={() => setIsBackupOpen(false)}
-      />
-
-      <FacilityDashboard
-        isOpen={isFacilityOpen}
-        onClose={() => setIsFacilityOpen(false)}
       />
 
       {isStorageDashboardOpen && (
@@ -615,7 +594,7 @@ function App() {
         isOpen={isAutomationOpen}
         onClose={() => setIsAutomationOpen(false)}
       />
-      <AIDashboard />
+
       {isTerminalOpen && <Terminal onClose={() => setIsTerminalOpen(false)} />}
       {isHandbookOpen && <OperatorHandbook onClose={() => setIsHandbookOpen(false)} />}
 
@@ -653,7 +632,7 @@ function App() {
               </div>
             ) : (
               <div className="flex flex-col gap-3 max-h-72 overflow-y-auto mb-8 pr-2 custom-scrollbar">
-                {racks.map(rack => (
+                {racks.map((rack: any) => (
                   <button 
                     key={rack.id}
                     onClick={() => handleConfirmPlacement(rack.id)}

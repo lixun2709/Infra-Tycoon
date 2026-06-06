@@ -118,7 +118,7 @@ export const ObservabilityDashboard: React.FC = () => {
         </h3>
         
         <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-          {alerts.length > 0 ? alerts.map((alert, idx) => (
+          {alerts.length > 0 ? alerts.map((alert: any, idx: any) => (
             <div key={idx} className={`p-3 rounded border text-sm ${
               alert.severity === 'critical' ? 'bg-red-900/20 border-red-800/50 text-red-200' :
               alert.severity === 'warning' ? 'bg-yellow-900/20 border-yellow-800/50 text-yellow-200' :

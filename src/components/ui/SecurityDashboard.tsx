@@ -38,7 +38,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
 
   // Filter for servers and storage
   const securityNodes = useMemo(() => {
-    return nodes.filter(n => n.type === 'compute' || n.type === 'storage')
+    return nodes.filter((n: any) => n.type === 'compute' || n.type === 'storage')
   }, [nodes])
 
   const stats = useMemo(() => {
@@ -46,7 +46,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
     let isolatedCount = 0
     let microsegCount = 0
     
-    securityNodes.forEach(n => {
+    securityNodes.forEach((n: any) => {
       const state = n.infectionState || 'clean'
       if (state === 'clean') clean++
       else if (state === 'exposed') exposed++
@@ -66,7 +66,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
     { id: 'nodes', label: 'ASSET MITIGATION', icon: <Server size={14} /> }
   ]
 
-  const filteredNodes = securityNodes.filter(n => 
+  const filteredNodes = securityNodes.filter((n: any) => 
     n.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
     n.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
     n.catalogKey?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -106,7 +106,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
   }
 
   const handleGlobalLockdown = () => {
-    securityNodes.forEach(n => {
+    securityNodes.forEach((n: any) => {
       const state = n.infectionState || 'clean'
       if ((state === 'infected' || state === 'encrypting' || state === 'exposed') && !n.isIsolated) {
         isolateNode(n.id)
@@ -115,7 +115,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
   }
 
   const handleGlobalMicroseg = () => {
-    securityNodes.forEach(n => {
+    securityNodes.forEach((n: any) => {
       if (!n.microsegmentationEnabled) {
         toggleMicrosegmentation(n.id, true)
       }
@@ -216,7 +216,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
                       <span className="text-xs text-slate-600 font-mono uppercase tracking-widest">No assets online</span>
                     </div>
                   ) : (
-                    securityNodes.map(n => (
+                    securityNodes.map((n: any) => (
                       <div 
                         key={n.id} 
                         className={`w-2.5 h-2.5 rounded-sm transition-all duration-300 ${getDotColor(n.infectionState || 'clean')} ${n.isIsolated ? 'opacity-20' : 'opacity-100'} ${n.microsegmentationEnabled ? 'border border-blue-400/50' : ''}`}
@@ -366,7 +366,7 @@ export function SecurityDashboard({ isOpen, onClose }: SecurityDashboardProps) {
                  </div>
               ) : (
                 <div className="grid gap-2">
-                  {filteredNodes.map(node => {
+                  {filteredNodes.map((node: any) => {
                     const state = node.infectionState || 'clean'
                     const isCritical = state === 'infected' || state === 'encrypting' || state === 'locked'
                     

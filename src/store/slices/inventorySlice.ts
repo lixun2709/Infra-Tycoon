@@ -33,30 +33,30 @@ export interface InventorySlice {
 export const createInventorySlice: StateCreator<InfraState, [], [], InventorySlice> = (set, get) => ({
   setPlacementMode: (mode, type = null) => set({ placementMode: mode, pendingRackType: type }),
 
-  addNode: (node) => set(state => ({ nodes: [...state.nodes, node] })),
+  addNode: (node) => set((state: any) => ({ nodes: [...state.nodes, node] })),
 
   setSelectedNode: (id) => set({ selectedNodeId: id }),
 
-  updateNode: (id, updates) => set(state => ({
-    nodes: state.nodes.map(n => n.id === id ? { ...n, ...updates } : n)
+  updateNode: (id, updates) => set((state: any) => ({
+    nodes: state.nodes.map((n: any) => n.id === id ? { ...n, ...updates } : n)
   })),
 
   removeNode: (id) => {
     const { nodes, connections, applications } = get()
-    const nodeToRemove = nodes.find(n => n.id === id)
+    const nodeToRemove = nodes.find((n: any) => n.id === id)
     if (!nodeToRemove) return
 
     // If it's a rack, remove all child nodes
     let nodesToRemove = [id]
     if (nodeToRemove.type === 'rack') {
-      const children = nodes.filter(n => n.parentRackId === id).map(n => n.id)
+      const children = nodes.filter((n: any) => n.parentRackId === id).map((n: any) => n.id)
       nodesToRemove = [...nodesToRemove, ...children]
     }
 
     set({
-      nodes: nodes.filter(n => !nodesToRemove.includes(n.id)),
-      connections: connections.filter(c => !nodesToRemove.includes(c.startNodeId) && !nodesToRemove.includes(c.endNodeId)),
-      applications: applications.filter(a => !nodesToRemove.includes(a.nodeId))
+      nodes: nodes.filter((n: any) => !nodesToRemove.includes(n.id)),
+      connections: connections.filter((c: any) => !nodesToRemove.includes(c.startNodeId) && !nodesToRemove.includes(c.endNodeId)),
+      applications: applications.filter((a: any) => !nodesToRemove.includes(a.nodeId))
     })
   },
 
@@ -75,7 +75,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       return false
     }
 
-    const rack = nodes.find(n => n.id === targetRackId)
+    const rack = nodes.find((n: any) => n.id === targetRackId)
     if (!rack || rack.type !== 'rack') {
       ObservabilityTracer.endSpan(spanId, 'failed')
       return false
@@ -84,7 +84,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     let slotIndex: number
 
     if (spec.isBlade) {
-      const chassis = nodes.find(n => n.parentRackId === targetRackId && n.catalogKey === 'BLADE_CHASSIS_4U')
+      const chassis = nodes.find((n: any) => n.parentRackId === targetRackId && n.catalogKey === 'BLADE_CHASSIS_4U')
       if (!chassis) {
         pushAlert('warning', `Blade servers require a Blade Chassis to be placed in the rack.`)
         ObservabilityTracer.endSpan(spanId, 'failed')
@@ -140,10 +140,10 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       driveDegradation: isStorage || isCompute ? 0 : undefined
     }
 
-    set(state => ({
+    set((state: any) => ({
       nodes: [...state.nodes, newNode],
       balance: state.balance - spec.purchasePrice,
-      deploymentQueue: state.deploymentQueue.filter((_, i) => i !== state.deploymentQueue.indexOf(key))
+      deploymentQueue: state.deploymentQueue.filter((_: any, i: any) => i !== state.deploymentQueue.indexOf(key))
     }))
 
     pushAlert('info', `Procured ${spec.name} for $${spec.purchasePrice.toLocaleString()}`)
@@ -153,7 +153,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
   advanceProvisioningState: (id) => {
     const { nodes, connections, updateNode, pushAlert } = get()
-    const node = nodes.find(n => n.id === id)
+    const node = nodes.find((n: any) => n.id === id)
     if (!node || node.provisioningState === 'provisioned') return
 
     const currentState = node.provisioningState
@@ -171,7 +171,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
     } else if (currentState === 'racked') {
       // 2. Racked -> Patched
-      const hasConnections = connections.some(c => c.startNodeId === id || c.endNodeId === id)
+      const hasConnections = connections.some((c: any) => c.startNodeId === id || c.endNodeId === id)
       if (node.ports.length > 0 && !hasConnections) {
         pushAlert('warning', `Cabling Required: Please connect network/power cables to the ports of ${node.name} before patching.`)
         audioManager.playEffect('error')
@@ -201,7 +201,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       let progress = 0
       const interval = setInterval(() => {
         const currentNodes = get().nodes
-        const n = currentNodes.find(item => item.id === id)
+        const n = currentNodes.find((item: any) => item.id === id)
         if (!n || n.systemState !== 'booting') {
           clearInterval(interval)
           return
@@ -221,7 +221,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
   installService: (nodeId, type) => {
     const spanId = ObservabilityTracer.startSpan('service_installation', undefined, { nodeId, type })
     const { nodes, updateNode, pushAlert } = get()
-    const node = nodes.find(n => n.id === nodeId)
+    const node = nodes.find((n: any) => n.id === nodeId)
     if (!node) {
       ObservabilityTracer.endSpan(spanId, 'failed')
       return
@@ -238,10 +238,10 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     pushAlert('info', `Installing ${type} service on ${node.name}...`)
     
     setTimeout(() => {
-      set(state => ({
-        nodes: state.nodes.map(n => n.id === nodeId ? {
+      set((state: any) => ({
+        nodes: state.nodes.map((n: any) => n.id === nodeId ? {
           ...n,
-          services: n.services.map(s => s.id === newService.id ? { ...s, status: 'running' } : s)
+          services: n.services.map((s: any) => s.id === newService.id ? { ...s, status: 'running' } : s)
         } : n)
       }))
       ObservabilityTracer.endSpan(spanId, 'success', { serviceId: newService.id })
@@ -249,10 +249,10 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
   },
 
   toggleService: (nodeId, serviceId, status) => {
-    set(state => ({
-      nodes: state.nodes.map(n => n.id === nodeId ? {
+    set((state: any) => ({
+      nodes: state.nodes.map((n: any) => n.id === nodeId ? {
         ...n,
-        services: n.services.map(s => s.id === serviceId ? { ...s, status } : s)
+        services: n.services.map((s: any) => s.id === serviceId ? { ...s, status } : s)
       } : n)
     }))
   },
@@ -287,7 +287,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
   triggerRansomwareSimulation: () => {
     const { nodes, pushAlert } = get()
-    const targetNodes = nodes.filter(n => n.type === 'compute' && n.systemState === 'running')
+    const targetNodes = nodes.filter((n: any) => n.type === 'compute' && n.systemState === 'running')
     if (targetNodes.length === 0) {
       pushAlert('critical', 'Ransomware drill failed: No active compute nodes available to infect.')
       return
@@ -306,7 +306,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     const { nodes, pushAlert } = get()
     
     // Find compute nodes that are running
-    const validNodes = nodes.filter(n => n.type === 'compute' && n.systemState === 'running' && (!siteId || n.siteId === siteId))
+    const validNodes = nodes.filter((n: any) => n.type === 'compute' && n.systemState === 'running' && (!siteId || n.siteId === siteId))
     
     if (validNodes.length === 0) {
       pushAlert('critical', 'DR Drill aborted: No active compute nodes in target site.')
@@ -330,7 +330,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
       startTimestamp: Date.now()
     }
 
-    set(state => ({
+    set((state: any) => ({
       incidents: [...(state.incidents || []), drillIncident]
     }))
 
@@ -347,7 +347,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
   triggerGlobalBackup: () => {
     const { nodes, updateNode, pushAlert } = get()
     let count = 0
-    nodes.forEach(n => {
+    nodes.forEach((n: any) => {
       if ((n.type === 'compute' || n.type === 'storage') && n.systemState === 'running') {
         updateNode(n.id, { backupStatus: 'unprotected' })
         count++
@@ -359,7 +359,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
   restoreFromBackup: (nodeId: string) => {
     const { nodes, updateNode, pushAlert } = get()
-    const node = nodes.find(n => n.id === nodeId)
+    const node = nodes.find((n: any) => n.id === nodeId)
     if (!node) return
 
     if (node.backupStatus !== 'protected') {
@@ -384,7 +384,7 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
 
   upgradeRackContainment: (rackId: string, containment: 'none' | 'cold_aisle' | 'hot_aisle') => {
     const { nodes, updateNode, balance, pushAlert } = get()
-    const node = nodes.find(n => n.id === rackId)
+    const node = nodes.find((n: any) => n.id === rackId)
     if (!node || node.type !== 'rack') return
     
     // Day 25 Pricing

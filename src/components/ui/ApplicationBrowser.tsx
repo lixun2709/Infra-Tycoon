@@ -20,7 +20,7 @@ export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps)
   
   const nodes = useInfraStore.getState().nodes
   const selectedNode = nodes.find((n: import('../../store/infraTypes').InfraNode) => n.id === selectedNodeId)
-  const nodeApps = applications.filter(a => a.nodeId === selectedNodeId)
+  const nodeApps = applications.filter((a: any) => a.nodeId === selectedNodeId)
 
   const handleDeploy = (appId: string) => {
     if (!selectedNodeId) return
@@ -85,7 +85,7 @@ export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps)
                         </div>
                       </div>
                       <button 
-                        disabled={!selectedNode || nodeApps.some(a => a.appId === app.id)}
+                        disabled={!selectedNode || nodeApps.some((a: any) => a.appId === app.id)}
                         onClick={() => handleDeploy(app.id)}
                         className="p-1.5 bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-lg hover:bg-teal-500 hover:text-white disabled:opacity-30 disabled:hover:bg-teal-500/10 disabled:hover:text-teal-400 transition-all"
                       >
@@ -119,7 +119,7 @@ export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps)
               {nodeApps.length > 0 && (
                 <div className="space-y-3">
                   <h3 className="text-[10px] text-slate-400 uppercase font-black tracking-widest px-1">Active on Node</h3>
-                  {nodeApps.map(app => {
+                  {nodeApps.map((app: any) => {
                     const info = APPLICATION_CATALOG[app.appId]
                     return (
                       <div key={app.id} className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 flex items-center justify-between">

@@ -38,9 +38,9 @@ export function useHotkeys() {
 
         case 'r': {
           // Cycle Racks
-          const racks = nodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
+          const racks = nodes.filter((n: any) => n.type === 'rack' && n.siteId === currentSiteId)
           if (racks.length > 0) {
-            const currentIndex = racks.findIndex(r => r.id === selectedNodeId)
+            const currentIndex = racks.findIndex((r: any) => r.id === selectedNodeId)
             const nextIndex = (currentIndex + 1) % racks.length
             const nextRack = racks[nextIndex]
             if (nextRack) {
@@ -53,9 +53,9 @@ export function useHotkeys() {
         case 'tab':
           // Cycle Hardware in selected rack
           if (selectedNodeId) {
-            const selectedNode = nodes.find(n => n.id === selectedNodeId)
+            const selectedNode = nodes.find((n: any) => n.id === selectedNodeId)
             if (selectedNode?.type === 'rack') {
-              const children = nodes.filter(n => n.parentRackId === selectedNodeId)
+              const children = nodes.filter((n: any) => n.parentRackId === selectedNodeId)
               if (children.length > 0) {
                 // Select first child
                 const firstChild = children[0]
@@ -64,8 +64,8 @@ export function useHotkeys() {
                 }
               }
             } else if (selectedNode?.parentRackId) {
-              const siblings = nodes.filter(n => n.parentRackId === selectedNode.parentRackId)
-              const currentIndex = siblings.findIndex(s => s.id === selectedNodeId)
+              const siblings = nodes.filter((n: any) => n.parentRackId === selectedNode.parentRackId)
+              const currentIndex = siblings.findIndex((s: any) => s.id === selectedNodeId)
               const nextIndex = (currentIndex + 1) % siblings.length
               const sibling = siblings[nextIndex]
               if (sibling) {

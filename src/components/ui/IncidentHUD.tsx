@@ -7,7 +7,7 @@ import { Badge } from './base/Badge'
 import { useShallow } from 'zustand/react/shallow'
 
 export const IncidentHUD = () => {
-  const incidents = useInfraStore(useShallow(state => state.incidents.filter(i => !i.isResolved)))
+  const incidents = useInfraStore(useShallow(state => state.incidents.filter((i: any) => !i.isResolved)))
   const sites = useInfraStore(useShallow(state => state.sites))
   const triggerSiteFailover = useInfraStore(state => state.triggerSiteFailover)
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -49,7 +49,7 @@ export const IncidentHUD = () => {
             exit={{ opacity: 0, x: 20 }}
             className="w-[340px] flex flex-col gap-4 pointer-events-auto"
           >
-            {incidents.map((incident) => {
+            {incidents.map((incident: any) => {
               const rto = incident.rtoTargetSeconds ?? 120
               const remaining = Math.max(0, rto - incident.elapsedSeconds)
               const ratio = Math.max(0, remaining / rto)
@@ -109,7 +109,7 @@ export const IncidentHUD = () => {
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          const targetSite = sites.find(s => s.id !== incident.siteId)
+                          const targetSite = sites.find((s: any) => s.id !== incident.siteId)
                           if (targetSite) {
                             triggerSiteFailover(incident.siteId, targetSite.id)
                           }

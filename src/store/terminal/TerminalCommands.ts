@@ -133,7 +133,7 @@ export function initializeTerminalCommands() {
       const name = args[1]
       if (newContext.mode === 'ssh' && targetNode) {
         if (!name) output.push("usage: hostname [name]")
-        else if (get().nodes.some(n => n.hostname === name && n.id !== targetNode.id)) {
+        else if (get().nodes.some((n: any) => n.hostname === name && n.id !== targetNode.id)) {
           output.push(`[[RED]]NAME COLLISION: Hostname '${name}' is already registered on this subnet.[[RESET]]`)
         } else {
           get().setNodeHostname(targetNode.id, name)
@@ -153,7 +153,7 @@ export function initializeTerminalCommands() {
         if (newContext.mode === 'ssh' && targetNode) {
           if (!ip || !gw || !dns) {
             output.push("usage: [[YELLOW]]ip setup [IP] [Gateway] [DNS][[RESET]]")
-          } else if (get().nodes.some(n => n.managementIP === ip && n.id !== targetNode.id)) {
+          } else if (get().nodes.some((n: any) => n.managementIP === ip && n.id !== targetNode.id)) {
             output.push(`[[RED]]IP CONFLICT: ${ip} is already assigned to another interface.[[RESET]]`)
           } else {
             get().updateNode(targetNode.id, { managementIP: ip, isConfigured: true })
@@ -175,9 +175,9 @@ export function initializeTerminalCommands() {
       const target = args[1]
       if (!target) output.push("usage: ping [IP_or_Hostname]")
       else {
-        const record = get().dnsRecords.find(r => r.hostname === target)
+        const record = get().dnsRecords.find((r: any) => r.hostname === target)
         const ip = record ? record.ip : target
-        const tNode = get().nodes.find(n => n.managementIP === ip || n.hostname === target)
+        const tNode = get().nodes.find((n: any) => n.managementIP === ip || n.hostname === target)
         if (tNode && get().checkNetworkPath(newContext.targetId || 'bastion', tNode.id)) {
           const result = get().ping(newContext.targetId || 'bastion', ip)
           if (result.success) output.push(`[[BLUE]]PING ${target} (${ip})[[RESET]]`, result.message)
@@ -223,7 +223,7 @@ export function initializeTerminalCommands() {
       if (args[1] === 'ip' && args[2] === 'brief') {
         output.push("Interface       IP-Address      Status                Protocol")
         output.push("---------       ----------      ------                --------")
-        get().nodes.filter(n => n.siteId === siteId && n.type !== 'rack').forEach(n => {
+        get().nodes.filter((n: any) => n.siteId === siteId && n.type !== 'rack').forEach((n: any) => {
           const ip = n.managementIP || 'unassigned'
           const state = n.systemState as string
           const statusColor = state === 'running' ? '[[GREEN]]' : state === 'booting' ? '[[YELLOW]]' : '[[RED]]'
@@ -363,7 +363,7 @@ export function initializeTerminalCommands() {
       const targetRackId = args[2]
       if (action === 'status') {
         output.push("--- [[BLUE]]PDU POWER DISTRIBUTION MODULES[[RESET]] ---")
-        get().nodes.filter(n => n.type === 'rack' && n.siteId === siteId).forEach(n => {
+        get().nodes.filter((n: any) => n.type === 'rack' && n.siteId === siteId).forEach((n: any) => {
           const isTripped = n.breakerTripped
           const statusStr = isTripped ? '[[RED]]TRIPPED[[RESET]]' : '[[GREEN]]NOMINAL[[RESET]]'
           output.push(`Rack: ${n.hostname || n.name || n.id.slice(0, 8)} | Max: ${(n.maxPowerKW ?? 5).toFixed(1)} kW | Load: ${(n.currentPowerKW ?? 0).toFixed(2)} kW | Status: ${statusStr}`)
@@ -372,7 +372,7 @@ export function initializeTerminalCommands() {
         if (!targetRackId) {
           output.push("usage: pdu reset [rack_id_or_name]")
         } else {
-          const rack = get().nodes.find(n => n.type === 'rack' && (n.id === targetRackId || n.name === targetRackId || n.hostname === targetRackId))
+          const rack = get().nodes.find((n: any) => n.type === 'rack' && (n.id === targetRackId || n.name === targetRackId || n.hostname === targetRackId))
           if (!rack) {
             output.push(`[[RED]]ERROR: Rack '${targetRackId}' not found.[[RESET]]`)
           } else {

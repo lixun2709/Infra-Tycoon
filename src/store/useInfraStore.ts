@@ -16,7 +16,6 @@ import { createInteractionSlice } from './slices/interactionSlice'
 import { createEconomySlice } from './slices/economySlice'
 import { createProgressionSlice } from './slices/progressionSlice'
 import { createStorageSlice } from './slices/storageSlice'
-import { createAISlice } from './slices/aiSlice'
 import { createAutomationSlice } from './slices/automationSlice'
 import { createCloudSlice, getInitialCloudState } from './slices/cloudSlice'
 import { createItsmSlice } from './slices/itsmSlice'
@@ -25,7 +24,7 @@ import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
 
 export const useInfraStore = create<InfraState>()(
-  persist(
+  persist<InfraState, [], [], any>(
     (set, get, api) => ({
       // --- INITIAL STATE ---
       nodes: [],
@@ -113,19 +112,18 @@ export const useInfraStore = create<InfraState>()(
       ...createEconomySlice(set, get, api),
       ...createProgressionSlice(set, get, api),
       ...createStorageSlice(set, get, api),
-      ...createAISlice(set, get, api),
       ...createAutomationSlice(set, get, api),
       ...createCloudSlice(set, get, api),
       ...createItsmSlice(set, get, api),
 
       // --- ROOT ACTIONS ---
-      processCommand: (text) => handleCommand(get, set, text),
-      resetRackBreaker: (rackId) => {
+      processCommand: (text: any) => handleCommand(get, set, text),
+      resetRackBreaker: (rackId: any) => {
         const { nodes, pushAlert } = get()
-        const rack = nodes.find(n => n.id === rackId)
+        const rack = nodes.find((n: any) => n.id === rackId)
         if (!rack) return
 
-        const nextNodes = nodes.map(node => {
+        const nextNodes = nodes.map((node: any) => {
           if (node.id === rackId) {
             return {
               ...node,
@@ -157,7 +155,7 @@ export const useInfraStore = create<InfraState>()(
           audioManager.playEffect('error')
           return
         }
-        set(state => {
+        set((state: any) => {
           const nextRowsCount = state.facilityRowsCount + 1
           syncZoningWithStore(nextRowsCount, state.facilityColumnsCount, state.halls)
           return {
@@ -190,7 +188,7 @@ export const useInfraStore = create<InfraState>()(
           audioManager.playEffect('error')
           return
         }
-        set(state => {
+        set((state: any) => {
           const nextColumnsCount = state.facilityColumnsCount + 2
           syncZoningWithStore(state.facilityRowsCount, nextColumnsCount, state.halls)
           return {
@@ -223,7 +221,7 @@ export const useInfraStore = create<InfraState>()(
           audioManager.playEffect('error')
           return
         }
-        set(state => ({
+        set((state: any) => ({
           balance: state.balance - cost,
           coolingZonesCount: state.coolingZonesCount + 1,
           auditLogs: [
@@ -244,7 +242,7 @@ export const useInfraStore = create<InfraState>()(
       },
 
       upgradeRackContainment: (rackId: string, type: 'none' | 'cold_aisle' | 'hot_aisle') => {
-        const rack = get().nodes.find(n => n.id === rackId)
+        const rack = get().nodes.find((n: any) => n.id === rackId)
         if (!rack || rack.type !== 'rack') return
         if (rack.containmentType === type) return
         
@@ -255,18 +253,18 @@ export const useInfraStore = create<InfraState>()(
             get().pushAlert('warning', `Insufficient funds for Containment Upgrade. Requires $${cost.toLocaleString()}.`)
             return
           }
-          set((state) => ({ balance: state.balance - cost }))
+          set((state: any) => ({ balance: state.balance - cost }))
           get().gainXp(50, 'Containment Optimization')
           get().pushAlert('info', `Purchased ${type.replace('_', ' ').toUpperCase()} containment for ${rack.name || rack.id.slice(0, 6)}! -$${cost.toLocaleString()}`)
         }
 
-        set((state) => ({
-          nodes: state.nodes.map(n => n.id === rackId ? { ...n, containmentType: type } : n)
+        set((state: any) => ({
+          nodes: state.nodes.map((n: any) => n.id === rackId ? { ...n, containmentType: type } : n)
         }))
       },
 
       installBlankingPanels: (rackId: string) => {
-        const rack = get().nodes.find(n => n.id === rackId)
+        const rack = get().nodes.find((n: any) => n.id === rackId)
         if (!rack || rack.type !== 'rack') return
         
         const cost = 200
@@ -275,22 +273,22 @@ export const useInfraStore = create<InfraState>()(
           return
         }
         
-        set((state) => ({
+        set((state: any) => ({
           balance: state.balance - cost,
-          nodes: state.nodes.map(n => n.id === rackId ? { ...n, blankingPanels: new Array(n.uHeight || 42).fill(true) } : n)
+          nodes: state.nodes.map((n: any) => n.id === rackId ? { ...n, blankingPanels: new Array(n.uHeight || 42).fill(true) } : n)
         }))
         get().gainXp(20, 'Airflow Optimization')
         get().pushAlert('info', `Installed Blanking Panels on ${rack.name || rack.id.slice(0, 6)}! Airflow bypass stopped. -$${cost.toLocaleString()}`)
       },
 
       setServerPhase: (nodeId: string, phase: 'A' | 'B' | 'C') => {
-        set((state) => ({
-          nodes: state.nodes.map(n => n.id === nodeId ? { ...n, phase } : n)
+        set((state: any) => ({
+          nodes: state.nodes.map((n: any) => n.id === nodeId ? { ...n, phase } : n)
         }))
       },
 
       upgradeServerPSU: (nodeId: string) => {
-        const node = get().nodes.find(n => n.id === nodeId)
+        const node = get().nodes.find((n: any) => n.id === nodeId)
         if (!node) return
         
         const cost = 400
@@ -299,16 +297,16 @@ export const useInfraStore = create<InfraState>()(
           return
         }
         
-        set((state) => ({
+        set((state: any) => ({
           balance: state.balance - cost,
-          nodes: state.nodes.map(n => n.id === nodeId ? { ...n, dualPSU: true } : n)
+          nodes: state.nodes.map((n: any) => n.id === nodeId ? { ...n, dualPSU: true } : n)
         }))
         get().gainXp(10, 'Hardware Redundancy')
         get().pushAlert('info', `Upgraded to Dual PSU on ${node.name || node.id.slice(0, 6)}! -$${cost.toLocaleString()}`)
       },
 
       upgradeRackPDU: (rackId: string) => {
-        const rack = get().nodes.find(n => n.id === rackId)
+        const rack = get().nodes.find((n: any) => n.id === rackId)
         if (!rack || rack.type !== 'rack') return
         
         const cost = 2500
@@ -317,9 +315,9 @@ export const useInfraStore = create<InfraState>()(
           return
         }
         
-        set((state) => ({
+        set((state: any) => ({
           balance: state.balance - cost,
-          nodes: state.nodes.map(n => n.id === rackId ? { ...n, pduFeeds: 'A+B' } : n)
+          nodes: state.nodes.map((n: any) => n.id === rackId ? { ...n, pduFeeds: 'A+B' } : n)
         }))
         get().gainXp(50, 'Power Redundancy')
         get().pushAlert('info', `Installed Redundant Feed B PDU on ${rack.name || rack.id.slice(0, 6)}! -$${cost.toLocaleString()}`)
@@ -350,7 +348,7 @@ export const useInfraStore = create<InfraState>()(
           audioManager.playEffect('error')
           return
         }
-        set(state => ({
+        set((state: any) => ({
           balance: state.balance - cost,
           powerBlocksCount: state.powerBlocksCount + 1,
           auditLogs: [
@@ -379,7 +377,7 @@ export const useInfraStore = create<InfraState>()(
           audioManager.playEffect('error')
           return
         }
-        set(state => ({
+        set((state: any) => ({
           balance: state.balance - cost,
           facilityWingsCount: state.facilityWingsCount + 1,
           auditLogs: [
@@ -408,7 +406,7 @@ export const useInfraStore = create<InfraState>()(
           audioManager.playEffect('error')
           return
         }
-        set(state => ({
+        set((state: any) => ({
           balance: state.balance - cost,
           hallWidthCount: state.hallWidthCount + 10,
           hallLengthCount: state.hallLengthCount + 10,
@@ -455,7 +453,7 @@ export const useInfraStore = create<InfraState>()(
         }
 
         // Prevent overlapping
-        const isOccupied = halls.some(h => h.x === tx && h.z === tz)
+        const isOccupied = halls.some((h: any) => h.x === tx && h.z === tz)
         if (isOccupied) {
           pushAlert('warning', 'Blocked hall expansion: An active hall already occupies this coordinate.')
           audioManager.playEffect('error')
@@ -469,7 +467,7 @@ export const useInfraStore = create<InfraState>()(
         // Synchronously update zoning so overhead wires and slots appear immediately
         syncZoningWithStore(get().facilityRowsCount, get().facilityColumnsCount, nextHalls)
 
-        set(state => ({
+        set((state: any) => ({
           balance: state.balance - cost,
           halls: nextHalls,
           auditLogs: [

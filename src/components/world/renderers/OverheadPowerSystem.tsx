@@ -19,8 +19,8 @@ export function OverheadPowerSystem() {
   // Find all active racks in the current site room
   const activeRacks = useMemo(() => {
     return nodes
-      .filter(n => n.type === 'rack' && n.siteId === currentSiteId)
-      .map(r => ({
+      .filter((n: any) => n.type === 'rack' && n.siteId === currentSiteId)
+      .map((r: any) => ({
         id: r.id,
         position: new THREE.Vector3(r.position.x, r.position.y, r.position.z),
         name: r.name
@@ -123,14 +123,14 @@ export function OverheadPowerSystem() {
           ==================================================== */}
       {PREDEFINED_ROWS.map(row => {
         const hallId = row.id.split('-row-')[0]
-        const hall = halls.find(h => h.id === hallId)
+        const hall = halls.find((h: any) => h.id === hallId)
         if (!hall) return null
 
         const hx = hall.x * 30
 
         // Neighbors checking
-        const hasE = halls.some(h => h.x === hall.x + 1 && h.z === hall.z)
-        const hasW = halls.some(h => h.x === hall.x - 1 && h.z === hall.z)
+        const hasE = halls.some((h: any) => h.x === hall.x + 1 && h.z === hall.z)
+        const hasW = halls.some((h: any) => h.x === hall.x - 1 && h.z === hall.z)
 
         // Dynamic context-aware tray spans
         const startX = hasW ? -15.0 : -10.0
@@ -298,12 +298,12 @@ export function OverheadPowerSystem() {
       {/* ====================================================
           6. LONGITUDINAL WALKWAY UTILITY CHANNELS (Connecting all rows)
           ==================================================== */}
-      {halls.map(hall => {
+      {halls.map((hall: any) => {
         const hx = hall.x * 30
         const hz = hall.z * 30
 
-        const hasN = halls.some(h => h.x === hall.x && h.z === hall.z - 1)
-        const hasS = halls.some(h => h.x === hall.x && h.z === hall.z + 1)
+        const hasN = halls.some((h: any) => h.x === hall.x && h.z === hall.z - 1)
+        const hasS = halls.some((h: any) => h.x === hall.x && h.z === hall.z + 1)
 
         // Dynamic walkway Z bounds
         const startZ = hasN ? -15.0 : -10.0
@@ -399,7 +399,7 @@ export function OverheadPowerSystem() {
       {/* ====================================================
           RACK-LEVEL ACTIVE POWER DROPS (Cabled when Rack exists)
           ==================================================== */}
-      {activeRacks.map(rack => {
+      {activeRacks.map((rack: any) => {
         const rX = rack.position.x
         const rZ = rack.position.z
 

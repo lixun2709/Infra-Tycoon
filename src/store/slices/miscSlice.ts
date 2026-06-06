@@ -42,7 +42,7 @@ export interface MiscSlice {
 export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set, get) => ({
   processAging: (dt: number) => {
     const { nodes } = get()
-    const updatedNodes = nodes.map(node => {
+    const updatedNodes = nodes.map((node: any) => {
       if (node.type === 'rack' || node.type === 'cooling') return node
       // dt is in real-world seconds. Let's say 1 hour of gameplay (3600s) = 1 in-game month.
       // We want hardware to degrade 10% per month, so 10% per 3600 seconds.
@@ -61,9 +61,9 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       pushAlert('warning', 'Insufficient funds for hardware refresh.')
       return
     }
-    set(state => ({
+    set((state: any) => ({
       balance: state.balance - cost,
-      nodes: state.nodes.map(n => n.id === nodeId ? { 
+      nodes: state.nodes.map((n: any) => n.id === nodeId ? { 
         ...n, 
         degradation: 0, 
         driveDegradation: 0,
@@ -77,7 +77,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   repairHardware: (nodeId) => {
     const { balance, nodes, technicianTickets, pushAlert } = get()
-    const node = nodes.find(n => n.id === nodeId)
+    const node = nodes.find((n: any) => n.id === nodeId)
     if (!node) return
 
     const cost = 1500
@@ -87,7 +87,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       return
     }
 
-    const hasTicket = technicianTickets.some(t => t.nodeId === nodeId)
+    const hasTicket = technicianTickets.some((t: any) => t.nodeId === nodeId)
     if (hasTicket) {
       pushAlert('warning', `RMA Dispatch Blocked: A technician ticket is already active for ${node.name}.`)
       return
@@ -115,10 +115,10 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       slaTargetSeconds: 120
     }
 
-    set(state => ({
+    set((state: any) => ({
       balance: state.balance - cost,
       technicianTickets: [...state.technicianTickets, newTicket],
-      nodes: state.nodes.map(n => n.id === nodeId ? { ...n, maintenanceMode: true } : n)
+      nodes: state.nodes.map((n: any) => n.id === nodeId ? { ...n, maintenanceMode: true } : n)
     }))
 
     pushAlert('info', `RMA Ticket Scheduled: Technician dispatched for ${node.name}. Fee: $${cost.toLocaleString()}`)
@@ -127,13 +127,13 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   toggleMaintenanceMode: (nodeId) => {
     const { nodes, pushAlert } = get()
-    const node = nodes.find(n => n.id === nodeId)
+    const node = nodes.find((n: any) => n.id === nodeId)
     if (!node) return
 
     const nextMode = !node.maintenanceMode
 
-    set(state => ({
-      nodes: state.nodes.map(n => n.id === nodeId ? { ...n, maintenanceMode: nextMode } : n)
+    set((state: any) => ({
+      nodes: state.nodes.map((n: any) => n.id === nodeId ? { ...n, maintenanceMode: nextMode } : n)
     }))
 
     if (nextMode) {
@@ -146,15 +146,15 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   triggerFirmwareUpgrade: (nodeIds: string[]) => {
     const { pushAlert, globalTargetFirmware } = get()
-    set(state => ({
-      nodes: state.nodes.map(n => nodeIds.includes(n.id) ? { ...n, isFlashing: true, maintenanceMode: true } : n)
+    set((state: any) => ({
+      nodes: state.nodes.map((n: any) => nodeIds.includes(n.id) ? { ...n, isFlashing: true, maintenanceMode: true } : n)
     }))
     pushAlert('info', `Firmware Upgrade Initiated: Safe operational drain and BIOS flashing started for ${nodeIds.length} nodes.`)
     audioManager.playEffect('click')
 
     setTimeout(() => {
-      set(state => ({
-        nodes: state.nodes.map(n => nodeIds.includes(n.id) ? { ...n, isFlashing: false, maintenanceMode: false, firmwareVersion: globalTargetFirmware } : n)
+      set((state: any) => ({
+        nodes: state.nodes.map((n: any) => nodeIds.includes(n.id) ? { ...n, isFlashing: false, maintenanceMode: false, firmwareVersion: globalTargetFirmware } : n)
       }))
       get().pushAlert('info', `Firmware Upgrade Complete: ${nodeIds.length} nodes successfully flashed to ${globalTargetFirmware}.`)
     }, 15000)
@@ -177,7 +177,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   applyBlueprint: (id) => {
     const { blueprints, pushAlert } = get()
-    const blueprint = blueprints.find(b => b.id === id)
+    const blueprint = blueprints.find((b: any) => b.id === id)
     if (!blueprint) return
     
     set({ 
@@ -187,19 +187,19 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     pushAlert('info', `Applied blueprint: ${blueprint.name}`)
   },
 
-  addDnsRecord: (record) => set(state => ({ 
+  addDnsRecord: (record) => set((state: any) => ({ 
     dnsRecords: [...state.dnsRecords, { ...record, id: crypto.randomUUID() }] 
   })),
 
-  removeDnsRecord: (id) => set(state => ({ 
-    dnsRecords: state.dnsRecords.filter(r => r.id !== id) 
+  removeDnsRecord: (id) => set((state: any) => ({ 
+    dnsRecords: state.dnsRecords.filter((r: any) => r.id !== id) 
   })),
 
   autoPatchRack: (rackId) => {
     const { nodes, pushAlert } = get()
-    const rackNodes = nodes.filter(n => n.parentRackId === rackId)
-    const switches = rackNodes.filter(n => n.type === 'network')
-    const servers = rackNodes.filter(n => n.type === 'compute' || n.type === 'storage')
+    const rackNodes = nodes.filter((n: any) => n.parentRackId === rackId)
+    const switches = rackNodes.filter((n: any) => n.type === 'network')
+    const servers = rackNodes.filter((n: any) => n.type === 'compute' || n.type === 'storage')
 
     if (switches.length === 0 || servers.length === 0) {
       pushAlert('warning', 'Auto-patching requires at least one switch and one server in the rack.')
@@ -213,9 +213,9 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     }
     let patched = 0
     
-    servers.forEach(srv => {
-      const srvPort = srv.ports.find(p => p.type === 'network' && !p.connectedTo)
-      const swPort = sw.ports.find(p => p.type === 'network' && !p.connectedTo)
+    servers.forEach((srv: any) => {
+      const srvPort = srv.ports.find((p: any) => p.type === 'network' && !p.connectedTo)
+      const swPort = sw.ports.find((p: any) => p.type === 'network' && !p.connectedTo)
       
       if (srvPort && swPort) {
         get().patchConnection(srv.id, srvPort.id, sw.id, swPort.id)
@@ -227,9 +227,9 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   },
 
   syncNtp: (nodeId) => {
-    set(state => ({
+    set((state: any) => ({
       ntpSyncStatus: [
-        ...state.ntpSyncStatus.filter(s => s.nodeId !== nodeId),
+        ...state.ntpSyncStatus.filter((s: any) => s.nodeId !== nodeId),
         { nodeId, offsetMs: Math.random() * 0.1, stratum: 2, status: 'synced' }
       ]
     }))
@@ -243,7 +243,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     const interval = setInterval(() => {
       // Check if node still exists and is booting
       const currentNodes = get().nodes
-      const node = currentNodes.find(n => n.id === nodeId)
+      const node = currentNodes.find((n: any) => n.id === nodeId)
       if (!node || node.systemState !== 'booting') {
         clearInterval(interval)
         return
@@ -266,9 +266,9 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
   assignNetworkDetails: () => {
     const { nodes, availableIPPool } = get()
     let poolIdx = 0
-    const updatedNodes = nodes.map(node => {
+    const updatedNodes = nodes.map((node: any) => {
       if (node.type === 'rack') return node
-      const newPorts = node.ports.map(port => {
+      const newPorts = node.ports.map((port: any) => {
         if (port.type === 'network' && !port.ip && poolIdx < availableIPPool.length) {
           return { ...port, ip: availableIPPool[poolIdx++], mask: '255.255.255.0' }
         }
@@ -297,7 +297,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     dist.set(startId, 0)
 
     const nodeIds = new Set<string>()
-    connections.forEach(c => {
+    connections.forEach((c: any) => {
       nodeIds.add(c.startNodeId)
       nodeIds.add(c.endNodeId)
     })
@@ -326,7 +326,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
       visited.add(u)
 
-      const adj = connections.filter(c => c.status !== 'blocked' && (c.startNodeId === u || c.endNodeId === u))
+      const adj = connections.filter((c: any) => c.status !== 'blocked' && (c.startNodeId === u || c.endNodeId === u))
       for (const conn of adj) {
         const v = conn.startNodeId === u ? conn.endNodeId : conn.startNodeId
         if (visited.has(v)) continue
@@ -365,7 +365,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
     let compoundSuccessRate = 1.0
 
     connIds.forEach(connId => {
-      const conn = connections.find(c => c.id === connId)
+      const conn = connections.find((c: any) => c.id === connId)
       if (conn) {
         totalLatency += conn.latencyMs ?? 1.0
         const loss = conn.packetLoss ?? 0.0
@@ -387,7 +387,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   simulateRandomFailure: () => {
     const { nodes, pushAlert, updateNode } = get()
-    const hardware = nodes.filter(n => n.type !== 'rack' && n.type !== 'cooling')
+    const hardware = nodes.filter((n: any) => n.type !== 'rack' && n.type !== 'cooling')
     if (hardware.length === 0) return
     
     const target = hardware[Math.floor(Math.random() * hardware.length)]
@@ -398,7 +398,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   simulateDataCorruption: () => {
     const { nodes, pushAlert, updateNode } = get()
-    const storages = nodes.filter(n => (n.type === 'storage' || n.type === 'backup') && (n.totalStorageTB ?? 0) > 0)
+    const storages = nodes.filter((n: any) => (n.type === 'storage' || n.type === 'backup') && (n.totalStorageTB ?? 0) > 0)
     if (storages.length === 0) return
 
     const target = storages[Math.floor(Math.random() * storages.length)]
@@ -438,10 +438,10 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   triggerDisasterRecoveryDrill: (siteId: string) => {
     const { incidents, pushAlert, sites } = get()
-    const site = sites.find(s => s.id === siteId)
+    const site = sites.find((s: any) => s.id === siteId)
     if (!site) return
 
-    const activeDrill = incidents.find(i => i.siteId === siteId && i.type === 'drill' && !i.isResolved)
+    const activeDrill = incidents.find((i: any) => i.siteId === siteId && i.type === 'drill' && !i.isResolved)
     if (activeDrill) {
       pushAlert('warning', `A Disaster Recovery Drill is already active for ${site.name}.`)
       return
@@ -466,10 +466,10 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   triggerHVACFailureDrill: (siteId: string) => {
     const { incidents, pushAlert, sites } = get()
-    const site = sites.find(s => s.id === siteId)
+    const site = sites.find((s: any) => s.id === siteId)
     if (!site) return
 
-    const activeDrill = incidents.find(i => i.siteId === siteId && i.type === 'hvac_drill' && !i.isResolved)
+    const activeDrill = incidents.find((i: any) => i.siteId === siteId && i.type === 'hvac_drill' && !i.isResolved)
     if (activeDrill) {
       pushAlert('warning', `An HVAC Failure Drill is already active for ${site.name}.`)
       return
@@ -494,10 +494,10 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   triggerPowerFailureDrill: (siteId) => {
     const { sites, incidents, pushAlert } = get()
-    const site = sites.find(s => s.id === siteId)
+    const site = sites.find((s: any) => s.id === siteId)
     if (!site) return
 
-    const activeDrill = incidents.find(i => i.siteId === siteId && i.type === 'power_drill' && !i.isResolved)
+    const activeDrill = incidents.find((i: any) => i.siteId === siteId && i.type === 'power_drill' && !i.isResolved)
     if (activeDrill) {
       pushAlert('warning', `A Power Failure Drill is already active for ${site.name}.`)
       return
@@ -522,22 +522,22 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   triggerSiteFailover: (sourceSiteId, targetSiteId) => {
     const { virtualMachines, nodes, sites, incidents, pushAlert } = get()
-    const sourceSite = sites.find(s => s.id === sourceSiteId)
-    const targetSite = sites.find(s => s.id === targetSiteId)
+    const sourceSite = sites.find((s: any) => s.id === sourceSiteId)
+    const targetSite = sites.find((s: any) => s.id === targetSiteId)
     
     if (!sourceSite || !targetSite) return
 
     // Find a healthy node in target site to place VMs
-    const targetNodes = nodes.filter(n => n.siteId === targetSiteId && n.type === 'compute' && n.status !== 'power_overload')
+    const targetNodes = nodes.filter((n: any) => n.siteId === targetSiteId && n.type === 'compute' && n.status !== 'power_overload')
     if (targetNodes.length === 0) {
       pushAlert('critical', `Site Failover failed: No running compute nodes in ${targetSite.name}`)
       return
     }
 
     let failoverCount = 0
-    const updatedVms = virtualMachines.map(vm => {
+    const updatedVms = virtualMachines.map((vm: any) => {
       // Find if VM is on the source site
-      const hostNode = nodes.find(n => n.id === vm.nodeId)
+      const hostNode = nodes.find((n: any) => n.id === vm.nodeId)
       if (hostNode && hostNode.siteId === sourceSiteId) {
          // Failover!
          const newHost = targetNodes[Math.floor(Math.random() * targetNodes.length)]!
@@ -553,7 +553,7 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
       return vm
     })
 
-    const updatedIncidents = incidents.map(i => {
+    const updatedIncidents = incidents.map((i: any) => {
        if (i.siteId === sourceSiteId && !i.isResolved && i.type === 'drill') {
           return { ...i, isResolved: true, resolvedTimestamp: Date.now() }
        }
@@ -574,13 +574,13 @@ export const createMiscSlice: StateCreator<InfraState, [], [], MiscSlice> = (set
 
   fixState: () => {
     const { nodes, sites } = get()
-    const fixedSites = sites.map((s, i) => ({ ...s, id: s.id || `site-${i + 1}` }))
+    const fixedSites = sites.map((s: any, i: any) => ({ ...s, id: s.id || `site-${i + 1}` }))
     const defaultSiteId = fixedSites[0]?.id || 'site-1'
-    const fixedNodes = nodes.map(n => ({ ...n, siteId: n.siteId || defaultSiteId }))
+    const fixedNodes = nodes.map((n: any) => ({ ...n, siteId: n.siteId || defaultSiteId }))
     set({ sites: fixedSites, nodes: fixedNodes })
   },
 
-  updateSite: (id, updates) => set(state => ({
-    sites: state.sites.map(s => s.id === id ? { ...s, ...updates } : s)
+  updateSite: (id, updates) => set((state: any) => ({
+    sites: state.sites.map((s: any) => s.id === id ? { ...s, ...updates } : s)
   }))
 })

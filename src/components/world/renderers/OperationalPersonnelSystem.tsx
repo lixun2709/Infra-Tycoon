@@ -351,7 +351,7 @@ export function OperationalPersonnelSystem() {
   const personnel = useMemo(() => {
     const list = []
     
-    halls.forEach((hall) => {
+    halls.forEach((hall: any) => {
       const hx = hall.x * 30
       const hz = hall.z * 30
       const bounds = { minX: hx - 12, maxX: hx + 12, minZ: hz - 12, maxZ: hz + 12 }

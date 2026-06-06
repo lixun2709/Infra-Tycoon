@@ -30,20 +30,20 @@ export function BlueprintPreview() {
     previewBlueprintId: state.previewBlueprintId,
     blueprints: state.blueprints
   })))
-  const blueprint = blueprints.find(b => b.id === previewBlueprintId)
+  const blueprint = blueprints.find((b: any) => b.id === previewBlueprintId)
   if (!blueprint) return null
 
-  const racks = blueprint.nodes.filter(n => n.type === 'rack')
+  const racks = blueprint.nodes.filter((n: any) => n.type === 'rack')
 
   return (
     <group>
-      {racks.map(rack => (
+      {racks.map((rack: any) => (
         <group key={`preview-${rack.id}`} position={[rack.position.x, rack.position.y + RACK_HEIGHT / 2, rack.position.z]}>
           <mesh>
             <boxGeometry args={[1.05, RACK_HEIGHT + 0.05, 1.05]} />
             <meshStandardMaterial color="#3b82f6" transparent opacity={0.15} wireframe />
           </mesh>
-          {blueprint.nodes.filter(n => n.parentRackId === rack.id).map(hw => {
+          {blueprint.nodes.filter((n: any) => n.parentRackId === rack.id).map((hw: any) => {
             const h = hw.uHeight * U_WORLD
             const yOffset = -RACK_HEIGHT / 2 + U_WORLD * (hw.slotIndex! - 1 + hw.uHeight / 2)
             return (

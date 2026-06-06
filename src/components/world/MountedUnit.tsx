@@ -40,8 +40,11 @@ import { useInteractable } from '../../hooks/useInteraction'
 function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
   const updateNode = useInfraStore(s => s.updateNode)
   const finalRemoveNode = useInfraStore(s => s.finalRemoveNode)
-  const selectedNodeId = useInfraStore(s => s.selectedNodeId)
-  const nodes = useInfraStore(s => s.nodes)
+  const isAnyHardwareSelected = useInfraStore(s => {
+    if (!s.selectedNodeId) return false;
+    const n = s.nodes.find((node: any) => node.id === s.selectedNodeId);
+    return n ? n.type !== 'rack' : false;
+  })
   const renderQuality = useInfraStore(s => s.renderQuality)
   
   const groupRef = useRef<THREE.Object3D>(null)
@@ -89,9 +92,6 @@ function MountedUnitComponent({ node, isSelected }: MountedUnitProps) {
   const { isHovered, interactionProps } = useInteractable(node.id, 'NODE')
 
   if (node.slotIndex == null || node.parentRackId == null) return null
-
-  const selectedNode = selectedNodeId ? nodes.find(n => n.id === selectedNodeId) : null
-  const isAnyHardwareSelected = selectedNode ? selectedNode.type !== 'rack' : false
   const spec = (node.catalogKey ? HARDWARE_CATALOG[node.catalogKey] : null) as HardwareCatalogSpec | null
   const color = spec ? spec.color : (TYPE_ACCENT[node.type] ?? '#718096')
 

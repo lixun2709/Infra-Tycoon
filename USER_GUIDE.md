@@ -24,4 +24,13 @@ A running server is useless without identity.
 - Execute `hostname [name]` to provide DNS structure.
 - Execute `ip setup [IP] [Gateway] [DNS]` to provision logical pathways.
 
+## 5. NOC Operations Dashboard
+The centralized NOC Operations Dashboard replaces fragmented systems (Service Desk, Facilities, Fleet) into a unified viewport. Use this panel to:
+- Monitor global health and active incidents.
+- Acknowledge alerts and review post-mortems.
+- Audit infrastructure logs and telemetry.
+
+## 6. Deprecation Notice
+The experimental AI Subsystems (AI Assistant, generative workflows) have been removed. The simulator is now entirely focused on deterministic, hyperscaler infrastructure operations.
+
 *Note: Proceeding through the objective missions will guide you through these exact workflows.*

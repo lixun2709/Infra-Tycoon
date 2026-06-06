@@ -10,15 +10,10 @@ import {
   FastForward,
   ShieldAlert
 } from 'lucide-react'
-import { Modal, Card, Badge, Button, Tabs, type TabItem } from './base'
+import { Card, Badge, Button, Tabs, type TabItem } from './base'
 import type { TechnicianTicket } from '../../store/infraTypes'
 
-interface ServiceDeskDashboardProps {
-  isOpen: boolean
-  onClose: () => void
-}
-
-export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardProps) {
+export function ServiceDeskTab() {
   const { 
     technicianTickets,
     expediteTicket,
@@ -32,9 +27,9 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
     { id: 'metrics', label: 'SLA Analytics', icon: <Clock size={16} /> }
   ]
 
-  const activeCount = technicianTickets.filter(t => t.status !== 'completed').length
-  const completedCount = technicianTickets.filter(t => t.status === 'completed').length
-  const p1Count = technicianTickets.filter(t => t.severity === 'P1' && t.status !== 'completed').length
+  const activeCount = technicianTickets.filter((t: any) => t.status !== 'completed').length
+  const completedCount = technicianTickets.filter((t: any) => t.status === 'completed').length
+  const p1Count = technicianTickets.filter((t: any) => t.severity === 'P1' && t.status !== 'completed').length
 
   const getSeverityColor = (severity: string) => {
     switch(severity) {
@@ -62,26 +57,19 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
   }
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={onClose} 
-      title="ITSM Service Desk" 
-      icon={<Headset size={24} className="text-teal-400" />}
-      width="xl"
-      zIndex="z-[150]"
-      headerExtra={
-        <div className="flex gap-2 ml-4">
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="px-6 pt-4 shrink-0 flex items-center justify-between">
+        <Tabs 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          onChange={(id) => setActiveTab(id as typeof activeTab)} 
+        />
+        <div className="flex gap-2">
           <Badge variant={p1Count > 0 ? 'error' : 'success'}>
             {p1Count > 0 ? `${p1Count} CRITICAL P1` : 'ALL CLEAR'}
           </Badge>
         </div>
-      }
-    >
-      <Tabs 
-        tabs={tabs} 
-        activeTab={activeTab} 
-        onChange={(id) => setActiveTab(id as typeof activeTab)} 
-      />
+      </div>
 
       <div className="p-6 h-[600px] overflow-y-auto">
         {activeTab === 'queue' && (
@@ -113,7 +101,7 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
                   <p>No active service requests.</p>
                 </div>
               ) : (
-                technicianTickets.map(ticket => {
+                technicianTickets.map((ticket: any) => {
                   const slaStatus = getSlaStatus(ticket)
                   const slaColor = getSlaColor(slaStatus)
                   return (
@@ -196,7 +184,7 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
                   </div>
                   <div className="text-xl font-mono text-emerald-400">
                     {technicianTickets.length > 0 
-                      ? `${Math.floor(technicianTickets.reduce((acc, t) => acc + t.elapsedSeconds, 0) / technicianTickets.length)}s`
+                      ? `${Math.floor(technicianTickets.reduce((acc: any, t: any) => acc + t.elapsedSeconds, 0) / technicianTickets.length)}s`
                       : '0s'}
                   </div>
                 </div>
@@ -210,7 +198,7 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
                     </div>
                   </div>
                   <div className="text-xl font-mono text-sky-400">
-                    ${technicianTickets.reduce((acc, t) => acc + (t.priorityFee || 0), 0).toLocaleString()}
+                    ${technicianTickets.reduce((acc: any, t: any) => acc + (t.priorityFee || 0), 0).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -218,6 +206,6 @@ export function ServiceDeskDashboard({ isOpen, onClose }: ServiceDeskDashboardPr
           </div>
         )}
       </div>
-    </Modal>
+    </div>
   )
 }

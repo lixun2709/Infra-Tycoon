@@ -55,7 +55,7 @@ export const useMissionStore = create<MissionState>()(
           if (allComplete) {
             // Reward the player using useInfraStore
             if (mission.rewardCash) {
-              useInfraStore.setState(s => ({ balance: s.balance + (mission.rewardCash as number) }))
+              useInfraStore.setState((s: any) => ({ balance: s.balance + (mission.rewardCash as number) }))
             }
             if (mission.rewardXp && useInfraStore.getState().gainXp) {
               useInfraStore.getState().gainXp(mission.rewardXp, `Mission Complete: ${mission.title}`)

@@ -40,7 +40,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'marketplace' | 'active' | 'banking' | 'reputation'>('overview')
 
   // Calculate MRR and MRE
-  const totalMRR = activeContracts.reduce((sum, c) => {
+  const totalMRR = activeContracts.reduce((sum: any, c: any) => {
     const bp = CONTRACT_CATALOG[c.blueprintId]
     return sum + (bp?.monthlyMRR || 0)
   }, 0)
@@ -79,7 +79,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
   const cloudCostPerMonth = cloudBurstingActive ? (activeCloudInstances * 300) : 0
   const egressCostPerMonth = cloudEgressGB * 0.1 * 3600
 
-  const totalLoanPayment = loans.reduce((sum, loan) => {
+  const totalLoanPayment = loans.reduce((sum: any, loan: any) => {
     const interest = loan.remainingAmount * loan.interestRate
     return sum + Math.max(interest, loan.minimumMonthlyPayment)
   }, 0)
@@ -202,7 +202,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                         <p className="text-slate-600 text-sm italic">No recent events logged.</p>
                       ) : (
                         <div className="space-y-3">
-                          {reputationHistory.map(entry => (
+                          {reputationHistory.map((entry: any) => (
                             <div key={entry.id} className="flex items-center justify-between p-4 bg-slate-950 rounded-xl border border-slate-800/50">
                               <div className="flex items-center gap-4">
                                 <div className={`w-2 h-2 rounded-full ${entry.amount > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
@@ -224,12 +224,12 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
 
                 {activeTab === 'marketplace' && (
                   <div className="grid grid-cols-2 gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
-                    {marketContracts.map(bp => (
+                    {marketContracts.map((bp: any) => (
                       <ContractCard 
                         key={bp.id} 
                         bp={bp} 
                         isLocked={reputation < bp.minReputation || (bp.minLevel ? companyLevel < bp.minLevel : false)}
-                        isOwned={activeContracts.some(c => c.blueprintId === bp.id)}
+                        isOwned={activeContracts.some((c: any) => c.blueprintId === bp.id)}
                         onAccept={() => acceptContract(bp.id)}
                       />
                     ))}
@@ -245,7 +245,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                         <button onClick={() => setActiveTab('marketplace')} className="mt-4 text-teal-400 hover:text-white transition-colors uppercase text-[10px] font-black">Browse Market &rarr;</button>
                       </div>
                     ) : (
-                      activeContracts.map(c => {
+                      activeContracts.map((c: any) => {
                         const bp = CONTRACT_CATALOG[c.blueprintId]
                         return (
                           <div key={c.id} className="bg-slate-900/40 border border-slate-800 rounded-3xl p-6 flex items-center justify-between">
@@ -332,7 +332,7 @@ export function EconomyDashboard({ isOpen, onClose }: EconomyDashboardProps) {
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            {loans.map(loan => (
+                            {loans.map((loan: any) => (
                               <div key={loan.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-5">
                                 <div className="flex justify-between items-center mb-2">
                                   <span className="text-white font-bold tracking-tight">{loan.name}</span>

@@ -29,8 +29,8 @@ export const Card: React.FC<CardProps> = ({
       {(title || extra) && (
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between bg-white/5">
           <div>
-            {title && <h3 className="font-semibold text-slate-100 uppercase tracking-wider text-xs">{title}</h3>}
-            {subtitle && <p className="text-[10px] text-slate-400 mt-0.5">{subtitle}</p>}
+            {title && <h3 className="font-black text-slate-400 uppercase tracking-widest text-[10px]">{title}</h3>}
+            {subtitle && <p className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-wide font-bold">{subtitle}</p>}
           </div>
           {extra && <div>{extra}</div>}
         </div>

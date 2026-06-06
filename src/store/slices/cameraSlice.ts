@@ -47,7 +47,7 @@ export const createCameraSlice: StateCreator<InfraState, [], [], CameraSlice> = 
     cameraTarget: { x: 0, y: 0, z: 0 }
   }),
 
-  syncSpectatorCamera: (playerId, position, target) => set((state) => ({
+  syncSpectatorCamera: (playerId, position, target) => set((state: any) => ({
     spectatorPositions: {
       ...state.spectatorPositions,
       [playerId]: { position, target }

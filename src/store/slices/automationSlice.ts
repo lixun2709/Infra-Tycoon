@@ -16,7 +16,7 @@ export const createAutomationSlice: StateCreator<InfraState, [], [], AutomationS
   automationPolicies: [],
 
   addAutomationPolicy: (policy) => {
-    set(state => ({
+    set((state: any) => ({
       automationPolicies: [
         ...state.automationPolicies,
         {
@@ -31,28 +31,28 @@ export const createAutomationSlice: StateCreator<InfraState, [], [], AutomationS
   },
 
   removeAutomationPolicy: (id: string) => {
-    set(state => ({
-      automationPolicies: state.automationPolicies.filter(p => p.id !== id)
+    set((state: any) => ({
+      automationPolicies: state.automationPolicies.filter((p: any) => p.id !== id)
     }))
     audioManager.playEffect('click')
   },
 
   toggleAutomationPolicy: (id: string, enabled: boolean) => {
-    set(state => ({
-      automationPolicies: state.automationPolicies.map(p => p.id === id ? { ...p, enabled } : p)
+    set((state: any) => ({
+      automationPolicies: state.automationPolicies.map((p: any) => p.id === id ? { ...p, enabled } : p)
     }))
     audioManager.playEffect('click')
   },
 
   updateAutomationPolicy: (id: string, updates: Partial<AutomationPolicy>) => {
-    set(state => ({
-      automationPolicies: state.automationPolicies.map(p => p.id === id ? { ...p, ...updates } : p)
+    set((state: any) => ({
+      automationPolicies: state.automationPolicies.map((p: any) => p.id === id ? { ...p, ...updates } : p)
     }))
   },
 
   _internalSetFiredPolicies: (fired) => {
     if (fired.length === 0) return
-    set(state => {
+    set((state: any) => {
       const nextPolicies = [...state.automationPolicies]
       let changed = false
       fired.forEach(f => {

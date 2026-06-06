@@ -25,7 +25,7 @@ export const createContractSlice: StateCreator<InfraState, [], [], ContractSlice
       accumulatedPenalty: 0
     }
 
-    set(state => ({
+    set((state: any) => ({
       activeContracts: [...state.activeContracts, newContract]
     }))
     
@@ -34,8 +34,8 @@ export const createContractSlice: StateCreator<InfraState, [], [], ContractSlice
   },
 
   cancelContract: (id) => {
-    set(state => ({
-      activeContracts: state.activeContracts.filter(c => c.id !== id)
+    set((state: any) => ({
+      activeContracts: state.activeContracts.filter((c: any) => c.id !== id)
     }))
     get().pushAlert('info', 'Contract cancelled by operator.')
   },

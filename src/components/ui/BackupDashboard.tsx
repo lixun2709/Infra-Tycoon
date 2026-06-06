@@ -32,13 +32,13 @@ export function BackupDashboard({ isOpen, onClose }: BackupDashboardProps) {
 
   // Filter for servers and storage
   const backupNodes = useMemo(() => {
-    return nodes.filter(n => n.type === 'compute' || n.type === 'storage' || n.type === 'backup')
+    return nodes.filter((n: any) => n.type === 'compute' || n.type === 'storage' || n.type === 'backup')
   }, [nodes])
 
   const stats = useMemo(() => {
     let protectedCount = 0, unprotectedCount = 0, backingUpCount = 0, corruptedCount = 0
     
-    backupNodes.forEach(n => {
+    backupNodes.forEach((n: any) => {
       const state = n.backupStatus || 'unprotected'
       if (state === 'protected') protectedCount++
       else if (state === 'unprotected') unprotectedCount++
@@ -62,7 +62,7 @@ export function BackupDashboard({ isOpen, onClose }: BackupDashboardProps) {
   const filteredNodes = useMemo(() => {
     if (!searchQuery) return backupNodes
     const q = searchQuery.toLowerCase()
-    return backupNodes.filter(n => 
+    return backupNodes.filter((n: any) => 
       n.name.toLowerCase().includes(q) || 
       n.id.toLowerCase().includes(q)
     )
@@ -163,7 +163,7 @@ export function BackupDashboard({ isOpen, onClose }: BackupDashboardProps) {
             </div>
 
             <div className="grid gap-3">
-              {filteredNodes.map(node => (
+              {filteredNodes.map((node: any) => (
                 <Card key={node.id} className="p-4 border-slate-800 bg-slate-900/50 flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {node.type === 'storage' ? (

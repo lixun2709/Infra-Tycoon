@@ -56,7 +56,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
     if (!siteState) return
-    const filtered = siteState.sessions.filter(s => s.id !== sessionId)
+    const filtered = siteState.sessions.filter((s: any) => s.id !== sessionId)
     if (filtered.length === 0) return // Keep at least one
 
     set({
@@ -87,11 +87,11 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
     if (!siteState) return
-    const session = siteState.sessions.find(s => s.id === siteState.activeSessionId)
+    const session = siteState.sessions.find((s: any) => s.id === siteState.activeSessionId)
     if (!session) return
 
     const newPaneId = `p-${crypto.randomUUID()}`
-    const activePane = session.panes.find(p => p.id === session.activePaneId) || session.panes[0]
+    const activePane = session.panes.find((p: any) => p.id === session.activePaneId) || session.panes[0]
     if (!activePane) return
     
     const newPane: TerminalPane = { ...activePane, id: newPaneId, logs: [`Pane split ${direction}.`] }
@@ -101,7 +101,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
         ...terminalStates,
         [currentSiteId]: {
           ...siteState,
-          sessions: siteState.sessions.map(s => s.id === session.id ? {
+          sessions: siteState.sessions.map((s: any) => s.id === session.id ? {
             ...s,
             panes: [...s.panes, newPane],
             activePaneId: newPaneId,
@@ -121,7 +121,7 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
         ...terminalStates,
         [currentSiteId]: {
           ...siteState,
-          sessions: siteState.sessions.map(s => s.id === siteState.activeSessionId ? { ...s, activePaneId: paneId } : s)
+          sessions: siteState.sessions.map((s: any) => s.id === siteState.activeSessionId ? { ...s, activePaneId: paneId } : s)
         }
       }
     })
@@ -131,16 +131,16 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
     const { currentSiteId, terminalStates } = get()
     const siteState = terminalStates[currentSiteId]
     if (!siteState) return
-    const session = siteState.sessions.find(s => s.id === siteState.activeSessionId)
+    const session = siteState.sessions.find((s: any) => s.id === siteState.activeSessionId)
     if (!session || session.panes.length <= 1) return
 
-    const filtered = session.panes.filter(p => p.id !== paneId)
+    const filtered = session.panes.filter((p: any) => p.id !== paneId)
     set({
       terminalStates: {
         ...terminalStates,
         [currentSiteId]: {
           ...siteState,
-          sessions: siteState.sessions.map(s => s.id === session.id ? {
+          sessions: siteState.sessions.map((s: any) => s.id === session.id ? {
             ...s,
             panes: filtered,
             activePaneId: session.activePaneId === paneId ? (filtered[0]?.id || '') : session.activePaneId,
@@ -197,9 +197,9 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
         ...terminalStates,
         [currentSiteId]: {
           ...siteState,
-          sessions: siteState.sessions.map(s => s.id === sessionId ? {
+          sessions: siteState.sessions.map((s: any) => s.id === sessionId ? {
             ...s,
-            panes: s.panes.map(p => p.id === paneId ? { ...p, logs } : p)
+            panes: s.panes.map((p: any) => p.id === paneId ? { ...p, logs } : p)
           } : s)
         }
       }

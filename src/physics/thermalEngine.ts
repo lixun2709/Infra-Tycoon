@@ -17,8 +17,8 @@ export class ThermalManager {
     const updatedNodes = [...nodes]
     
     // 1. Calculate Cooling Impact
-    const coolingUnits = nodes.filter(n => n.type === 'cooling' && n.siteId === currentSiteId && n.systemState === 'running')
-    const totalCoolingBTU = coolingUnits.reduce((sum, n) => sum + Math.abs(n.btuOutput || 0), 0)
+    const coolingUnits = nodes.filter((n: any) => n.type === 'cooling' && n.siteId === currentSiteId && n.systemState === 'running')
+    const totalCoolingBTU = coolingUnits.reduce((sum: any, n: any) => sum + Math.abs(n.btuOutput || 0), 0)
     
     // Ambient temp drops based on cooling capacity (simplified)
     const ambientTemp = Math.max(18.0, this.BASE_AMBIENT_TEMP - (totalCoolingBTU / 100000) * 4)

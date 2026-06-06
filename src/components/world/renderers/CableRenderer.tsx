@@ -28,24 +28,24 @@ export function DataThreads() {
 
   const threads = useMemo(() => {
     if (!selectedNodeId) return []
-    const selectedApps = applications.filter(a => a.nodeId === selectedNodeId)
+    const selectedApps = applications.filter((a: any) => a.nodeId === selectedNodeId)
     
     const links: Array<{ start: THREE.Vector3; end: THREE.Vector3; color: string }> = []
     
-    selectedApps.forEach(app => {
+    selectedApps.forEach((app: any) => {
       const appInfo = APPLICATION_CATALOG[app.appId]
       if (!appInfo) return
 
       if (appInfo.category === 'web') {
-        const dbApps = applications.filter(a => APPLICATION_CATALOG[a.appId]?.category === 'database')
-        dbApps.forEach(dbApp => {
-          const startNode = nodes.find(n => n.id === app.nodeId)
-          const endNode = nodes.find(n => n.id === dbApp.nodeId)
+        const dbApps = applications.filter((a: any) => APPLICATION_CATALOG[a.appId]?.category === 'database')
+        dbApps.forEach((dbApp: any) => {
+          const startNode = nodes.find((n: any) => n.id === app.nodeId)
+          const endNode = nodes.find((n: any) => n.id === dbApp.nodeId)
           if (startNode && endNode && startNode.id !== endNode.id) {
             const getPos = (n: InfraNode) => {
               const p = n.position.clone()
               if (n.parentRackId) {
-                const rack = nodes.find(rk => rk.id === n.parentRackId)
+                const rack = nodes.find((rk: any) => rk.id === n.parentRackId)
                 if (rack) {
                    const yOffset = -RACK_HEIGHT / 2 + (RACK_HEIGHT / 42) * ((n.slotIndex ?? 1) - 1 + n.uHeight / 2)
                    p.set(rack.position.x, rack.position.y + RACK_HEIGHT / 2 + yOffset, rack.position.z)

@@ -92,7 +92,7 @@ export class PrometheusExporter {
     out.push(`infra_tycoon_reputation_percent ${store.reputation}\n\n`)
 
     out.push(this.metricHelp('infra_tycoon_alerts_total', 'gauge', 'Active unacknowledged operations incidents.'))
-    out.push(`infra_tycoon_alerts_total ${store.alerts.filter(a => !a.isAcknowledged).length}\n`)
+    out.push(`infra_tycoon_alerts_total ${store.alerts.filter((a: any) => !a.isAcknowledged).length}\n`)
 
     return out.join('')
   }

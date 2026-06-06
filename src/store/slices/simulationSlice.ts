@@ -28,7 +28,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     const { nodes, applications, virtualMachines, connections, activeContracts } = get()
     
     // Update nodes with telemetry data
-    let updatedNodes = nodes.map(node => {
+    let updatedNodes = nodes.map((node: any) => {
       const update = payload.nodes.find(n => n.id === node.id)
       if (update) {
         return { ...node, ...update } as InfraNode
@@ -37,7 +37,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     })
 
     // Update applications with status data
-    const updatedApps = applications.map(app => {
+    const updatedApps = applications.map((app: any) => {
       const update = payload.applications.find(a => a.id === app.id)
       if (update) {
         return { ...app, ...update as ApplicationDeployment }
@@ -48,7 +48,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // Update virtual machines with status and migration progress
     let updatedVMs = virtualMachines
     if (payload.virtualMachines) {
-      updatedVMs = virtualMachines.map(vm => {
+      updatedVMs = virtualMachines.map((vm: any) => {
         const update = payload.virtualMachines!.find(v => v.id === vm.id)
         if (update) {
           return { ...vm, ...update }
@@ -60,7 +60,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // Update cabled connection links asynchronously from worker output
     let updatedConnections = connections
     if (payload.connections) {
-      updatedConnections = connections.map(conn => {
+      updatedConnections = connections.map((conn: any) => {
         const update = payload.connections.find(c => c.id === conn.id)
         if (update) {
           return { ...conn, ...update }
@@ -70,7 +70,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     }
 
     // Update sites with localized ambient temperature updates
-    const updatedSites = get().sites.map(site => {
+    const updatedSites = get().sites.map((site: any) => {
       if (payload.siteAmbientTemps && payload.siteAmbientTemps[site.id] !== undefined) {
         return { ...site, ambientTemp: payload.siteAmbientTemps[site.id] }
       }
@@ -79,7 +79,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
     // Reconcile dynamic rack status and current power loads
     if (payload.racks && payload.racks.length > 0) {
-      updatedNodes = updatedNodes.map(node => {
+      updatedNodes = updatedNodes.map((node: any) => {
         const update = payload.racks!.find(r => r.id === node.id)
         if (update) {
           return {
@@ -99,12 +99,12 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     const siteMetricsHistory = payload.siteMetricsHistory
 
     const currentSiteId = get().currentSiteId
-    const siteRacks = updatedNodes.filter(n => n.type === 'rack' && n.siteId === currentSiteId)
-    const totalPowerKW = siteRacks.reduce((sum, r) => sum + (r.currentPowerKW || 0), 0)
+    const siteRacks = updatedNodes.filter((n: any) => n.type === 'rack' && n.siteId === currentSiteId)
+    const totalPowerKW = siteRacks.reduce((sum: any, r: any) => sum + (r.currentPowerKW || 0), 0)
 
-    const chassisNodes = updatedNodes.filter(n => n.siteId === currentSiteId && n.type !== 'rack' && n.type !== 'cooling')
+    const chassisNodes = updatedNodes.filter((n: any) => n.siteId === currentSiteId && n.type !== 'rack' && n.type !== 'cooling')
     const totalRoomBTU = Math.round(
-      chassisNodes.reduce((sum, n) => {
+      chassisNodes.reduce((sum: any, n: any) => {
         const isRunning = n.systemState === 'running'
         const isBooting = n.systemState === 'booting'
         let heat = 0.5
@@ -122,7 +122,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // Sync contracts from worker
     let updatedContractsStore = activeContracts
     if (payload.contracts) {
-      updatedContractsStore = activeContracts.map(contract => {
+      updatedContractsStore = activeContracts.map((contract: any) => {
         const update = payload.contracts!.find(c => c.id === contract.id)
         if (update) {
           return { ...contract, ...update }
@@ -134,19 +134,19 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     // Sync tickets and incidents from worker
     let updatedTickets = get().technicianTickets
     if (payload.tickets) {
-      updatedTickets = get().technicianTickets.map(ticket => {
+      updatedTickets = get().technicianTickets.map((ticket: any) => {
         const update = payload.tickets!.find(t => t.id === ticket.id)
         if (update) {
           return { ...ticket, ...update }
         }
         return ticket
-      }).filter(t => t.status !== 'completed')
+      }).filter((t: any) => t.status !== 'completed')
     }
 
     let updatedIncidents = get().incidents
     const newPostMortems: import('../infraTypes').PostMortem[] = []
     if (payload.incidents) {
-      updatedIncidents = get().incidents.map(incident => {
+      updatedIncidents = get().incidents.map((incident: any) => {
         const update = payload.incidents!.find(i => i.id === incident.id)
         if (update) {
           if (!incident.isResolved && update.isResolved) {
@@ -166,7 +166,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
         return incident
       })
       
-      const newFromWorker = payload.incidents.filter(pi => !get().incidents.find(i => i.id === pi.id))
+      const newFromWorker = payload.incidents.filter(pi => !get().incidents.find((i: any) => i.id === pi.id))
       updatedIncidents = [...updatedIncidents, ...newFromWorker]
     }
 
@@ -190,7 +190,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
       let updatedPolicies = get().automationPolicies
       let changed = false
       payload.firedAutomationPolicies.forEach(fired => {
-        const idx = updatedPolicies.findIndex(p => p.id === fired.id)
+        const idx = updatedPolicies.findIndex((p: any) => p.id === fired.id)
         if (idx !== -1) {
           updatedPolicies = [...updatedPolicies]
           updatedPolicies[idx] = { ...updatedPolicies[idx], lastFiredAt: fired.firedAt } as import('../infraTypes').AutomationPolicy
@@ -246,7 +246,7 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
 
     // 3. Recalculate Facilities
     recalculateRoomStats()
-    nodes.filter(n => n.type === 'rack').forEach(r => calculateRackPower(nodes, r.id))
+    nodes.filter((n: any) => n.type === 'rack').forEach((r: any) => calculateRackPower(nodes, r.id))
 
     // 4. Evaluate Missions (outside UI render cycle)
     useMissionStore.getState().evaluateActiveMission(get())

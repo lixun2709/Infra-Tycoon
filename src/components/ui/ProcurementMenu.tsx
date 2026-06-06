@@ -63,7 +63,7 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
     .map(([key, spec]) => ({ key: key as HardwareCatalogKey, ...spec }))
 
   const stageAsset = (key: HardwareCatalogKey) => {
-    useInfraStore.setState(state => ({
+    useInfraStore.setState((state: any) => ({
       deploymentQueue: [...state.deploymentQueue, key]
     }))
   }
@@ -88,8 +88,8 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Inventory Staging</span>
               </div>
               <div className="space-y-2 max-h-80 overflow-y-auto pr-2 custom-scrollbar">
-                {deploymentQueue.map((key, idx) => {
-                  const spec = HARDWARE_CATALOG[key]
+                {deploymentQueue.map((key: any, idx: any) => {
+                  const spec = HARDWARE_CATALOG[key as keyof typeof HARDWARE_CATALOG]
                   return (
                     <button
                       key={`${key}-${idx}`}
@@ -151,7 +151,7 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
           {/* Asset Grid */}
           <div className="flex-1 overflow-y-auto grid grid-cols-1 gap-4 custom-scrollbar">
             {items.map((item: HardwareCatalogSpec & { key: HardwareCatalogKey }) => {
-                  const currentSite = sites.find(s => s.id === currentSiteId)
+                  const currentSite = sites.find((s: any) => s.id === currentSiteId)
                   const isEdgeSite = currentSite?.type === 'edge'
                   
                   let unlocked = isHardwareUnlocked(item.key) && balance >= 0

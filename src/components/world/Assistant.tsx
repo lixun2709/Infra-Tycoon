@@ -15,7 +15,7 @@ export const Assistant: React.FC = () => {
   
   const targetNode = useMemo(() => {
     if (!assistantTargetId) return null
-    return nodes.find(n => n.id === assistantTargetId)
+    return nodes.find((n: any) => n.id === assistantTargetId)
   }, [assistantTargetId, nodes])
 
   useFrame(({ clock }) => {

@@ -335,9 +335,6 @@ export type ApplicationDeployment = {
   nodeId: string
   status: 'deploying' | 'running' | 'error'
   progress: number
-  aiEpochs?: number
-  aiFlopsDelivered?: number
-  aiStatus?: 'training' | 'stalled' | 'completed'
   loadBalancerId?: string
   targetGroupIds?: string[]
 }

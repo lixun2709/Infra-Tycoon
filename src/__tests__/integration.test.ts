@@ -34,7 +34,7 @@ describe('End-to-End Infrastructure Lifecycle', () => {
     expect(success).toBe(true)
     
     const nodes = useInfraStore.getState().nodes
-    const compute = nodes.find(n => n.type === 'compute')
+    const compute = nodes.find((n: any) => n.type === 'compute')
     expect(compute).toBeDefined()
     expect(compute?.parentRackId).toBe('rack-test')
   })

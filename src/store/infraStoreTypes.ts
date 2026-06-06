@@ -46,7 +46,6 @@ import type { ProgressionSlice } from './slices/progressionSlice'
 import type { ContractBlueprint, ActiveContract } from '../physics/contractLibrary'
 import type { MiscSlice } from './slices/miscSlice'
 import type { StorageSlice } from './slices/storageSlice'
-import type { AISlice } from './slices/aiSlice'
 import type { AutomationSlice } from './slices/automationSlice'
 
 export type InfraState = {
@@ -285,7 +284,7 @@ export type InfraState = {
   getAvailableSaves: () => SaveMetadata[]
   isSaveManagerOpen: boolean
   updateSite: (id: string, updates: Partial<Site>) => void
-} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AISlice & AutomationSlice & CloudSlice & ItsmSlice
+} & CameraSlice & InteractionSlice & EconomySlice & ProgressionSlice & MiscSlice & StorageSlice & AutomationSlice & CloudSlice & ItsmSlice
 export interface CloudSlice {
   // Methods for CloudSlice added dynamically in useInfraStore if any
   _isCloudSlice?: boolean

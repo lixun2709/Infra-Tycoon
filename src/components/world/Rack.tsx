@@ -5,7 +5,7 @@ import * as THREE from 'three'
 import { U_WORLD } from '../../physics/dimensions'
 import { useInteractable } from '../../hooks/useInteraction'
 import { useInfraStore } from '../../store/useInfraStore'
-import { THEMES } from '../../store/themeTypes'
+import { THEMES, type ThemeKey } from '../../store/themeTypes'
 
 interface RackProps {
   id: string
@@ -23,33 +23,36 @@ interface RackProps {
 }
 
 function USlotLines({ uHeight = 42 }: { uHeight?: number }) {
-  const activeTheme = useInfraStore(s => s.activeTheme)
+  const activeTheme = useInfraStore(s => s.activeTheme as ThemeKey)
   const themeSpec = THEMES[activeTheme]
 
   const actualHeight = uHeight * U_WORLD
 
-  const segments = React.useMemo(() => {
-    const out: { key: number; y: number }[] = []
+  const points = React.useMemo(() => {
+    const pts = new Float32Array(uHeight * 6)
     for (let j = 1; j <= uHeight; j++) {
       const y = -actualHeight / 2 + j * U_WORLD
-      out.push({ key: j, y })
+      const base = (j - 1) * 6
+      pts[base] = -0.501
+      pts[base + 1] = y
+      pts[base + 2] = 0.502
+      pts[base + 3] = 0.501
+      pts[base + 4] = y
+      pts[base + 5] = 0.502
     }
-    return out
+    return pts
   }, [uHeight, actualHeight])
 
   return (
-    <>
-      {segments.map(({ key, y }) => (
-        <Line
-          key={key}
-          points={[[-0.501, y, 0.502], [0.501, y, 0.502]]}
-          color={themeSpec.render.rackBoundHover}
-          lineWidth={1}
-          opacity={0.3}
-          transparent
+    <lineSegments>
+      <bufferGeometry>
+        <bufferAttribute
+          attach="attributes-position"
+          args={[points, 3]}
         />
-      ))}
-    </>
+      </bufferGeometry>
+      <lineBasicMaterial color={themeSpec.render.rackBoundHover} transparent opacity={0.3} />
+    </lineSegments>
   )
 }
 

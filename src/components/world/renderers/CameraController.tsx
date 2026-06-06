@@ -114,10 +114,10 @@ export function CameraController() {
       case 'INSPECT': {
         const inspectNodeId = cameraFocusNodeId || selectedNodeId
         if (inspectNodeId) {
-          const selectedNode = nodes.find(n => n.id === inspectNodeId)
+          const selectedNode = nodes.find((n: any) => n.id === inspectNodeId)
           if (selectedNode) {
             const parentRack = selectedNode.parentRackId 
-              ? nodes.find(n => n.id === selectedNode.parentRackId) 
+              ? nodes.find((n: any) => n.id === selectedNode.parentRackId) 
               : undefined
 
             // Delegate 3D coordinates calculation to decoupled math routines

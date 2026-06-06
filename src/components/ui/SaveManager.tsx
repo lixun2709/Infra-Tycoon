@@ -19,7 +19,7 @@ export function SaveManager({ onClose }: SaveManagerProps) {
     updateSite: state.updateSite
   })))
   const [saves, setSaves] = useState<SaveMetadata[]>([])
-  const currentSite = sites.find(s => s.id === useInfraStore.getState().currentSiteId)
+  const currentSite = sites.find((s: any) => s.id === useInfraStore.getState().currentSiteId)
   const [siteName, setSiteName] = useState(currentSite?.name || 'New Deployment')
   const [confirmState, setConfirmState] = useState<{
     isOpen: boolean

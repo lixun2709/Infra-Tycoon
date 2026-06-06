@@ -30,19 +30,19 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm1_obj1',
         label: 'Rack Installation',
         description: 'Deploy your first 42U Server Rack.',
-        evaluate: (state) => state.nodes.some(n => n.type === 'rack')
+        evaluate: (state) => state.nodes.some((n: any) => n.type === 'rack')
       },
       {
         id: 'm1_obj2',
         label: 'Network Backbone',
         description: 'Install a 1U Leaf Switch in the rack.',
-        evaluate: (state) => state.nodes.some(n => n.catalogKey === 'LEAF_SWITCH_1U' && n.parentRackId)
+        evaluate: (state) => state.nodes.some((n: any) => n.catalogKey === 'LEAF_SWITCH_1U' && n.parentRackId)
       },
       {
         id: 'm1_obj3',
         label: 'Compute Power',
         description: 'Add a 1U Compute Node to the rack.',
-        evaluate: (state) => state.nodes.some(n => n.type === 'compute' && n.parentRackId)
+        evaluate: (state) => state.nodes.some((n: any) => n.type === 'compute' && n.parentRackId)
       }
     ]
   },
@@ -58,9 +58,9 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm2_obj1',
         label: 'Patching Protocol',
         description: 'Connect the Compute Node to the Leaf Switch.',
-        evaluate: (state) => state.connections.some(conn => {
-          const startNode = state.nodes.find(n => n.id === conn.startNodeId)
-          const endNode = state.nodes.find(n => n.id === conn.endNodeId)
+        evaluate: (state) => state.connections.some((conn: any) => {
+          const startNode = state.nodes.find((n: any) => n.id === conn.startNodeId)
+          const endNode = state.nodes.find((n: any) => n.id === conn.endNodeId)
           if (!startNode || !endNode) return false
           return (startNode.type === 'compute' && endNode.type === 'network') ||
                  (startNode.type === 'network' && endNode.type === 'compute')
@@ -70,7 +70,7 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm2_obj2',
         label: 'Power Integrity',
         description: 'Ensure the rack has a PDU installed.',
-        evaluate: (state) => state.nodes.some(n => n.catalogKey === 'HIGH_DENSITY_PDU_1U' && n.parentRackId)
+        evaluate: (state) => state.nodes.some((n: any) => n.catalogKey === 'HIGH_DENSITY_PDU_1U' && n.parentRackId)
       }
     ]
   },
@@ -87,8 +87,8 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         label: 'Storage Foundation',
         description: 'Deploy a SAN Controller and a Disk Shelf.',
         evaluate: (state) => {
-          const hasSan = state.nodes.some(n => n.catalogKey === 'SAN_CONTROLLER_2U')
-          const hasShelf = state.nodes.some(n => n.catalogKey === 'DISK_SHELF_2U')
+          const hasSan = state.nodes.some((n: any) => n.catalogKey === 'SAN_CONTROLLER_2U')
+          const hasShelf = state.nodes.some((n: any) => n.catalogKey === 'DISK_SHELF_2U')
           return hasSan && hasShelf
         }
       },
@@ -97,9 +97,9 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         label: 'Compute Cluster',
         description: 'Deploy at least 3 Compute Nodes in a single rack.',
         evaluate: (state) => {
-          const racks = state.nodes.filter(n => n.type === 'rack')
-          return racks.some(rack => {
-            const computeInRack = state.nodes.filter(n => n.parentRackId === rack.id && n.type === 'compute')
+          const racks = state.nodes.filter((n: any) => n.type === 'rack')
+          return racks.some((rack: any) => {
+            const computeInRack = state.nodes.filter((n: any) => n.parentRackId === rack.id && n.type === 'compute')
             return computeInRack.length >= 3
           })
         }
@@ -108,7 +108,7 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm3_obj3',
         label: 'Secure Perimeter',
         description: 'Install a Next-Gen Firewall (Security Appliance).',
-        evaluate: (state) => state.nodes.some(n => n.type === 'security')
+        evaluate: (state) => state.nodes.some((n: any) => n.type === 'security')
       }
     ]
   },
@@ -124,13 +124,13 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm4_obj1',
         label: 'HVAC Deployment',
         description: 'Install an In-Row CRAC unit in your server hall.',
-        evaluate: (state) => state.nodes.some(n => n.catalogKey === 'IN_ROW_CRAC_4U')
+        evaluate: (state) => state.nodes.some((n: any) => n.catalogKey === 'IN_ROW_CRAC_4U')
       },
       {
         id: 'm4_obj2',
         label: 'Liquid Loop (Optional)',
         description: 'Prepare for high density by deploying a CDU (if unlocked).',
-        evaluate: (state) => state.nodes.some(n => n.catalogKey === 'LIQUID_CDU')
+        evaluate: (state) => state.nodes.some((n: any) => n.catalogKey === 'LIQUID_CDU')
       }
     ]
   },
@@ -146,19 +146,19 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
         id: 'm5_obj1',
         label: 'BMC Initialization',
         description: 'Open the console and run `poweron` to initialize a node.',
-        evaluate: (state) => state.nodes.some(n => n.type === 'compute' && n.systemState === 'running')
+        evaluate: (state) => state.nodes.some((n: any) => n.type === 'compute' && n.systemState === 'running')
       },
       {
         id: 'm5_obj2',
         label: 'Node Identity',
         description: 'Set a hostname using the `hostname` command in the shell.',
-        evaluate: (state) => state.nodes.some(n => !!n.hostname)
+        evaluate: (state) => state.nodes.some((n: any) => !!n.hostname)
       },
       {
         id: 'm5_obj3',
         label: 'Network Bootstrap',
         description: 'Configure a management interface using `ip setup`.',
-        evaluate: (state) => state.nodes.some(n => !!n.managementIP)
+        evaluate: (state) => state.nodes.some((n: any) => !!n.managementIP)
       }
     ]
   }

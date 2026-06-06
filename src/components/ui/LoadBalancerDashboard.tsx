@@ -9,13 +9,13 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
   const [selectedApp, setSelectedApp] = useState<string | null>(null)
   
   // Find all available LBs
-  const loadBalancers = useMemo(() => nodes.filter(n => n.type === 'load_balancer'), [nodes])
-  const edgeNodes = useMemo(() => nodes.filter(n => n.type === 'edge_cache'), [nodes])
+  const loadBalancers = useMemo(() => nodes.filter((n: any) => n.type === 'load_balancer'), [nodes])
+  const edgeNodes = useMemo(() => nodes.filter((n: any) => n.type === 'edge_cache'), [nodes])
 
   const handleAssignLB = (appId: string, lbId: string) => {
     // For simplicity, auto-assign the app's current compute node as the first target
     // In a full implementation, you'd select multiple targets.
-    const app = applications.find(a => a.id === appId)
+    const app = applications.find((a: any) => a.id === appId)
     if (app) {
       configureLoadBalancer(app.id, lbId, [app.nodeId])
     }
@@ -37,7 +37,7 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
         </Card>
         <Card className="p-4 text-center border-indigo-500/20 bg-indigo-950/10">
           <Activity className="w-8 h-8 mx-auto text-indigo-400 mb-2" />
-          <h4 className="text-2xl font-bold font-mono">{applications.filter(a => a.loadBalancerId).length}</h4>
+          <h4 className="text-2xl font-bold font-mono">{applications.filter((a: any) => a.loadBalancerId).length}</h4>
           <span className="text-[10px] text-slate-500 uppercase tracking-widest font-black">Balanced Apps</span>
         </Card>
       </div>
@@ -50,11 +50,11 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
             <Database className="w-4 h-4 text-slate-500" /> Application Targets
           </h3>
           <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pr-2">
-            {applications.filter(a => a.status === 'running').length === 0 && (
+            {applications.filter((a: any) => a.status === 'running').length === 0 && (
               <div className="text-center text-slate-600 text-xs py-8">No running applications.</div>
             )}
             
-            {applications.filter(a => a.status === 'running').map(app => {
+            {applications.filter((a: any) => a.status === 'running').map((app: any) => {
               const spec = APPLICATION_CATALOG[app.appId]
               const isBalanced = !!app.loadBalancerId
               return (
@@ -100,8 +100,8 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
                     No Load Balancer hardware detected on the network. Procure F5 Hardware first.
                   </div>
                 )}
-                {loadBalancers.map(lb => {
-                  const isActiveForApp = applications.find(a => a.id === selectedApp)?.loadBalancerId === lb.id
+                {loadBalancers.map((lb: any) => {
+                  const isActiveForApp = applications.find((a: any) => a.id === selectedApp)?.loadBalancerId === lb.id
                   return (
                     <div key={lb.id} className={`p-3 rounded border ${isActiveForApp ? 'border-emerald-500 bg-emerald-900/20' : 'border-slate-700 bg-slate-800'}`}>
                       <div className="flex justify-between items-center mb-2">

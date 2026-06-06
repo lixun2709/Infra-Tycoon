@@ -23,7 +23,7 @@ describe('useInfraStore v2.0', () => {
   })
 
   it('should stage items to deployment queue', () => {
-    useInfraStore.setState(state => ({
+    useInfraStore.setState((state: any) => ({
       deploymentQueue: [...state.deploymentQueue, 'COMPUTE_1U']
     }))
     
@@ -31,7 +31,7 @@ describe('useInfraStore v2.0', () => {
     expect(state.deploymentQueue).toHaveLength(1)
     expect(state.deploymentQueue[0]).toBe('COMPUTE_1U')
     
-    useInfraStore.setState(state => ({
+    useInfraStore.setState((state: any) => ({
       deploymentQueue: [...state.deploymentQueue, 'COMPUTE_1U']
     }))
     expect(useInfraStore.getState().deploymentQueue).toHaveLength(2)

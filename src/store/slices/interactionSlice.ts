@@ -44,7 +44,7 @@ export const createInteractionSlice: StateCreator<InfraState, [], [], Interactio
     activeHoverType: type
   }),
 
-  updateOperatorGesture: (operatorId, gesture) => set((state) => ({
+  updateOperatorGesture: (operatorId, gesture) => set((state: any) => ({
     operatorGestures: {
       ...state.operatorGestures,
       [operatorId]: {
@@ -59,13 +59,13 @@ export const createInteractionSlice: StateCreator<InfraState, [], [], Interactio
     }
   })),
 
-  clearOperatorGesture: (operatorId) => set((state) => {
+  clearOperatorGesture: (operatorId) => set((state: any) => {
     const updated = { ...state.operatorGestures }
     delete updated[operatorId]
     return { operatorGestures: updated }
   }),
 
-  logInteractionEvent: (event) => set((state) => {
+  logInteractionEvent: (event) => set((state: any) => {
     const newLogs = [...state.interactionLogs, event]
     if (newLogs.length > 200) {
       newLogs.shift()

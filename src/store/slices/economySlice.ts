@@ -50,7 +50,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     if (balance < amount) {
       pushAlert('critical', `BANKRUPTCY WARNING: Insufficient funds for ${reason}. Overdrafting!`)
     }
-    set(state => ({ balance: state.balance - amount }))
+    set((state: any) => ({ balance: state.balance - amount }))
     return true
   },
 
@@ -81,7 +81,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     let monthlyRevenue = 0
     let monthlyPenalty = 0
 
-    const updatedContracts = activeContracts.map(contract => {
+    const updatedContracts = activeContracts.map((contract: any) => {
       const blueprint = CONTRACT_CATALOG[contract.blueprintId]
       
       // We will handle dynamic contracts in the activeContracts themselves if not in catalog
@@ -102,7 +102,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     // ITSM Service Desk SLA Enforcement (Day 29)
     let monthlyITSMFines = 0
     let itsmBreachCount = 0
-    const updatedTickets = technicianTickets.map(ticket => {
+    const updatedTickets = technicianTickets.map((ticket: any) => {
       if (ticket.status === 'completed') return ticket
 
       let fineAccruedThisTick = 0
@@ -129,14 +129,14 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     // OPEX calculations (Normalized where 3600 seconds = 1 Month)
     
     // Power: Assume ~$90 per KW per month ($0.12/kWh * 24 * 30)
-    const totalPowerKW = nodes.reduce((sum, n) => sum + (n.wattage || 0), 0) / 1000
+    const totalPowerKW = nodes.reduce((sum: any, n: any) => sum + (n.wattage || 0), 0) / 1000
     const powerCostPerMonth = totalPowerKW * 90 
     
     // Rack rent: $500 per rack per month
-    const rackRentPerMonth = nodes.filter(n => n.type === 'rack').length * 500
+    const rackRentPerMonth = nodes.filter((n: any) => n.type === 'rack').length * 500
 
     // Maintenance: $100 base per node per month
-    const maintenanceCostPerMonth = nodes.reduce((sum, n) => {
+    const maintenanceCostPerMonth = nodes.reduce((sum: any, n: any) => {
       if (n.type === 'rack' || n.type === 'cooling') return sum
       const base = 100 
       const stressMultiplier = n.isThrottled ? 2.5 : 1.0
@@ -145,7 +145,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     }, 0)
 
     // Multi-Cloud OpEx
-    const cloudCostPerMonth = get().cloudProviders ? get().cloudProviders.reduce((sum, p) => 
+    const cloudCostPerMonth = get().cloudProviders ? get().cloudProviders.reduce((sum: any, p: any) => 
       sum + (p.activeSpotInstances * p.spotPricePerNode) + (p.reservedInstances * p.reservedPricePerNode)
     , 0) : 0
     
@@ -159,7 +159,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     if (isMonthEnd) {
       // Process loans (OpEx)
       let totalLoanPayment = 0
-      const updatedLoans = loans.map(loan => {
+      const updatedLoans = loans.map((loan: any) => {
         // Interest is calculated on remaining principal
         const interestAmount = loan.remainingAmount * loan.interestRate
         // The minimum payment pays the interest plus a bit of principal (or whatever the min payment is)
@@ -176,7 +176,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
           ...loan,
           remainingAmount: loan.remainingAmount + interestAmount - payment
         }
-      }).filter(loan => loan.remainingAmount > 0)
+      }).filter((loan: any) => loan.remainingAmount > 0)
 
       const netPayout = monthlyRevenue - monthlyPenalty - monthlyITSMFines - totalExpensesPerMonth - totalLoanPayment
       newBalance += netPayout
@@ -186,7 +186,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       }
       
       const avgUptime = updatedContracts.length > 0 
-        ? updatedContracts.reduce((sum, c) => sum + (c.totalTicks > 0 ? c.uptimeTicks / c.totalTicks : 1), 0) / updatedContracts.length 
+        ? updatedContracts.reduce((sum: any, c: any) => sum + (c.totalTicks > 0 ? c.uptimeTicks / c.totalTicks : 1), 0) / updatedContracts.length 
         : 1.0
       
       let repChange = avgUptime > 0.99 ? 2 : avgUptime < 0.95 ? -5 : 0
@@ -277,7 +277,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       return
     }
     
-    const updatedLoans = loans.map(loan => {
+    const updatedLoans = loans.map((loan: any) => {
       if (loan.id === id) {
         return {
           ...loan,
@@ -285,7 +285,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
         }
       }
       return loan
-    }).filter(loan => loan.remainingAmount > 0)
+    }).filter((loan: any) => loan.remainingAmount > 0)
     
     set({
       loans: updatedLoans,

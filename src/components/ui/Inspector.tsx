@@ -64,7 +64,7 @@ export function Inspector() {
     upgradeServerPSU: state.upgradeServerPSU,
     upgradeRackPDU: state.upgradeRackPDU
   })))
-  const selectedNode = nodes.find((n) => n.id === selectedNodeId)
+  const selectedNode = nodes.find((n: any) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'electrical' | 'services' | 'lifecycle' | 'virtualization'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
   const [metrics, setMetrics] = React.useState(performanceMonitor.getMetrics())
@@ -78,17 +78,17 @@ export function Inspector() {
   }, [activeTab])
   if (!selectedNode) return null
 
-  const nodeSite = sites.find(s => s.id === selectedNode.siteId)
+  const nodeSite = sites.find((s: any) => s.id === selectedNode.siteId)
 
   const handleDecommissionClick = () => {
     if (selectedNode.type === 'rack') {
-      const children = nodes.filter(n => n.parentRackId === selectedNode.id)
+      const children = nodes.filter((n: any) => n.parentRackId === selectedNode.id)
       if (children.length > 0) {
         pushAlert('warning', `Cannot decommission ${selectedNode.name}: Rack is not empty. Please remove all mounted hardware first.`)
         return
       }
     } else {
-      const hasConnections = connections.some(c => c.startNodeId === selectedNode.id || c.endNodeId === selectedNode.id)
+      const hasConnections = connections.some((c: any) => c.startNodeId === selectedNode.id || c.endNodeId === selectedNode.id)
       if (hasConnections) {
         pushAlert('warning', `Cannot decommission ${selectedNode.name}: Device has active network connections. Please unplug all cables first.`)
         return
@@ -193,7 +193,7 @@ export function Inspector() {
                 </Card>
                 <div className="mt-4">
                   <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Hardware Layout</h3>
-                  <VisualRack rack={selectedNode} hardware={nodes.filter(n => n.parentRackId === selectedNode.id)} />
+                  <VisualRack rack={selectedNode} hardware={nodes.filter((n: any) => n.parentRackId === selectedNode.id)} />
                 </div>
                 </>
               )}
@@ -374,9 +374,9 @@ export function Inspector() {
 
               <Card title="Rear Connectivity" className="bg-transparent" glass={false}>
                 <div className="grid grid-cols-1 gap-2">
-                  {selectedNode.ports.map((port) => {
+                  {selectedNode.ports.map((port: any) => {
                     const isConnecting = activePatchSource?.portId === port.id
-                    const conn = connections.find(c => (c.startNodeId === selectedNode.id && c.startPortId === port.id) || (c.endNodeId === selectedNode.id && c.endPortId === port.id))
+                    const conn = connections.find((c: any) => (c.startNodeId === selectedNode.id && c.startPortId === port.id) || (c.endNodeId === selectedNode.id && c.endPortId === port.id))
                     
                     return (
                       <div key={port.id} className={`p-3 rounded-xl border transition-all ${isConnecting ? 'bg-teal-500/10 border-teal-500' : 'bg-white/5 border-white/5'}`}>
@@ -643,7 +643,7 @@ export function Inspector() {
                     {/* RMA Status / Dispatch Button */}
                     <div className="pt-2 border-t border-white/5 space-y-3">
                       {(() => {
-                        const ticket = technicianTickets.find(t => t.nodeId === selectedNode.id)
+                        const ticket = technicianTickets.find((t: any) => t.nodeId === selectedNode.id)
                         if (!ticket) {
                           return (
                             <Button 
@@ -810,7 +810,7 @@ export function Inspector() {
               </Card>
 
               <div className="space-y-2">
-                {selectedNode.services.map(service => (
+                {selectedNode.services.map((service: any) => (
                   <Card key={service.id} className="bg-transparent" glass={false}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -847,10 +847,10 @@ export function Inspector() {
                   
                   <div className="space-y-2">
                     <h3 className="text-[9px] text-slate-500 font-black uppercase tracking-widest px-1">Running Virtual Machines</h3>
-                    {virtualMachines.filter(vm => vm.nodeId === selectedNode.id).length === 0 && (
+                    {virtualMachines.filter((vm: any) => vm.nodeId === selectedNode.id).length === 0 && (
                       <p className="text-[10px] text-slate-500 italic px-1">No VMs currently deployed on this host.</p>
                     )}
-                    {virtualMachines.filter(vm => vm.nodeId === selectedNode.id).map(vm => (
+                    {virtualMachines.filter((vm: any) => vm.nodeId === selectedNode.id).map((vm: any) => (
                       <Card key={vm.id} className="bg-transparent border-slate-700/50" glass={false}>
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center justify-between">
@@ -916,7 +916,7 @@ export function Inspector() {
 
           {activeTab === 'alerts' && (
             <div className="space-y-3">
-              {alerts.filter(a => a.nodeId === selectedNode.id).map(alert => (
+              {alerts.filter((a: any) => a.nodeId === selectedNode.id).map((alert: any) => (
                 <Card key={alert.id} className={`${alert.severity === 'critical' ? 'border-rose-500/20' : ''}`} glass={true}>
                   <div className="flex gap-3">
                     <div className={`w-1 h-1 rounded-full mt-1.5 ${alert.severity === 'critical' ? 'bg-rose-500 animate-pulse' : 'bg-sky-500'}`} />

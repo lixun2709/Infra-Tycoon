@@ -69,7 +69,7 @@ function PortVisualsComponent({ node, h, onSelect }: PortVisualsProps) {
           const y = (rowCount > 1) ? (row - (rowCount - 1) / 2) * -spacingY : 0
 
           const isSource = activePatchSource?.nodeId === node.id && activePatchSource?.portId === port.id
-          const conn = connections.find(c => (c.startNodeId === node.id && c.startPortId === port.id) || (c.endNodeId === node.id && c.endPortId === port.id))
+          const conn = connections.find((c: any) => (c.startNodeId === node.id && c.startPortId === port.id) || (c.endNodeId === node.id && c.endPortId === port.id))
           const isPlugged = port.connectedTo !== null || isSource
 
           return (
@@ -113,7 +113,7 @@ function PortVisualsComponent({ node, h, onSelect }: PortVisualsProps) {
               <StatusLED 
                 portStatus={port.status} 
                 connStatus={conn?.status} 
-                otherNodeExists={!!conn && nodes.some(n => n.id === (conn.startNodeId === node.id ? conn.endNodeId : conn.startNodeId))}
+                otherNodeExists={!!conn && nodes.some((n: any) => n.id === (conn.startNodeId === node.id ? conn.endNodeId : conn.startNodeId))}
                 isSelected={isSelected} 
               />
             </group>

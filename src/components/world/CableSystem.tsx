@@ -1,3 +1,4 @@
+import type { ThemeKey } from '../../store/themeTypes'
 /* eslint-disable react-hooks/immutability */
 import { useRef, useMemo, useState, useEffect } from 'react'
 import { THEMES, type ThemeSpec } from '../../store/themeTypes'
@@ -383,7 +384,7 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
   }, [connection.type, connection.startNodeId, connection.startPortId, allNodes])
 
   const activeTheme = useInfraStore(s => s.activeTheme)
-  const themeSpec = THEMES[activeTheme]
+  const themeSpec = THEMES[activeTheme as ThemeKey]
 
   // Dynamic cable radius depending on high-fidelity physical type representation
   const cableRadius = useMemo(() => {
@@ -459,15 +460,15 @@ export function CableSystem() {
   const currentSiteId = useInfraStore(s => s.currentSiteId)
 
   const siteConnections = useMemo(() => {
-    return connections.filter(conn => {
-      const sNode = nodes.find(n => n.id === conn.startNodeId)
+    return connections.filter((conn: any) => {
+      const sNode = nodes.find((n: any) => n.id === conn.startNodeId)
       return sNode?.siteId === currentSiteId
     })
   }, [connections, nodes, currentSiteId])
 
   return (
     <group>
-      {siteConnections.map(conn => (
+      {siteConnections.map((conn: any) => (
         <Cable key={conn.id} connection={conn} allNodes={nodes} />
       ))}
     </group>

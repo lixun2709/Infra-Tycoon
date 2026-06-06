@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { Button } from './base/Button'
 import { Badge } from './base/Badge'
 import {
-  Target, Network, Activity, Database, Brain, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server, Wind, Cloud
+  Target, Network, Activity, Database, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server, Wind, Cloud
 } from 'lucide-react'
 
 interface TopNavProps {
@@ -84,9 +84,7 @@ export function TopNav({
     experience,
     xpToNextLevel,
     realTimePlayedSeconds,
-    toggleFacilityFeed,
-    isAIDashboardOpen,
-    toggleAIDashboard
+    toggleFacilityFeed
   } = useInfraStore(useShallow(state => ({
     currentSiteId: state.currentSiteId, 
     sites: state.sites, 
@@ -98,11 +96,9 @@ export function TopNav({
     experience: state.experience,
     xpToNextLevel: state.xpToNextLevel,
     isNetworkManagerOpen: state.isNetworkManagerOpen,
-    toggleFacilityFeed: state.toggleFacilityFeed,
-    isAIDashboardOpen: state.isAIDashboardOpen,
-    toggleAIDashboard: state.toggleAIDashboard
+    toggleFacilityFeed: state.toggleFacilityFeed
   })))
-  const activeSite = sites.find(s => s.id === currentSiteId)
+  const activeSite = sites.find((s: any) => s.id === currentSiteId)
   const xpPercentage = Math.min(100, (experience / xpToNextLevel) * 100)
   
   const [utilityA, setUtilityA] = useState(true)
@@ -187,7 +183,7 @@ export function TopNav({
             onChange={(e) => setCurrentSiteId(e.target.value)}
             className="bg-transparent text-teal-400 text-[11px] font-black uppercase tracking-tight focus:outline-none cursor-pointer"
           >
-            {sites.map(site => (
+            {sites.map((site: any) => (
               <option key={site.id} value={site.id} className="bg-slate-900 text-white">
                 {site.name} ({site.region})
               </option>
@@ -271,7 +267,6 @@ export function TopNav({
               { id: 'cloud', label: 'HYBRID CLOUD', icon: <Cloud className="w-4 h-4" />, active: isCloudOpen, onClick: onToggleCloud },
               { id: 'itsm', label: 'SERVICE DESK', icon: <Briefcase className="w-4 h-4" />, active: isITSMOpen, onClick: onToggleITSM },
               { id: 'storage', label: 'STORAGE', icon: <Database className="w-4 h-4" />, active: isStorageOpen, onClick: onToggleStorage },
-              { id: 'ai', label: 'AI CLUSTER', icon: <Brain className="w-4 h-4" />, active: isAIDashboardOpen, onClick: toggleAIDashboard },
               { id: 'terminal', label: 'TERMINAL', icon: <TerminalIcon className="w-4 h-4" />, active: isTerminalOpen, onClick: onToggleTerminal },
               { id: 'handbook', label: 'DOCS', icon: <Book className="w-4 h-4" />, onClick: onOpenHandbook },
               { id: 'save', label: 'SAVE', icon: <Save className="w-4 h-4" />, onClick: onToggleSaveManager },
