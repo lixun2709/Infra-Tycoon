@@ -1,10 +1,11 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useUIStore } from '../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { DataCategory } from '../../store/infraTypes'
 import { ConfirmDialog } from './ConfirmDialog'
-import { Card, Button, Badge, Tabs } from './base'
+import { Card, Button, Badge, Tabs } from './system'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import { VisualRack } from './VisualRack'
 
@@ -28,7 +29,6 @@ export function Inspector() {
     repairHardware,
     toggleMaintenanceMode,
     technicianTickets,
-    timeFormat,
     resetRackBreaker,
     virtualMachines,
     upgradeRackContainment,
@@ -55,7 +55,6 @@ export function Inspector() {
     repairHardware: state.repairHardware,
     toggleMaintenanceMode: state.toggleMaintenanceMode,
     technicianTickets: state.technicianTickets,
-    timeFormat: state.timeFormat,
     resetRackBreaker: state.resetRackBreaker,
     virtualMachines: state.virtualMachines,
     upgradeRackContainment: state.upgradeRackContainment,
@@ -64,6 +63,9 @@ export function Inspector() {
     upgradeServerPSU: state.upgradeServerPSU,
     upgradeRackPDU: state.upgradeRackPDU
   })))
+
+  const timeFormat = useUIStore(s => s.timeFormat)
+
   const selectedNode = nodes.find((n: any) => n.id === selectedNodeId)
   const [activeTab, setActiveTab] = React.useState<'details' | 'alerts' | 'thermal' | 'electrical' | 'services' | 'lifecycle' | 'virtualization'>('details')
   const [showDecommissionConfirm, setShowDecommissionConfirm] = React.useState(false)
@@ -147,7 +149,7 @@ export function Inspector() {
             return true
           })}
           activeTab={activeTab}
-          onChange={(id) => setActiveTab(id as typeof activeTab)}
+          onChange={(id: string) => setActiveTab(id as typeof activeTab)}
           variant="underline"
           className="bg-black/20 px-2"
         />

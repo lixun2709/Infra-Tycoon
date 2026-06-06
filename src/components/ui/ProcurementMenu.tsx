@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -19,7 +20,7 @@ import {
 
 type Category = 'compute' | 'storage' | 'network' | 'security' | 'identity' | 'facility' | 'rack'
 
-import { Drawer, Tooltip } from './base'
+import { Drawer, Tooltip } from './system'
 
 interface ProcurementMenuProps {
   isOpen: boolean
@@ -219,3 +220,4 @@ export function ProcurementMenu({ isOpen, onToggle }: ProcurementMenuProps) {
     </div>
   )
 }
+

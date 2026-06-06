@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useInfraStore } from '../store/useInfraStore'
 import * as THREE from 'three'
@@ -96,3 +97,4 @@ describe('v1.3 Terminal Kernel - Store & Persistence', () => {
     expect(state!.envVars['TEST_VAR']).toBe('infra_123')
   })
 })
+

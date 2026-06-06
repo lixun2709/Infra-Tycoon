@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
-import { Modal, Tabs, type TabItem, Card, Button, Badge } from './base'
+import { Modal, Tabs, type TabItem, Card, Button, Badge } from './system'
 import { 
   Database, 
   HardDrive, 
@@ -252,3 +253,4 @@ export function StorageDashboard({ isOpen, onClose }: StorageDashboardProps) {
     </Modal>
   )
 }
+

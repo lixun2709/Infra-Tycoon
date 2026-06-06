@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Float, Text, QuadraticBezierLine } from '@react-three/drei'
@@ -78,3 +79,4 @@ export const Assistant: React.FC = () => {
     </group>
   )
 }
+

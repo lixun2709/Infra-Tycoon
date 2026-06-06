@@ -1,3 +1,4 @@
+ 
 import type { ServiceType } from '../store/infraTypes'
 
 export interface ApplicationRequirement {
@@ -162,3 +163,4 @@ export const APPLICATION_CATALOG: Record<string, Application> = {
     deploymentCost: 250000
   }
 }
+

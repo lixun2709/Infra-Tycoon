@@ -1,3 +1,4 @@
+ 
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { HARDWARE_CATALOG, type HardwareCatalogKey } from '../../physics/hardwareLibrary'
@@ -41,8 +42,9 @@ export const createProgressionSlice: StateCreator<InfraState, [], [], Progressio
     
     if (experience >= xpToNextLevel) {
       const nextLevel = companyLevel + 1
-      // Exponential scaling for level up: Next = Base * (1.5 ^ Level)
-      const newXpRequirement = Math.floor(1000 * Math.pow(1.5, nextLevel - 1))
+      // Adjusted pacing curve: slower mid game but faster early game to hook the player
+      const baseRequirement = 1000
+      const newXpRequirement = Math.floor(baseRequirement * Math.pow(1.65, nextLevel - 1))
       
       set({ 
         companyLevel: nextLevel,
@@ -56,7 +58,7 @@ export const createProgressionSlice: StateCreator<InfraState, [], [], Progressio
         window.dispatchEvent(event)
       }
       
-      pushAlert('info', `[ENTERPRISE LEVEL UP] Operations scaled to Tier ${nextLevel}! New hardware and contracts unlocked.`)
+      pushAlert('info', `[MILESTONE REACHED] Enterprise operations scaled to Tier ${nextLevel}! New strategic contracts and advanced hardware are now available for deployment.`, 'HQ-SYS')
       audioManager.playEffect('success') // Placeholder sound
       
       // Recursively check if they gained so much XP they leveled up twice
@@ -76,3 +78,4 @@ export const createProgressionSlice: StateCreator<InfraState, [], [], Progressio
     return !item?.minLevel || companyLevel >= item.minLevel
   }
 })
+

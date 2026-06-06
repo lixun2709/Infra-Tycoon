@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useMemo, useState } from 'react'
 import { Text, Billboard } from '@react-three/drei'
 import { useInfraStore } from '../../store/useInfraStore'
@@ -125,3 +126,4 @@ function PortVisualsComponent({ node, h, onSelect }: PortVisualsProps) {
 }
 
 export const PortVisuals = React.memo(PortVisualsComponent)
+

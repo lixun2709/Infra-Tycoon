@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 
@@ -73,3 +74,4 @@ export const createInteractionSlice: StateCreator<InfraState, [], [], Interactio
     return { interactionLogs: newLogs }
   })
 })
+

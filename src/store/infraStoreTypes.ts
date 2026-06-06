@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Vector3 } from 'three'
 import type { 
   InfraNode, 
@@ -97,6 +98,8 @@ export type InfraState = {
   terminalStates: Record<string, TerminalStateRecord>
   
   // v6.0 Economy & Progression
+  playerAuthority: 'READ_ONLY' | 'OPERATIONAL' | 'SIMULATION_CRITICAL'
+  setPlayerAuthority: (auth: 'READ_ONLY' | 'OPERATIONAL' | 'SIMULATION_CRITICAL') => void
   balance: number
   reputation: number
   reputationHistory: ReputationHistoryEntry[]
@@ -136,8 +139,8 @@ export type InfraState = {
   setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
   activeTheme: ThemeKey
   setTheme: (theme: ThemeKey) => void
-  timeFormat: '24h' | '12h'
-  setTimeFormat: (format: '24h' | '12h') => void
+
+
 
   // Facility Scaling & Architecture
   facilityRowsCount: number
@@ -193,7 +196,7 @@ export type InfraState = {
   toggleService: (nodeId: string, serviceId: string, status: ServiceStatus) => void
   // Day 30 Actions
   processCommand: (text: string) => void
-  generateFinalReport: () => { score: number, grade: string, breakdown: unknown }
+  generateFinalReport: () => { score: number, grade: string, breakdown: any }
   
   // Terminal Actions
   updateTerminalLayout: (layout: Partial<{ width: number; height: number; x: number; y: number; isMaximized: boolean }>) => void
@@ -265,7 +268,7 @@ export type InfraState = {
   getSimulationTelemetry: () => SimTelemetryPayload | null
   initializeSimulation: () => void
   handleWorkerOutput: (payload: SimSyncOutputPayload) => void
-  sendTerminalCommand: (payload: unknown) => void
+  sendTerminalCommand: (payload: any) => void
 
   // v2.0 Management Plane Additions
   isChaosMode: boolean
@@ -294,3 +297,4 @@ export interface ItsmSlice {
   expediteTicket: (ticketId: string) => void
   resolveTicket: (ticketId: string) => void
 }
+

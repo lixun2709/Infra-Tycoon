@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { InfraState } from './infraStoreTypes'
 import { INITIAL_SITES, INITIAL_TERMINAL_STATE } from './infraInitialState'
 import { createSimulationSlice } from './slices/simulationSlice'
-import { createUISlice } from './slices/uiSlice'
+
 import { createInventorySlice } from './slices/inventorySlice'
 import { createTerminalSlice } from './slices/terminalSlice'
 import { createContractSlice } from './slices/contractSlice'
@@ -22,6 +23,7 @@ import { createItsmSlice } from './slices/itsmSlice'
 import { handleCommand } from './terminalLogic'
 import { audioManager } from '../utils/AudioManager'
 import { syncZoningWithStore } from '../physics/zoning'
+import { useUIStore } from './useUIStore'
 
 export const useInfraStore = create<InfraState>()(
   persist<InfraState, [], [], any>(
@@ -57,6 +59,8 @@ export const useInfraStore = create<InfraState>()(
       deploymentQueue: [],
       isHeatMapVisible: false,
       realTimePlayedSeconds: 0,
+      playerAuthority: 'SIMULATION_CRITICAL',
+      setPlayerAuthority: (auth) => set({ playerAuthority: auth }),
       balance: 100000,
       reputation: 50,
       reputationHistory: [],
@@ -99,7 +103,7 @@ export const useInfraStore = create<InfraState>()(
 
       // --- ACTION SLICES ---
       ...createSimulationSlice(set, get, api),
-      ...createUISlice(set, get, api),
+      // UI Slice removed - delegated to useUIStore
       ...createInventorySlice(set, get, api),
       ...createTerminalSlice(set, get, api),
       ...createContractSlice(set, get, api),
@@ -118,6 +122,22 @@ export const useInfraStore = create<InfraState>()(
 
       // --- ROOT ACTIONS ---
       processCommand: (text: any) => handleCommand(get, set, text),
+      
+      // UI PROXY ACTIONS
+      setNetworkLoad: (load) => useUIStore.getState().setNetworkLoad(load),
+      setNetworkManagerOpen: (open) => useUIStore.getState().setNetworkManagerOpen(open),
+      setCurrentSiteId: (siteId) => useUIStore.getState().setCurrentSiteId(siteId),
+      setMousePosition: (pos) => useUIStore.getState().setMousePosition(pos),
+      toggleHeatMap: () => useUIStore.getState().toggleHeatMap(),
+      toggleGlobalMap: () => useUIStore.getState().toggleGlobalMap(),
+      setIsTerminalOpen: (val) => useUIStore.getState().setIsTerminalOpen(val),
+      setRenderQuality: (quality) => useUIStore.getState().setRenderQuality(quality),
+      setTheme: (theme) => useUIStore.getState().setTheme(theme),
+
+      pushAlert: (severity, message, nodeId) => useUIStore.getState().pushAlert(severity, message, nodeId),
+      acknowledgeAlert: (id) => useUIStore.getState().acknowledgeAlert(id),
+      acknowledgeAllAlerts: () => useUIStore.getState().acknowledgeAllAlerts(),
+
       resetRackBreaker: (rackId: any) => {
         const { nodes, pushAlert } = get()
         const rack = nodes.find((n: any) => n.id === rackId)
@@ -514,7 +534,7 @@ export const useInfraStore = create<InfraState>()(
         terminalStates: state.terminalStates,
         renderQuality: state.renderQuality,
         activeTheme: state.activeTheme,
-        timeFormat: state.timeFormat,
+
         facilityRowsCount: state.facilityRowsCount,
         facilityColumnsCount: state.facilityColumnsCount,
         coolingZonesCount: state.coolingZonesCount,
@@ -529,3 +549,4 @@ export const useInfraStore = create<InfraState>()(
     }
   )
 )
+

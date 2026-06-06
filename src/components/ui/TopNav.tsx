@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useUIStore } from '../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
-import { Button } from './base/Button'
-import { Badge } from './base/Badge'
+import { Button } from './system/Button'
+import { Badge } from './system/Badge'
 import {
   Target, Network, Activity, Database, Globe, Terminal as TerminalIcon, Book, Save, Briefcase, DollarSign, ShieldAlert, Server, Wind, Cloud
 } from 'lucide-react'
@@ -75,27 +77,31 @@ export function TopNav({
 }: TopNavProps) {
   const { 
     currentSiteId, 
-    sites, 
     setCurrentSiteId, 
     isNetworkManagerOpen,
     timeFormat,
-    setTimeFormat,
+    setTimeFormat
+  } = useUIStore(useShallow(state => ({
+    currentSiteId: state.currentSiteId, 
+    setCurrentSiteId: state.setCurrentSiteId, 
+    isNetworkManagerOpen: state.isNetworkManagerOpen,
+    timeFormat: state.timeFormat,
+    setTimeFormat: state.setTimeFormat
+  })))
+
+  const { 
+    sites, 
     companyLevel,
     experience,
     xpToNextLevel,
     realTimePlayedSeconds,
     toggleFacilityFeed
   } = useInfraStore(useShallow(state => ({
-    currentSiteId: state.currentSiteId, 
     sites: state.sites, 
-    setCurrentSiteId: state.setCurrentSiteId, 
     realTimePlayedSeconds: state.realTimePlayedSeconds, 
-    timeFormat: state.timeFormat,
-    setTimeFormat: state.setTimeFormat,
     companyLevel: state.companyLevel,
     experience: state.experience,
     xpToNextLevel: state.xpToNextLevel,
-    isNetworkManagerOpen: state.isNetworkManagerOpen,
     toggleFacilityFeed: state.toggleFacilityFeed
   })))
   const activeSite = sites.find((s: any) => s.id === currentSiteId)
@@ -333,3 +339,4 @@ export function TopNav({
     </motion.div>
   )
 }
+

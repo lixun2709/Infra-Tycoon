@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import {} from '@react-three/drei'
@@ -452,3 +453,4 @@ export function OverheadPowerSystem() {
     </group>
   )
 }
+

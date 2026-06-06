@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { CONTRACT_CATALOG, type ContractBlueprint } from '../../physics/contractLibrary'
@@ -30,14 +31,14 @@ export const createContractSlice: StateCreator<InfraState, [], [], ContractSlice
     }))
     
     audioManager.playEffect('success')
-    get().pushAlert('info', `CONTRACT SIGNED: ${blueprint.name} is now active.`)
+    get().pushAlert('info', `[CONTRACT SIGNED] ${blueprint.name}. Required uptime: ${blueprint.slaTarget}%. SLA Active.`, 'NOC-SYSTEM')
   },
 
   cancelContract: (id) => {
     set((state: any) => ({
       activeContracts: state.activeContracts.filter((c: any) => c.id !== id)
     }))
-    get().pushAlert('info', 'Contract cancelled by operator.')
+    get().pushAlert('warning', '[SLA TERMINATED] Contract cancelled by operator. Financial penalty may apply.', 'NOC-SYSTEM')
   },
 
   marketContracts: [],
@@ -61,3 +62,4 @@ export const createContractSlice: StateCreator<InfraState, [], [], ContractSlice
     })
   }
 })
+

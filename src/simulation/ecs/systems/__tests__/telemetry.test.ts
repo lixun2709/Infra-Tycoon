@@ -1,3 +1,4 @@
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest'
 import { World } from '../../World'
@@ -280,3 +281,4 @@ describe('Deterministic Simulation Telemetry Subsystem', () => {
     expect(tc.auditViolationsCount).toBe(2) // still in warning conditions
   })
 })
+

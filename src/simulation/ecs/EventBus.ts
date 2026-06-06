@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Entity, Component } from './types'
 
 export interface ECSEventRegistry {
@@ -8,13 +9,13 @@ export interface ECSEventRegistry {
   'system:error': { systemName: string; error: Error }
   'thermal:throttle': { entityId: Entity; temperature: number; isThrottled: boolean }
   'power:overload': { entityId: Entity; load: number; limit: number }
-  [key: string]: unknown
+  [key: string]: any
 }
 
 export type ECSEventCallback<K extends keyof ECSEventRegistry> = (payload: ECSEventRegistry[K]) => void
 
 export class ECSEventBus {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   private listeners: Map<keyof ECSEventRegistry, Set<ECSEventCallback<any>>> = new Map()
 
   public subscribe<K extends keyof ECSEventRegistry>(event: K, callback: ECSEventCallback<K>): () => void {
@@ -49,3 +50,4 @@ export class ECSEventBus {
     this.listeners.clear()
   }
 }
+

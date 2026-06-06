@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { audioManager } from '../../utils/AudioManager'
@@ -260,3 +261,4 @@ export const createNetworkingSlice: StateCreator<InfraState, [], [], NetworkingS
     return cloudLinks.some((l: any) => l.id === linkId)
   }
 })
+

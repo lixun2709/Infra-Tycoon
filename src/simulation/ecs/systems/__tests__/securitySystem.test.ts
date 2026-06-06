@@ -1,3 +1,4 @@
+ 
 import { describe, it, expect, vi } from 'vitest'
 import { World } from '../../World'
 import { SecuritySystem } from '../SecuritySystem'
@@ -132,3 +133,4 @@ describe('SecuritySystem', () => {
     expect(secImmutable.infectionState).toBe('clean')
   })
 })
+

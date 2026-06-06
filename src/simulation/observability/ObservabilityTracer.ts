@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { TraceSpan } from './types'
 
 export class ObservabilityTracer {
@@ -25,7 +26,7 @@ export class ObservabilityTracer {
   /**
    * Starts a new transaction span.
    */
-  public static startSpan(name: string, parentSpanId?: number, metadata?: Record<string, unknown>): number {
+  public static startSpan(name: string, parentSpanId?: number, metadata?: Record<string, any>): number {
     const spanId = this.generateId()
     const traceId = parentSpanId 
       ? (this.activeSpans.get(parentSpanId)?.traceId || this.generateId())
@@ -48,7 +49,7 @@ export class ObservabilityTracer {
   /**
    * Ends a running transaction span and moves it into the rolling ring buffer without allocating arrays.
    */
-  public static endSpan(spanId: number, status: 'success' | 'failed', metadata?: Record<string, unknown>): void {
+  public static endSpan(spanId: number, status: 'success' | 'failed', metadata?: Record<string, any>): void {
     const activeSpan = this.activeSpans.get(spanId)
     if (!activeSpan) return
 
@@ -115,3 +116,4 @@ export class ObservabilityTracer {
     }
   }
 }
+

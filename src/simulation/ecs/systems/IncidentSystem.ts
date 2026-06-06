@@ -1,3 +1,4 @@
+ 
 import { System } from '../System'
 import type { World } from '../World'
 import type { 
@@ -432,3 +433,4 @@ export class IncidentSystem extends System {
     }
   }
 }
+

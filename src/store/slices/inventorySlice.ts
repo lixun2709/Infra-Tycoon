@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import { Vector3 } from 'three'
 import type { InfraState } from '../infraStoreTypes'
@@ -401,3 +402,4 @@ export const createInventorySlice: StateCreator<InfraState, [], [], InventorySli
     audioManager.playEffect('click')
   }
 })
+

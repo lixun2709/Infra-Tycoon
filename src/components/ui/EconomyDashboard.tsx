@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
-import { Modal, Tabs, type TabItem } from './base'
+import { Modal, Tabs, type TabItem } from './system'
 import { 
   DollarSign, 
   TrendingUp, 
@@ -486,3 +487,4 @@ function LoanOfferCard({ name, principal, interestRate, onTake, isLocked, lockRe
     </div>
   )
 }
+

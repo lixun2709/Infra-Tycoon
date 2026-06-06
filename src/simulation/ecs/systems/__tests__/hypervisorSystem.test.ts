@@ -1,3 +1,4 @@
+ 
 import { describe, it, expect, vi } from 'vitest'
 import { World } from '../../World'
 import { HypervisorSystem } from '../HypervisorSystem'
@@ -207,3 +208,4 @@ describe('HypervisorSystem', () => {
     }))
   })
 })
+

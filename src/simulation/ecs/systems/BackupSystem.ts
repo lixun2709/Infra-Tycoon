@@ -1,3 +1,4 @@
+ 
 import { System } from '../System'
 import type { BackupComponent, StorageComponent, PowerComponent, SecurityComponent, TransformComponent } from '../types'
 
@@ -196,3 +197,4 @@ export class BackupSystem extends System {
     })
   }
 }
+

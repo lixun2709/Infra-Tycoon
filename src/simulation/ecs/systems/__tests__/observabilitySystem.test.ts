@@ -1,3 +1,4 @@
+ 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { World } from '../../World'
@@ -309,3 +310,4 @@ describe('Observability ECS System Core Tests', () => {
     })
   })
 })
+

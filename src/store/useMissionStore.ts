@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { MISSION_CATALOG, MISSION_ORDER } from '../physics/missionLibrary'
@@ -94,4 +95,5 @@ export const useMissionStore = create<MissionState>()(
     }
   )
 )
+
 

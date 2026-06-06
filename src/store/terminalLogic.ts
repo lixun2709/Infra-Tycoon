@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { InfraState } from './infraStoreTypes'
 import type { TerminalSession, TerminalPane } from './terminalTypes'
 import { COMMAND_REGISTRY } from './terminal/CommandRegistry'
@@ -5,6 +6,8 @@ import { initializeTerminalCommands } from './terminal/TerminalCommands'
 
 // Initialize commands once
 initializeTerminalCommands()
+
+import { logger } from '../utils/logger'
 
 export function handleCommand(
   get: () => InfraState, 
@@ -91,23 +94,44 @@ export function handleCommand(
     // Execute from registry
     const commandDef = COMMAND_REGISTRY[cmdLower]
     if (commandDef) {
-      try {
-        commandDef.execute({
-          get,
-          set,
-          args,
-          siteId,
-          siteState,
-          activeSession,
-          activePane,
-          newContext,
-          newCwd,
-          targetNode,
-          output,
-          forceClear
+      const playerAuthority = get().playerAuthority || 'SIMULATION_CRITICAL'
+      const authLevels = {
+        'READ_ONLY': 1,
+        'OPERATIONAL': 2,
+        'SIMULATION_CRITICAL': 3
+      }
+      
+      const requiredLevel = authLevels[commandDef.authority] || 3
+      const currentLevel = authLevels[playerAuthority] || 1
+
+      if (requiredLevel > currentLevel) {
+        output.push(`[[RED]]PERMISSION DENIED: Command '${cmdLower}' requires ${commandDef.authority} authority.[[RESET]]`)
+        output.push(`Current session authority: ${playerAuthority}`)
+        logger.warn(`Unauthorized terminal command attempt`, {
+          command: cmdLower,
+          requiredAuth: commandDef.authority,
+          currentAuth: playerAuthority,
+          targetNode: targetNode?.id
         })
-      } catch (err) {
-        output.push(`[[RED]]Command execution failed: ${err}[[RESET]]`)
+      } else {
+        try {
+          commandDef.execute({
+            get,
+            set,
+            args,
+            siteId,
+            siteState,
+            activeSession,
+            activePane,
+            newContext,
+            newCwd,
+            targetNode,
+            output,
+            forceClear
+          })
+        } catch (err) {
+          output.push(`[[RED]]Command execution failed: ${err}[[RESET]]`)
+        }
       }
     } else {
       output.push(`-bash: [[YELLOW]]${cmdLower}[[RESET]]: command not found`)
@@ -115,6 +139,14 @@ export function handleCommand(
   }
 
   // --- 7. FINAL UPDATE ---
+  logger.info(`Terminal Command Executed`, {
+    siteId,
+    targetNode: targetNode?.id || 'none',
+    command: cmdLower,
+    args,
+    success: output.length > 0 && !output[output.length - 1]?.includes('[[RED]]Command execution failed')
+  });
+
   set((s: InfraState) => {
     const cs = s.terminalStates[siteId]
     if (!cs) return {}
@@ -137,3 +169,4 @@ export function handleCommand(
     return { terminalStates: { ...s.terminalStates, [siteId]: { ...cs, sessions: finalSessions } } }
   })
 }
+

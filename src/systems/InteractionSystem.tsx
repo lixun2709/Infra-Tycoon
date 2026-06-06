@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect } from 'react'
 import * as THREE from 'three'
 import { useInfraStore } from '../store/useInfraStore'
@@ -78,4 +79,5 @@ export function InteractionSystem() {
 
   return <InteractionController />
 }
+
 

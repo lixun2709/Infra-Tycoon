@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { registerCommand, COMMAND_REGISTRY } from './CommandRegistry'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
@@ -443,3 +444,4 @@ export function initializeTerminalCommands() {
     }
   })
 }
+

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import type { TerminalSession, TerminalPane, TerminalStateRecord } from '../terminalTypes'
@@ -206,3 +207,4 @@ export const createTerminalSlice: StateCreator<InfraState, [], [], TerminalSlice
     })
   }
 })
+

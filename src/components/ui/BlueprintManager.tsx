@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useMemo } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -209,4 +210,5 @@ export function BlueprintManager({ isOpen, onClose }: { isOpen: boolean; onClose
     </div>
   )
 }
+
 

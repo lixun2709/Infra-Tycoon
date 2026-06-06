@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { ThemeKey } from '../../store/themeTypes'
 /* eslint-disable react-hooks/immutability */
 import { useRef, useMemo, useState, useEffect } from 'react'
@@ -7,6 +8,7 @@ import { useFrame } from '@react-three/fiber'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { InfraNode, Connection } from '../../store/infraTypes'
 import { U_WORLD } from '../../physics/dimensions'
+import { useShallow } from 'zustand/react/shallow'
 
 // Custom high-fidelity cable shader with type-specific physical wave and pulse behaviors.
 const CableShader = {
@@ -455,8 +457,8 @@ function Cable({ connection, allNodes }: { connection: Connection, allNodes: Inf
 }
 
 export function CableSystem() {
-  const nodes = useInfraStore(s => s.nodes)
-  const connections = useInfraStore(s => s.connections)
+  const nodes = useInfraStore(useShallow(s => s.nodes))
+  const connections = useInfraStore(useShallow(s => s.connections))
   const currentSiteId = useInfraStore(s => s.currentSiteId)
 
   const siteConnections = useMemo(() => {
@@ -474,3 +476,4 @@ export function CableSystem() {
     </group>
   )
 }
+

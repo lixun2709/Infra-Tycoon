@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useInfraStore } from '../../store/useInfraStore'
 import { performanceMonitor } from '../PerformanceMonitor'
 
@@ -97,3 +98,4 @@ export class PrometheusExporter {
     return out.join('')
   }
 }
+

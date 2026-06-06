@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { InfraState } from '../infraStoreTypes'
 import type { TerminalSession, TerminalPane, TerminalStateRecord } from '../terminalTypes'
 import type { InfraNode } from '../infraTypes'
@@ -12,7 +13,7 @@ export interface CommandContext {
   siteState: TerminalStateRecord
   activeSession: TerminalSession
   activePane: TerminalPane
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   newContext: any
   newCwd: string
   targetNode: InfraNode | undefined
@@ -32,3 +33,4 @@ export const COMMAND_REGISTRY: Record<string, TerminalCommandDef> = {}
 export function registerCommand(cmd: TerminalCommandDef) {
   COMMAND_REGISTRY[cmd.name.toLowerCase()] = cmd
 }
+

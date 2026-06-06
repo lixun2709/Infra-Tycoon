@@ -1,3 +1,4 @@
+ 
 import type { ThermalComponent, PowerComponent, TransformComponent } from '../../types'
 import type { ComponentMap } from '../../types'
 import { ECSEventBus } from '../../EventBus'
@@ -177,3 +178,4 @@ export class CRACManager {
     })
   }
 }
+

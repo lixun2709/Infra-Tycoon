@@ -1,3 +1,4 @@
+ 
 export const TECHNICAL_MANUALS: Record<string, string[]> = {
   terminal: [
     "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓",
@@ -142,3 +143,4 @@ export const TECHNICAL_MANUALS: Record<string, string[]> = {
     "• [[YELLOW]]volume mount[[RESET]]       - Expose LUNs to the compute fabric"
   ]
 };
+

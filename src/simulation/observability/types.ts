@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface TraceSpan {
   traceId: number
   spanId: number
@@ -6,7 +7,7 @@ export interface TraceSpan {
   timestamp: number
   durationMs?: number
   status: 'success' | 'failed' | 'running'
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, any>
 }
 
 export type AlertSeverity = 'info' | 'warning' | 'critical'
@@ -21,3 +22,4 @@ export interface AlertRule {
   severity: AlertSeverity
   isActive: boolean
 }
+

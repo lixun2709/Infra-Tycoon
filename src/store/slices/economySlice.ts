@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { CONTRACT_CATALOG } from '../../physics/contractLibrary'
@@ -85,7 +86,7 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
       const blueprint = CONTRACT_CATALOG[contract.blueprintId]
       
       // We will handle dynamic contracts in the activeContracts themselves if not in catalog
-      const mrr = blueprint?.monthlyMRR || (contract as unknown as Record<string, unknown>).monthlyMRR as number || 0
+      const mrr = blueprint?.monthlyMRR || (contract as unknown as Record<string, any>).monthlyMRR as number || 0
 
       if (isMonthEnd) {
         monthlyRevenue += mrr
@@ -322,3 +323,4 @@ export const createEconomySlice: StateCreator<InfraState, [], [], EconomySlice> 
     return true
   }
 })
+

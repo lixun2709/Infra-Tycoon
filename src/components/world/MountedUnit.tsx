@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Edges, Text, Detailed } from '@react-three/drei'
@@ -230,3 +231,4 @@ export const MountedUnit = React.memo(MountedUnitComponent, (prevProps, nextProp
     })
   )
 })
+

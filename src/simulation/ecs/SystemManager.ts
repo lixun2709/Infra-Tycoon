@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { System } from './System'
 
 export interface SystemMetadata {
@@ -26,7 +27,7 @@ export class SystemManager {
   /**
    * Retrieves a registered ECS system by its class constructor.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   public getSystem<T extends System>(systemClass: new (...args: any[]) => T): T | undefined {
     let found: T | undefined
     this.systems.forEach((_, system) => {
@@ -40,7 +41,7 @@ export class SystemManager {
   /**
    * Dynamically enables/disables a registered system.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   public setSystemEnabled(systemClass: new (...args: any[]) => System, enabled: boolean): void {
     this.systems.forEach((meta, system) => {
       if (system instanceof systemClass) {
@@ -96,3 +97,4 @@ export class SystemManager {
     return data
   }
 }
+

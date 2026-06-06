@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { useInfraStore } from '../useInfraStore'
 import { Vector3 } from 'three'
@@ -147,3 +148,4 @@ describe('useInfraStore v2.0', () => {
     expect(secondAlert.isAcknowledged).toBe(false)
   })
 })
+

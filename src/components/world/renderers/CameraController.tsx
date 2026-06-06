@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef } from 'react'
 import { useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useInput } from '../../../contexts/InputContext'
 import { audioManager } from '../../../utils/AudioManager'
 import { cameraTelemetry } from '../../../systems/camera/CameraTelemetry'
@@ -28,7 +30,7 @@ export function CameraController() {
   const isGlobalMapOpen = useInfraStore(s => s.isGlobalMapOpen)
   const currentSiteId = useInfraStore(s => s.currentSiteId)
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
-  const nodes = useInfraStore(s => s.nodes)
+  const nodes = useInfraStore(useShallow(s => s.nodes))
   
   const cameraMode = useInfraStore(s => s.cameraMode)
   const cameraFocusNodeId = useInfraStore(s => s.cameraFocusNodeId)
@@ -187,3 +189,4 @@ export function CameraController() {
     />
   )
 }
+

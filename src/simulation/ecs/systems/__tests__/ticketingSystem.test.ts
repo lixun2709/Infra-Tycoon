@@ -1,3 +1,4 @@
+ 
 import { describe, it, expect, vi } from 'vitest'
 import { World } from '../../World'
 import { TicketingSystem } from '../TicketingSystem'
@@ -193,3 +194,4 @@ describe('TicketingSystem', () => {
     expect(alertSpy).toHaveBeenCalledWith('ticket:completed', expect.objectContaining({ ticketId }))
   })
 })
+

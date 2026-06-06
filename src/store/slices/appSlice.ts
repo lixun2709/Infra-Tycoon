@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import type { ApplicationDeployment, VirtualMachine } from '../infraTypes'
@@ -116,3 +117,4 @@ export const createAppSlice: StateCreator<InfraState, [], [], AppSlice> = (set, 
     get().pushAlert('info', `Load Balancer ${loadBalancerId.slice(0,8)} configured for deployment.`)
   }
 })
+

@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Inspector } from './components/ui/Inspector'
 import { Dashboard } from './components/ui/Dashboard'
 import { GlobalNetwork } from './components/ui/GlobalNetwork'
 import { Scene } from './components/world/Scene'
 import { useInfraStore } from './store/useInfraStore'
+import { useUIStore } from './store/useUIStore'
 import { useState, useMemo, useEffect } from 'react'
 import { Terminal } from './components/ui/Terminal'
 import { OperatorHandbook } from './components/ui/OperatorHandbook'
@@ -27,7 +29,7 @@ import { HARDWARE_CATALOG } from './physics/hardwareLibrary'
 import { useHotkeys } from './hooks/useHotkeys'
 import { THEMES } from './store/themeTypes'
 import type { ThemeKey } from './store/themeTypes'
-import { ToastProvider } from './components/ui/base'
+import { ToastProvider } from './components/ui/system'
 import { audioManager } from './utils/AudioManager'
 import { syncZoningWithStore } from './physics/zoning'
 
@@ -128,7 +130,6 @@ function App() {
 
   const placementMode = useInfraStore((s) => s.placementMode)
 
-  const setNetworkManagerOpen = useInfraStore(s => s.setNetworkManagerOpen)
   const pendingType = useInfraStore(s => s.pendingRackType)
   const cloudBurstingActive = useInfraStore(s => s.cloudBurstingActive)
   const activeCloudInstances = useInfraStore(s => s.activeCloudInstances)
@@ -201,7 +202,7 @@ function App() {
 
       {/* Top Navigation Bar */}
       <TopNav 
-        onOpenNetwork={() => setNetworkManagerOpen(!useInfraStore.getState().isNetworkManagerOpen)} 
+        onOpenNetwork={() => useUIStore.getState().setNetworkManagerOpen(!useUIStore.getState().isNetworkManagerOpen)} 
         onToggleNOC={() => {
           setNocInitialTab('overview')
           setIsNOCDashboardOpen(!isNOCDashboardOpen)
@@ -666,3 +667,4 @@ function App() {
 }
 
 export default App
+

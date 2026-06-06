@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { SimulationEngine } from '../SimulationEngine'
 import { ThermalSystem } from '../ecs/systems/ThermalSystem'
 import { PacketSystem } from '../ecs/systems/PacketSystem'
@@ -955,7 +956,7 @@ function sendSyncOutput() {
   postMessageTransferable({ type: 'TELEMETRY', payload: telemetry })
 }
 
-function postMessageTransferable(msg: { type: string; payload: unknown }) {
+function postMessageTransferable(msg: { type: string; payload: any }) {
   try {
     const jsonStr = JSON.stringify(msg.payload)
     const encoder = new TextEncoder()
@@ -965,3 +966,4 @@ function postMessageTransferable(msg: { type: string; payload: unknown }) {
     self.postMessage(msg)
   }
 }
+

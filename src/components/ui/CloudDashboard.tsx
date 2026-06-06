@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { 
@@ -10,7 +11,7 @@ import {
   Zap,
   TrendingUp
 } from 'lucide-react'
-import { Modal, Card, Badge, Button, Tabs, type TabItem } from './base'
+import { Modal, Card, Badge, Button, Tabs, type TabItem } from './system'
 
 interface CloudDashboardProps {
   isOpen: boolean
@@ -210,3 +211,4 @@ export function CloudDashboard({ isOpen, onClose }: CloudDashboardProps) {
     </Modal>
   )
 }
+

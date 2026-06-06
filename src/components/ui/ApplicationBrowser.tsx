@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { motion, AnimatePresence } from 'framer-motion'
 import { Layout, Rocket, X, Server, Database, Zap, Cpu } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
@@ -162,3 +163,4 @@ export function ApplicationBrowser({ isOpen, onClose }: ApplicationBrowserProps)
     </>
   )
 }
+

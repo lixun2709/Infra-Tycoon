@@ -1,11 +1,12 @@
+ 
 import React, { useState, useMemo, useRef } from 'react'
 import { parseMarkdownToAST } from '../../utils/docsParser'
 import type { DocSection, ASTNode } from '../../utils/docsParser'
-import userGuideRaw from '../../../USER_GUIDE.md?raw'
+import userGuideRaw from '../../../docs/USER_GUIDE.md?raw'
 import { 
-  X, Search, Book, Cpu, Network, Shield, Terminal as TerminalIcon, 
+  X, Search, Book, Network, Terminal as TerminalIcon, 
   Activity, Copy, Check, ChevronRight, AlertTriangle, Info, HardDrive, 
-  Thermometer, Zap, HelpCircle, ArrowUpRight, Maximize2, LayoutGrid
+  Thermometer, Zap
 } from 'lucide-react'
 
 export interface DocCenterProps {
@@ -14,7 +15,7 @@ export interface DocCenterProps {
 
 export function DocCenter({ onClose }: DocCenterProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<string>('architecture-overview')
+  const [activeTab, setActiveTab] = useState<string>('terminal-operations')
   const [copiedId, setCopiedId] = useState<string | null>(null)
   
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -36,88 +37,40 @@ export function DocCenter({ onClose }: DocCenterProps) {
   const categories = useMemo(() => {
     return [
       {
-        id: 'architecture-overview',
-        title: 'Architecture Overview',
-        icon: Cpu,
-        sections: ['1-system-architecture-platform-overview', '11-architecture-design-decoupled-ecs-simulation-worker', '12-deterministic-execution-thread-synchronization']
-      },
-      {
-        id: 'getting-started',
-        title: 'Getting Started',
-        icon: ArrowUpRight,
-        sections: ['5-asset-lifecycle-provisioning-workflows', '51-provisioning-lifecycle-stages']
-      },
-      {
-        id: 'rack-systems',
-        title: 'Rack Systems',
-        icon: Maximize2,
-        sections: ['2-asset-hardware-procurement-catalog']
-      },
-      {
-        id: 'thermal-systems',
-        title: 'Thermal Systems',
-        icon: Thermometer,
-        sections: ['31-thermodynamic-cooling-systems']
-      },
-      {
-        id: 'electrical-systems',
-        title: 'Electrical Systems',
-        icon: Zap,
-        sections: ['32-electrical-power-systems']
-      },
-      {
-        id: 'networking-systems',
-        title: 'Networking Systems',
-        icon: Network,
-        sections: ['33-networking-fabric-systems']
-      },
-      {
-        id: 'storage-systems',
-        title: 'Storage Systems',
-        icon: HardDrive,
-        sections: ['34-storage-raid-systems']
-      },
-      {
-        id: 'alerts-monitoring',
-        title: 'Alerts & Monitoring',
-        icon: AlertTriangle,
-        sections: ['13-telemetry-tracing-and-alerting-infrastructure']
-      },
-      {
-        id: 'controls-interaction',
-        title: 'Controls & Interaction',
+        id: 'terminal-operations',
+        title: 'Terminal Operations',
         icon: TerminalIcon,
-        sections: ['4-uiux-interface-interactive-noc-overlays', '6-interactive-cli-terminal-kernel']
+        sections: ['1-operating-the-infrastructure-terminal']
       },
       {
-        id: 'troubleshooting',
-        title: 'Troubleshooting',
+        id: 'connectivity',
+        title: 'Connectivity & Patching',
+        icon: Network,
+        sections: ['2-establishing-connectivity']
+      },
+      {
+        id: 'power',
+        title: 'Power Operations',
+        icon: Zap,
+        sections: ['3-power-operations']
+      },
+      {
+        id: 'addressing',
+        title: 'Addressing & Identity',
+        icon: HardDrive,
+        sections: ['4-addressing-and-identification']
+      },
+      {
+        id: 'noc',
+        title: 'NOC Operations',
         icon: Activity,
-        sections: ['7-operational-troubleshooting-protocols']
+        sections: ['5-noc-operations-dashboard']
       },
       {
-        id: 'operational-workflows',
-        title: 'Operational Workflows',
-        icon: Shield,
-        sections: ['52-technician-ticket-rma-queue', '53-maintenance-mode-traffic-drainage']
-      },
-      {
-        id: 'facility-orchestration',
-        title: 'Facility Expansion',
-        icon: LayoutGrid,
-        sections: ['9-facility-orchestration-room-expansion-mechanics', '91-scaling-the-physical-footprint', '92-scaling-support-infrastructure']
-      },
-      {
-        id: 'datacenter-concepts',
-        title: 'Datacenter Concepts',
-        icon: HelpCircle,
-        sections: [] // Placeholder for conceptual aggregation
-      },
-      {
-        id: 'glossary',
-        title: 'Glossary',
-        icon: Book,
-        sections: [] // Aggregates acronym definitions
+        id: 'deprecation',
+        title: 'Deprecation Notice',
+        icon: AlertTriangle,
+        sections: ['6-deprecation-notice']
       }
     ]
   }, [])
@@ -984,3 +937,4 @@ function ThermodynamicInteractiveWidget() {
     </div>
   )
 }
+

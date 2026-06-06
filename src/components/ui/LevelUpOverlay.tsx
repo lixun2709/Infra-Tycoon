@@ -1,3 +1,4 @@
+ 
 import { useState, useEffect } from 'react'
 import { Trophy, ArrowUpCircle, X } from 'lucide-react'
 import { audioManager } from '../../utils/AudioManager'
@@ -79,3 +80,4 @@ export function LevelUpOverlay() {
     </div>
   )
 }
+

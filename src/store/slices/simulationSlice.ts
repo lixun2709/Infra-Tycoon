@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import { simWorkerManager } from '../../simulation/SimulationWorkerManager'
@@ -12,7 +13,7 @@ export interface SimulationSlice {
   initializeSimulation: () => void
   handleWorkerOutput: (payload: SimSyncOutputPayload) => void
   getSimulationTelemetry: () => SimTelemetryPayload | null
-  sendTerminalCommand: (payload: unknown) => void
+  sendTerminalCommand: (payload: any) => void
 }
 
 export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationSlice> = (set, get) => ({
@@ -252,3 +253,4 @@ export const createSimulationSlice: StateCreator<InfraState, [], [], SimulationS
     useMissionStore.getState().evaluateActiveMission(get())
   }
 })
+

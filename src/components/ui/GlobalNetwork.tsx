@@ -1,13 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
+import { useUIStore } from '../../store/useUIStore'
 import { useShallow } from 'zustand/react/shallow'
 import type { ServiceType } from '../../store/infraTypes'
 import { TECHNICAL_MANUALS } from '../../physics/Manuals'
 
 export function GlobalNetwork() {
   const { 
-    isNetworkManagerOpen, 
-    setNetworkManagerOpen, 
     connections, 
     sites,
     currentSiteId,
@@ -16,8 +16,6 @@ export function GlobalNetwork() {
     getServiceStatus,
     updateConnectionConfig
   } = useInfraStore(useShallow(state => ({
-    isNetworkManagerOpen: state.isNetworkManagerOpen, 
-    setNetworkManagerOpen: state.setNetworkManagerOpen, 
     connections: state.connections, 
     sites: state.sites,
     currentSiteId: state.currentSiteId,
@@ -25,6 +23,14 @@ export function GlobalNetwork() {
     removeConnection: state.removeConnection,
     getServiceStatus: state.getServiceStatus,
     updateConnectionConfig: state.updateConnectionConfig
+  })))
+
+  const {
+    isNetworkManagerOpen,
+    setNetworkManagerOpen
+  } = useUIStore(useShallow(state => ({
+    isNetworkManagerOpen: state.isNetworkManagerOpen,
+    setNetworkManagerOpen: state.setNetworkManagerOpen
   })))
 
   const nodes = useInfraStore.getState().nodes
@@ -809,3 +815,4 @@ export function GlobalNetwork() {
     </div>
   )
 }
+

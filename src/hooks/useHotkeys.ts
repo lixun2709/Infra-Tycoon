@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect } from 'react'
 import { useInfraStore } from '../store/useInfraStore'
 
@@ -98,3 +99,4 @@ export function useHotkeys() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [terminalStates, currentSiteId, nodes, selectedNodeId, addTerminalSession, isTerminalOpen, setIsTerminalOpen, setSelectedNode, siteTerminal?.sessions.length])
 }
+

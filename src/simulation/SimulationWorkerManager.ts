@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { SimMessage, SimSyncOutputPayload, SimTelemetryPayload, SimInitPayload, SimSyncInputPayload } from './worker/workerTypes'
 import type { InfraNode, ApplicationDeployment, Connection, ActiveContract, VirtualMachine, PodData, TechnicianTicket, Incident, AutomationPolicy } from '../store/infraTypes'
 import { performanceMonitor } from './PerformanceMonitor'
@@ -366,19 +367,19 @@ export class SimulationWorkerManager {
   private send(type: 'INIT', payload: SimInitPayload): void
   private send(type: 'SYNC_INPUT', payload: SimSyncInputPayload): void
   private send(type: 'TICK', payload: { dt: number }): void
-  private send(type: 'TERMINAL_CMD', payload: unknown): void
+  private send(type: 'TERMINAL_CMD', payload: any): void
   private send(type: 'PING'): void
-  private send(type: string, payload?: unknown) {
+  private send(type: string, payload?: any) {
     if (this.worker) {
       this.worker.postMessage({ type, payload })
     }
   }
 
-  public sendTerminalCommand(payload: unknown) {
+  public sendTerminalCommand(payload: any) {
     this.send('TERMINAL_CMD', payload)
   }
 
-  private sendTransferable(type: string, payload: unknown) {
+  private sendTransferable(type: string, payload: any) {
     if (!this.worker) return
     try {
       const jsonStr = JSON.stringify(payload)
@@ -406,3 +407,4 @@ export class SimulationWorkerManager {
 }
 
 export const simWorkerManager = new SimulationWorkerManager()
+

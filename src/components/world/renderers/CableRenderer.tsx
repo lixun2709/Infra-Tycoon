@@ -1,8 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { APPLICATION_CATALOG } from '../../../physics/applicationLibrary'
 import type { InfraNode } from '../../../store/infraTypes'
 import { useInfraStore } from '../../../store/useInfraStore'
+import { useShallow } from 'zustand/react/shallow'
 
 const RACK_HEIGHT = 2.1
 
@@ -22,8 +24,8 @@ export function DataThread({ start, end, color }: { start: THREE.Vector3; end: T
 }
 
 export function DataThreads() {
-  const nodes = useInfraStore(s => s.nodes)
-  const applications = useInfraStore(s => s.applications)
+  const nodes = useInfraStore(useShallow(s => s.nodes))
+  const applications = useInfraStore(useShallow(s => s.applications))
   const selectedNodeId = useInfraStore(s => s.selectedNodeId)
 
   const threads = useMemo(() => {
@@ -73,3 +75,4 @@ export function DataThreads() {
     </group>
   )
 }
+

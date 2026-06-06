@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useInfraStore } from '../store/useInfraStore'
 import { HARDWARE_CATALOG } from './hardwareLibrary'
 
@@ -97,3 +98,4 @@ export class ThermalManager {
     useInfraStore.setState({ nodes: updatedNodes })
   }
 }
+

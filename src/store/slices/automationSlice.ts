@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState } from '../infraStoreTypes'
 import type { AutomationPolicy } from '../infraTypes'
@@ -70,3 +71,4 @@ export const createAutomationSlice: StateCreator<InfraState, [], [], AutomationS
     })
   }
 })
+

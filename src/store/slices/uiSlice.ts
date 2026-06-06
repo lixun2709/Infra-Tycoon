@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import { Vector3 } from 'three'
 import type { InfraState } from '../infraStoreTypes'
@@ -28,8 +29,8 @@ export interface UISlice {
   setIsTerminalOpen: (val: boolean) => void
   setRenderQuality: (quality: 'ultra' | 'auto' | 'low') => void
   setTheme: (theme: ThemeKey) => void
-  timeFormat: '24h' | '12h'
-  setTimeFormat: (format: '24h' | '12h') => void
+
+
 }
 
 export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, get) => ({
@@ -42,8 +43,8 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
   setIsTerminalOpen: (val: boolean) => set({ isTerminalOpen: val }),
   setRenderQuality: (quality) => set({ renderQuality: quality }),
   setTheme: (theme) => set({ activeTheme: theme }),
-  timeFormat: '24h',
-  setTimeFormat: (format) => set({ timeFormat: format }),
+
+
 
   pushAlert: (severity, message, nodeId) => {
     // 10-minute suppression filter for acknowledged alerts (600,000ms)
@@ -111,3 +112,4 @@ export const createUISlice: StateCreator<InfraState, [], [], UISlice> = (set, ge
     })
   }
 })
+

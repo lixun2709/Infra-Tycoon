@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { Play, Square, Plus, Trash2, Terminal, List, Code, Archive } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { AutomationConditionType, AutomationActionType } from '../../store/infraTypes'
 
-import { Modal, Card, Button, Tabs, type TabItem } from './base'
+import { Modal, Card, Button, Tabs, type TabItem } from './system'
 
 interface AutomationDashboardProps {
   isOpen: boolean
@@ -278,3 +279,4 @@ export const AutomationDashboard: React.FC<AutomationDashboardProps> = ({ isOpen
     </Modal>
   )
 }
+

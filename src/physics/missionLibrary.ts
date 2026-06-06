@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { InfraState } from '../store/infraStoreTypes'
 
 export type ObjectiveBlueprint = {
@@ -165,4 +166,5 @@ export const MISSION_CATALOG: Record<string, MissionBlueprint> = {
 }
 
 export const MISSION_ORDER = ['m1', 'm2', 'm3', 'm4', 'm5']
+
 

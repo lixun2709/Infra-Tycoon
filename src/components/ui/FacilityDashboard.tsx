@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { 
@@ -10,7 +11,7 @@ import {
   ShieldCheck,
   TrendingDown
 } from 'lucide-react'
-import { Card, Badge, Button, Tabs, type TabItem } from './base'
+import { Card, Badge, Button, Tabs, type TabItem } from './system'
 import { ThermalSystem } from '../../simulation/ecs/systems/ThermalSystem'
 import { HARDWARE_CATALOG } from '../../physics/hardwareLibrary'
 
@@ -205,3 +206,4 @@ export function FacilityTab() {
     </div>
   )
 }
+

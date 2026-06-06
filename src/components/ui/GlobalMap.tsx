@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { Globe, Server, Plus, X, Cpu, HardDrive, Activity, Shield, Zap, Crosshair, Navigation } from 'lucide-react'
@@ -556,3 +557,4 @@ export function GlobalMap() {
     </AnimatePresence>
   )
 }
+

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PerformanceMonitor } from '../PerformanceMonitor'
 
@@ -68,7 +69,7 @@ describe('Performance Tooling & Telemetry Subsystem', () => {
     const originalStartTracking = PerformanceMonitor.prototype['startTracking']
     
     // Stub startTracking to only setup calculation interval without requestAnimationFrame loop
-    PerformanceMonitor.prototype['startTracking'] = function(this: { frameTimes: number[], metrics: Record<string, unknown> }) {
+    PerformanceMonitor.prototype['startTracking'] = function(this: { frameTimes: number[], metrics: Record<string, any> }) {
       setInterval(() => {
         const avgFrameTime = this.frameTimes.length > 0 
           ? this.frameTimes.reduce((a: number, b: number) => a + b, 0) / this.frameTimes.length
@@ -130,3 +131,4 @@ describe('Performance Tooling & Telemetry Subsystem', () => {
     expect(metrics.backpressureRatio).toBe(0.3)
   })
 })
+

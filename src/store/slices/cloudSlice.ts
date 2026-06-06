@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState, CloudProvider } from '../infraStoreTypes'
 
@@ -91,3 +92,4 @@ export const getInitialCloudState = () => ({
   cloudProviders: DEFAULT_PROVIDERS,
   activeCloudProviderId: null
 })
+

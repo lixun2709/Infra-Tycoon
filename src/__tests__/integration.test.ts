@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect } from 'vitest'
 import * as THREE from 'three'
 import { useInfraStore } from '../store/useInfraStore'
@@ -39,3 +40,4 @@ describe('End-to-End Infrastructure Lifecycle', () => {
     expect(compute?.parentRackId).toBe('rack-test')
   })
 })
+

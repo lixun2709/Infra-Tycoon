@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect, useState } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import type { SimTelemetryPayload } from '../../simulation/worker/workerTypes'
@@ -11,7 +12,7 @@ export const ObservabilityDashboard: React.FC = () => {
   useEffect(() => {
     let lastUpdate = 0
     const unsubscribe = useInfraStore.subscribe((state) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const anyState = state as any
       if (anyState._lastTelemetry) {
         const now = performance.now()
@@ -149,3 +150,4 @@ const MetricCard: React.FC<{ icon: React.ReactNode, label: string, value: string
     <div className="text-xl font-black text-slate-100">{value}</div>
   </div>
 )
+

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import type { StateCreator } from 'zustand'
 import type { InfraState, ItsmSlice } from '../infraStoreTypes'
 
@@ -30,3 +31,4 @@ export const createItsmSlice: StateCreator<InfraState, [], [], ItsmSlice> = (set
     }
   })
 })
+

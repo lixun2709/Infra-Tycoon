@@ -20,7 +20,8 @@ import {
   Briefcase,
   Network
 } from 'lucide-react'
-import { Badge, Modal, Tabs, type TabItem, Card, Button } from './base'
+import { Badge, Modal, Tabs, type TabItem, Card, Button } from './system'
+import { useUIStore } from '../../store/useUIStore'
 import { performanceMonitor } from '../../simulation/PerformanceMonitor'
 import type { PerformanceMetrics } from '../../simulation/PerformanceMonitor'
 import { ObservabilityDashboard } from './ObservabilityDashboard'
@@ -170,7 +171,6 @@ export function Dashboard({
     networkLoad,
     realTimePlayedSeconds, auditLogs,
     isHeatMapVisible, toggleHeatMap,
-    timeFormat,
     incidents, postMortems, sites,
     triggerSiteFailover, triggerPowerFailureDrill, triggerHVACFailureDrill
   } = useInfraStore(useShallow(state => ({
@@ -179,12 +179,13 @@ export function Dashboard({
     networkLoad: state.networkLoad,
     realTimePlayedSeconds: state.realTimePlayedSeconds, auditLogs: state.auditLogs,
     isHeatMapVisible: state.isHeatMapVisible, toggleHeatMap: state.toggleHeatMap,
-    timeFormat: state.timeFormat,
     incidents: state.incidents, postMortems: state.postMortems, sites: state.sites,
     triggerSiteFailover: state.triggerSiteFailover,
     triggerPowerFailureDrill: state.triggerPowerFailureDrill,
     triggerHVACFailureDrill: state.triggerHVACFailureDrill
   })))
+
+  const timeFormat = useUIStore(s => s.timeFormat)
 
   const formatUptime = (totalSeconds: number) => {
     const h = Math.floor(totalSeconds / 3600)

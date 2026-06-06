@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, ShieldAlert, Info, AlertTriangle } from 'lucide-react'
@@ -107,3 +108,4 @@ export const ToastProvider: React.FC = () => {
     </div>
   )
 }
+

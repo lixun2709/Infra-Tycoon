@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export interface CameraTelemetryEvent {
   timestamp: number
   eventType: 'mode_change' | 'focus_node' | 'panning' | 'reset' | 'spectator_sync'
   message: string
-  details?: Record<string, unknown>
+  details?: Record<string, any>
 }
 
 class CameraTelemetry {
@@ -12,7 +13,7 @@ class CameraTelemetry {
   public log(
     eventType: CameraTelemetryEvent['eventType'],
     message: string,
-    details?: Record<string, unknown>
+    details?: Record<string, any>
   ): void {
     const event: CameraTelemetryEvent = {
       timestamp: Date.now(),
@@ -42,3 +43,4 @@ class CameraTelemetry {
 }
 
 export const cameraTelemetry = new CameraTelemetry()
+

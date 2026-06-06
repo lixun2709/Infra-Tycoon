@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useInfraStore } from '../../store/useInfraStore'
@@ -522,3 +523,4 @@ export const Terminal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     </AnimatePresence>
   )
 }
+

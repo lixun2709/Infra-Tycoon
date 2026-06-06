@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { 
   computeRTSPlanarMove, 
@@ -101,7 +102,8 @@ describe('Camera Subsystem Core Math & State Machine Tests', () => {
       expect(logs).toHaveLength(2)
       expect(logs[0]?.eventType).toBe('mode_change')
       expect(logs[1]?.eventType).toBe('focus_node')
-      expect((logs[1]?.details as Record<string, unknown> | undefined)?.serverId).toBe('srv-01')
+      expect((logs[1]?.details as Record<string, any> | undefined)?.serverId).toBe('srv-01')
     })
   })
 })
+

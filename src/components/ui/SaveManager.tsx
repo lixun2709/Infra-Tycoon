@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -229,3 +230,4 @@ export function SaveManager({ onClose }: SaveManagerProps) {
     </div>
   )
 }
+

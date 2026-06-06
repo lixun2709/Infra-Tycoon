@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { useInfraStore } from '../../store/useInfraStore'
 import { useShallow } from 'zustand/react/shallow'
@@ -47,3 +48,4 @@ export function HeatMapOverlay() {
     </group>
   )
 }
+

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo, useState } from 'react'
-import { Modal, Card, Button, Badge } from './base'
+import { Modal, Card, Button, Badge } from './system'
 import { Server, Activity, ArrowRightLeft, Globe, Database, Network } from 'lucide-react'
 import { useInfraStore } from '../../store/useInfraStore'
 import { APPLICATION_CATALOG } from '../../physics/applicationLibrary'
@@ -139,3 +140,4 @@ export const LoadBalancerDashboard = ({ isOpen, onClose }: { isOpen: boolean, on
     </Modal>
   )
 }
+
