@@ -17,6 +17,8 @@ export function handleCommand(
   
   const activeSession = siteState.sessions.find(s => s.id === siteState.activeSessionId)
   if (!activeSession) return
+  const activePane = activeSession.panes.find(p => p.id === activeSession.activePaneId) || activeSession.panes[0]
+  if (!activePane) return
   const { nodes } = get()
   
   // --- 1. ALIAS SUBSTITUTION ---

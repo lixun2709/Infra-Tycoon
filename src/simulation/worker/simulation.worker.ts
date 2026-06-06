@@ -140,11 +140,14 @@ function processQueue() {
           } else if (action === 'ransomware-drill') {
              const storageNodes = Array.from(world.getComponentMap<StorageComponent>('storage').entries())
              if (storageNodes.length > 0) {
-                const randomNodeId = storageNodes[Math.floor(Math.random() * storageNodes.length)][0]
-                const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', randomNodeId)
+                const randomNode = storageNodes[Math.floor(Math.random() * storageNodes.length)]
+                if (randomNode) {
+                   const randomNodeId = randomNode[0]
+                   const security = world.getComponent<import('../ecs/types').SecurityComponent>('security', randomNodeId)
                 if (security) {
                    security.infectionState = 'infected'
                 }
+             }
              }
           }
           break

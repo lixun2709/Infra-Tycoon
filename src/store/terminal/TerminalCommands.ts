@@ -191,7 +191,7 @@ export function initializeTerminalCommands() {
     name: 'export',
     authority: 'OPERATIONAL',
     description: 'Set environment variables.',
-    execute: ({ args, siteState, output, _set, siteId }) => {
+    execute: ({ args, siteState, output, set, siteId }) => {
       const expr = args[1]
       if (!expr) {
         Object.entries(siteState.envVars).forEach(([k, v]) => output.push(`${k}=${v}`))
@@ -202,7 +202,7 @@ export function initializeTerminalCommands() {
         } else {
           const key = expr.slice(0, eqIdx).trim()
           const val = expr.slice(eqIdx + 1).trim()
-          set((s) => {
+          set((s: import('../infraStoreTypes').InfraState) => {
             const cs = s.terminalStates[siteId]
             if (!cs) return {}
             return {
@@ -282,7 +282,7 @@ export function initializeTerminalCommands() {
     name: 'prometheus',
     authority: 'READ_ONLY',
     description: 'Alias for prom.',
-    execute: (ctx) => COMMAND_REGISTRY['prom'].execute(ctx)
+    execute: (ctx) => COMMAND_REGISTRY['prom']?.execute(ctx)
   })
 
   registerCommand({
@@ -313,7 +313,7 @@ export function initializeTerminalCommands() {
     name: 'traces',
     authority: 'READ_ONLY',
     description: 'Alias for trace.',
-    execute: (ctx) => COMMAND_REGISTRY['trace'].execute(ctx)
+    execute: (ctx) => COMMAND_REGISTRY['trace']?.execute(ctx)
   })
 
   registerCommand({
@@ -335,7 +335,7 @@ export function initializeTerminalCommands() {
     name: 'alerts',
     authority: 'READ_ONLY',
     description: 'Alias for alert.',
-    execute: (ctx) => COMMAND_REGISTRY['alert'].execute(ctx)
+    execute: (ctx) => COMMAND_REGISTRY['alert']?.execute(ctx)
   })
 
   // SIMULATION CRITICAL COMMANDS
